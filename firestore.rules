@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isTenant() {
+      return getUserData().role == 'tenant';
+    }
+    
+    function isLandlord() {
+      return getUserData().role == 'landlord';
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isUser(userId) || 
+                     (isLandlord() && userId in resource.data.tenantIds);
+      allow create: if isUser(userId);
+      allow update: if isUser(userId) && 
+                      (!request.resource.data.diff(resource.data).affectedKeys()
+                        .hasAny(['uid', 'email', 'createdAt']));
+    }
+    
+    // Cases collection
+    match /cases/{caseId} {
+      allow create: if isAuthenticated() && 
+                      isTenant() &&
+                      request.resource.data.tenantId == request.auth.uid;
+                      
+      allow read: if isAuthenticated() && 
+                    (resource.data.tenantId == request.auth.uid || 
+                     resource.data.landlordId == request.auth.uid);
+                     
+      allow update: if isAuthenticated() && 
+                      ((isTenant() && resource.data.tenantId == request.auth.uid) ||
+                       (isLandlord() && resource.data.landlordId == request.auth.uid));
+                       
+      allow delete: if false; // Cases should not be deleted
+    }
+    
+    // Case updates subcollection
+    match /cases/{caseId}/updates/{updateId} {
+      allow create: if isAuthenticated() && 
+                      (get(/databases/$(database)/documents/cases/$(caseId)).data.tenantId == request.auth.uid ||
+                       get(/databases/$(database)/documents/cases/$(caseId)).data.landlordId == request.auth.uid);
+      allow read: if isAuthenticated() && 
+                    (get(/databases/$(database)/documents/cases/$(caseId)).data.tenantId == request.auth.uid ||
+                     get(/databases/$(database)/documents/cases/$(caseId)).data.landlordId == request.auth.uid);
+      allow update, delete: if false;
+    }
+  }
+}

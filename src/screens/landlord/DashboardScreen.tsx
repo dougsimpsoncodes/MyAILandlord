@@ -1,0 +1,614 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LandlordStackParamList } from '../../navigation/MainStack';
+import { Ionicons } from '@expo/vector-icons';
+import { apiClient } from '../../services/api/client';
+
+type DashboardScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Dashboard'>;
+
+interface CaseFile {
+  id: string;
+  tenantName: string;
+  tenantUnit: string;
+  issueType: string;
+  description: string;
+  location: string;
+  urgency: 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority';
+  status: 'new' | 'in_progress' | 'resolved';
+  submittedAt: string;
+  mediaCount: number;
+  estimatedCost?: string;
+}
+
+const DashboardScreen = () => {
+  const navigation = useNavigation<DashboardScreenNavigationProp>();
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
+  const [cases, setCases] = useState<CaseFile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadCases();
+  }, []);
+
+  const loadCases = async () => {
+    try {
+      setLoading(true);
+      const response = await apiClient.getCases();
+      
+      // Transform API data to match the expected interface
+      const transformedCases = response.cases.map((apiCase: any) => ({
+        id: apiCase.id,
+        tenantName: 'Tenant User', // We'd need to fetch tenant details separately
+        tenantUnit: apiCase.unitNumber || 'N/A',
+        issueType: capitalizeFirst(apiCase.category),
+        description: apiCase.description,
+        location: apiCase.location || apiCase.propertyAddress,
+        urgency: mapPriorityToUrgency(apiCase.priority),
+        status: apiCase.status,
+        submittedAt: formatDate(apiCase.createdAt),
+        mediaCount: apiCase.images?.length || 0,
+        estimatedCost: apiCase.aiAnalysis?.estimatedCost || 'TBD'
+      }));
+      
+      setCases(transformedCases);
+    } catch (error) {
+      console.error('Error loading cases:', error);
+      Alert.alert('Error', 'Failed to load cases. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const mapPriorityToUrgency = (priority: string): 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority' => {
+    switch (priority) {
+      case 'emergency': return 'Emergency';
+      case 'high': return 'Very urgent';
+      case 'medium': return 'Moderate';
+      case 'low': return 'Can wait';
+      default: return 'Low priority';
+    }
+  };
+
+  const capitalizeFirst = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadCases();
+    setRefreshing(false);
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'Emergency':
+        return '#E74C3C';
+      case 'Very urgent':
+        return '#E67E22';
+      case 'Moderate':
+        return '#F39C12';
+      case 'Can wait':
+        return '#27AE60';
+      case 'Low priority':
+        return '#95A5A6';
+      default:
+        return '#3498DB';
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'new':
+        return '#3498DB';
+      case 'in_progress':
+        return '#F39C12';
+      case 'resolved':
+        return '#27AE60';
+      default:
+        return '#95A5A6';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'new':
+        return 'New';
+      case 'in_progress':
+        return 'In Progress';
+      case 'resolved':
+        return 'Resolved';
+      default:
+        return status;
+    }
+  };
+
+  const filteredCases = selectedFilter === 'all' 
+    ? cases 
+    : cases.filter(case_ => case_.status === selectedFilter);
+
+  const newCasesCount = cases.filter(case_ => case_.status === 'new').length;
+  const inProgressCount = cases.filter(case_ => case_.status === 'in_progress').length;
+  const resolvedCount = cases.filter(case_ => case_.status === 'resolved').length;
+
+  const handleCasePress = (caseId: string) => {
+    navigation.navigate('CaseDetail', { caseId });
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.welcomeText}>Welcome back!</Text>
+          <Text style={styles.subtitle}>Maintenance Dashboard</Text>
+        </View>
+        <TouchableOpacity style={styles.notificationButton}>
+          <Ionicons name="notifications" size={24} color="#34495E" />
+          {newCasesCount > 0 && <View style={styles.notificationBadge} />}
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{newCasesCount}</Text>
+          <Text style={styles.statLabel}>New Cases</Text>
+          <Ionicons name="alert-circle" size={24} color="#3498DB" />
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{inProgressCount}</Text>
+          <Text style={styles.statLabel}>In Progress</Text>
+          <Ionicons name="time" size={24} color="#F39C12" />
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{resolvedCount}</Text>
+          <Text style={styles.statLabel}>Resolved</Text>
+          <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
+        </View>
+      </View>
+
+      <View style={styles.filtersContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {[
+            { key: 'all', label: 'All Cases', count: cases.length },
+            { key: 'new', label: 'New', count: newCasesCount },
+            { key: 'in_progress', label: 'In Progress', count: inProgressCount },
+            { key: 'resolved', label: 'Resolved', count: resolvedCount },
+          ].map((filter) => (
+            <TouchableOpacity
+              key={filter.key}
+              style={[
+                styles.filterButton,
+                selectedFilter === filter.key && styles.filterButtonActive,
+              ]}
+              onPress={() => setSelectedFilter(filter.key as any)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  selectedFilter === filter.key && styles.filterTextActive,
+                ]}
+              >
+                {filter.label} ({filter.count})
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      <ScrollView
+        style={styles.casesContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3498DB" />
+            <Text style={styles.loadingText}>Loading cases...</Text>
+          </View>
+        ) : filteredCases.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="folder-open-outline" size={64} color="#95A5A6" />
+            <Text style={styles.emptyTitle}>No Cases Found</Text>
+            <Text style={styles.emptySubtitle}>
+              {selectedFilter === 'all' 
+                ? 'No maintenance cases have been reported yet.'
+                : `No ${selectedFilter.replace('_', ' ')} cases found.`}
+            </Text>
+          </View>
+        ) : (
+          filteredCases.map((case_) => (
+          <TouchableOpacity
+            key={case_.id}
+            style={styles.caseCard}
+            onPress={() => handleCasePress(case_.id)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.caseHeader}>
+              <View style={styles.caseInfo}>
+                <Text style={styles.tenantName}>{case_.tenantName}</Text>
+                <Text style={styles.tenantUnit}>{case_.tenantUnit}</Text>
+              </View>
+              <View style={styles.caseStatus}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(case_.status) },
+                  ]}
+                >
+                  <Text style={styles.statusText}>{getStatusText(case_.status)}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.urgencyBadge,
+                    { borderColor: getUrgencyColor(case_.urgency) },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.urgencyText,
+                      { color: getUrgencyColor(case_.urgency) },
+                    ]}
+                  >
+                    {case_.urgency}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.caseContent}>
+              <View style={styles.issueTypeContainer}>
+                <Ionicons name="construct" size={16} color="#7F8C8D" />
+                <Text style={styles.issueType}>{case_.issueType}</Text>
+                <Text style={styles.separator}>•</Text>
+                <Text style={styles.location}>{case_.location}</Text>
+              </View>
+              <Text style={styles.description} numberOfLines={2}>
+                {case_.description}
+              </Text>
+            </View>
+
+            <View style={styles.caseFooter}>
+              <View style={styles.caseMetadata}>
+                <View style={styles.mediaInfo}>
+                  <Ionicons name="images" size={16} color="#7F8C8D" />
+                  <Text style={styles.mediaCount}>{case_.mediaCount} photos</Text>
+                </View>
+                <Text style={styles.timestamp}>{case_.submittedAt}</Text>
+              </View>
+              {case_.estimatedCost && (
+                <View style={styles.costContainer}>
+                  <Text style={styles.costLabel}>Est. Cost:</Text>
+                  <Text style={styles.costValue}>{case_.estimatedCost}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={styles.caseActions}>
+              <TouchableOpacity style={styles.actionButton}>
+                <Ionicons name="chatbubble" size={16} color="#3498DB" />
+                <Text style={styles.actionText}>Message</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton}>
+                <Ionicons name="mail" size={16} color="#3498DB" />
+                <Text style={styles.actionText}>Send to Vendor</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton}>
+                <Ionicons name="checkmark" size={16} color="#27AE60" />
+                <Text style={[styles.actionText, { color: '#27AE60' }]}>Mark Resolved</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )))}
+
+        {!loading && filteredCases.length === 0 && (
+          <View style={styles.emptyState}>
+            <Ionicons name="folder-open" size={64} color="#BDC3C7" />
+            <Text style={styles.emptyTitle}>No cases found</Text>
+            <Text style={styles.emptyText}>
+              {selectedFilter === 'all'
+                ? 'No maintenance cases have been submitted yet.'
+                : `No ${selectedFilter.replace('_', ' ')} cases at the moment.`}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E1E8ED',
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#E74C3C',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginBottom: 8,
+  },
+  filtersContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    marginRight: 8,
+  },
+  filterButtonActive: {
+    backgroundColor: '#34495E',
+    borderColor: '#34495E',
+  },
+  filterText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    fontWeight: '500',
+  },
+  filterTextActive: {
+    color: '#FFFFFF',
+  },
+  casesContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  caseCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  caseHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  caseInfo: {},
+  tenantName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 2,
+  },
+  tenantUnit: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  caseStatus: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  urgencyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  urgencyText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  caseContent: {
+    marginBottom: 12,
+  },
+  issueTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  issueType: {
+    fontSize: 14,
+    color: '#34495E',
+    fontWeight: '600',
+  },
+  separator: {
+    fontSize: 14,
+    color: '#BDC3C7',
+  },
+  location: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  description: {
+    fontSize: 16,
+    color: '#2C3E50',
+    lineHeight: 22,
+  },
+  caseFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  caseMetadata: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  mediaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  mediaCount: {
+    fontSize: 12,
+    color: '#7F8C8D',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#95A5A6',
+  },
+  costContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  costLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+  },
+  costValue: {
+    fontSize: 12,
+    color: '#27AE60',
+    fontWeight: '600',
+  },
+  caseActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F2F6',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#3498DB',
+    fontWeight: '500',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#7F8C8D',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#95A5A6',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 16,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#95A5A6',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+    marginTop: 8,
+  },
+});
+
+export default DashboardScreen;

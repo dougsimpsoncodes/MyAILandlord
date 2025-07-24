@@ -1,0 +1,161 @@
+{
+  "product_overview": {
+    "purpose": "Provide landlords with an intuitive, cross-platform mobile app to streamline maintenance management, reduce workload, and enhance communication with tenants.",
+    "target_users": "Landlords and tenants in small- to mid-sized residential properties.",
+    "core_value": "Shift maintenance requests from unstructured messages to structured, AI-guided, media-enhanced, and trackable case files."
+  },
+  "platform": "React Native (cross-platform)",
+  "language": "TypeScript",
+  "build_framework": "Expo CLI",
+  "project_name": "My AI Landlord",
+  "authentication": {
+    "methods": ["Google", "Apple"],
+    "provider": "Firebase Auth"
+  },
+  "user_roles": {
+    "shared_app": true,
+    "role_based_ui": true
+  },
+  "offline_support": true,
+  "data_storage": {
+    "backend": "Firebase Firestore",
+    "media_storage": "Firebase Storage"
+  },
+  "screens": {
+    "shared": ["WelcomeScreen", "RoleSelectScreen", "LoginScreen"],
+    "tenant": ["ReportIssueScreen", "FollowUpScreen", "ConfirmSubmissionScreen"],
+    "landlord": ["DashboardScreen", "CaseDetailScreen", "SendToVendorScreen"]
+  },
+  "navigation_flow": {
+    "initial": "WelcomeScreen",
+    "afterRoleSelect": {
+      "tenant": "ReportIssueScreen",
+      "landlord": "DashboardScreen"
+    }
+  },
+  "components": [
+    "Header",
+    "TextInputField",
+    "MediaPreview",
+    "IssueCard",
+    "DateTimeSelector",
+    "SubmitButton",
+    "ConfirmationBanner"
+  ],
+  "state_management": {
+    "global_context": ["AuthContext", "RoleContext"],
+    "local_state": ["issueDraft", "mediaAttachments", "schedulePreferences"]
+  },
+  "libraries": {
+    "voice_input": "expo-speech",
+    "media_upload": "expo-image-picker",
+    "navigation": "@react-navigation/native",
+    "auth": "firebase-auth",
+    "database": "firebase-firestore",
+    "storage": "firebase-storage"
+  },
+  "data_flow": {
+    "tenant_case_submission": {
+      "source": "issue form + voice + media",
+      "destination": "Firestore: cases",
+      "extras": "upload media to Firebase Storage first, save URLs in Firestore"
+    },
+    "landlord_case_response": {
+      "source": "dashboard action",
+      "destination": "Firestore case update + optional SendGrid email"
+    }
+  },
+  "core_features": {
+    "ai_guided_maintenance_case_intake": {
+      "tenant_flow": [
+        "Tenant initiates a request using voice or text",
+        "App prompts follow-ups: issue type, location, duration, pattern",
+        "Tenant uploads photos/videos (optionally prompted for specific media)",
+        "App asks for preferred repair times",
+        "AI compiles a structured case file"
+      ],
+      "components": [
+        "TenantIssueForm",
+        "VoiceInput",
+        "MediaUploader",
+        "FollowUpPrompter",
+        "TimeSlotSelector"
+      ]
+    },
+    "structured_case_file_for_landlords": {
+      "includes": [
+        "AI-generated issue summary",
+        "Photos/videos",
+        "Full question/answer log",
+        "Tenant info (name, contact, unit)",
+        "Preferred schedule"
+      ],
+      "components": ["CaseFileCard", "CaseFileDetailView"]
+    },
+    "landlord_dashboard": {
+      "features": [
+        "View case files by status",
+        "Tap to expand case",
+        "Mark resolved",
+        "Email to vendor"
+      ],
+      "components": ["DashboardView", "CaseList", "CaseActions"]
+    },
+    "email_to_vendor": {
+      "integration": "SendGrid",
+      "content": [
+        "Issue summary",
+        "Photo thumbnails",
+        "Tenant answers",
+        "Time slots",
+        "Contact info"
+      ]
+    },
+    "push_notifications": {
+      "provider": "Firebase Cloud Messaging",
+      "events": [
+        "Tenant submission",
+        "Landlord response",
+        "Appointment confirmed",
+        "Issue resolved"
+      ]
+    }
+  },
+  "data_model": {
+    "tenant": ["id", "name", "contact", "unit"],
+    "landlord": ["id", "name", "email"],
+    "case_file": [
+      "id",
+      "tenant_id",
+      "issue_summary",
+      "issue_detail_log",
+      "media_urls",
+      "time_slots",
+      "status",
+      "timestamp"
+    ]
+  },
+  "ai_strategy": {
+    "mvp": "Use OpenAI/Claude to dynamically generate clarifying questions based on initial issue text",
+    "phase_2": [
+      "Classify issue severity based on history and answers",
+      "Classify equipment type from photo (toilet, AC, fridge, etc.)"
+    ],
+    "phase_3": [
+      "Suggest vendor",
+      "Estimate repair time"
+    ]
+  },
+  "roadmap": {
+    "phase_1": [
+      "Google/Apple login",
+      "Tenant case intake",
+      "Landlord dashboard",
+      "Media support",
+      "Push notifications",
+      "Email export"
+    ],
+    "phase_2": ["Severity scoring", "Photo classification", "Multiple properties"],
+    "phase_3": ["Vendor suggestion", "Repair duration prediction"]
+  }
+}
