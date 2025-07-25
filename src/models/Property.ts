@@ -46,6 +46,7 @@ export enum AreaType {
   GARAGE = 'garage',
   OUTDOOR = 'outdoor',
   HALLWAY = 'hallway',
+  UTILITY = 'utility',
   OTHER = 'other'
 }
 

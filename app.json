@@ -20,9 +20,19 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "This app uses the camera to capture photos of maintenance issues.",
-        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images of maintenance issues."
-      }
+        "NSCameraUsageDescription": "This app uses the camera to capture photos and videos of maintenance issues.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone to record audio with videos of maintenance issues.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images of maintenance issues.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.1090924979064-66l01v4c7f9md9pqrvioactsqnerri0o"
+            ]
+          }
+        ]
+      },
+      "bundleIdentifier": "com.anonymous.MyAILandlord",
+      "developmentTeam": "45997WFU94"
     },
     "android": {
       "adaptiveIcon": {

@@ -2,17 +2,21 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import HomeScreen from '../screens/tenant/HomeScreen';
 import MaintenanceStatusScreen from '../screens/tenant/MaintenanceStatusScreen';
 import ReportIssueScreen from '../screens/tenant/ReportIssueScreen';
 import ReviewIssueScreen from '../screens/tenant/ReviewIssueScreen';
 import SubmissionSuccessScreen from '../screens/tenant/SubmissionSuccessScreen';
 import FollowUpScreen from '../screens/tenant/FollowUpScreen';
 import ConfirmSubmissionScreen from '../screens/tenant/ConfirmSubmissionScreen';
+import CommunicationHubScreen from '../screens/tenant/CommunicationHubScreen';
+import PropertyInfoScreen from '../screens/tenant/PropertyInfoScreen';
 import DashboardScreen from '../screens/landlord/DashboardScreen';
 import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
 import SendToVendorScreen from '../screens/landlord/SendToVendorScreen';
 
 export type TenantStackParamList = {
+  Home: undefined;
   MaintenanceStatus: undefined;
   ReportIssue: undefined;
   ReviewIssue: { 
@@ -31,6 +35,8 @@ export type TenantStackParamList = {
   SubmissionSuccess: undefined;
   FollowUp: { issueId: string };
   ConfirmSubmission: { issueId: string };
+  CommunicationHub: undefined;
+  PropertyInfo: undefined;
 };
 
 export type LandlordStackParamList = {
@@ -55,6 +61,14 @@ const TenantNavigator = () => {
         },
       }}
     >
+      <TenantStack.Screen 
+        name="Home" 
+        component={HomeScreen}
+        options={{ 
+          title: 'Home',
+          headerShown: false 
+        }}
+      />
       <TenantStack.Screen 
         name="MaintenanceStatus" 
         component={MaintenanceStatusScreen}
@@ -84,6 +98,16 @@ const TenantNavigator = () => {
         name="ConfirmSubmission" 
         component={ConfirmSubmissionScreen}
         options={{ title: 'Confirm Submission' }}
+      />
+      <TenantStack.Screen 
+        name="CommunicationHub" 
+        component={CommunicationHubScreen}
+        options={{ headerShown: false }}
+      />
+      <TenantStack.Screen 
+        name="PropertyInfo" 
+        component={PropertyInfoScreen}
+        options={{ headerShown: false }}
       />
     </TenantStack.Navigator>
   );

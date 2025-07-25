@@ -3,12 +3,14 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   GoogleAuthProvider, 
+  signInWithCredential,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '../services/firebase/config';
 import { apiClient } from '../services/api/client';
+import { GoogleSignInService } from '../services/auth/googleSignIn';
 
 interface User {
   id: string;
@@ -81,19 +83,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      // For demo purposes, create a mock user immediately
-      // This bypasses Firebase Auth temporarily for testing
-      const mockUser: User = {
-        id: provider === 'google' ? 'demo-google-user' : 'demo-apple-user',
-        name: provider === 'google' ? 'Demo Google User' : 'Demo Apple User',
-        email: provider === 'google' ? 'demo@gmail.com' : 'demo@icloud.com',
-        avatar: undefined,
-      };
+      if (provider === 'google') {
+        // Use Google Sign-In service
+        const result = await GoogleSignInService.signIn();
+        
+        if (result.success && result.idToken) {
+          // Create Firebase credential from Google ID token
+          const credential = GoogleAuthProvider.credential(result.idToken);
+          
+          // Sign in to Firebase with the credential
+          await signInWithCredential(auth, credential);
+          
+          // Firebase auth state listener will handle setting the user
+        } else {
+          // Fallback to mock for development/testing
+          console.log('Google Sign-In not available, using fallback:', result.error);
+          const mockUser: User = {
+            id: 'demo-google-user',
+            name: 'Demo Google User',
+            email: 'demo@gmail.com',
+            avatar: undefined,
+          };
+          
+          setUser(mockUser);
+        }
+      } else if (provider === 'apple') {
+        // Apple Sign-In not implemented yet, use mock
+        const mockUser: User = {
+          id: 'demo-apple-user',
+          name: 'Demo Apple User',
+          email: 'demo@icloud.com',
+          avatar: undefined,
+        };
+        
+        setUser(mockUser);
+      }
       
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setUser(mockUser);
       setIsLoading(false);
     } catch (error) {
       console.error('Sign in failed:', error);
@@ -104,6 +129,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signOut = async () => {
     try {
+      // Sign out from Google Sign-In service first
+      await GoogleSignInService.signOut();
+      
+      // Then sign out from Firebase
       await firebaseSignOut(auth);
     } catch (error) {
       console.error('Sign out failed:', error);
@@ -123,4 +152,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+// Custom hook to use auth context
+export const useAuth = () => {
+  const context = React.useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 };

@@ -7,6 +7,7 @@ import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
+import Constants from 'expo-constants';
 import { apiClient } from '../../services/api/client';
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
@@ -170,23 +171,26 @@ const ReportIssueScreen = () => {
   };
 
   const handleVoiceInput = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      Speech.speak('Please describe your maintenance issue', {
-        onDone: () => {
-          setIssueDescription(prev => prev + ' [Voice input would be captured here]');
-          setIsRecording(false);
-        }
-      });
-    } else {
-      Speech.stop();
-      setIsRecording(false);
-    }
+    Alert.alert(
+      'Voice Input',
+      'For voice descriptions, use the camera button to record a video with audio. This text field is for typing additional details.',
+      [
+        { 
+          text: 'Add Sample Text', 
+          onPress: () => {
+            setIssueDescription(prev => 
+              prev + (prev ? ' ' : '') + 'Issue started this morning around 8 AM. Water is dripping steadily and there are water stains forming on the ceiling.'
+            );
+          }
+        },
+        { text: 'OK' }
+      ]
+    );
   };
 
   const handleImagePicker = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.All,
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -204,34 +208,64 @@ const ReportIssueScreen = () => {
   };
 
   const handleCamera = async () => {
-    // Request camera permissions
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    // Check if we're in Expo Go
+    const isExpoGo = Constants.appOwnership === 'expo';
     
-    if (status !== 'granted') {
+    if (isExpoGo) {
       Alert.alert(
-        'Camera Permission Required',
-        'Please enable camera access in your device settings to take photos.',
-        [{ text: 'OK' }]
+        'Camera Not Available',
+        'Camera functionality requires a development build. In Expo Go, you can use "Choose from Library" instead.',
+        [
+          { text: 'Choose from Library', onPress: handleImagePicker },
+          { text: 'OK' }
+        ]
       );
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaType.All,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-      videoMaxDuration: 60, // 60 seconds max for videos
-    });
+    try {
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please enable camera access in your device settings to take photos and videos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      const newMedia: MediaItem = {
-        id: Date.now().toString(),
-        uri: asset.uri,
-        type: asset.type === 'video' ? 'video' : 'image',
-      };
-      setMediaItems(prev => [...prev, newMedia]);
+      // Note: ImagePicker handles microphone permissions automatically for video recording
+      // The NSMicrophoneUsageDescription in app.json will prompt when needed
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 1,
+        videoMaxDuration: 60, // 60 seconds max for videos
+      });
+
+      if (!result.canceled) {
+        const asset = result.assets[0];
+        const newMedia: MediaItem = {
+          id: Date.now().toString(),
+          uri: asset.uri,
+          type: asset.type === 'video' ? 'video' : 'image',
+        };
+        setMediaItems(prev => [...prev, newMedia]);
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      Alert.alert(
+        'Camera Error',
+        'There was an issue accessing the camera. Please try again or use "Choose from Library".',
+        [
+          { text: 'Choose from Library', onPress: handleImagePicker },
+          { text: 'OK' }
+        ]
+      );
     }
   };
 
