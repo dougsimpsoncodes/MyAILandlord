@@ -4,6 +4,16 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ## Available Sub Agents
 
+### 🎨 ux-design-advisor
+**Purpose:** UI/UX design excellence and user experience optimization
+- Analyzes screens and user flows for clarity and usability
+- Research modern design trends and accessibility standards
+- Provides actionable design recommendations
+- Ensures WCAG 2.1 AA accessibility compliance
+- Guides mobile-first design patterns
+
+**When Used:** Proactively for screen reviews, user flow analysis, and design improvements
+
 ### 🔒 security-auditor
 **Purpose:** Proactive security validation for all code changes
 - Validates Clerk authentication integration
@@ -65,16 +75,18 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ### Explicit Invocation
 ```
-> Use the security-auditor to review my recent API changes
-> Have the react-native-expert optimize this component
-> Ask the supabase-specialist to review my RLS policies
-> Get the typescript-enforcer to fix these type errors
-> Use the test-automation-specialist to add tests for this feature
-> Have the git-security-guardian scan before committing
+> Use the ux-design-advisor to review this login screen design
+> Have the security-auditor review my recent API changes
+> Ask the react-native-expert to optimize this component
+> Get the supabase-specialist to review my RLS policies
+> Use the typescript-enforcer to fix these type errors
+> Have the test-automation-specialist add tests for this feature
+> Get the git-security-guardian to scan before committing
 ```
 
 ### Automatic Delegation
 Sub agents are automatically invoked based on context:
+- UI/UX changes → ux-design-advisor reviews user experience
 - Code changes → security-auditor runs automatically
 - UI components → react-native-expert provides guidance
 - Database operations → supabase-specialist ensures security
@@ -84,11 +96,12 @@ Sub agents are automatically invoked based on context:
 
 ## Development Workflow
 
-1. **Write Code** → react-native-expert or supabase-specialist assists
-2. **Type Safety** → typescript-enforcer validates and fixes
-3. **Security Review** → security-auditor scans for vulnerabilities
-4. **Testing** → test-automation-specialist ensures coverage
-5. **Commit** → git-security-guardian prevents secret exposure
+1. **Design Review** → ux-design-advisor ensures great user experience
+2. **Write Code** → react-native-expert or supabase-specialist assists
+3. **Type Safety** → typescript-enforcer validates and fixes
+4. **Security Review** → security-auditor scans for vulnerabilities
+5. **Testing** → test-automation-specialist ensures coverage
+6. **Commit** → git-security-guardian prevents secret exposure
 
 ## Security Benefits
 
