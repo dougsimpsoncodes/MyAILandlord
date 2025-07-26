@@ -1,0 +1,52 @@
+{
+  "hookSystem": {
+    "version": "1.0.0",
+    "enabled": true,
+    "strictMode": true
+  },
+  "secretScanner": {
+    "enabled": true,
+    "blockOnCritical": true,
+    "rotateOnExposure": true,
+    "falsePositiveReduction": true
+  },
+  "qualityGate": {
+    "enabled": true,
+    "minimumScore": 70,
+    "requireTypeScriptPass": true,
+    "allowWarnings": true,
+    "advisoryProtocolCompliance": true
+  },
+  "securityAuditor": {
+    "enabled": true,
+    "blockOnCritical": true,
+    "checkRLS": true,
+    "validateEnvironment": true,
+    "auditDependencies": true
+  },
+  "buildValidator": {
+    "enabled": true,
+    "protectedBranches": ["main", "master", "staging", "production"],
+    "requireBuildPass": true,
+    "blockCriticalTodos": true
+  },
+  "contextualAssistant": {
+    "enabled": true,
+    "autoInvoke": true,
+    "learningMode": true,
+    "businessContexts": {
+      "tenant": {
+        "priority": "user_experience",
+        "focusAreas": ["stress_reduction", "simplicity", "accessibility"]
+      },
+      "landlord": {
+        "priority": "efficiency",
+        "focusAreas": ["data_insights", "batch_operations", "reporting"]
+      },
+      "security": {
+        "priority": "critical",
+        "focusAreas": ["rls_policies", "input_validation", "token_security"]
+      }
+    }
+  }
+}
