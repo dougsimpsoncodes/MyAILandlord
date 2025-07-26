@@ -4,6 +4,16 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ## Available Sub Agents
 
+### 🏗️ tech-stack-advisor
+**Purpose:** Principal engineer for technology stack and security architecture
+- Continuous architectural review and dependency analysis
+- Technology landscape research and emerging trend monitoring
+- Strategic guidance for long-term technical excellence
+- Security vulnerability assessment and mitigation
+- Performance optimization and scalability planning
+
+**When Used:** Proactively for dependency reviews, architectural decisions, and security assessments
+
 ### 🎨 ux-design-advisor
 **Purpose:** UI/UX design excellence and user experience optimization
 - Analyzes screens and user flows for clarity and usability
@@ -75,17 +85,19 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ### Explicit Invocation
 ```
-> Use the ux-design-advisor to review this login screen design
-> Have the security-auditor review my recent API changes
+> Use the tech-stack-advisor to review our current dependencies
+> Have the ux-design-advisor review this login screen design
+> Get the security-auditor to review my recent API changes
 > Ask the react-native-expert to optimize this component
-> Get the supabase-specialist to review my RLS policies
-> Use the typescript-enforcer to fix these type errors
-> Have the test-automation-specialist add tests for this feature
-> Get the git-security-guardian to scan before committing
+> Use the supabase-specialist to review my RLS policies
+> Have the typescript-enforcer fix these type errors
+> Get the test-automation-specialist to add tests for this feature
+> Have the git-security-guardian scan before committing
 ```
 
 ### Automatic Delegation
 Sub agents are automatically invoked based on context:
+- Dependency changes → tech-stack-advisor reviews architecture
 - UI/UX changes → ux-design-advisor reviews user experience
 - Code changes → security-auditor runs automatically
 - UI components → react-native-expert provides guidance
@@ -96,12 +108,13 @@ Sub agents are automatically invoked based on context:
 
 ## Development Workflow
 
-1. **Design Review** → ux-design-advisor ensures great user experience
-2. **Write Code** → react-native-expert or supabase-specialist assists
-3. **Type Safety** → typescript-enforcer validates and fixes
-4. **Security Review** → security-auditor scans for vulnerabilities
-5. **Testing** → test-automation-specialist ensures coverage
-6. **Commit** → git-security-guardian prevents secret exposure
+1. **Architecture Planning** → tech-stack-advisor ensures scalable foundation
+2. **Design Review** → ux-design-advisor ensures great user experience
+3. **Write Code** → react-native-expert or supabase-specialist assists
+4. **Type Safety** → typescript-enforcer validates and fixes
+5. **Security Review** → security-auditor scans for vulnerabilities
+6. **Testing** → test-automation-specialist ensures coverage
+7. **Commit** → git-security-guardian prevents secret exposure
 
 ## Security Benefits
 
