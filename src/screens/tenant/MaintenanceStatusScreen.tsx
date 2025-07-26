@@ -32,6 +32,10 @@ const MaintenanceStatusScreen = () => {
 
   const loadRequests = async () => {
     try {
+      if (!apiClient) {
+        console.error('API client not available');
+        return;
+      }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       // Transform the response data to match our interface
       const transformedRequests = maintenanceRequests.map((request: any) => ({

@@ -197,6 +197,11 @@ Vendor Instructions: ${vendorComment}` : ''}`;
         images: []
       };
 
+      if (!apiClient) {
+        console.error('API client not available');
+        return;
+      }
+      
       const response = await apiClient.createMaintenanceRequest({
         propertyId: 'property-id', // TODO: Get from user profile
         title: reviewData.issueType,

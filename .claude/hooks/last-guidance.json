@@ -1,20 +1,35 @@
 {
-  "timestamp": "2025-07-26T20:35:40.442Z",
+  "timestamp": "2025-07-26T20:37:34.470Z",
   "changedFiles": [
-    "src/hooks/useProfileSync.ts"
+    "src/context/ClerkAuthContext.tsx",
+    "src/context/RoleContext.tsx"
   ],
   "contexts": [
+    "SECURITY_CRITICAL",
     "TYPE_SAFETY"
   ],
   "advisors": [
+    "security-auditor",
     "typescript-enforcer",
-    "tech-stack-advisor"
+    "supabase-specialist",
+    "tech-stack-advisor",
+    "git-security-guardian"
   ],
-  "recommendations": [],
+  "recommendations": [
+    {
+      "priority": "critical",
+      "category": "Security",
+      "message": "Security-sensitive change detected. Mandatory security review required. Verify RLS policies and input validation.",
+      "advisors": [
+        "security-auditor",
+        "supabase-specialist"
+      ]
+    }
+  ],
   "guidance": {
     "criticalIssues": [],
     "recommendations": [],
     "conflicts": [],
-    "summary": "## Contextual Development Guidance\n\n### 💡 Synthesized Recommendations\nBased on business context analysis and multi-advisor input:\n- Follow security-first principles\n- Optimize for mobile user experience\n- Maintain TypeScript strict compliance\n- Consider performance implications\n\n"
+    "summary": "## Contextual Development Guidance\n\n### 🔒 Security Considerations (Priority)\nSecurity requirements identified. All other recommendations should align with security constraints.\n\n### 💡 Synthesized Recommendations\nBased on business context analysis and multi-advisor input:\n- Follow security-first principles\n- Optimize for mobile user experience\n- Maintain TypeScript strict compliance\n- Consider performance implications\n\n"
   }
 }

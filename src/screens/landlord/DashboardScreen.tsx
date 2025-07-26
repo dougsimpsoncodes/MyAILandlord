@@ -38,6 +38,10 @@ const DashboardScreen = () => {
   const loadCases = async () => {
     try {
       setLoading(true);
+      if (!apiClient) {
+        console.error('API client not available');
+        return;
+      }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       
       // Transform API data to match the expected interface

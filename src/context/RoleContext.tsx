@@ -32,8 +32,8 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const { user } = useAppAuth();
   const { userId } = useAuth();
   
-  // Only initialize API client if user is authenticated
-  const apiClient = userId ? useApiClient() : null;
+  // Always call the hook (React rules), returns null if not authenticated
+  const apiClient = useApiClient();
 
   useEffect(() => {
     if (user && user.id) {

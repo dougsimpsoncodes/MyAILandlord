@@ -1,22 +1,27 @@
 {
   "passed": [
     {
-      "name": "typescript",
-      "message": "TypeScript Compilation passed",
-      "weight": 10
-    },
-    {
-      "name": "advisoryProtocols",
-      "message": "Advisory protocols followed",
-      "weight": 8
-    },
-    {
       "name": "todoCheck",
       "message": "Found 0 TODOs, 0 critical items",
       "weight": 2
     }
   ],
-  "failed": [],
+  "failed": [
+    {
+      "name": "typescript",
+      "message": "TypeScript Compilation failed",
+      "details": "src/screens/landlord/DashboardScreen.tsx(41,41): error TS18047: 'apiClient' is possibly 'null'.\nsrc/screens/landlord/LandlordHomeScreen.tsx(89,9): error TS18047: 'apiClient' is possibly 'null'.\nsrc/screens/landlord/LandlordHomeScreen.tsx(90,9): error TS18047: 'apiClient' is possibly 'null'.\nsrc/screens/landlord/PropertyManagementScreen.tsx(77,39): error TS18047: 'apiClient' is possibly 'null'.\nsrc/screens/tenant/MaintenanceStatusScreen.tsx(35,41): error TS18047: 'apiClient' is possibly 'null'.\nsrc/screens/tenant/ReviewIssueScreen.tsx(200,30): error TS18047: 'apiClient' is possibly 'null'.\n",
+      "weight": 10,
+      "required": true
+    },
+    {
+      "name": "advisoryProtocols",
+      "message": "Advisory protocol violations detected",
+      "details": "src/services/api/client.ts: 'any' type usage detected",
+      "weight": 8,
+      "required": true
+    }
+  ],
   "warnings": [
     {
       "name": "eslint",
@@ -33,6 +38,6 @@
       "required": false
     }
   ],
-  "score": 24,
+  "score": 6,
   "maxScore": 28
 }

@@ -84,6 +84,12 @@ const LandlordHomeScreen = () => {
     try {
       setLoading(true);
       
+      if (!apiClient) {
+        console.error('API client not available');
+        setLoading(false);
+        return;
+      }
+      
       // Load maintenance requests and properties
       const [maintenanceRequests, properties] = await Promise.all([
         apiClient.getMaintenanceRequests(),

@@ -74,6 +74,12 @@ const PropertyManagementScreen = () => {
     try {
       setLoading(true);
       
+      if (!apiClient) {
+        console.error('API client not available');
+        setLoading(false);
+        return;
+      }
+      
       const propertiesFromApi = await apiClient.getUserProperties();
       
       // TODO: Replace with real data from API

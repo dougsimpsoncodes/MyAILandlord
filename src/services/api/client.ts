@@ -35,11 +35,12 @@ const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL ||
   `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
 
 // Hook for use in components - all API logic is contained within this hook
-export function useApiClient(): UseApiClientReturn {
+export function useApiClient(): UseApiClientReturn | null {
   const { getToken, userId } = useAuth();
 
   if (!userId) {
-    throw new Error('User must be authenticated to use API client');
+    // Return null instead of throwing when user is not authenticated
+    return null;
   }
 
   // ========== USER PROFILE METHODS ==========
