@@ -4,6 +4,16 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ## Available Sub Agents
 
+### 👔 chief-of-staff
+**Purpose:** Strategic meta-advisor and team orchestrator
+- Monitors project evolution and complexity growth
+- Identifies capability gaps in advisory coverage
+- Recommends new specialized advisors as needed
+- Optimizes team structure and advisor effectiveness
+- Ensures optimal expertise for project's current and future state
+
+**When Used:** Proactively monitors project changes and strategically manages advisory team expansion
+
 ### 🏗️ tech-stack-advisor
 **Purpose:** Principal engineer for technology stack and security architecture
 - Continuous architectural review and dependency analysis
@@ -85,6 +95,7 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ### Explicit Invocation
 ```
+> Ask the chief-of-staff if we need new advisors for this feature expansion
 > Use the tech-stack-advisor to review our current dependencies
 > Have the ux-design-advisor review this login screen design
 > Get the security-auditor to review my recent API changes
@@ -97,6 +108,7 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 ### Automatic Delegation
 Sub agents are automatically invoked based on context:
+- Project evolution → chief-of-staff monitors advisory team needs
 - Dependency changes → tech-stack-advisor reviews architecture
 - UI/UX changes → ux-design-advisor reviews user experience
 - Code changes → security-auditor runs automatically
@@ -108,13 +120,14 @@ Sub agents are automatically invoked based on context:
 
 ## Development Workflow
 
-1. **Architecture Planning** → tech-stack-advisor ensures scalable foundation
-2. **Design Review** → ux-design-advisor ensures great user experience
-3. **Write Code** → react-native-expert or supabase-specialist assists
-4. **Type Safety** → typescript-enforcer validates and fixes
-5. **Security Review** → security-auditor scans for vulnerabilities
-6. **Testing** → test-automation-specialist ensures coverage
-7. **Commit** → git-security-guardian prevents secret exposure
+1. **Strategic Oversight** → chief-of-staff monitors team capability needs
+2. **Architecture Planning** → tech-stack-advisor ensures scalable foundation
+3. **Design Review** → ux-design-advisor ensures great user experience
+4. **Write Code** → react-native-expert or supabase-specialist assists
+5. **Type Safety** → typescript-enforcer validates and fixes
+6. **Security Review** → security-auditor scans for vulnerabilities
+7. **Testing** → test-automation-specialist ensures coverage
+8. **Commit** → git-security-guardian prevents secret exposure
 
 ## Security Benefits
 
