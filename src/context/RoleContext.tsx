@@ -1,7 +1,8 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppAuth } from './ClerkAuthContext';
-import { apiClient } from '../services/api/client';
+import { useAuth } from '@clerk/clerk-expo';
+import { supabaseOnlyApiClient } from '../services/api/supabase-only-client';
 
 type UserRole = 'tenant' | 'landlord' | null;
 
@@ -29,12 +30,14 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [userRole, setUserRoleState] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAppAuth();
+  const { userId } = useAuth();
 
   useEffect(() => {
     if (user) {
       // If user has role in auth context, use that
-      if (user.role) {
-        setUserRoleState(user.role);
+      // Note: Clerk user doesn't have a role property, so we skip this
+      if (false) {
+        // Placeholder for future role checking
         setIsLoading(false);
       } else {
         // Otherwise load from storage (fallback)
@@ -62,9 +65,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const setUserRole = async (role: UserRole) => {
     try {
-      if (role && user) {
-        // Save to backend
-        await apiClient.setUserRole(role);
+      if (role && user && userId) {
+        // Save to backend using Supabase client directly
+        await supabaseOnlyApiClient.setUserRole(userId, role);
         
         // Save to local storage as backup
         await AsyncStorage.setItem(ROLE_STORAGE_KEY, role);
@@ -84,20 +87,27 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       setUserRoleState(null);
     } catch (error) {
       console.error('Failed to clear role:', error);
-      throw error;
     }
   };
 
-  const value: RoleContextType = {
-    userRole,
-    setUserRole,
-    clearRole,
-    isLoading,
-  };
-
   return (
-    <RoleContext.Provider value={value}>
+    <RoleContext.Provider
+      value={{
+        userRole,
+        setUserRole,
+        clearRole,
+        isLoading,
+      }}
+    >
       {children}
     </RoleContext.Provider>
   );
+};
+
+export const useRole = () => {
+  const context = useContext(RoleContext);
+  if (!context) {
+    throw new Error('useRole must be used within a RoleProvider');
+  }
+  return context;
 };

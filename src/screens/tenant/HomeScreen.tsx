@@ -113,7 +113,10 @@ const HomeScreen = () => {
                 <Text style={styles.greeting}>{getGreeting()}, {user?.name?.split(' ')[0] || 'Tenant'}!</Text>
                 <Text style={styles.propertyAddress}>{propertyData.address}</Text>
               </View>
-              <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
+              <TouchableOpacity 
+                style={styles.signOutButton} 
+                onPress={() => signOut()}
+              >
                 <Ionicons name="log-out-outline" size={24} color="#7F8C8D" />
               </TouchableOpacity>
             </View>
@@ -156,7 +159,7 @@ const HomeScreen = () => {
           {recentActivity.map((activity, index) => (
             <TouchableOpacity key={activity.id} style={styles.activityItem}>
               <View style={[styles.activityIcon, { backgroundColor: `${activity.color}15` }]}>
-                <Ionicons name={activity.icon} size={20} color={activity.color} />
+                <Ionicons name={activity.icon as any} size={20} color={activity.color} />
               </View>
               <View style={styles.activityContent}>
                 <Text style={styles.activityTitle}>{activity.title}</Text>

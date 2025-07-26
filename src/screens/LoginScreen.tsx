@@ -54,7 +54,7 @@ const LoginScreen = () => {
       const oauthFlow = provider === 'google' ? googleOAuth : appleOAuth;
       const { createdSessionId, setActive: oauthSetActive } = await oauthFlow();
       
-      if (createdSessionId) {
+      if (createdSessionId && oauthSetActive) {
         await oauthSetActive({ session: createdSessionId });
         setUserRole(role);
       }

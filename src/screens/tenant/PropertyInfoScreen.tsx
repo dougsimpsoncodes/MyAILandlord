@@ -246,7 +246,7 @@ const PropertyInfoScreen = () => {
       case 'email': return 'mail';
       case 'wifi': return 'copy';
       case 'link': return 'document';
-      case 'text': return item => item.copyable ? 'copy' : 'information-circle';
+      case 'text': return (item: any) => item.copyable ? 'copy' : 'information-circle';
       default: return 'information-circle';
     }
   };

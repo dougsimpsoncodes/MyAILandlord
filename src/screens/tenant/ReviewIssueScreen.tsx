@@ -5,7 +5,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { apiClient } from '../../services/api/client';
+import { useApiClient } from '../../services/api/client';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { ASSET_TEMPLATES } from '../../data/assetTemplates';
 
@@ -26,6 +26,7 @@ const ReviewIssueScreen = () => {
   const navigation = useNavigation<ReviewIssueScreenNavigationProp>();
   const route = useRoute<ReviewIssueScreenRouteProp>();
   const { reviewData } = route.params;
+  const apiClient = useApiClient();
 
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<TimeSlot[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -196,7 +197,16 @@ Vendor Instructions: ${vendorComment}` : ''}`;
         images: []
       };
 
-      const response = await apiClient.createCase(caseData);
+      const response = await apiClient.createMaintenanceRequest({
+        propertyId: 'property-id', // TODO: Get from user profile
+        title: reviewData.issueType,
+        description: reviewData.additionalDetails || 'No additional details provided',
+        priority: 'medium',
+        area: reviewData.area,
+        asset: reviewData.asset,
+        issueType: reviewData.issueType,
+        images: reviewData.mediaItems?.map((item: any) => item.uri) || []
+      });
       
       // Navigate to success screen
       navigation.navigate('SubmissionSuccess');

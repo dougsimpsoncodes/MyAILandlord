@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { apiClient } from '../../services/api/client';
+import { useApiClient } from '../../services/api/client';
 
 type MaintenanceStatusScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'MaintenanceStatus'>;
 
@@ -21,6 +21,7 @@ interface MaintenanceRequest {
 
 const MaintenanceStatusScreen = () => {
   const navigation = useNavigation<MaintenanceStatusScreenNavigationProp>();
+  const apiClient = useApiClient();
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -31,16 +32,16 @@ const MaintenanceStatusScreen = () => {
 
   const loadRequests = async () => {
     try {
-      const response = await apiClient.getCases();
+      const maintenanceRequests = await apiClient.getMaintenanceRequests();
       // Transform the response data to match our interface
-      const transformedRequests = response.cases.map((caseItem: any) => ({
-        id: caseItem.id,
-        title: caseItem.title,
-        status: caseItem.status,
-        priority: caseItem.priority,
-        createdAt: new Date(caseItem.createdAt),
-        location: caseItem.location,
-        description: caseItem.description
+      const transformedRequests = maintenanceRequests.map((request: any) => ({
+        id: request.id,
+        title: request.title,
+        status: request.status,
+        priority: request.priority,
+        createdAt: new Date(request.created_at),
+        location: request.area || 'Not specified',
+        description: request.description
       }));
       setRequests(transformedRequests);
     } catch (error) {

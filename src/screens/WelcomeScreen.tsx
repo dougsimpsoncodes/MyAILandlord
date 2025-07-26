@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
+import { useAppAuth } from '../context/ClerkAuthContext';
 
 type WelcomeScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -11,6 +12,7 @@ const { width, height } = Dimensions.get('window');
 
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
+  const { signOut, isSignedIn } = useAppAuth();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -50,6 +52,16 @@ const WelcomeScreen = () => {
         >
           <Text style={styles.buttonText}>Get Started</Text>
         </TouchableOpacity>
+
+        {isSignedIn && (
+          <TouchableOpacity
+            style={styles.signOutButton}
+            onPress={() => signOut()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.signOutButtonText}>Sign Out (Clear Session)</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -139,6 +151,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  signOutButton: {
+    backgroundColor: '#E74C3C',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  signOutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

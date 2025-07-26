@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import Constants from 'expo-constants';
-import { apiClient } from '../../services/api/client';
+// Note: This component doesn't actually use apiClient, removing import
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { ASSET_TEMPLATES, getAssetsByArea, getCommonIssues, getEstimatedCost } from '../../data/assetTemplates';

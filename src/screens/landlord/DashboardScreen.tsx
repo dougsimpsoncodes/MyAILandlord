@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { apiClient } from '../../services/api/client';
+import { useApiClient } from '../../services/api/client';
 
 type DashboardScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Dashboard'>;
 
@@ -25,6 +25,7 @@ interface CaseFile {
 
 const DashboardScreen = () => {
   const navigation = useNavigation<DashboardScreenNavigationProp>();
+  const apiClient = useApiClient();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
   const [cases, setCases] = useState<CaseFile[]>([]);
@@ -37,21 +38,21 @@ const DashboardScreen = () => {
   const loadCases = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.getCases();
+      const maintenanceRequests = await apiClient.getMaintenanceRequests();
       
       // Transform API data to match the expected interface
-      const transformedCases = response.cases.map((apiCase: any) => ({
-        id: apiCase.id,
-        tenantName: 'Tenant User', // We'd need to fetch tenant details separately
-        tenantUnit: apiCase.unitNumber || 'N/A',
-        issueType: capitalizeFirst(apiCase.category),
-        description: apiCase.description,
-        location: apiCase.location || apiCase.propertyAddress,
-        urgency: mapPriorityToUrgency(apiCase.priority),
-        status: apiCase.status,
-        submittedAt: formatDate(apiCase.createdAt),
-        mediaCount: apiCase.images?.length || 0,
-        estimatedCost: apiCase.aiAnalysis?.estimatedCost || 'TBD'
+      const transformedCases = maintenanceRequests.map((request: any) => ({
+        id: request.id,
+        tenantName: request.profiles?.name || 'Tenant User',
+        tenantUnit: 'N/A', // TODO: Get from tenant_property_links
+        issueType: capitalizeFirst(request.issue_type),
+        description: request.description,
+        location: request.area,
+        urgency: mapPriorityToUrgency(request.priority),
+        status: request.status,
+        submittedAt: formatDate(request.created_at),
+        mediaCount: request.images?.length || 0,
+        estimatedCost: request.estimated_cost ? `$${request.estimated_cost}` : 'TBD'
       }));
       
       setCases(transformedCases);
