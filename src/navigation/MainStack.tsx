@@ -11,9 +11,12 @@ import FollowUpScreen from '../screens/tenant/FollowUpScreen';
 import ConfirmSubmissionScreen from '../screens/tenant/ConfirmSubmissionScreen';
 import CommunicationHubScreen from '../screens/tenant/CommunicationHubScreen';
 import PropertyInfoScreen from '../screens/tenant/PropertyInfoScreen';
+import LandlordHomeScreen from '../screens/landlord/LandlordHomeScreen';
 import DashboardScreen from '../screens/landlord/DashboardScreen';
 import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
 import SendToVendorScreen from '../screens/landlord/SendToVendorScreen';
+import LandlordCommunicationScreen from '../screens/landlord/LandlordCommunicationScreen';
+import PropertyManagementScreen from '../screens/landlord/PropertyManagementScreen';
 
 export type TenantStackParamList = {
   Home: undefined;
@@ -40,9 +43,12 @@ export type TenantStackParamList = {
 };
 
 export type LandlordStackParamList = {
+  Home: undefined;
   Dashboard: undefined;
   CaseDetail: { caseId: string };
   SendToVendor: { caseId: string };
+  Communications: undefined;
+  PropertyManagement: undefined;
 };
 
 const TenantStack = createNativeStackNavigator<TenantStackParamList>();
@@ -127,6 +133,14 @@ const LandlordNavigator = () => {
       }}
     >
       <LandlordStack.Screen 
+        name="Home" 
+        component={LandlordHomeScreen}
+        options={{ 
+          title: 'Landlord Dashboard',
+          headerShown: false 
+        }}
+      />
+      <LandlordStack.Screen 
         name="Dashboard" 
         component={DashboardScreen}
         options={{ title: 'Maintenance Dashboard' }}
@@ -140,6 +154,16 @@ const LandlordNavigator = () => {
         name="SendToVendor" 
         component={SendToVendorScreen}
         options={{ title: 'Send to Vendor' }}
+      />
+      <LandlordStack.Screen 
+        name="Communications" 
+        component={LandlordCommunicationScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="PropertyManagement" 
+        component={PropertyManagementScreen}
+        options={{ headerShown: false }}
       />
     </LandlordStack.Navigator>
   );

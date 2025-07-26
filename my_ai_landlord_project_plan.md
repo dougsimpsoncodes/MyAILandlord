@@ -65,3 +65,9 @@ All notifications are customizable by time/frequency.
 ## Next Step for Claude Code
 
 This `.md` file provides the structured reference needed to conditionally render screens and logic in the front end based on user role (host vs. landlord). Claude Code can use this to begin layout and conditional routing logic.
+
+## Project Learnings & Changelog
+
+<!-- GEMINI_LEARNINGS_START -->
+<!-- Do not edit this section manually. It is managed by the /update-docs command. -->
+<!-- GEMINI_LEARNINGS_END -->

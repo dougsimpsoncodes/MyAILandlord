@@ -163,3 +163,8 @@ If you have existing Firebase data:
 ✅ **Developer Experience** - Better tooling and debugging  
 
 Your Supabase setup is now complete! 🎉
+## Project Learnings & Changelog
+
+<!-- GEMINI_LEARNINGS_START -->
+<!-- Do not edit this section manually. It is managed by the /update-docs command. -->
+<!-- GEMINI_LEARNINGS_END -->

@@ -216,3 +216,8 @@ Verify all configurations synchronized
 *Document created: July 24, 2025*
 *Based on: Concurrent build conflicts and configuration propagation issues*
 *Next update: When new build system issues are discovered*
+## Project Learnings & Changelog
+
+<!-- GEMINI_LEARNINGS_START -->
+<!-- Do not edit this section manually. It is managed by the /update-docs command. -->
+<!-- GEMINI_LEARNINGS_END -->

@@ -6,7 +6,18 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "clear": "expo r -c",
+    "doctor": "expo doctor",
+    "typecheck": "npx tsc --noEmit",
+    "security:audit": "./scripts/security-audit.sh",
+    "security:check-secrets": "git log --all -S 'APIKey\\|secret\\|password' --oneline",
+    "validate:env": "node -e \"console.log('✅ Environment validation:', process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'Clerk configured' : '❌ Missing Clerk key', process.env.EXPO_PUBLIC_SUPABASE_URL ? 'Supabase configured' : '❌ Missing Supabase config')\"",
+    "deps:audit": "npm audit --audit-level=high",
+    "deps:update": "npx expo install --fix",
+    "lint:ts": "npx tsc --noEmit --strict",
+    "prebuild:ios": "npm run typecheck && npm run security:audit",
+    "prebuild:android": "npm run typecheck && npm run security:audit"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.14.12",

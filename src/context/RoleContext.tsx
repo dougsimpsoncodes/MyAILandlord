@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, ReactNode, useContext } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppAuth } from './ClerkAuthContext';
 import { useAuth } from '@clerk/clerk-expo';
-import { supabaseOnlyApiClient } from '../services/api/supabase-only-client';
+import { useApiClient } from '../services/api/client';
 
 type UserRole = 'tenant' | 'landlord' | null;
 
@@ -31,6 +31,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAppAuth();
   const { userId } = useAuth();
+  
+  // Only initialize API client if user is authenticated
+  const apiClient = userId ? useApiClient() : null;
 
   useEffect(() => {
     if (user) {
@@ -65,9 +68,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const setUserRole = async (role: UserRole) => {
     try {
-      if (role && user && userId) {
-        // Save to backend using Supabase client directly
-        await supabaseOnlyApiClient.setUserRole(userId, role);
+      if (role && user && userId && apiClient) {
+        // Save to backend using the API client hook
+        await apiClient.setUserRole(role);
         
         // Save to local storage as backup
         await AsyncStorage.setItem(ROLE_STORAGE_KEY, role);

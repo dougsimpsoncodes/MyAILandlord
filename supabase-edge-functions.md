@@ -166,3 +166,8 @@ EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL=https://your-project-id.supabase.co/functions
 - The function validates that the user exists in the database
 - CORS headers are configured for browser-based requests
 - The response format matches what the app expects
+## Project Learnings & Changelog
+
+<!-- GEMINI_LEARNINGS_START -->
+<!-- Do not edit this section manually. It is managed by the /update-docs command. -->
+<!-- GEMINI_LEARNINGS_END -->
