@@ -8,10 +8,10 @@ export function useProfileSync() {
   const { userId, isSignedIn } = useAuth();
   const { user } = useUser();
   const { userRole } = useContext(RoleContext);
-  const apiClient = useApiClient();
+  const apiClient = isSignedIn ? useApiClient() : null;
 
   useEffect(() => {
-    if (!isSignedIn || !userId || !user) return;
+    if (!isSignedIn || !userId || !user || !apiClient) return;
 
     const syncProfile = async () => {
       try {
