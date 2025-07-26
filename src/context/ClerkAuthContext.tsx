@@ -51,7 +51,7 @@ export const useAppAuth = () => {
   const appUser = user ? {
     id: user.id,
     name: user.fullName || user.firstName || 'User',
-    email: user.primaryEmailAddress?.emailAddress || '',
+    email: user.emailAddresses?.[0]?.emailAddress || user.primaryEmailAddress?.emailAddress || '',
     avatar: user.imageUrl || undefined,
   } : null;
 

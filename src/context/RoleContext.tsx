@@ -36,7 +36,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const apiClient = userId ? useApiClient() : null;
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       // If user has role in auth context, use that
       // Note: Clerk user doesn't have a role property, so we skip this
       if (false) {

@@ -1,0 +1,38 @@
+{
+  "passed": [
+    {
+      "name": "typescript",
+      "message": "TypeScript Compilation passed",
+      "weight": 10
+    },
+    {
+      "name": "advisoryProtocols",
+      "message": "Advisory protocols followed",
+      "weight": 8
+    },
+    {
+      "name": "todoCheck",
+      "message": "Found 0 TODOs, 0 critical items",
+      "weight": 2
+    }
+  ],
+  "failed": [],
+  "warnings": [
+    {
+      "name": "eslint",
+      "message": "ESLint failed",
+      "details": "\nOops! Something went wrong! :(\n\nESLint: 9.32.0\n\nESLint couldn't find an eslint.config.(js|mjs|cjs) file.\n\nFrom ESLint v9.0.0, the default configuration file is now eslint.config.js.\nIf you are using a .eslintrc.* file, please follow the migration guide\nto update your configuration file to the new format:\n\nhttps://eslint.org/docs/latest/use/configure/migration-guide\n\nIf you still have problems after following the migration guide, please stop by\nhttps://eslint.org/chat/help to chat with the team.\n\n",
+      "weight": 5,
+      "required": false
+    },
+    {
+      "name": "prettier",
+      "message": "Prettier Formatting failed",
+      "details": "Checking formatting...\n",
+      "weight": 3,
+      "required": false
+    }
+  ],
+  "score": 24,
+  "maxScore": 28
+}

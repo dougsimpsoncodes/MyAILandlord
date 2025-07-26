@@ -1,0 +1,20 @@
+{
+  "timestamp": "2025-07-26T20:35:40.442Z",
+  "changedFiles": [
+    "src/hooks/useProfileSync.ts"
+  ],
+  "contexts": [
+    "TYPE_SAFETY"
+  ],
+  "advisors": [
+    "typescript-enforcer",
+    "tech-stack-advisor"
+  ],
+  "recommendations": [],
+  "guidance": {
+    "criticalIssues": [],
+    "recommendations": [],
+    "conflicts": [],
+    "summary": "## Contextual Development Guidance\n\n### 💡 Synthesized Recommendations\nBased on business context analysis and multi-advisor input:\n- Follow security-first principles\n- Optimize for mobile user experience\n- Maintain TypeScript strict compliance\n- Consider performance implications\n\n"
+  }
+}
