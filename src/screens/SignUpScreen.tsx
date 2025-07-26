@@ -4,50 +4,72 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useSignIn, useOAuth } from '@clerk/clerk-expo';
+import { useSignUp, useOAuth } from '@clerk/clerk-expo';
 import { RoleContext } from '../context/RoleContext';
 import { Ionicons } from '@expo/vector-icons';
 
-type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
-type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+type SignUpScreenRouteProp = RouteProp<AuthStackParamList, 'SignUp'>;
+type SignUpScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SignUp'>;
 
-const LoginScreen = () => {
-  const route = useRoute<LoginScreenRouteProp>();
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+const SignUpScreen = () => {
+  const route = useRoute<SignUpScreenRouteProp>();
+  const navigation = useNavigation<SignUpScreenNavigationProp>();
   const { role } = route.params;
-  const { signIn, setActive, isLoaded } = useSignIn();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
   const { startOAuthFlow: appleOAuth } = useOAuth({ strategy: 'oauth_apple' });
   const { setUserRole } = useContext(RoleContext);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [code, setCode] = useState('');
 
-  const handleLogin = async () => {
+  const handleSignUp = async () => {
     if (!isLoaded) return;
 
     try {
       setLoading(true);
       
-      const signInAttempt = await signIn.create({
-        identifier: emailAddress,
+      await signUp.create({
+        emailAddress,
         password,
       });
 
-      if (signInAttempt.status === 'complete') {
-        await setActive({ session: signInAttempt.createdSessionId });
-        setUserRole(role);
-      } else {
-        Alert.alert('Sign In Error', 'Unable to complete sign in. Please try again.');
-      }
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      
+      setPendingVerification(true);
     } catch (error: any) {
-      Alert.alert('Login Error', error.errors?.[0]?.message || 'Failed to sign in. Please try again.');
+      Alert.alert('Sign Up Error', error.errors?.[0]?.message || 'Failed to create account. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
+  const handleVerification = async () => {
+    if (!isLoaded) return;
+
+    try {
+      setLoading(true);
+      
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({
+        code,
+      });
+
+      if (signUpAttempt.status === 'complete') {
+        await setActive({ session: signUpAttempt.createdSessionId });
+        setUserRole(role);
+      } else {
+        Alert.alert('Verification Error', 'Unable to verify email. Please try again.');
+      }
+    } catch (error: any) {
+      Alert.alert('Verification Error', error.errors?.[0]?.message || 'Failed to verify code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOAuthSignUp = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
       
@@ -59,15 +81,63 @@ const LoginScreen = () => {
         setUserRole(role);
       }
     } catch (error: any) {
-      Alert.alert('OAuth Error', error.message || `Failed to sign in with ${provider}. Please try again.`);
+      Alert.alert('OAuth Error', error.message || `Failed to sign up with ${provider}. Please try again.`);
     } finally {
       setLoading(false);
     }
   };
 
-  const navigateToSignUp = () => {
-    navigation.navigate('SignUp', { role });
+  const navigateToSignIn = () => {
+    navigation.navigate('Login', { role });
   };
+
+  if (pendingVerification) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => setPendingVerification(false)}
+          >
+            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+
+          <View style={styles.header}>
+            <Text style={styles.roleIcon}>✉️</Text>
+            <Text style={styles.title}>Verify Your Email</Text>
+            <Text style={styles.subtitle}>
+              We sent a verification code to {emailAddress}
+            </Text>
+          </View>
+
+          <View style={styles.loginContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter verification code"
+              value={code}
+              onChangeText={setCode}
+              keyboardType="number-pad"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <TouchableOpacity
+              style={[styles.loginButton, styles.primaryButton]}
+              onPress={handleVerification}
+              disabled={loading || !code}
+              activeOpacity={0.8}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.buttonText}>Verify Email</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -82,10 +152,10 @@ const LoginScreen = () => {
         <View style={styles.header}>
           <Text style={styles.roleIcon}>{role === 'tenant' ? '🏘️' : '🏢'}</Text>
           <Text style={styles.title}>
-            {role === 'tenant' ? 'Tenant Login' : 'Landlord Login'}
+            Create {role === 'tenant' ? 'Tenant' : 'Landlord'} Account
           </Text>
           <Text style={styles.subtitle}>
-            Sign in to access your {role === 'tenant' ? 'maintenance portal' : 'management dashboard'}
+            Sign up to access your {role === 'tenant' ? 'maintenance portal' : 'management dashboard'}
           </Text>
         </View>
 
@@ -112,14 +182,14 @@ const LoginScreen = () => {
 
           <TouchableOpacity
             style={[styles.loginButton, styles.primaryButton]}
-            onPress={handleLogin}
+            onPress={handleSignUp}
             disabled={loading || !emailAddress || !password}
             activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={styles.buttonText}>Create Account</Text>
             )}
           </TouchableOpacity>
 
@@ -131,7 +201,7 @@ const LoginScreen = () => {
 
           <TouchableOpacity
             style={[styles.loginButton, styles.googleButton]}
-            onPress={() => handleOAuthSignIn('google')}
+            onPress={() => handleOAuthSignUp('google')}
             disabled={loading}
             activeOpacity={0.8}
           >
@@ -147,7 +217,7 @@ const LoginScreen = () => {
 
           <TouchableOpacity
             style={[styles.loginButton, styles.appleButton]}
-            onPress={() => handleOAuthSignIn('apple')}
+            onPress={() => handleOAuthSignUp('apple')}
             disabled={loading}
             activeOpacity={0.8}
           >
@@ -163,12 +233,12 @@ const LoginScreen = () => {
 
           <TouchableOpacity
             style={styles.signUpButton}
-            onPress={navigateToSignUp}
+            onPress={navigateToSignIn}
             disabled={loading}
             activeOpacity={0.8}
           >
             <Text style={styles.signUpText}>
-              Don't have an account? <Text style={styles.signUpLink}>Sign Up</Text>
+              Already have an account? <Text style={styles.signUpLink}>Sign In</Text>
             </Text>
           </TouchableOpacity>
         </View>
@@ -312,4 +382,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+export default SignUpScreen;

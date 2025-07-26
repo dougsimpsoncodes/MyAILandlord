@@ -14,7 +14,7 @@
       },
       "oauth_client": [
         {
-          "client_id": "1090924979064-5gem02gehfrq8p83vsun7i0f4h2fd1gq.apps.googleusercontent.com",
+          "client_id": "1090924979064-66060d84r9p6ht4aicpke9vn2n401n5i.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,11 +27,11 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "1090924979064-5gem02gehfrq8p83vsun7i0f4h2fd1gq.apps.googleusercontent.com",
+              "client_id": "1090924979064-66060d84r9p6ht4aicpke9vn2n401n5i.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "1090924979064-b3399iouappcvcbvo0lhl8nmn82fvtmm.apps.googleusercontent.com",
+              "client_id": "1090924979064-4hg8t2c73bn1k7oj4e4k5iegafnqq6uv.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "com.dougsimpsoncodes.myailandlord"

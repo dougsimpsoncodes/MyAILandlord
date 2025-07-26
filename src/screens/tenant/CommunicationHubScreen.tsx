@@ -16,7 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
+import { useAppAuth } from '../../context/ClerkAuthContext';
 
 type CommunicationHubNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'CommunicationHub'>;
 
@@ -39,7 +39,7 @@ interface Announcement {
 
 const CommunicationHubScreen = () => {
   const navigation = useNavigation<CommunicationHubNavigationProp>();
-  const { user } = useAuth();
+  const { user } = useAppAuth();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [activeTab, setActiveTab] = useState<'messages' | 'announcements'>('messages');

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContext } from './AuthContext';
+import { useAppAuth } from './ClerkAuthContext';
 import { apiClient } from '../services/api/client';
 
 type UserRole = 'tenant' | 'landlord' | null;
@@ -28,7 +28,7 @@ const ROLE_STORAGE_KEY = '@MyAILandlord:userRole';
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [userRole, setUserRoleState] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { user } = useContext(AuthContext);
+  const { user } = useAppAuth();
 
   useEffect(() => {
     if (user) {

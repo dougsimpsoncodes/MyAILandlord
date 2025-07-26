@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../../context/AuthContext';
+import { useAppAuth } from '../../context/ClerkAuthContext';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'Home'>;
 
@@ -20,7 +20,7 @@ interface QuickAction {
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { user } = useAuth();
+  const { user, signOut } = useAppAuth();
   const [propertyData, setPropertyData] = useState({
     address: '123 Main St, Apt 4B',
     image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80',
@@ -108,9 +108,15 @@ const HomeScreen = () => {
           )}
           
           <View style={styles.welcomeContent}>
-            <Text style={styles.greeting}>{getGreeting()}, {user?.displayName?.split(' ')[0] || 'Tenant'}!</Text>
-            <Text style={styles.propertyAddress}>{propertyData.address}</Text>
-            
+            <View style={styles.greetingContainer}>
+              <View>
+                <Text style={styles.greeting}>{getGreeting()}, {user?.name?.split(' ')[0] || 'Tenant'}!</Text>
+                <Text style={styles.propertyAddress}>{propertyData.address}</Text>
+              </View>
+              <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
+                <Ionicons name="log-out-outline" size={24} color="#7F8C8D" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -208,6 +214,16 @@ const styles = StyleSheet.create({
   welcomeContent: {
     padding: 16,
     paddingTop: 12,
+  },
+  greetingContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  signOutButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F8F9FA',
   },
   greeting: {
     fontSize: 22,

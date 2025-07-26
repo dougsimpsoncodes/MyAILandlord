@@ -1,12 +1,16 @@
-import { auth } from '../firebase/config';
-
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://us-central1-my-ai-landlord.cloudfunctions.net/api';
 
 class ApiClient {
   private async getAuthToken(): Promise<string | null> {
-    const user = auth.currentUser;
-    if (!user) return null;
-    return await user.getIdToken();
+    try {
+      // TODO: Integrate Clerk session token retrieval
+      // For now, we'll make API calls without authentication
+      // This will need to be updated to use Clerk's getToken method
+      return null;
+    } catch (error) {
+      console.error('Failed to get auth token:', error);
+      return null;
+    }
   }
 
   private async request<T>(

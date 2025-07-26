@@ -36,3 +36,12 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# build artifacts
+functions/lib/
+ios/build/
+android/build/
+android/.gradle/
+
+# logs
+*.log
