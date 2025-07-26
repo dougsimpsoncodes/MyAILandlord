@@ -24,6 +24,16 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 **When Used:** Proactively for dependency reviews, architectural decisions, and security assessments
 
+### 📊 data-analytics-advisor
+**Purpose:** Data visualization and analytics specialist for actionable insights
+- Mobile-optimized data visualization strategies
+- Key performance indicator (KPI) selection and tracking
+- Advanced analytics implementation roadmap
+- Landlord-specific metrics and dashboards
+- Performance optimization for mobile charts
+
+**When Used:** Proactively for dashboard design, KPI selection, and analytics implementation
+
 ### 🎨 ux-design-advisor
 **Purpose:** UI/UX design excellence and user experience optimization
 - Analyzes screens and user flows for clarity and usability
@@ -97,19 +107,21 @@ This directory contains specialized AI sub agents designed to enhance developmen
 ```
 > Ask the chief-of-staff if we need new advisors for this feature expansion
 > Use the tech-stack-advisor to review our current dependencies
-> Have the ux-design-advisor review this login screen design
-> Get the security-auditor to review my recent API changes
-> Ask the react-native-expert to optimize this component
-> Use the supabase-specialist to review my RLS policies
-> Have the typescript-enforcer fix these type errors
-> Get the test-automation-specialist to add tests for this feature
-> Have the git-security-guardian scan before committing
+> Have the data-analytics-advisor design our landlord dashboard
+> Get the ux-design-advisor to review this login screen design
+> Ask the security-auditor to review my recent API changes
+> Have the react-native-expert optimize this component
+> Get the supabase-specialist to review my RLS policies
+> Use the typescript-enforcer to fix these type errors
+> Have the test-automation-specialist add tests for this feature
+> Get the git-security-guardian to scan before committing
 ```
 
 ### Automatic Delegation
 Sub agents are automatically invoked based on context:
 - Project evolution → chief-of-staff monitors advisory team needs
 - Dependency changes → tech-stack-advisor reviews architecture
+- Dashboard creation → data-analytics-advisor optimizes visualizations
 - UI/UX changes → ux-design-advisor reviews user experience
 - Code changes → security-auditor runs automatically
 - UI components → react-native-expert provides guidance
