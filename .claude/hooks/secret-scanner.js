@@ -145,6 +145,15 @@ class SecretScanner {
 
   async scanFile(file, results) {
     try {
+      // Check if file is deleted (not in index)
+      try {
+        execSync(`git cat-file -e :${file}`, { stdio: 'pipe' });
+      } catch (error) {
+        // File is deleted, skip scanning
+        console.log(`⚠️  Could not scan ${file}: File deleted`);
+        return;
+      }
+
       // Get staged content
       const content = execSync(`git show :${file}`, { encoding: 'utf8' });
       
