@@ -708,10 +708,7 @@ const PropertyAreasScreen = () => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="add-circle" size={48} color="#3498DB" />
-                <Text style={styles.addFirstRoomTitle}>Add Your First Custom Room</Text>
-                <Text style={styles.addFirstRoomSubtitle}>
-                  Customize your property with additional areas like home office, den, or storage
-                </Text>
+                <Text style={styles.addFirstRoomTitle}>Add a Room</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -1506,14 +1503,6 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginTop: 12,
     textAlign: 'center',
-  },
-  addFirstRoomSubtitle: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginTop: 8,
-    textAlign: 'center',
-    lineHeight: 20,
-    paddingHorizontal: 12,
   },
 });
 
