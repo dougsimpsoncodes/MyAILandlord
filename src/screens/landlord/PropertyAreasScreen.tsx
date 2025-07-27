@@ -156,7 +156,8 @@ const PropertyAreasScreen = () => {
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [newRoomType, setNewRoomType] = useState<PropertyArea['type']>('other');
-  const [showRoomSuggestions, setShowRoomSuggestions] = useState(false);
+  const [customRoomName, setCustomRoomName] = useState('');
+  const [showRoomTypeDropdown, setShowRoomTypeDropdown] = useState(false);
   
   // Use draft photos if available, otherwise use route params
   const currentPropertyData = draftState?.propertyData || propertyData;
@@ -362,50 +363,32 @@ const PropertyAreasScreen = () => {
     return iconMap[type] || 'home';
   };
 
-  // Enhanced room suggestions based on property type and existing rooms
-  const getRoomSuggestions = (): string[] => {
-    const existingRoomNames = areas.map(area => area.name.toLowerCase());
-    
-    const allSuggestions = [
-      // Common additional rooms
-      'Home Office', 'Study', 'Den', 'Family Room', 'Dining Room',
-      'Pantry', 'Walk-in Closet', 'Utility Room', 'Mudroom',
-      'Guest Bedroom', 'Master Closet', 'Powder Room',
-      
-      // Storage areas
-      'Storage Room', 'Attic', 'Cellar', 'Loft', 'Bonus Room',
-      
-      // Outdoor spaces
-      'Patio', 'Deck', 'Balcony', 'Garden', 'Pool Area', 'Courtyard',
-      
-      // Specialty rooms
-      'Workshop', 'Craft Room', 'Exercise Room', 'Game Room',
-      'Wine Cellar', 'Bar Area', 'Library', 'Media Room',
-      
-      // Property-specific
-      ...(propertyData.type === 'house' ? [
-        'Garage', 'Driveway', 'Front Yard', 'Back Yard', 'Shed'
-      ] : []),
-      
-      ...(propertyData.type === 'apartment' || propertyData.type === 'condo' ? [
-        'Balcony', 'Storage Unit', 'Parking Space'
-      ] : [])
-    ];
-    
-    // Filter out rooms that already exist
-    return allSuggestions.filter(suggestion => 
-      !existingRoomNames.includes(suggestion.toLowerCase())
-    ).slice(0, 12); // Show top 12 suggestions
+
+  // Helper function to get room type label
+  const getRoomTypeLabel = (type: PropertyArea['type']): string => {
+    const typeMap = {
+      'bedroom': 'Bedroom',
+      'bathroom': 'Bathroom', 
+      'living_room': 'Living Room',
+      'kitchen': 'Kitchen',
+      'laundry': 'Laundry/Utility',
+      'garage': 'Garage/Storage',
+      'outdoor': 'Outdoor',
+      'other': 'Other'
+    };
+    return typeMap[type] || 'Other';
   };
 
   const handleAddCustomRoom = () => {
-    if (!newRoomName.trim()) {
-      Alert.alert('Invalid Name', 'Please enter a room name.');
+    const roomName = newRoomType === 'other' ? customRoomName.trim() : newRoomName.trim();
+    
+    if (!roomName) {
+      Alert.alert('Invalid Name', newRoomType === 'other' ? 'Please enter a room name.' : 'Please select a room type.');
       return;
     }
 
     // Check if room name already exists
-    if (areas.some(area => area.name.toLowerCase() === newRoomName.trim().toLowerCase())) {
+    if (areas.some(area => area.name.toLowerCase() === roomName.toLowerCase())) {
       Alert.alert('Duplicate Name', 'A room with this name already exists.');
       return;
     }
@@ -413,7 +396,7 @@ const PropertyAreasScreen = () => {
     const customRoomId = `custom_${Date.now()}`;
     const newRoom: PropertyArea = {
       id: customRoomId,
-      name: newRoomName.trim(),
+      name: roomName,
       type: newRoomType,
       icon: getIconForRoomType(newRoomType),
       isDefault: false,
@@ -430,36 +413,14 @@ const PropertyAreasScreen = () => {
     const selectedAreaData = updatedAreas.filter(area => updatedSelectedAreas.includes(area.id));
     updateAreas(selectedAreaData);
     
+    // Reset form
     setNewRoomName('');
+    setCustomRoomName('');
     setNewRoomType('other');
     setShowAddRoomModal(false);
-    setShowRoomSuggestions(false);
+    setShowRoomTypeDropdown(false);
   };
 
-  const handleSuggestionPress = (suggestion: string) => {
-    setNewRoomName(suggestion);
-    setShowRoomSuggestions(false);
-    
-    // Auto-suggest room type based on name
-    const lowerSuggestion = suggestion.toLowerCase();
-    if (lowerSuggestion.includes('bedroom') || lowerSuggestion.includes('closet')) {
-      setNewRoomType('bedroom');
-    } else if (lowerSuggestion.includes('bathroom') || lowerSuggestion.includes('powder')) {
-      setNewRoomType('bathroom');
-    } else if (lowerSuggestion.includes('kitchen') || lowerSuggestion.includes('dining') || lowerSuggestion.includes('pantry')) {
-      setNewRoomType('kitchen');
-    } else if (lowerSuggestion.includes('living') || lowerSuggestion.includes('family') || lowerSuggestion.includes('den')) {
-      setNewRoomType('living_room');
-    } else if (lowerSuggestion.includes('laundry') || lowerSuggestion.includes('utility')) {
-      setNewRoomType('laundry');
-    } else if (lowerSuggestion.includes('garage') || lowerSuggestion.includes('storage') || lowerSuggestion.includes('attic')) {
-      setNewRoomType('garage');
-    } else if (lowerSuggestion.includes('patio') || lowerSuggestion.includes('deck') || lowerSuggestion.includes('yard') || lowerSuggestion.includes('garden')) {
-      setNewRoomType('outdoor');
-    } else {
-      setNewRoomType('other');
-    }
-  };
 
   const handleAddPhoto = async (areaId: string) => {
     try {
@@ -856,7 +817,7 @@ const PropertyAreasScreen = () => {
             >
               <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Custom Room</Text>
+            <Text style={styles.modalTitle}>Add Room</Text>
             <TouchableOpacity 
               onPress={handleAddCustomRoom}
               activeOpacity={0.7}
@@ -867,99 +828,95 @@ const PropertyAreasScreen = () => {
           </View>
 
           <View style={styles.modalContent}>
+            {/* Room Type Dropdown */}
             <View style={styles.modalSection}>
-              <Text style={styles.modalLabel}>Room Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g., Home Office, Den, Pantry"
-                value={newRoomName}
-                onChangeText={(text) => {
-                  setNewRoomName(text);
-                  setShowRoomSuggestions(text.length === 0);
-                }}
-                onFocus={() => setShowRoomSuggestions(newRoomName.length === 0)}
-                autoFocus
-              />
-              
-              {/* Quick suggestions button */}
-              <TouchableOpacity 
-                style={styles.suggestionsButton}
-                onPress={() => setShowRoomSuggestions(!showRoomSuggestions)}
+              <Text style={styles.modalLabel}>Room Type</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowRoomTypeDropdown(!showRoomTypeDropdown)}
+                activeOpacity={0.7}
               >
-                <Ionicons name="bulb-outline" size={16} color="#3498DB" />
-                <Text style={styles.suggestionsButtonText}>Show Suggestions</Text>
-                <Ionicons 
-                  name={showRoomSuggestions ? "chevron-up" : "chevron-down"} 
-                  size={16} 
-                  color="#3498DB" 
+                <View style={styles.dropdownContent}>
+                  <Ionicons
+                    name={getIconForRoomType(newRoomType) as keyof typeof Ionicons.glyphMap}
+                    size={20}
+                    color="#3498DB"
+                  />
+                  <Text style={styles.dropdownText}>
+                    {getRoomTypeLabel(newRoomType)}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={showRoomTypeDropdown ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color="#7F8C8D"
                 />
               </TouchableOpacity>
               
-              {/* Room suggestions */}
-              {showRoomSuggestions && (
-                <View style={styles.suggestionsContainer}>
-                  <Text style={styles.suggestionsTitle}>Popular room types:</Text>
-                  <View style={styles.suggestionsGrid}>
-                    {getRoomSuggestions().map((suggestion, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.suggestionChip}
-                        onPress={() => handleSuggestionPress(suggestion)}
+              {showRoomTypeDropdown && (
+                <View style={styles.dropdownList}>
+                  {[
+                    { type: 'bedroom' as const, label: 'Bedroom' },
+                    { type: 'bathroom' as const, label: 'Bathroom' },
+                    { type: 'living_room' as const, label: 'Living Room' },
+                    { type: 'kitchen' as const, label: 'Kitchen' },
+                    { type: 'laundry' as const, label: 'Laundry/Utility' },
+                    { type: 'garage' as const, label: 'Garage/Storage' },
+                    { type: 'outdoor' as const, label: 'Outdoor' },
+                    { type: 'other' as const, label: 'Other' },
+                  ].map((roomType) => (
+                    <TouchableOpacity
+                      key={roomType.type}
+                      style={[
+                        styles.dropdownItem,
+                        newRoomType === roomType.type && styles.dropdownItemSelected,
+                      ]}
+                      onPress={() => {
+                        setNewRoomType(roomType.type);
+                        setShowRoomTypeDropdown(false);
+                        if (roomType.type !== 'other') {
+                          setNewRoomName(roomType.label);
+                        }
+                      }}
+                    >
+                      <Ionicons
+                        name={getIconForRoomType(roomType.type) as keyof typeof Ionicons.glyphMap}
+                        size={18}
+                        color={newRoomType === roomType.type ? '#3498DB' : '#7F8C8D'}
+                      />
+                      <Text
+                        style={[
+                          styles.dropdownItemText,
+                          newRoomType === roomType.type && styles.dropdownItemTextSelected,
+                        ]}
                       >
-                        <Text style={styles.suggestionText}>{suggestion}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                        {roomType.label}
+                      </Text>
+                      {newRoomType === roomType.type && (
+                        <Ionicons name="checkmark" size={18} color="#3498DB" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
                 </View>
               )}
             </View>
 
-            <View style={styles.modalSection}>
-              <Text style={styles.modalLabel}>Room Type</Text>
-              <View style={styles.roomTypeGrid}>
-                {[
-                  { type: 'bedroom' as const, label: 'Bedroom', icon: 'bed', desc: 'Sleeping areas, closets' },
-                  { type: 'bathroom' as const, label: 'Bathroom', icon: 'water', desc: 'Full & half baths' },
-                  { type: 'living_room' as const, label: 'Living Space', icon: 'tv', desc: 'Living, family, den' },
-                  { type: 'kitchen' as const, label: 'Kitchen/Dining', icon: 'restaurant', desc: 'Kitchen, dining, pantry' },
-                  { type: 'laundry' as const, label: 'Utility', icon: 'construct', desc: 'Laundry, utility, mudroom' },
-                  { type: 'garage' as const, label: 'Storage', icon: 'archive', desc: 'Garage, storage, attic' },
-                  { type: 'outdoor' as const, label: 'Outdoor', icon: 'leaf', desc: 'Patio, yard, deck' },
-                  { type: 'other' as const, label: 'Other', icon: 'home', desc: 'Office, gym, specialty' },
-                ].map((roomType) => (
-                  <TouchableOpacity
-                    key={roomType.type}
-                    style={[
-                      styles.roomTypeCard,
-                      newRoomType === roomType.type && styles.roomTypeCardSelected,
-                    ]}
-                    onPress={() => setNewRoomType(roomType.type)}
-                  >
-                    <Ionicons
-                      name={roomType.icon as keyof typeof Ionicons.glyphMap}
-                      size={24}
-                      color={newRoomType === roomType.type ? '#3498DB' : '#7F8C8D'}
-                    />
-                    <Text
-                      style={[
-                        styles.roomTypeLabel,
-                        newRoomType === roomType.type && styles.roomTypeLabelSelected,
-                      ]}
-                    >
-                      {roomType.label}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.roomTypeDesc,
-                        newRoomType === roomType.type && styles.roomTypeDescSelected,
-                      ]}
-                    >
-                      {roomType.desc}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+            {/* Custom Name Field - Only shown for "Other" */}
+            {newRoomType === 'other' && (
+              <View style={styles.modalSection}>
+                <Text style={styles.modalLabel}>Room Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Enter custom room name"
+                  value={customRoomName}
+                  onChangeText={(text) => {
+                    setCustomRoomName(text);
+                    setNewRoomName(text);
+                  }}
+                  autoFocus
+                />
               </View>
-            </View>
+            )}
           </View>
         </SafeAreaView>
       </Modal>
@@ -1415,69 +1372,66 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     flex: 1,
   },
-  // Enhanced custom room styles
-  suggestionsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    marginTop: 8,
-    gap: 6,
-  },
-  suggestionsButtonText: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
-    flex: 1,
-  },
-  suggestionsContainer: {
-    marginTop: 12,
-    padding: 16,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-  },
-  suggestionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
-  suggestionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  suggestionChip: {
+  // Enhanced dropdown styles
+  dropdownButton: {
     backgroundColor: '#FFFFFF',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E9ECEF',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    minHeight: 52,
   },
-  suggestionText: {
-    fontSize: 13,
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  dropdownText: {
+    fontSize: 16,
     color: '#2C3E50',
     fontWeight: '500',
   },
-  roomTypeDesc: {
-    fontSize: 11,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginTop: 2,
-    lineHeight: 14,
+  dropdownList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    maxHeight: 300,
   },
-  roomTypeDescSelected: {
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8F9FA',
+    gap: 12,
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#E8F4FD',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#2C3E50',
+    flex: 1,
+  },
+  dropdownItemTextSelected: {
     color: '#3498DB',
+    fontWeight: '600',
   },
   // Empty state and prominent add button styles
   emptyAdditionalAreas: {
