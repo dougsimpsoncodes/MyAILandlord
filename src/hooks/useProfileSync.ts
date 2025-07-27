@@ -8,7 +8,7 @@ export function useProfileSync() {
   const { userId, isSignedIn } = useAuth();
   const { user } = useUser();
   const { userRole } = useContext(RoleContext);
-  const apiClient = isSignedIn ? useApiClient() : null;
+  const apiClient = useApiClient(); // Always call hook (React rules)
 
   useEffect(() => {
     if (!isSignedIn || !userId || !user || !apiClient) return;
