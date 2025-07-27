@@ -1,424 +1,370 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
+  Alert,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/ClerkAuthContext';
-import { LoadingSpinner } from '../../components/LoadingSpinner';
-import { ErrorBoundary } from '../../components/ErrorBoundary';
-import { useApiErrorHandling } from '../../hooks/useErrorHandling';
-import { formatCurrency } from '../../utils/helpers';
+import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
+import { PropertySetupState } from '../../types/property';
+import { formatAddressString } from '../../utils/addressValidation';
+
+type PropertyManagementNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyManagement'>;
 
 interface Property {
   id: string;
   name: string;
   address: string;
-  type: 'apartment' | 'house' | 'condo' | 'commercial';
-  units: number;
-  occupiedUnits: number;
-  monthlyRent: number;
-  totalRent: number;
+  type: string;
+  image: string;
+  tenants: number;
   activeRequests: number;
-  emergencyRequests: number;
-  maintenanceScore: number;
-  tenantSatisfaction: number;
-  lastInspection: string;
-  nextInspection: string;
-  status: 'excellent' | 'good' | 'fair' | 'needs_attention';
 }
-
-interface PortfolioStats {
-  totalProperties: number;
-  totalUnits: number;
-  occupancyRate: number;
-  monthlyRevenue: number;
-  averageMaintenanceScore: number;
-  averageTenantSatisfaction: number;
-}
-
-const { width } = Dimensions.get('window');
 
 const PropertyManagementScreen = () => {
-  const navigation = useNavigation();
-  const apiClient = useApiClient();
-  const { user } = useAppAuth();
-  const { handleApiError } = useApiErrorHandling();
+  const navigation = useNavigation<PropertyManagementNavigationProp>();
   
+  // Mock data for now
+  const [properties, setProperties] = useState<Property[]>([
+    {
+      id: '1',
+      name: 'Sunset Apartments Unit 4B',
+      address: '123 Main St, Apt 4B',
+      type: 'Apartment',
+      image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&q=80',
+      tenants: 1,
+      activeRequests: 2,
+    },
+    {
+      id: '2',
+      name: 'Downtown Condo',
+      address: '456 City Center Dr',
+      type: 'Condo',
+      image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80',
+      tenants: 2,
+      activeRequests: 0,
+    },
+  ]);
+
+  // Draft management
+  const {
+    drafts,
+    isLoading: isDraftsLoading,
+    error: draftsError,
+    refreshDrafts,
+    deleteDraft,
+    clearAllDrafts,
+  } = usePropertyDrafts();
+
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [portfolioStats, setPortfolioStats] = useState<PortfolioStats>({
-    totalProperties: 0,
-    totalUnits: 0,
-    occupancyRate: 0,
-    monthlyRevenue: 0,
-    averageMaintenanceScore: 0,
-    averageTenantSatisfaction: 0,
-  });
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'needs_attention' | 'excellent'>('all');
 
-  useEffect(() => {
-    loadPropertiesData();
-  }, []);
+  const handleAddProperty = () => {
+    navigation.navigate('AddProperty');
+  };
 
-  const loadPropertiesData = async () => {
-    try {
-      setLoading(true);
-      
-      if (!apiClient) {
-        console.error('API client not available');
-        setLoading(false);
-        return;
-      }
-      
-      const propertiesFromApi = await apiClient.getUserProperties();
-      
-      // TODO: Replace with real data from API
-      // For now, generating mock data based on real properties
-      const mockProperties: Property[] = propertiesFromApi.map((prop, index) => ({
-        id: prop.id,
-        name: prop.name,
-        address: prop.address,
-        type: 'apartment' as const,
-        units: Math.floor(Math.random() * 10) + 1,
-        occupiedUnits: Math.floor(Math.random() * 8) + 1,
-        monthlyRent: 1200 + (Math.floor(Math.random() * 800)),
-        totalRent: 0, // Will be calculated
-        activeRequests: Math.floor(Math.random() * 5),
-        emergencyRequests: Math.floor(Math.random() * 2),
-        maintenanceScore: 70 + Math.floor(Math.random() * 30),
-        tenantSatisfaction: 75 + Math.floor(Math.random() * 25),
-        lastInspection: '2 weeks ago',
-        nextInspection: 'Next month',
-        status: 'good' as const,
-      }));
+  const handlePropertyPress = (property: Property) => {
+    // TODO: Navigate to property details
+    // Navigate to property details
+  };
 
-      // Calculate derived fields
-      mockProperties.forEach(prop => {
-        prop.totalRent = prop.monthlyRent * prop.occupiedUnits;
-        if (prop.maintenanceScore >= 90) prop.status = 'excellent';
-        else if (prop.maintenanceScore >= 80) prop.status = 'good';
-        else if (prop.maintenanceScore >= 70) prop.status = 'fair';
-        else prop.status = 'needs_attention';
+  const handleDraftPress = (draft: PropertySetupState) => {
+    // Navigate to the appropriate screen based on current step
+    if (draft.currentStep === 0 || draft.currentStep === 1) {
+      navigation.navigate('AddProperty', { draftId: draft.id });
+    } else if (draft.currentStep === 2) {
+      navigation.navigate('PropertyAreas', { 
+        propertyData: draft.propertyData, 
+        draftId: draft.id 
       });
-
-      // Calculate portfolio stats
-      const stats: PortfolioStats = {
-        totalProperties: mockProperties.length,
-        totalUnits: mockProperties.reduce((sum, p) => sum + p.units, 0),
-        occupancyRate: mockProperties.length > 0 
-          ? mockProperties.reduce((sum, p) => sum + (p.occupiedUnits / p.units), 0) / mockProperties.length * 100 
-          : 0,
-        monthlyRevenue: mockProperties.reduce((sum, p) => sum + p.totalRent, 0),
-        averageMaintenanceScore: mockProperties.length > 0 
-          ? mockProperties.reduce((sum, p) => sum + p.maintenanceScore, 0) / mockProperties.length 
-          : 0,
-        averageTenantSatisfaction: mockProperties.length > 0 
-          ? mockProperties.reduce((sum, p) => sum + p.tenantSatisfaction, 0) / mockProperties.length 
-          : 0,
-      };
-
-      setProperties(mockProperties);
-      setPortfolioStats(stats);
-    } catch (error) {
-      handleApiError(error, 'Loading properties data');
-    } finally {
-      setLoading(false);
+    } else {
+      // For steps 3+, go to AddProperty for now
+      navigation.navigate('AddProperty', { draftId: draft.id });
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadPropertiesData();
-    setRefreshing(false);
+  const handleDeleteDraft = async (draft: PropertySetupState) => {
+    Alert.alert(
+      'Delete Draft',
+      `Are you sure you want to delete the draft for "${draft.propertyData.name || 'Untitled Property'}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDraft(draft.id);
+              Alert.alert('Success', 'Draft deleted successfully.');
+            } catch (error) {
+              // Error already shown in alert
+              Alert.alert('Error', 'Failed to delete draft. Please try again.');
+            }
+          }
+        }
+      ]
+    );
   };
 
-  const filteredProperties = properties.filter(property => {
-    if (selectedFilter === 'all') return true;
-    return property.status === selectedFilter;
-  });
+  const handleClearAllDrafts = async () => {
+    if (drafts.length === 0) return;
+    
+    Alert.alert(
+      'Clear All Drafts',
+      `Are you sure you want to delete all ${drafts.length} drafts? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearAllDrafts();
+              Alert.alert('Success', 'All drafts cleared successfully.');
+            } catch (error) {
+              // Error already shown in alert
+              Alert.alert('Error', 'Failed to clear drafts. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refreshDrafts();
+    } catch (error) {
+      // Silently fail refresh
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const formatLastModified = (date: Date) => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    
+    return date.toLocaleDateString();
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'excellent': return '#27AE60';
-      case 'good': return '#3498DB';
-      case 'fair': return '#F39C12';
-      case 'needs_attention': return '#E74C3C';
+      case 'draft': return '#95A5A6';
+      case 'in_progress': return '#3498DB';
+      case 'completed': return '#2ECC71';
       default: return '#95A5A6';
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusText = (status: string) => {
     switch (status) {
-      case 'excellent': return 'checkmark-circle';
-      case 'good': return 'thumbs-up';
-      case 'fair': return 'warning';
-      case 'needs_attention': return 'alert-circle';
-      default: return 'help-circle';
+      case 'draft': return 'Draft';
+      case 'in_progress': return 'In Progress';
+      case 'completed': return 'Completed';
+      default: return 'Draft';
     }
   };
 
-  const handlePropertyPress = (property: Property) => {
-    // TODO: Navigate to property detail screen
-    console.log('Open property details:', property.id);
-  };
-
-  const handleAddProperty = () => {
-    // TODO: Navigate to add property screen
-    console.log('Add new property');
-  };
-
-  if (loading) {
-    return <LoadingSpinner message="Loading your properties..." />;
-  }
-
   return (
-    <ErrorBoundary>
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#34495E" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Property Management</Text>
-          </View>
-          <TouchableOpacity style={styles.addButton} onPress={handleAddProperty}>
-            <Ionicons name="add" size={24} color="#3498DB" />
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Property Management</Text>
+        <TouchableOpacity onPress={handleAddProperty}>
+          <Ionicons name="add" size={24} color="#3498DB" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.content} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#3498DB']}
+            tintColor="#3498DB"
+          />
+        }
+      >
+        {/* Drafts Section */}
+        {drafts.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <Ionicons name="document-text" size={20} color="#3498DB" />
+                <Text style={styles.sectionTitle}>Property Drafts</Text>
+                <View style={styles.draftCount}>
+                  <Text style={styles.draftCountText}>{drafts.length}</Text>
+                </View>
+              </View>
+              {drafts.length > 1 && (
+                <TouchableOpacity onPress={handleClearAllDrafts}>
+                  <Text style={styles.clearAllText}>Clear All</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.draftsList}>
+              {drafts.map((draft) => (
+                <TouchableOpacity
+                  key={draft.id}
+                  style={styles.draftCard}
+                  onPress={() => handleDraftPress(draft)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.draftHeader}>
+                    <View style={styles.draftInfo}>
+                      <Text style={styles.draftName}>
+                        {draft.propertyData.name || 'Untitled Property'}
+                      </Text>
+                      <Text style={styles.draftAddress}>
+                        {typeof draft.propertyData.address === 'string' 
+                          ? draft.propertyData.address 
+                          : draft.propertyData.address.line1 
+                            ? formatAddressString(draft.propertyData.address)
+                            : 'No address entered'
+                        }
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.deleteDraftButton}
+                      onPress={() => handleDeleteDraft(draft)}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#E74C3C" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  <View style={styles.draftStatus}>
+                    <View style={styles.draftStatusInfo}>
+                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(draft.status) }]} />
+                      <Text style={styles.statusText}>{getStatusText(draft.status)}</Text>
+                      <Text style={styles.completionText}>
+                        {draft.completionPercentage}% complete
+                      </Text>
+                    </View>
+                    <Text style={styles.draftTime}>
+                      {formatLastModified(new Date(draft.lastModified))}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.progressBar}>
+                    <View 
+                      style={[
+                        styles.progressFill, 
+                        { 
+                          width: `${draft.completionPercentage}%`,
+                          backgroundColor: getStatusColor(draft.status)
+                        }
+                      ]} 
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Properties Count */}
+        <View style={styles.countSection}>
+          <Text style={styles.countText}>{properties.length} Properties</Text>
+          <TouchableOpacity style={styles.filterButton}>
+            <Ionicons name="filter" size={20} color="#7F8C8D" />
+            <Text style={styles.filterText}>Filter</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView
-          style={styles.content}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          {/* Portfolio Overview */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Portfolio Overview</Text>
-            <View style={styles.overviewGrid}>
-              <View style={styles.overviewCard}>
-                <Ionicons name="business" size={24} color="#3498DB" />
-                <Text style={styles.overviewNumber}>{portfolioStats.totalProperties}</Text>
-                <Text style={styles.overviewLabel}>Properties</Text>
-              </View>
-              <View style={styles.overviewCard}>
-                <Ionicons name="home" size={24} color="#27AE60" />
-                <Text style={styles.overviewNumber}>{portfolioStats.totalUnits}</Text>
-                <Text style={styles.overviewLabel}>Total Units</Text>
-              </View>
-              <View style={styles.overviewCard}>
-                <Ionicons name="people" size={24} color="#F39C12" />
-                <Text style={styles.overviewNumber}>{portfolioStats.occupancyRate.toFixed(1)}%</Text>
-                <Text style={styles.overviewLabel}>Occupancy</Text>
-              </View>
-              <View style={styles.overviewCard}>
-                <Ionicons name="cash" size={24} color="#9B59B6" />
-                <Text style={styles.overviewNumber}>{formatCurrency(portfolioStats.monthlyRevenue)}</Text>
-                <Text style={styles.overviewLabel}>Monthly Revenue</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Performance Metrics */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Performance Metrics</Text>
-            <View style={styles.metricsContainer}>
-              <View style={styles.metricCard}>
-                <View style={styles.metricHeader}>
-                  <Ionicons name="construct" size={20} color="#3498DB" />
-                  <Text style={styles.metricTitle}>Maintenance Score</Text>
-                </View>
-                <Text style={styles.metricValue}>{portfolioStats.averageMaintenanceScore.toFixed(1)}/100</Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { 
-                        width: `${portfolioStats.averageMaintenanceScore}%`,
-                        backgroundColor: getStatusColor(portfolioStats.averageMaintenanceScore >= 80 ? 'excellent' : 'fair')
-                      }
-                    ]} 
-                  />
-                </View>
-              </View>
-
-              <View style={styles.metricCard}>
-                <View style={styles.metricHeader}>
-                  <Ionicons name="star" size={20} color="#F39C12" />
-                  <Text style={styles.metricTitle}>Tenant Satisfaction</Text>
-                </View>
-                <Text style={styles.metricValue}>{portfolioStats.averageTenantSatisfaction.toFixed(1)}/100</Text>
-                <View style={styles.progressBar}>
-                  <View 
-                    style={[
-                      styles.progressFill, 
-                      { 
-                        width: `${portfolioStats.averageTenantSatisfaction}%`,
-                        backgroundColor: getStatusColor(portfolioStats.averageTenantSatisfaction >= 80 ? 'excellent' : 'fair')
-                      }
-                    ]} 
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {/* Property Filters */}
-          <View style={styles.section}>
-            <View style={styles.filtersContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                {[
-                  { key: 'all', label: 'All Properties', count: properties.length },
-                  { key: 'excellent', label: 'Excellent', count: properties.filter(p => p.status === 'excellent').length },
-                  { key: 'needs_attention', label: 'Needs Attention', count: properties.filter(p => p.status === 'needs_attention').length },
-                ].map((filter) => (
-                  <TouchableOpacity
-                    key={filter.key}
-                    style={[
-                      styles.filterButton,
-                      selectedFilter === filter.key && styles.filterButtonActive,
-                    ]}
-                    onPress={() => setSelectedFilter(filter.key as any)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterText,
-                        selectedFilter === filter.key && styles.filterTextActive,
-                      ]}
-                    >
-                      {filter.label} ({filter.count})
+        {/* Properties List */}
+        <View style={styles.propertiesList}>
+          {properties.map((property) => (
+            <TouchableOpacity
+              key={property.id}
+              style={styles.propertyCard}
+              onPress={() => handlePropertyPress(property)}
+              activeOpacity={0.7}
+            >
+              <Image source={{ uri: property.image }} style={styles.propertyImage} />
+              <View style={styles.propertyInfo}>
+                <Text style={styles.propertyName}>{property.name}</Text>
+                <Text style={styles.propertyAddress}>{property.address}</Text>
+                
+                <View style={styles.propertyStats}>
+                  <View style={styles.stat}>
+                    <Ionicons name="people" size={16} color="#7F8C8D" />
+                    <Text style={styles.statText}>{property.tenants} Tenant{property.tenants !== 1 ? 's' : ''}</Text>
+                  </View>
+                  <View style={styles.stat}>
+                    <Ionicons name="construct" size={16} color={property.activeRequests > 0 ? '#E74C3C' : '#2ECC71'} />
+                    <Text style={[styles.statText, property.activeRequests > 0 && styles.alertText]}>
+                      {property.activeRequests} Active Request{property.activeRequests !== 1 ? 's' : ''}
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-
-          {/* Properties List */}
-          <View style={styles.section}>
-            {filteredProperties.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="business-outline" size={64} color="#BDC3C7" />
-                <Text style={styles.emptyTitle}>No Properties Found</Text>
-                <Text style={styles.emptySubtitle}>
-                  {selectedFilter === 'all' 
-                    ? 'Add your first property to get started.'
-                    : `No properties with ${selectedFilter.replace('_', ' ')} status.`}
-                </Text>
-                <TouchableOpacity style={styles.addPropertyButton} onPress={handleAddProperty}>
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.addPropertyText}>Add Property</Text>
-                </TouchableOpacity>
+                  </View>
+                </View>
               </View>
-            ) : (
-              filteredProperties.map((property) => (
-                <TouchableOpacity
-                  key={property.id}
-                  style={styles.propertyCard}
-                  onPress={() => handlePropertyPress(property)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.propertyHeader}>
-                    <View style={styles.propertyInfo}>
-                      <Text style={styles.propertyName}>{property.name}</Text>
-                      <Text style={styles.propertyAddress}>{property.address}</Text>
-                    </View>
-                    <View style={styles.propertyStatus}>
-                      <View style={[
-                        styles.statusBadge,
-                        { backgroundColor: getStatusColor(property.status) }
-                      ]}>
-                        <Ionicons 
-                          name={getStatusIcon(property.status) as any} 
-                          size={16} 
-                          color="#FFFFFF" 
-                        />
-                      </View>
-                    </View>
-                  </View>
+              <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
+            </TouchableOpacity>
+          ))}
+        </View>
 
-                  <View style={styles.propertyStats}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{property.occupiedUnits}/{property.units}</Text>
-                      <Text style={styles.statLabel}>Units</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{formatCurrency(property.totalRent)}</Text>
-                      <Text style={styles.statLabel}>Monthly Rent</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{property.activeRequests}</Text>
-                      <Text style={styles.statLabel}>Active Requests</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.propertyMetrics}>
-                    <View style={styles.metricItem}>
-                      <Text style={styles.metricLabel}>Maintenance Score</Text>
-                      <Text style={[styles.metricScore, { color: getStatusColor(property.status) }]}>
-                        {property.maintenanceScore}/100
-                      </Text>
-                    </View>
-                    <View style={styles.metricItem}>
-                      <Text style={styles.metricLabel}>Tenant Satisfaction</Text>
-                      <Text style={[styles.metricScore, { color: getStatusColor(property.status) }]}>
-                        {property.tenantSatisfaction}/100
-                      </Text>
-                    </View>
-                  </View>
-
-                  {property.emergencyRequests > 0 && (
-                    <View style={styles.emergencyAlert}>
-                      <Ionicons name="warning" size={16} color="#E74C3C" />
-                      <Text style={styles.emergencyText}>
-                        {property.emergencyRequests} emergency request{property.emergencyRequests > 1 ? 's' : ''}
-                      </Text>
-                    </View>
-                  )}
-
-                  <View style={styles.propertyActions}>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons name="eye" size={16} color="#3498DB" />
-                      <Text style={styles.actionText}>View Details</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons name="construct" size={16} color="#F39C12" />
-                      <Text style={styles.actionText}>Maintenance</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons name="people" size={16} color="#27AE60" />
-                      <Text style={styles.actionText}>Tenants</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))
-            )}
+        {/* Add Property Button */}
+        <TouchableOpacity style={styles.addPropertyButton} onPress={handleAddProperty}>
+          <View style={styles.addIconCircle}>
+            <Ionicons name="add" size={32} color="#3498DB" />
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </ErrorBoundary>
+          <View style={styles.addButtonContent}>
+            <Text style={styles.addButtonTitle}>Add New Property</Text>
+            <Text style={styles.addButtonSubtitle}>Set up a property with areas and assets</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={20} color="#3498DB" />
+        </TouchableOpacity>
+
+        {/* Empty State (shown when no properties) */}
+        {properties.length === 0 && (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="business" size={48} color="#BDC3C7" />
+            </View>
+            <Text style={styles.emptyTitle}>No Properties Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Add your first property to start managing maintenance requests and tenants.
+            </Text>
+            <TouchableOpacity style={styles.emptyAddButton} onPress={handleAddProperty}>
+              <Ionicons name="add" size={20} color="#FFFFFF" />
+              <Text style={styles.emptyAddButtonText}>Add Your First Property</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#F5F7FA',
   },
   header: {
     flexDirection: 'row',
@@ -430,267 +376,283 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 16,
-    padding: 4,
-  },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#2C3E50',
-  },
-  addButton: {
-    padding: 8,
-    backgroundColor: '#E8F4FD',
-    borderRadius: 20,
   },
   content: {
     flex: 1,
   },
-  section: {
-    marginBottom: 24,
+  countSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 16,
-  },
-  overviewGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  overviewCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    width: (width - 52) / 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  overviewNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginTop: 8,
-  },
-  overviewLabel: {
-    fontSize: 12,
-    color: '#6C757D',
-    marginTop: 4,
-  },
-  metricsContainer: {
-    gap: 12,
-  },
-  metricCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  metricTitle: {
+  countText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#2C3E50',
   },
-  metricValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#E9ECEF',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  filtersContainer: {
-    marginBottom: 16,
-  },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    marginRight: 8,
-  },
-  filterButtonActive: {
-    backgroundColor: '#34495E',
-    borderColor: '#34495E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   filterText: {
     fontSize: 14,
-    color: '#6C757D',
-    fontWeight: '500',
+    color: '#7F8C8D',
   },
-  filterTextActive: {
-    color: '#FFFFFF',
+  propertiesList: {
+    paddingHorizontal: 20,
+    gap: 12,
   },
   propertyCard: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  propertyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
     marginBottom: 12,
+  },
+  propertyImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 12,
   },
   propertyInfo: {
     flex: 1,
   },
   propertyName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#2C3E50',
     marginBottom: 4,
   },
   propertyAddress: {
     fontSize: 14,
-    color: '#6C757D',
-  },
-  propertyStatus: {},
-  statusBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: '#7F8C8D',
+    marginBottom: 8,
   },
   propertyStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#F1F2F6',
+    gap: 16,
   },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6C757D',
-  },
-  propertyMetrics: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  metricItem: {
-    flex: 1,
-  },
-  metricLabel: {
-    fontSize: 12,
-    color: '#6C757D',
-    marginBottom: 4,
-  },
-  metricScore: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  emergencyAlert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFEAEA',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 12,
-    gap: 6,
-  },
-  emergencyText: {
-    fontSize: 12,
-    color: '#E74C3C',
-    fontWeight: '600',
-  },
-  propertyActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
+  stat: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
   },
-  actionText: {
+  statText: {
     fontSize: 12,
-    color: '#3498DB',
+    color: '#7F8C8D',
+  },
+  alertText: {
+    color: '#E74C3C',
     fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#6C757D',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#ADB5BD',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    marginBottom: 24,
   },
   addPropertyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3498DB',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    gap: 8,
+    backgroundColor: '#E8F4FD',
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#3498DB',
+    borderStyle: 'dashed',
   },
-  addPropertyText: {
-    color: '#FFFFFF',
+  addIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  addButtonContent: {
+    flex: 1,
+  },
+  addButtonTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#3498DB',
+    marginBottom: 2,
+  },
+  addButtonSubtitle: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#F0F3F7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  emptyAddButton: {
+    flexDirection: 'row',
+    backgroundColor: '#3498DB',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyAddButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
+    backgroundColor: '#FFFFFF',
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  draftCount: {
+    backgroundColor: '#3498DB',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  draftCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  clearAllText: {
+    fontSize: 14,
+    color: '#E74C3C',
+    fontWeight: '500',
+  },
+  draftsList: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  draftCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  draftHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  draftInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  draftName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  draftAddress: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    lineHeight: 18,
+  },
+  deleteDraftButton: {
+    padding: 4,
+  },
+  draftStatus: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  draftStatusInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#2C3E50',
+  },
+  completionText: {
+    fontSize: 12,
+    color: '#7F8C8D',
+  },
+  draftTime: {
+    fontSize: 12,
+    color: '#95A5A6',
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#E9ECEF',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
   },
 });
 
