@@ -27,20 +27,71 @@ export interface PropertyArea {
   icon: string;
   isDefault: boolean;
   photos: string[];
+  inventoryComplete: boolean;
+  condition: AssetCondition;
+  assets: InventoryItem[];
 }
 
-export interface PropertyAsset {
+// Enhanced inventory item interface
+export interface InventoryItem {
   id: string;
   areaId: string;
   name: string;
-  type: 'appliance' | 'fixture' | 'system' | 'structure' | 'other';
+  assetType: 'appliance' | 'fixture' | 'system' | 'structure' | 'furniture' | 'other';
   category: string;
+  subcategory?: string;
+  
+  // Identification
   brand?: string;
   model?: string;
+  serialNumber?: string;
+  
+  // Condition and status
+  condition: AssetCondition;
   installationDate?: string;
-  warrantyInfo?: string;
-  notes?: string;
+  
+  // Warranty tracking
+  warrantyStartDate?: string;
+  warrantyEndDate?: string;
+  warrantyProvider?: string;
+  
+  // Documentation
   photos: string[];
+  manualUrl?: string;
+  notes?: string;
+  
+  // Financial tracking
+  purchasePrice?: number;
+  currentValue?: number;
+  
+  // Status
+  isActive: boolean;
+}
+
+// Keep legacy PropertyAsset for backward compatibility
+export interface PropertyAsset extends InventoryItem {
+  type: InventoryItem['assetType'];
+  warrantyInfo?: string;
+}
+
+// Asset condition enum
+export enum AssetCondition {
+  EXCELLENT = 'excellent',
+  GOOD = 'good',
+  FAIR = 'fair',
+  POOR = 'poor',
+  NEEDS_REPLACEMENT = 'needs_replacement'
+}
+
+// Asset templates for smart suggestions
+export interface AssetTemplate {
+  name: string;
+  category: string;
+  subcategory?: string;
+  assetType: InventoryItem['assetType'];
+  commonBrands?: string[];
+  estimatedLifespan?: number; // in years
+  maintenanceFrequency?: 'monthly' | 'quarterly' | 'annually' | 'as-needed';
 }
 
 export interface PropertySetupState {
@@ -51,7 +102,7 @@ export interface PropertySetupState {
   completionPercentage: number;
   propertyData: PropertyData;
   areas: PropertyArea[];
-  assets: PropertyAsset[];
+  assets: InventoryItem[];
 }
 
 // Navigation parameter types
@@ -67,7 +118,7 @@ export interface PropertyAssetsParams {
 export interface PropertyReviewParams {
   propertyData: PropertyData;
   areas: PropertyArea[];
-  assets: PropertyAsset[];
+  draftId?: string;
 }
 
 // Validation types

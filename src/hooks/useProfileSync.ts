@@ -11,37 +11,42 @@ export function useProfileSync() {
   const apiClient = useApiClient(); // Always call hook (React rules)
 
   useEffect(() => {
+    // Temporarily disabled profile sync due to RLS policy issue
+    // TODO: Fix Supabase RLS policies and re-enable profile sync
+    // Profile sync temporarily disabled for development
+    return;
+    
     if (!isSignedIn || !userId || !user || !apiClient) return;
 
     const syncProfile = async () => {
       try {
         // Get profile from Supabase
-        let profile = await apiClient.getUserProfile();
+        let profile = await apiClient!.getUserProfile();
         
         // If profile doesn't exist, create it with Clerk user data
         if (!profile) {
-          profile = await apiClient.createUserProfile({
-            email: user.emailAddresses[0]?.emailAddress || '',
-            name: user.fullName || user.firstName || '',
-            avatarUrl: user.imageUrl || undefined,
+          profile = await apiClient!.createUserProfile({
+            email: user!.emailAddresses[0]?.emailAddress || '',
+            name: user!.fullName || user!.firstName || '',
+            avatarUrl: user!.imageUrl || undefined,
             role: userRole || undefined,
           });
         } else {
           // If profile exists but doesn't have a role and we have one in context, update it
           if (!profile.role && userRole) {
-            await apiClient.setUserRole(userRole);
+            await apiClient!.setUserRole(userRole);
           }
           
           // Update profile info if needed
           const needsUpdate = 
-            profile.name !== user.fullName ||
-            profile.email !== user.emailAddresses[0]?.emailAddress ||
-            profile.avatar_url !== user.imageUrl;
+            profile.name !== user!.fullName ||
+            profile.email !== user!.emailAddresses[0]?.emailAddress ||
+            profile.avatar_url !== user!.imageUrl;
             
           if (needsUpdate) {
-            await apiClient.updateUserProfile({
-              name: user.fullName || user.firstName || '',
-              avatarUrl: user.imageUrl || undefined,
+            await apiClient!.updateUserProfile({
+              name: user!.fullName || user!.firstName || '',
+              avatarUrl: user!.imageUrl || undefined,
             });
           }
         }

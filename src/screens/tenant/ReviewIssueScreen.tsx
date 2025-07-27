@@ -7,7 +7,7 @@ import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
-import { ASSET_TEMPLATES } from '../../data/assetTemplates';
+// import { ASSET_TEMPLATES } from '../../data/nulls'; // TODO: Fix import
 
 type ReviewIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReviewIssue'>;
 type ReviewIssueScreenRouteProp = RouteProp<TenantStackParamList, 'ReviewIssue'>;
@@ -86,8 +86,8 @@ const ReviewIssueScreen = () => {
   };
 
   const getAIAnalysis = () => {
-    const areaName = AREA_TEMPLATES.find(a => a.type === reviewData.area)?.displayName || reviewData.area;
-    const assetTemplate = ASSET_TEMPLATES.find(a => a.name === reviewData.asset);
+    const areaName = AREA_TEMPLATES.find((a: {type: string, displayName?: string}) => a.type === reviewData.area)?.displayName || reviewData.area;
+    // const assetTemplate = null; // ASSET_TEMPLATES integration disabled
     
     // Simple AI analysis based on issue data
     const analysisMap: { [key: string]: { what: string; timeline: string; vendor: string } } = {
@@ -112,7 +112,7 @@ const ReviewIssueScreen = () => {
     const analysis = analysisMap[key] || {
       what: 'Issue requires professional assessment to determine exact cause.',
       timeline: 'Repair timeline depends on diagnosis and parts availability.',
-      vendor: `${assetTemplate?.vendorType || 'Appropriate specialist'} will be assigned based on issue type.`
+      vendor: 'Appropriate specialist will be assigned based on issue type.'
     };
 
     return analysis;
@@ -146,12 +146,12 @@ const ReviewIssueScreen = () => {
     setIsSubmitting(true);
 
     try {
-      const areaName = AREA_TEMPLATES.find(a => a.type === reviewData.area)?.displayName || reviewData.area;
-      const assetTemplate = ASSET_TEMPLATES.find(a => a.name === reviewData.asset);
+      const areaName = AREA_TEMPLATES.find((a: {type: string, displayName?: string}) => a.type === reviewData.area)?.displayName || reviewData.area;
+      // const assetTemplate = null; // ASSET_TEMPLATES integration disabled
 
       // Build comprehensive description
       const structuredDescription = `Location: ${areaName}
-Asset: ${reviewData.asset} (${assetTemplate?.category})
+Asset: ${reviewData.asset} (${'General'})
 Issue Type: ${reviewData.issueType}
 Priority: ${reviewData.priority.charAt(0).toUpperCase() + reviewData.priority.slice(1)}
 Duration: ${reviewData.duration}
@@ -175,7 +175,7 @@ Vendor Instructions: ${vendorComment}` : ''}`;
       const caseData = {
         title: reviewData.title || `${areaName} ${reviewData.asset}: ${reviewData.issueType}`,
         description: structuredDescription,
-        category: assetTemplate?.category?.toLowerCase().replace(/\s+/g, '_') || 'other',
+        category: 'General'?.toLowerCase().replace(/\s+/g, '_') || 'other',
         priority: reviewData.priority,
         propertyAddress: 'Default Property Address',
         location: reviewData.area,
@@ -188,8 +188,8 @@ Vendor Instructions: ${vendorComment}` : ''}`;
           priority: reviewData.priority,
           duration: reviewData.duration,
           timing: reviewData.timing,
-          assetCategory: assetTemplate?.category,
-          vendorType: assetTemplate?.vendorType,
+          assetCategory: 'General',
+          vendorType: 'specialist',
           additionalDetails: reviewData.additionalDetails || null,
           availableTimeSlots: availableSlots
         },
@@ -210,7 +210,7 @@ Vendor Instructions: ${vendorComment}` : ''}`;
         area: reviewData.area,
         asset: reviewData.asset,
         issueType: reviewData.issueType,
-        images: reviewData.mediaItems?.map((item: any) => item.uri) || []
+        images: reviewData.mediaItems || []
       });
       
       // Navigate to success screen

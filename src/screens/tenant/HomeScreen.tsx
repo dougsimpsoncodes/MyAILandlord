@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/ClerkAuthContext';
+import { RoleContext } from '../../context/RoleContext';
+import { UserProfile } from '../../components/shared/UserProfile';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'Home'>;
 
@@ -21,6 +23,7 @@ interface QuickAction {
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user, signOut } = useAppAuth();
+  const { clearRole } = useContext(RoleContext);
   const [propertyData, setPropertyData] = useState({
     address: '123 Main St, Apt 4B',
     image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80',
@@ -28,6 +31,7 @@ const HomeScreen = () => {
 
   const [activeRequests, setActiveRequests] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(2);
+  const [showProfile, setShowProfile] = useState(false);
 
   const quickActions: QuickAction[] = [
     {
@@ -94,6 +98,32 @@ const HomeScreen = () => {
     return 'Good evening';
   };
 
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearRole();
+              await signOut();
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -114,10 +144,12 @@ const HomeScreen = () => {
                 <Text style={styles.propertyAddress}>{propertyData.address}</Text>
               </View>
               <TouchableOpacity 
-                style={styles.signOutButton} 
-                onPress={() => signOut()}
+                style={styles.profileButton} 
+                onPress={() => setShowProfile(true)}
+                accessibilityLabel="Open profile menu"
+                accessibilityHint="Double tap to open profile and settings menu"
               >
-                <Ionicons name="log-out-outline" size={24} color="#7F8C8D" />
+                <Ionicons name="person-circle-outline" size={28} color="#7F8C8D" />
               </TouchableOpacity>
             </View>
           </View>
@@ -180,6 +212,27 @@ const HomeScreen = () => {
           <Ionicons name="chevron-forward" size={20} color="#E74C3C" />
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Profile Modal */}
+      <Modal
+        visible={showProfile}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowProfile(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Profile</Text>
+            <TouchableOpacity 
+              onPress={() => setShowProfile(false)}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#2C3E50" />
+            </TouchableOpacity>
+          </View>
+          <UserProfile userRole="tenant" />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -223,7 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  signOutButton: {
+  profileButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#F8F9FA',
@@ -355,6 +408,28 @@ const styles = StyleSheet.create({
   emergencySubtitle: {
     fontSize: 12,
     color: '#D32F2F',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E1E8ED',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  modalCloseButton: {
+    padding: 4,
   },
 });
 

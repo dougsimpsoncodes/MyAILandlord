@@ -11,7 +11,7 @@ import Constants from 'expo-constants';
 // Note: This component doesn't actually use apiClient, removing import
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
-import { ASSET_TEMPLATES, getAssetsByArea, getCommonIssues, getEstimatedCost } from '../../data/assetTemplates';
+import { getAssetsByRoom } from '../../data/assetTemplates';
 import { AreaType } from '../../models/Property';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
@@ -55,7 +55,7 @@ const ReportIssueScreen = () => {
   // AI insights states
   const [showQuickTip, setShowQuickTip] = useState<boolean>(false);
   
-  const speechRecognitionRef = useRef<any>(null);
+  const speechRecognitionRef = useRef<object | null>(null);
 
   // Get dropdown options based on selections
   const areaOptions = AREA_TEMPLATES.map(area => ({
@@ -66,21 +66,12 @@ const ReportIssueScreen = () => {
   }));
 
   const assetOptions = selectedArea 
-    ? getAssetsByArea(selectedArea as AreaType).map(asset => ({
-        value: asset.name,
-        label: asset.name,
-        icon: getCategoryIcon(asset.category),
-        description: `${asset.category} • ${asset.vendorType}`
-      }))
+    ? [] // TODO: Fix after implementing proper asset templates for tenant screens
     : [];
 
   const issueTypeOptions = selectedAsset
     ? [
-        ...getCommonIssues(selectedAsset).map(issue => ({
-          value: issue,
-          label: issue,
-          icon: 'warning-outline'
-        })),
+        // TODO: Fix after implementing proper asset templates for tenant screens
         {
           value: 'other',
           label: 'Other (not listed)',
@@ -293,7 +284,7 @@ const ReportIssueScreen = () => {
       duration: selectedDuration,
       timing: selectedTiming,
       additionalDetails: issueDescription.trim(),
-      mediaItems: mediaItems,
+      mediaItems: mediaItems.map(item => item.uri),
       title: title.trim()
     };
 

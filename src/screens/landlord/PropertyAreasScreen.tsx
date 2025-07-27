@@ -17,7 +17,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { PropertyData, PropertyArea } from '../../types/property';
+import { PropertyData, PropertyArea, AssetCondition } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 
@@ -31,8 +31,8 @@ const generateDynamicAreas = (propertyData: PropertyData): PropertyArea[] => {
   
   // Essential areas that every property should have
   const essentialAreas: PropertyArea[] = [
-    { id: 'kitchen', name: 'Kitchen', type: 'kitchen', icon: 'restaurant', isDefault: true, photos: [] },
-    { id: 'living', name: 'Living Room', type: 'living_room', icon: 'tv', isDefault: true, photos: [] },
+    { id: 'kitchen', name: 'Kitchen', type: 'kitchen', icon: 'restaurant', isDefault: true, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
+    { id: 'living', name: 'Living Room', type: 'living_room', icon: 'tv', isDefault: true, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
   ];
 
   // Generate bedrooms based on user input
@@ -49,7 +49,10 @@ const generateDynamicAreas = (propertyData: PropertyData): PropertyArea[] => {
       type: 'bedroom',
       icon: 'bed',
       isDefault: true, // All specified bedrooms are essential
-      photos: []
+      photos: [],
+      inventoryComplete: false,
+      condition: AssetCondition.GOOD,
+      assets: []
     });
   }
 
@@ -70,7 +73,10 @@ const generateDynamicAreas = (propertyData: PropertyData): PropertyArea[] => {
       type: 'bathroom',
       icon: 'water',
       isDefault: true, // All specified bathrooms are essential
-      photos: []
+      photos: [],
+      inventoryComplete: false,
+      condition: AssetCondition.GOOD,
+      assets: []
     });
   }
   
@@ -82,7 +88,10 @@ const generateDynamicAreas = (propertyData: PropertyData): PropertyArea[] => {
       type: 'bathroom',
       icon: 'water',
       isDefault: true,
-      photos: []
+      photos: [],
+      inventoryComplete: false,
+      condition: AssetCondition.GOOD,
+      assets: []
     });
   }
 
@@ -91,16 +100,16 @@ const generateDynamicAreas = (propertyData: PropertyData): PropertyArea[] => {
   
   if (propertyData.type === 'apartment' || propertyData.type === 'condo') {
     optionalAreas.push(
-      { id: 'balcony', name: 'Balcony/Patio', type: 'outdoor', icon: 'flower', isDefault: false, photos: [] },
-      { id: 'laundry', name: 'Laundry Room', type: 'laundry', icon: 'shirt', isDefault: false, photos: [] },
-      { id: 'storage', name: 'Storage Closet', type: 'other', icon: 'archive', isDefault: false, photos: [] }
+      { id: 'balcony', name: 'Balcony/Patio', type: 'outdoor', icon: 'flower', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
+      { id: 'laundry', name: 'Laundry Room', type: 'laundry', icon: 'shirt', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
+      { id: 'storage', name: 'Storage Closet', type: 'other', icon: 'archive', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] }
     );
   } else {
     optionalAreas.push(
-      { id: 'garage', name: 'Garage', type: 'garage', icon: 'car', isDefault: false, photos: [] },
-      { id: 'yard', name: 'Yard', type: 'outdoor', icon: 'leaf', isDefault: false, photos: [] },
-      { id: 'basement', name: 'Basement', type: 'other', icon: 'layers', isDefault: false, photos: [] },
-      { id: 'laundry', name: 'Laundry Room', type: 'laundry', icon: 'shirt', isDefault: false, photos: [] }
+      { id: 'garage', name: 'Garage', type: 'garage', icon: 'car', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
+      { id: 'yard', name: 'Yard', type: 'outdoor', icon: 'leaf', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
+      { id: 'basement', name: 'Basement', type: 'other', icon: 'layers', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] },
+      { id: 'laundry', name: 'Laundry Room', type: 'laundry', icon: 'shirt', isDefault: false, photos: [], inventoryComplete: false, condition: AssetCondition.GOOD, assets: [] }
     );
   }
 
@@ -400,7 +409,10 @@ const PropertyAreasScreen = () => {
       type: newRoomType,
       icon: getIconForRoomType(newRoomType),
       isDefault: false,
-      photos: []
+      photos: [],
+      inventoryComplete: false,
+      condition: AssetCondition.GOOD,
+      assets: []
     };
 
     const updatedAreas = [...areas, newRoom];

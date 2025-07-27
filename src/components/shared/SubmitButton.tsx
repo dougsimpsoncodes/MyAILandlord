@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, TextStyle, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SubmitButtonProps {
@@ -25,8 +25,8 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
   rightIcon,
   fullWidth = true,
 }) => {
-  const getButtonStyle = () => {
-    const baseStyle: any[] = [styles.button];
+  const getButtonStyle = (): ViewStyle[] => {
+    const baseStyle: ViewStyle[] = [styles.button];
     
     if (fullWidth) baseStyle.push(styles.fullWidth);
     
@@ -65,8 +65,8 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
     return baseStyle;
   };
 
-  const getTextStyle = () => {
-    const baseStyle: any[] = [styles.text];
+  const getTextStyle = (): TextStyle[] => {
+    const baseStyle: TextStyle[] = [styles.text];
     
     switch (size) {
       case 'small':
@@ -103,7 +103,7 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
 
   const getIconColor = () => {
     if (disabled || loading) return '#FFFFFF';
-    if (variant === 'secondary') return '#3498DB';
+    if (variant === 'secondary') return '#007AFF';
     return '#FFFFFF';
   };
 
@@ -149,46 +149,51 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
+    minHeight: 44, // iOS minimum touch target
   },
   fullWidth: {
     width: '100%',
   },
   buttonSmall: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
+    minHeight: 36,
   },
   buttonMedium: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 24,
+    minHeight: 44,
   },
   buttonLarge: {
-    paddingVertical: 20,
+    paddingVertical: 16,
     paddingHorizontal: 32,
+    minHeight: 50,
   },
   buttonPrimary: {
-    backgroundColor: '#3498DB',
+    backgroundColor: '#007AFF', // iOS Blue
   },
   buttonSecondary: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#3498DB',
+    backgroundColor: '#F2F2F7', // iOS Light Gray
+    borderWidth: 1,
+    borderColor: '#C7C7CC',
+    shadowOpacity: 0.05,
   },
   buttonSuccess: {
-    backgroundColor: '#27AE60',
+    backgroundColor: '#34C759', // iOS Green
   },
   buttonWarning: {
-    backgroundColor: '#F39C12',
+    backgroundColor: '#FF9500', // iOS Orange
   },
   buttonDanger: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: '#FF3B30', // iOS Red
   },
   buttonDisabled: {
-    backgroundColor: '#95A5A6',
+    backgroundColor: '#C7C7CC', // iOS Disabled Gray
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -200,21 +205,22 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: -0.4, // iOS-style letter spacing
   },
   textSmall: {
-    fontSize: 14,
+    fontSize: 15,
   },
   textMedium: {
-    fontSize: 16,
+    fontSize: 17,
   },
   textLarge: {
-    fontSize: 18,
+    fontSize: 19,
   },
   textPrimary: {
     color: '#FFFFFF',
   },
   textSecondary: {
-    color: '#3498DB',
+    color: '#007AFF',
   },
   textDisabled: {
     color: '#FFFFFF',

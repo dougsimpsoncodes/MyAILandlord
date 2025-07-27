@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
+import { useAppAuth } from '../context/ClerkAuthContext';
+import { RoleContext } from '../context/RoleContext';
 
 type RoleSelectScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'RoleSelect'>;
 
@@ -11,17 +13,32 @@ const { width } = Dimensions.get('window');
 
 const RoleSelectScreen = () => {
   const navigation = useNavigation<RoleSelectScreenNavigationProp>();
+  const { isSignedIn, user } = useAppAuth();
+  const { setUserRole } = useContext(RoleContext);
 
-  const handleRoleSelect = (role: 'tenant' | 'landlord') => {
-    navigation.navigate('Login', { role });
+  const handleRoleSelect = async (role: 'tenant' | 'landlord') => {
+    if (isSignedIn) {
+      // User is already authenticated, just set the role
+      await setUserRole(role);
+    } else {
+      // User needs to authenticate
+      navigation.navigate('Login', { role });
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Who are you?</Text>
-          <Text style={styles.subtitle}>Select your role to continue</Text>
+          <Text style={styles.title}>
+            {isSignedIn ? `Welcome, ${user?.name?.split(' ')[0] || 'User'}!` : 'Who are you?'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isSignedIn 
+              ? 'Select your role to access your dashboard' 
+              : 'Select your role to continue'
+            }
+          </Text>
         </View>
 
         <View style={styles.cardsContainer}>

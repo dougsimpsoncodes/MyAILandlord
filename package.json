@@ -35,13 +35,14 @@
     "expo-speech": "^13.1.7",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
-    "react-dom": "^19.1.0",
+    "react-dom": "19.0.0",
     "react-native": "0.79.5",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "~4.11.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
   },

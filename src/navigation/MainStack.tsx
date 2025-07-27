@@ -17,6 +17,12 @@ import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
 import SendToVendorScreen from '../screens/landlord/SendToVendorScreen';
 import LandlordCommunicationScreen from '../screens/landlord/LandlordCommunicationScreen';
 import PropertyManagementScreen from '../screens/landlord/PropertyManagementScreen';
+import AddPropertyScreen from '../screens/landlord/AddPropertyScreen';
+import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
+import PropertyAssetsScreen from '../screens/landlord/PropertyAssetsScreen';
+import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
+import AddAssetScreen from '../screens/landlord/AddAssetScreen';
+import { PropertyAreasParams, PropertyAssetsParams, PropertyReviewParams, AssetTemplate, PropertyData, InventoryItem } from '../types/property';
 
 export type TenantStackParamList = {
   Home: undefined;
@@ -31,7 +37,7 @@ export type TenantStackParamList = {
       duration: string;
       timing: string;
       additionalDetails: string;
-      mediaItems: any[];
+      mediaItems: string[];
       title: string;
     }
   };
@@ -49,6 +55,17 @@ export type LandlordStackParamList = {
   SendToVendor: { caseId: string };
   Communications: undefined;
   PropertyManagement: undefined;
+  AddProperty: { draftId?: string } | undefined;
+  PropertyAreas: PropertyAreasParams & { draftId?: string };
+  PropertyAssets: PropertyAssetsParams & { draftId?: string; newAsset?: InventoryItem };
+  PropertyReview: PropertyReviewParams;
+  AddAsset: {
+    areaId: string;
+    areaName: string;
+    template: AssetTemplate | null;
+    propertyData: PropertyData;
+    draftId?: string;
+  };
 };
 
 const TenantStack = createNativeStackNavigator<TenantStackParamList>();
@@ -163,6 +180,31 @@ const LandlordNavigator = () => {
       <LandlordStack.Screen 
         name="PropertyManagement" 
         component={PropertyManagementScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="AddProperty" 
+        component={AddPropertyScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="PropertyAreas" 
+        component={PropertyAreasScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="PropertyAssets" 
+        component={PropertyAssetsScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="PropertyReview" 
+        component={PropertyReviewScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="AddAsset" 
+        component={AddAssetScreen}
         options={{ headerShown: false }}
       />
     </LandlordStack.Navigator>

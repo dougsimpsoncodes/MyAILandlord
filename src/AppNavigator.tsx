@@ -5,21 +5,26 @@ import MainStack from './navigation/MainStack';
 import { useAppAuth } from './context/ClerkAuthContext';
 import { RoleContext } from './context/RoleContext';
 import { useProfileSync } from './hooks/useProfileSync';
+import { LoadingScreen } from './components/LoadingSpinner';
 
 const AppNavigator = () => {
   const { user, isSignedIn, isLoading } = useAppAuth();
-  const { userRole } = useContext(RoleContext);
+  const { userRole, isLoading: roleLoading } = useContext(RoleContext);
   
   // Sync Clerk user with Supabase profile
   useProfileSync();
 
-  if (isLoading) {
-    return null; // Or a loading spinner
+  // Show proper loading screen during authentication check
+  if (isLoading || roleLoading) {
+    return <LoadingScreen message="Checking authentication..." />;
   }
+
+  // If user is signed in but doesn't have a role, show AuthStack to select role
+  const shouldShowMainStack = isSignedIn && user && userRole;
 
   return (
     <NavigationContainer>
-      {isSignedIn && user && userRole ? (
+      {shouldShowMainStack ? (
         <MainStack userRole={userRole} />
       ) : (
         <AuthStack />

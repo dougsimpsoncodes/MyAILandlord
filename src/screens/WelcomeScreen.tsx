@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { useAppAuth } from '../context/ClerkAuthContext';
+import { RoleContext } from '../context/RoleContext';
 
 type WelcomeScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -13,6 +14,7 @@ const { width, height } = Dimensions.get('window');
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
   const { signOut, isSignedIn } = useAppAuth();
+  const { clearRole } = useContext(RoleContext);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,10 +58,13 @@ const WelcomeScreen = () => {
         {isSignedIn && (
           <TouchableOpacity
             style={styles.signOutButton}
-            onPress={() => signOut()}
+            onPress={async () => {
+              await clearRole();
+              await signOut();
+            }}
             activeOpacity={0.8}
           >
-            <Text style={styles.signOutButtonText}>Sign Out (Clear Session)</Text>
+            <Text style={styles.signOutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         )}
       </View>

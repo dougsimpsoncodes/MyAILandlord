@@ -29,6 +29,7 @@ const ROLE_STORAGE_KEY = '@MyAILandlord:userRole';
 export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [userRole, setUserRoleState] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const { user } = useAppAuth();
   const { userId } = useAuth();
   
@@ -37,17 +38,13 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   useEffect(() => {
     if (user && user.id) {
-      // If user has role in auth context, use that
-      // Note: Clerk user doesn't have a role property, so we skip this
-      if (false) {
-        // Placeholder for future role checking
-        setIsLoading(false);
-      } else {
-        // Otherwise load from storage (fallback)
+      // Load existing role if user is authenticated
+      if (!hasInitialized) {
         loadStoredRole();
+        setHasInitialized(true);
       }
     } else {
-      // No user, clear role
+      // No user, clear role and stop loading
       setUserRoleState(null);
       setIsLoading(false);
     }
@@ -68,11 +65,9 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const setUserRole = async (role: UserRole) => {
     try {
-      if (role && user && userId && apiClient) {
-        // Save to backend using the API client hook
-        await apiClient.setUserRole(role);
-        
-        // Save to local storage as backup
+      // Temporarily skip backend storage due to RLS policy issue
+      // TODO: Fix RLS and re-enable backend role storage
+      if (role) {
         await AsyncStorage.setItem(ROLE_STORAGE_KEY, role);
       } else {
         await AsyncStorage.removeItem(ROLE_STORAGE_KEY);

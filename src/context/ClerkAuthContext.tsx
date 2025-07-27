@@ -44,7 +44,7 @@ export const ClerkWrapper: React.FC<ClerkWrapperProps> = ({ children }) => {
 };
 
 // Custom hook that combines Clerk's auth with your app's user structure
-export const useAppAuth = () => {
+export function useAppAuth() {
   const { isSignedIn, signOut, isLoaded } = useAuth();
   const { user } = useUser();
 
@@ -61,4 +61,4 @@ export const useAppAuth = () => {
     isSignedIn,
     signOut,
   };
-};
+}

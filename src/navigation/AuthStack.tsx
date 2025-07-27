@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import RoleSelectScreen from '../screens/RoleSelectScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import { useAppAuth } from '../context/ClerkAuthContext';
+import { RoleContext } from '../context/RoleContext';
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -15,9 +17,16 @@ export type AuthStackParamList = {
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 const AuthStack = () => {
+  const { isSignedIn } = useAppAuth();
+  const { userRole } = useContext(RoleContext);
+
+  // If user is signed in but no role, start at role selection
+  // Otherwise start at welcome screen
+  const initialRoute = isSignedIn && !userRole ? "RoleSelect" : "Welcome";
+
   return (
     <Stack.Navigator
-      initialRouteName="Welcome"
+      initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
