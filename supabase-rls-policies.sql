@@ -1,6 +1,27 @@
--- My AI Landlord - Row Level Security Policies
--- Run this SQL AFTER creating the schema to set up security policies
--- This ensures tenant/landlord data isolation
+-- My AI Landlord - Row Level Security Policies Migration
+-- Run this SQL AFTER creating the schema to set up optimized security policies
+-- This ensures tenant/landlord data isolation with performance optimizations
+
+-- Drop all existing policies first (ignore errors if they don't exist)
+DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Landlords can read own properties" ON public.properties;
+DROP POLICY IF EXISTS "Tenants can read linked properties" ON public.properties;
+DROP POLICY IF EXISTS "Landlords can manage own properties" ON public.properties;
+DROP POLICY IF EXISTS "Landlords can manage property links" ON public.tenant_property_links;
+DROP POLICY IF EXISTS "Tenants can read own property links" ON public.tenant_property_links;
+DROP POLICY IF EXISTS "Tenants can read own maintenance requests" ON public.maintenance_requests;
+DROP POLICY IF EXISTS "Landlords can read property maintenance requests" ON public.maintenance_requests;
+DROP POLICY IF EXISTS "Tenants can create maintenance requests" ON public.maintenance_requests;
+DROP POLICY IF EXISTS "Tenants can update own maintenance requests" ON public.maintenance_requests;
+DROP POLICY IF EXISTS "Landlords can update property maintenance requests" ON public.maintenance_requests;
+DROP POLICY IF EXISTS "Users can read own messages" ON public.messages;
+DROP POLICY IF EXISTS "Users can send messages" ON public.messages;
+DROP POLICY IF EXISTS "Users can update own messages" ON public.messages;
+DROP POLICY IF EXISTS "Landlords can read own announcements" ON public.announcements;
+DROP POLICY IF EXISTS "Tenants can read property announcements" ON public.announcements;
+DROP POLICY IF EXISTS "Landlords can manage own announcements" ON public.announcements;
 
 -- Enable RLS on all tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -16,62 +37,81 @@ ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 
 -- Users can read their own profile
 CREATE POLICY "Users can read own profile"
-ON profiles FOR SELECT
-USING (clerk_user_id = current_setting('app.current_user_id', true));
+ON public.profiles FOR SELECT
+USING (clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text));
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile"
-ON profiles FOR UPDATE
-USING (clerk_user_id = current_setting('app.current_user_id', true))
-WITH CHECK (clerk_user_id = current_setting('app.current_user_id', true));
+ON public.profiles FOR UPDATE
+USING (clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text))
+WITH CHECK (clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text));
 
 -- Users can insert their own profile (for initial setup)
 CREATE POLICY "Users can insert own profile"
-ON profiles FOR INSERT
-WITH CHECK (clerk_user_id = current_setting('app.current_user_id', true));
+ON public.profiles FOR INSERT
+WITH CHECK (clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text));
 
 -- =====================================================
 -- PROPERTIES TABLE POLICIES
 -- =====================================================
 
--- Landlords can read their own properties
-CREATE POLICY "Landlords can read own properties"
-ON properties FOR SELECT
+-- Users can read properties (landlords read own, tenants read linked)
+CREATE POLICY "Users can read properties"
+ON public.properties FOR SELECT
 USING (
+    -- Landlords can read their own properties
     landlord_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'landlord'
     )
-);
-
--- Tenants can read properties they're linked to
-CREATE POLICY "Tenants can read linked properties"
-ON properties FOR SELECT
-USING (
+    OR
+    -- Tenants can read properties they're linked to
     id IN (
-        SELECT property_id FROM tenant_property_links tpl
+        SELECT property_id FROM public.tenant_property_links tpl
         JOIN profiles p ON p.id = tpl.tenant_id
-        WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
+        WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
         AND p.role = 'tenant'
         AND tpl.is_active = true
     )
 );
 
--- Landlords can insert/update/delete their own properties
-CREATE POLICY "Landlords can manage own properties"
-ON properties FOR ALL
+-- Landlords can insert their own properties
+CREATE POLICY "Landlords can insert properties"
+ON public.properties FOR INSERT
+WITH CHECK (
+    landlord_id IN (
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+        AND role = 'landlord'
+    )
+);
+
+-- Landlords can update their own properties
+CREATE POLICY "Landlords can update properties"
+ON public.properties FOR UPDATE
 USING (
     landlord_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'landlord'
     )
 )
 WITH CHECK (
     landlord_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+        AND role = 'landlord'
+    )
+);
+
+-- Landlords can delete their own properties
+CREATE POLICY "Landlords can delete properties"
+ON public.properties FOR DELETE
+USING (
+    landlord_id IN (
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'landlord'
     )
 );
@@ -80,28 +120,77 @@ WITH CHECK (
 -- TENANT_PROPERTY_LINKS TABLE POLICIES
 -- =====================================================
 
--- Landlords can manage links for their properties
-CREATE POLICY "Landlords can manage property links"
-ON tenant_property_links FOR ALL
+-- Users can read property links (landlords and tenants)
+CREATE POLICY "Users can read property links"
+ON public.tenant_property_links FOR SELECT
 USING (
+    -- Landlords can read links for their properties
     property_id IN (
-        SELECT id FROM properties
+        SELECT id FROM public.properties
         WHERE landlord_id IN (
-            SELECT id FROM profiles 
-            WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+            AND role = 'landlord'
+        )
+    )
+    OR
+    -- Tenants can read their own links
+    tenant_id IN (
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+        AND role = 'tenant'
+    )
+);
+
+-- Landlords can insert property links
+CREATE POLICY "Landlords can insert property links"
+ON public.tenant_property_links FOR INSERT
+WITH CHECK (
+    property_id IN (
+        SELECT id FROM public.properties
+        WHERE landlord_id IN (
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
             AND role = 'landlord'
         )
     )
 );
 
--- Tenants can read their own links
-CREATE POLICY "Tenants can read own property links"
-ON tenant_property_links FOR SELECT
+-- Landlords can update property links
+CREATE POLICY "Landlords can update property links"
+ON public.tenant_property_links FOR UPDATE
 USING (
-    tenant_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
-        AND role = 'tenant'
+    property_id IN (
+        SELECT id FROM public.properties
+        WHERE landlord_id IN (
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+            AND role = 'landlord'
+        )
+    )
+)
+WITH CHECK (
+    property_id IN (
+        SELECT id FROM public.properties
+        WHERE landlord_id IN (
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+            AND role = 'landlord'
+        )
+    )
+);
+
+-- Landlords can delete property links
+CREATE POLICY "Landlords can delete property links"
+ON public.tenant_property_links FOR DELETE
+USING (
+    property_id IN (
+        SELECT id FROM public.properties
+        WHERE landlord_id IN (
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+            AND role = 'landlord'
+        )
     )
 );
 
@@ -109,26 +198,23 @@ USING (
 -- MAINTENANCE_REQUESTS TABLE POLICIES
 -- =====================================================
 
--- Tenants can read their own maintenance requests
-CREATE POLICY "Tenants can read own maintenance requests"
-ON maintenance_requests FOR SELECT
+-- Users can read maintenance requests (tenants read own, landlords read property requests)
+CREATE POLICY "Users can read maintenance requests"
+ON public.maintenance_requests FOR SELECT
 USING (
+    -- Tenants can read their own maintenance requests
     tenant_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'tenant'
     )
-);
-
--- Landlords can read requests for their properties
-CREATE POLICY "Landlords can read property maintenance requests"
-ON maintenance_requests FOR SELECT
-USING (
+    OR
+    -- Landlords can read requests for their properties
     property_id IN (
-        SELECT id FROM properties
+        SELECT id FROM public.properties
         WHERE landlord_id IN (
-            SELECT id FROM profiles 
-            WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
             AND role = 'landlord'
         )
     )
@@ -136,41 +222,38 @@ USING (
 
 -- Tenants can create maintenance requests for their properties
 CREATE POLICY "Tenants can create maintenance requests"
-ON maintenance_requests FOR INSERT
+ON public.maintenance_requests FOR INSERT
 WITH CHECK (
     tenant_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'tenant'
     )
     AND property_id IN (
-        SELECT property_id FROM tenant_property_links tpl
+        SELECT property_id FROM public.tenant_property_links tpl
         JOIN profiles p ON p.id = tpl.tenant_id
-        WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
+        WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
         AND tpl.is_active = true
     )
 );
 
--- Tenants can update their own requests (limited fields)
-CREATE POLICY "Tenants can update own maintenance requests"
-ON maintenance_requests FOR UPDATE
+-- Users can update maintenance requests (tenants update own, landlords update property requests)
+CREATE POLICY "Users can update maintenance requests"
+ON public.maintenance_requests FOR UPDATE
 USING (
+    -- Tenants can update their own requests
     tenant_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'tenant'
     )
-);
-
--- Landlords can update requests for their properties
-CREATE POLICY "Landlords can update property maintenance requests"
-ON maintenance_requests FOR UPDATE
-USING (
+    OR
+    -- Landlords can update requests for their properties
     property_id IN (
-        SELECT id FROM properties
+        SELECT id FROM public.properties
         WHERE landlord_id IN (
-            SELECT id FROM profiles 
-            WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+            SELECT id FROM public.profiles 
+            WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
             AND role = 'landlord'
         )
     )
@@ -182,39 +265,39 @@ USING (
 
 -- Users can read messages where they are sender or recipient
 CREATE POLICY "Users can read own messages"
-ON messages FOR SELECT
+ON public.messages FOR SELECT
 USING (
     sender_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true)
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     )
     OR recipient_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true)
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     )
 );
 
 -- Users can send messages
 CREATE POLICY "Users can send messages"
-ON messages FOR INSERT
+ON public.messages FOR INSERT
 WITH CHECK (
     sender_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true)
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     )
 );
 
 -- Users can update messages they sent (for read receipts, etc.)
 CREATE POLICY "Users can update own messages"
-ON messages FOR UPDATE
+ON public.messages FOR UPDATE
 USING (
     sender_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true)
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     )
     OR recipient_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true)
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     )
 );
 
@@ -222,48 +305,69 @@ USING (
 -- ANNOUNCEMENTS TABLE POLICIES
 -- =====================================================
 
--- Landlords can read their own announcements
-CREATE POLICY "Landlords can read own announcements"
-ON announcements FOR SELECT
+-- Users can read announcements (landlords read own, tenants read published)
+CREATE POLICY "Users can read announcements"
+ON public.announcements FOR SELECT
 USING (
+    -- Landlords can read their own announcements
     landlord_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'landlord'
     )
-);
-
--- Tenants can read published announcements for their properties
-CREATE POLICY "Tenants can read property announcements"
-ON announcements FOR SELECT
-USING (
-    is_published = true
-    AND (
-        property_id IS NULL -- Global announcements
-        OR property_id IN (
-            SELECT property_id FROM tenant_property_links tpl
-            JOIN profiles p ON p.id = tpl.tenant_id
-            WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
-            AND p.role = 'tenant'
-            AND tpl.is_active = true
+    OR
+    -- Tenants can read published announcements for their properties
+    (
+        is_published = true
+        AND (
+            property_id IS NULL -- Global announcements
+            OR property_id IN (
+                SELECT property_id FROM public.tenant_property_links tpl
+                JOIN profiles p ON p.id = tpl.tenant_id
+                WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
+                AND p.role = 'tenant'
+                AND tpl.is_active = true
+            )
         )
     )
 );
 
--- Landlords can manage their own announcements
-CREATE POLICY "Landlords can manage own announcements"
-ON announcements FOR ALL
+-- Landlords can insert their own announcements
+CREATE POLICY "Landlords can insert announcements"
+ON public.announcements FOR INSERT
+WITH CHECK (
+    landlord_id IN (
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+        AND role = 'landlord'
+    )
+);
+
+-- Landlords can update their own announcements
+CREATE POLICY "Landlords can update announcements"
+ON public.announcements FOR UPDATE
 USING (
     landlord_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'landlord'
     )
 )
 WITH CHECK (
     landlord_id IN (
-        SELECT id FROM profiles 
-        WHERE clerk_user_id = current_setting('app.current_user_id', true) 
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
+        AND role = 'landlord'
+    )
+);
+
+-- Landlords can delete their own announcements
+CREATE POLICY "Landlords can delete announcements"
+ON public.announcements FOR DELETE
+USING (
+    landlord_id IN (
+        SELECT id FROM public.profiles 
+        WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text) 
         AND role = 'landlord'
     )
 );
@@ -279,18 +383,16 @@ RETURNS void AS $$
 BEGIN
     PERFORM set_config('app.current_user_id', user_id, true);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Function to get current user profile
 CREATE OR REPLACE FUNCTION get_current_user_profile()
-RETURNS profiles AS $$
-DECLARE
-    profile profiles;
+RETURNS jsonb AS $$
 BEGIN
-    SELECT * INTO profile
-    FROM profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true);
-    
-    RETURN profile;
+    RETURN (
+        SELECT to_jsonb(p.*)
+        FROM public.profiles p
+        WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
+    );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

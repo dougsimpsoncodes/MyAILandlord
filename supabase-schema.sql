@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create custom types/enums
-CREATE TYPE user_role AS ENUM ('tenant', 'landlord');
+-- Note: Comment out any types that already exist in your database
 CREATE TYPE request_priority AS ENUM ('low', 'medium', 'high', 'urgent');
 CREATE TYPE request_status AS ENUM ('pending', 'in_progress', 'completed', 'cancelled');
 CREATE TYPE message_type AS ENUM ('text', 'image', 'file');
@@ -106,7 +106,7 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ language 'plpgsql' SET search_path = '';
 
 -- Apply updated_at triggers to all tables
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
