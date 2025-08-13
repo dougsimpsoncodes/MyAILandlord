@@ -4,6 +4,16 @@
 -- Enable RLS on storage.objects if not already enabled
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
+-- Ensure user context function exists (from main RLS policies)
+-- This function should already exist from supabase-rls-policies.sql
+-- Including here for completeness
+CREATE OR REPLACE FUNCTION set_current_user_id(user_id TEXT)
+RETURNS void AS $$
+BEGIN
+    PERFORM set_config('app.current_user_id', user_id, true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
 -- Create storage buckets
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES 
