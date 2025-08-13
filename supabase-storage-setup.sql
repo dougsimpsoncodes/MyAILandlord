@@ -1,6 +1,9 @@
 -- Supabase Storage Setup for My AI Landlord
 -- Run this in your Supabase SQL editor after the main schema
 
+-- Enable RLS on storage.objects if not already enabled
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
 -- Create storage buckets
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES 
@@ -16,7 +19,7 @@ FOR INSERT WITH CHECK (
   bucket_id = 'maintenance-images' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
   )
 );
 
@@ -30,7 +33,7 @@ FOR UPDATE USING (
   bucket_id = 'maintenance-images' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
   )
 );
 
@@ -39,7 +42,7 @@ FOR DELETE USING (
   bucket_id = 'maintenance-images' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
   )
 );
 
@@ -49,7 +52,7 @@ FOR INSERT WITH CHECK (
   bucket_id = 'voice-notes' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
   )
 );
 
@@ -62,7 +65,7 @@ FOR SELECT USING (
       SELECT p.clerk_user_id 
       FROM public.profiles p
       JOIN public.maintenance_requests mr ON mr.tenant_id = p.id
-      WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
+      WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
       AND (storage.foldername(name))[1] = mr.id::text
     )
     OR
@@ -72,7 +75,7 @@ FOR SELECT USING (
       FROM public.profiles p
       JOIN public.properties prop ON prop.landlord_id = p.id
       JOIN public.maintenance_requests mr ON mr.property_id = prop.id
-      WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
+      WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
       AND (storage.foldername(name))[1] = mr.id::text
     )
   )
@@ -84,7 +87,7 @@ FOR INSERT WITH CHECK (
   bucket_id = 'property-images' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     AND role = 'landlord'
   )
 );
@@ -101,7 +104,7 @@ FOR UPDATE USING (
     SELECT p.clerk_user_id 
     FROM public.profiles p
     JOIN public.properties prop ON prop.landlord_id = p.id
-    WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     AND p.role = 'landlord'
   )
 );
@@ -113,7 +116,7 @@ FOR DELETE USING (
     SELECT p.clerk_user_id 
     FROM public.profiles p
     JOIN public.properties prop ON prop.landlord_id = p.id
-    WHERE p.clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE p.clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
     AND p.role = 'landlord'
   )
 );
@@ -124,7 +127,7 @@ FOR INSERT WITH CHECK (
   bucket_id = 'documents' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
   )
 );
 
@@ -133,6 +136,6 @@ FOR SELECT USING (
   bucket_id = 'documents' AND
   auth.uid::text IN (
     SELECT clerk_user_id FROM public.profiles
-    WHERE clerk_user_id = current_setting('app.current_user_id', true)
+    WHERE clerk_user_id = (SELECT current_setting('app.current_user_id', true)::text)
   )
 );
