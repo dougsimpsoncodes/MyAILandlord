@@ -1,0 +1,38 @@
+{
+  "results": {
+    "critical": [],
+    "warnings": [],
+    "passed": [
+      {
+        "check": "productionBuild",
+        "message": "Production build successful (24s)",
+        "details": "Build completed without errors"
+      },
+      {
+        "check": "environmentConfig",
+        "message": "Environment configuration valid"
+      },
+      {
+        "check": "criticalTodos",
+        "message": "No critical TODOs blocking deployment"
+      },
+      {
+        "check": "bundleSize",
+        "message": "Dependencies analyzed: 21 prod, 4 dev"
+      }
+    ],
+    "metrics": {
+      "buildTime": 24,
+      "dependencies": 21,
+      "devDependencies": 4,
+      "nodeModulesSize": "416M"
+    }
+  },
+  "metrics": {
+    "buildTime": 24,
+    "dependencies": 21,
+    "devDependencies": 4,
+    "nodeModulesSize": "416M"
+  },
+  "timestamp": "2025-08-13T23:34:12.965Z"
+}

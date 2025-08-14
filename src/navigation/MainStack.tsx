@@ -19,7 +19,7 @@ import LandlordCommunicationScreen from '../screens/landlord/LandlordCommunicati
 import PropertyManagementScreen from '../screens/landlord/PropertyManagementScreen';
 import AddPropertyScreen from '../screens/landlord/AddPropertyScreen';
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
-import PropertyAssetsScreen from '../screens/landlord/PropertyAssetsScreen';
+import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScreen';
 import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
 import AddAssetScreen from '../screens/landlord/AddAssetScreen';
 import { PropertyAreasParams, PropertyAssetsParams, PropertyReviewParams, AssetTemplate, PropertyData, InventoryItem } from '../types/property';
@@ -194,7 +194,7 @@ const LandlordNavigator = () => {
       />
       <LandlordStack.Screen 
         name="PropertyAssets" 
-        component={PropertyAssetsScreen}
+        component={PropertyAssetsListScreen}
         options={{ headerShown: false }}
       />
       <LandlordStack.Screen 

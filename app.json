@@ -37,6 +37,6 @@
         "WRITE_EXTERNAL_STORAGE"
       ]
     },
-    "platforms": ["ios", "android"]
+    "platforms": ["ios", "android", "web"]
   }
 }

@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { PropertyData, PropertyArea, AssetCondition } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import { useResponsive } from '../../hooks/useResponsive';
 
 type PropertyAreasNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAreasRouteProp = RouteProp<LandlordStackParamList, 'PropertyAreas'>;
@@ -120,6 +121,7 @@ const generateDynamicAreas = (propertyData: PropertyData): PropertyArea[] => {
 const PropertyAreasScreen = () => {
   const navigation = useNavigation<PropertyAreasNavigationProp>();
   const route = useRoute<PropertyAreasRouteProp>();
+  const responsive = useResponsive();
   const propertyData = route.params.propertyData;
   const draftId = route.params.draftId;
 
@@ -344,6 +346,18 @@ const PropertyAreasScreen = () => {
   };
 
   const toggleArea = (areaId: string) => {
+    const area = areas.find(a => a.id === areaId);
+    
+    // Prevent deselecting essential areas
+    if (area?.isDefault && selectedAreas.includes(areaId)) {
+      Alert.alert(
+        'Essential Area',
+        'This area is required for your property type and cannot be removed.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+    
     let updatedSelectedAreas: string[];
     if (selectedAreas.includes(areaId)) {
       updatedSelectedAreas = selectedAreas.filter(id => id !== areaId);
@@ -434,11 +448,17 @@ const PropertyAreasScreen = () => {
   };
 
 
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
+  const [recentlyAddedPhoto, setRecentlyAddedPhoto] = useState<string | null>(null);
+
   const handleAddPhoto = async (areaId: string) => {
     try {
+      setUploadingPhoto(areaId);
+      
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Camera permission is required to take photos.');
+        setUploadingPhoto(null);
         return;
       }
 
@@ -454,6 +474,7 @@ const PropertyAreasScreen = () => {
         const validation = await validateImageFile(imageUri);
         if (!validation.isValid) {
           Alert.alert('Invalid Image', validation.error || 'Please select a valid image.');
+          setUploadingPhoto(null);
           return;
         }
 
@@ -468,10 +489,18 @@ const PropertyAreasScreen = () => {
         // Update draft with new photo
         const selectedAreaData = updatedAreas.filter(area => selectedAreas.includes(area.id));
         updateAreas(selectedAreaData);
+        
+        // Show visual success feedback
+        setRecentlyAddedPhoto(areaId);
+        setTimeout(() => {
+          setRecentlyAddedPhoto(null);
+        }, 2000); // Clear the success indicator after 2 seconds
       }
     } catch (error) {
       console.error('Error adding photo:', error);
       Alert.alert('Error', 'Failed to add photo. Please try again.');
+    } finally {
+      setUploadingPhoto(null);
     }
   };
 
@@ -533,9 +562,10 @@ const PropertyAreasScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, responsive.isWeb && styles.containerWeb]}>
+      <View style={[styles.contentWrapper, responsive.maxWidth() as any]}>
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#2C3E50" />
         </TouchableOpacity>
@@ -564,51 +594,69 @@ const PropertyAreasScreen = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '40%' }]} />
+      {/* Step Counter */}
+      <View style={styles.stepCounterContainer}>
+        <View style={styles.stepCounterHeader}>
+          <Text style={styles.stepCounterTitle}>Property Areas Setup</Text>
+          <Text style={styles.stepCounterSubtitle}>3 steps to complete</Text>
         </View>
-        <Text style={styles.progressText}>Step 2 of 5: Photos & Areas</Text>
+        
+        <View style={styles.stepsRow}>
+          <View style={styles.stepItem}>
+            <View style={[styles.stepNumber, styles.stepNumberActive]}>
+              <Text style={[styles.stepNumberText, styles.stepNumberTextActive]}>1</Text>
+            </View>
+            <Text style={[styles.stepLabel, styles.stepLabelActive]}>Identify Areas</Text>
+          </View>
+          
+          <View style={styles.stepConnector} />
+          
+          <View style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>2</Text>
+            </View>
+            <Text style={styles.stepLabel}>Add Photos</Text>
+          </View>
+          
+          <View style={styles.stepConnector} />
+          
+          <View style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>3</Text>
+            </View>
+            <Text style={styles.stepLabel}>Add Inventory</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Property Photos Section */}
+        {/* Step 1: Identify Areas Section */}
         <View style={styles.section}>
-          <Text style={styles.title}>Property Photos</Text>
-          <Text style={styles.subtitle}>
-            Add photos of your property's exterior, main areas, and overall appeal. These help tenants get a complete picture.
-          </Text>
-          
-          <PropertyPhotosManager 
-            photos={propertyPhotos}
-            onPhotosChange={(photos) => {
-              setPropertyPhotos(photos);
-            }}
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.title}>Select Areas in Your Property</Text>
+          <View style={styles.stepSectionHeader}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepBadgeText}>STEP 1</Text>
+            </View>
+            <Text style={styles.title}>Identify Areas in Your Property</Text>
+          </View>
           <Text style={styles.subtitle}>
             Based on your property details ({propertyData?.bedrooms} bedrooms, {propertyData?.bathrooms} bathrooms), 
-            we've pre-selected the essential areas. Choose additional areas as needed.
+            we've pre-selected the essential areas. Choose additional areas below. On the next screen, you will be able to add photos and provide a list of the inventory in these areas of your home.
           </Text>
         </View>
 
-        {/* Essential Areas Section */}
-        {areas.filter(area => area.isDefault).length > 0 && (
+        {/* Interior Areas Section */}
+        {areas.filter(area => ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).length > 0 && (
           <View style={styles.categorySection}>
             <View style={styles.categoryHeader}>
-              <Ionicons name="checkmark-circle" size={20} color="#2ECC71" />
-              <Text style={styles.categoryTitle}>Essential Areas</Text>
+              <Ionicons name="home" size={20} color="#2ECC71" />
+              <Text style={styles.categoryTitle}>Interior Areas</Text>
               <Text style={styles.categoryCount}>
-                {areas.filter(area => area.isDefault && selectedAreas.includes(area.id)).length} of {areas.filter(area => area.isDefault).length} selected
+                {areas.filter(area => selectedAreas.includes(area.id) && ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).length} of {areas.filter(area => ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).length} selected
               </Text>
             </View>
             
             <View style={styles.areasGrid}>
-              {areas.filter(area => area.isDefault).map((area) => {
+              {areas.filter(area => ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).map((area) => {
                 const isSelected = selectedAreas.includes(area.id);
                 const hasPhotos = area.photos.length > 0;
                 
@@ -619,38 +667,169 @@ const PropertyAreasScreen = () => {
                         styles.areaCard,
                         isSelected && styles.areaCardSelected,
                         hasPhotos && styles.areaCardWithPhotos,
+                        area.isDefault && styles.areaCardEssential, // Special styling only for essential areas
+                        recentlyAddedPhoto === area.id && styles.areaCardPhotoSuccess, // Success animation
                       ]}
                       onPress={() => toggleArea(area.id)}
                       activeOpacity={0.7}
                     >
-                      <View style={styles.areaHeader}>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                          {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                        </View>
-                        {hasPhotos && (
-                          <View style={styles.photoIndicator}>
-                            <Ionicons name="image" size={12} color="#FFFFFF" />
-                            <Text style={styles.photoCount}>{area.photos.length}</Text>
-                          </View>
-                        )}
+                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                        {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
                       </View>
                       
                       <Ionicons
                         name={area.icon as keyof typeof Ionicons.glyphMap}
-                        size={32}
+                        size={24}
                         color={isSelected ? '#3498DB' : '#7F8C8D'}
+                        style={styles.areaIcon}
                       />
+                      
                       <Text style={[styles.areaName, isSelected && styles.areaNameSelected]}>
                         {area.name}
                       </Text>
+                      
+                      <View style={styles.areaIndicators}>
+                        {/* Essential area lock indicator - only for default areas */}
+                        {area.isDefault && (
+                          <View style={styles.essentialIndicator}>
+                            <Ionicons name="lock-closed" size={12} color="#E74C3C" />
+                          </View>
+                        )}
+                        {hasPhotos && (
+                          <View style={[
+                            styles.photoIndicator,
+                            recentlyAddedPhoto === area.id && styles.photoIndicatorSuccess
+                          ]}>
+                            <Ionicons 
+                              name={recentlyAddedPhoto === area.id ? "checkmark-circle" : "image"} 
+                              size={12} 
+                              color="#FFFFFF" 
+                            />
+                            <Text style={styles.photoCount}>{area.photos.length}</Text>
+                          </View>
+                        )}
+                      </View>
                     </TouchableOpacity>
                     
                     {isSelected && (
                       <TouchableOpacity
-                        style={styles.cameraButton}
+                        style={[
+                          styles.cameraButton,
+                          uploadingPhoto === area.id && styles.cameraButtonUploading
+                        ]}
                         onPress={() => handleAddPhoto(area.id)}
+                        disabled={uploadingPhoto === area.id}
                       >
-                        <Ionicons name="camera" size={20} color="#3498DB" />
+                        {uploadingPhoto === area.id ? (
+                          <Ionicons name="sync" size={20} color="#3498DB" />
+                        ) : (
+                          <Ionicons name="camera" size={20} color="#3498DB" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+              
+              {/* Add Room Button at the bottom of interior areas */}
+              <View style={styles.areaWrapper}>
+                <TouchableOpacity
+                  style={styles.addRoomCard}
+                  onPress={() => setShowAddRoomModal(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, { borderColor: '#3498DB' }]}>
+                    <Ionicons name="add" size={16} color="#3498DB" />
+                  </View>
+                  <Ionicons name="add-circle-outline" size={24} color="#3498DB" style={styles.areaIcon} />
+                  <Text style={[styles.areaName, { color: '#3498DB' }]}>Add Custom Room</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Exterior Areas Section */}
+        {areas.filter(area => ['garage', 'outdoor'].includes(area.type)).length > 0 && (
+          <View style={styles.categorySection}>
+            <View style={styles.categoryHeader}>
+              <Ionicons name="leaf" size={20} color="#2ECC71" />
+              <Text style={styles.categoryTitle}>Exterior Areas</Text>
+              <Text style={styles.categoryCount}>
+                {areas.filter(area => selectedAreas.includes(area.id) && ['garage', 'outdoor'].includes(area.type)).length} of {areas.filter(area => ['garage', 'outdoor'].includes(area.type)).length} selected
+              </Text>
+            </View>
+            
+            <View style={styles.areasGrid}>
+              {areas.filter(area => ['garage', 'outdoor'].includes(area.type)).map((area) => {
+                const isSelected = selectedAreas.includes(area.id);
+                const hasPhotos = area.photos.length > 0;
+                
+                return (
+                  <View key={area.id} style={styles.areaWrapper}>
+                    <TouchableOpacity
+                      style={[
+                        styles.areaCard,
+                        isSelected && styles.areaCardSelected,
+                        hasPhotos && styles.areaCardWithPhotos,
+                        area.isDefault && styles.areaCardEssential, // Special styling only for essential areas
+                        recentlyAddedPhoto === area.id && styles.areaCardPhotoSuccess, // Success animation
+                      ]}
+                      onPress={() => toggleArea(area.id)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                        {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                      </View>
+                      
+                      <Ionicons
+                        name={area.icon as keyof typeof Ionicons.glyphMap}
+                        size={24}
+                        color={isSelected ? '#3498DB' : '#7F8C8D'}
+                        style={styles.areaIcon}
+                      />
+                      
+                      <Text style={[styles.areaName, isSelected && styles.areaNameSelected]}>
+                        {area.name}
+                      </Text>
+                      
+                      <View style={styles.areaIndicators}>
+                        {/* Essential area lock indicator - only for default areas */}
+                        {area.isDefault && (
+                          <View style={styles.essentialIndicator}>
+                            <Ionicons name="lock-closed" size={12} color="#E74C3C" />
+                          </View>
+                        )}
+                        {hasPhotos && (
+                          <View style={[
+                            styles.photoIndicator,
+                            recentlyAddedPhoto === area.id && styles.photoIndicatorSuccess
+                          ]}>
+                            <Ionicons 
+                              name={recentlyAddedPhoto === area.id ? "checkmark-circle" : "image"} 
+                              size={12} 
+                              color="#FFFFFF" 
+                            />
+                            <Text style={styles.photoCount}>{area.photos.length}</Text>
+                          </View>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                    
+                    {isSelected && (
+                      <TouchableOpacity
+                        style={[
+                          styles.cameraButton,
+                          uploadingPhoto === area.id && styles.cameraButtonUploading
+                        ]}
+                        onPress={() => handleAddPhoto(area.id)}
+                        disabled={uploadingPhoto === area.id}
+                      >
+                        {uploadingPhoto === area.id ? (
+                          <Ionicons name="sync" size={20} color="#3498DB" />
+                        ) : (
+                          <Ionicons name="camera" size={20} color="#3498DB" />
+                        )}
                       </TouchableOpacity>
                     )}
                   </View>
@@ -660,96 +839,6 @@ const PropertyAreasScreen = () => {
           </View>
         )}
 
-        {/* Additional Areas Section */}
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Ionicons name="add-circle-outline" size={20} color="#3498DB" />
-            <Text style={styles.categoryTitle}>Additional Areas</Text>
-            {areas.filter(area => !area.isDefault).length > 0 && (
-              <Text style={styles.categoryCount}>
-                {areas.filter(area => !area.isDefault && selectedAreas.includes(area.id)).length} of {areas.filter(area => !area.isDefault).length} selected
-              </Text>
-            )}
-          </View>
-          
-          {areas.filter(area => !area.isDefault).length === 0 ? (
-            // No additional areas - prominent add button
-            <View style={styles.emptyAdditionalAreas}>
-              <TouchableOpacity
-                style={styles.addFirstRoomCard}
-                onPress={() => setShowAddRoomModal(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add-circle" size={48} color="#3498DB" />
-                <Text style={styles.addFirstRoomTitle}>Add a Room</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            // Existing additional areas grid
-            <View style={styles.areasGrid}>
-              {areas.filter(area => !area.isDefault).map((area) => {
-                const isSelected = selectedAreas.includes(area.id);
-                const hasPhotos = area.photos.length > 0;
-                
-                return (
-                  <View key={area.id} style={styles.areaWrapper}>
-                    <TouchableOpacity
-                      style={[
-                        styles.areaCard,
-                        isSelected && styles.areaCardSelected,
-                        hasPhotos && styles.areaCardWithPhotos,
-                      ]}
-                      onPress={() => toggleArea(area.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.areaHeader}>
-                        <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                          {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                        </View>
-                        {hasPhotos && (
-                          <View style={styles.photoIndicator}>
-                            <Ionicons name="image" size={12} color="#FFFFFF" />
-                            <Text style={styles.photoCount}>{area.photos.length}</Text>
-                          </View>
-                        )}
-                      </View>
-                      
-                      <Ionicons
-                        name={area.icon as keyof typeof Ionicons.glyphMap}
-                        size={32}
-                        color={isSelected ? '#3498DB' : '#7F8C8D'}
-                      />
-                      <Text style={[styles.areaName, isSelected && styles.areaNameSelected]}>
-                        {area.name}
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    {isSelected && (
-                      <TouchableOpacity
-                        style={styles.cameraButton}
-                        onPress={() => handleAddPhoto(area.id)}
-                      >
-                        <Ionicons name="camera" size={20} color="#3498DB" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })}
-              
-              {/* Add Another Custom Room Button */}
-              <View style={styles.areaWrapper}>
-                <TouchableOpacity
-                  style={styles.addRoomCard}
-                  onPress={() => setShowAddRoomModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="add" size={32} color="#3498DB" />
-                  <Text style={styles.addRoomText}>Add Another Room</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
 
         {/* Photo Summary */}
         <View style={styles.photoSummary}>
@@ -759,24 +848,25 @@ const PropertyAreasScreen = () => {
           </Text>
         </View>
 
-        {/* Tips */}
-        <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>Smart Area Selection</Text>
-          <View style={styles.tip}>
-            <Ionicons name="bulb" size={16} color="#F39C12" />
-            <Text style={styles.tipText}>Areas automatically generated from your property details</Text>
+        {/* Next Steps Preview */}
+        <View style={styles.nextStepsCard}>
+          <View style={styles.nextStepsHeader}>
+            <Ionicons name="information-circle" size={20} color="#3498DB" />
+            <Text style={styles.nextStepsTitle}>What's Next?</Text>
           </View>
-          <View style={styles.tip}>
-            <Ionicons name="add-circle" size={16} color="#3498DB" />
-            <Text style={styles.tipText}>Add custom rooms with smart suggestions and auto-categorization</Text>
-          </View>
-          <View style={styles.tip}>
-            <Ionicons name="bulb-outline" size={16} color="#9B59B6" />
-            <Text style={styles.tipText}>Get room suggestions based on your property type and existing areas</Text>
-          </View>
-          <View style={styles.tip}>
-            <Ionicons name="camera" size={16} color="#2ECC71" />
-            <Text style={styles.tipText}>Take photos to help tenants identify each area</Text>
+          <View style={styles.nextStepsList}>
+            <View style={styles.nextStepItem}>
+              <View style={styles.nextStepNumber}>
+                <Text style={styles.nextStepNumberText}>2</Text>
+              </View>
+              <Text style={styles.nextStepText}>Add photos for each selected area</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <View style={styles.nextStepNumber}>
+                <Text style={styles.nextStepNumberText}>3</Text>
+              </View>
+              <Text style={styles.nextStepText}>Document appliances and assets in each area</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -808,7 +898,7 @@ const PropertyAreasScreen = () => {
           activeOpacity={0.8}
         >
           <Text style={styles.nextButtonText}>
-            {isSubmitting ? 'Processing...' : 'Add Assets'}
+            {isSubmitting ? 'Processing...' : 'Continue to Photos & Assets'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -932,6 +1022,7 @@ const PropertyAreasScreen = () => {
           </View>
         </SafeAreaView>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 };
@@ -940,6 +1031,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
+  },
+  containerWeb: {
+    backgroundColor: '#F8F9FA',
+  },
+  contentWrapper: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -974,25 +1071,93 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#E74C3C',
   },
-  progressContainer: {
+  stepCounterContainer: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E9ECEF',
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E9ECEF',
-    borderRadius: 2,
+  stepCounterHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  stepCounterTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  stepCounterSubtitle: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  stepsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 2,
+    borderColor: '#E9ECEF',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
-  progressFill: {
-    height: '100%',
+  stepNumberActive: {
     backgroundColor: '#3498DB',
-    borderRadius: 2,
+    borderColor: '#3498DB',
   },
-  progressText: {
+  stepNumberText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7F8C8D',
+  },
+  stepNumberTextActive: {
+    color: '#FFFFFF',
+  },
+  stepLabel: {
     fontSize: 12,
     color: '#7F8C8D',
+    textAlign: 'center',
+    maxWidth: 80,
+  },
+  stepLabelActive: {
+    color: '#3498DB',
+    fontWeight: '600',
+  },
+  stepConnector: {
+    height: 2,
+    backgroundColor: '#E9ECEF',
+    flex: 0.5,
+    marginHorizontal: 8,
+    marginBottom: 24,
+  },
+  stepSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  stepBadge: {
+    backgroundColor: '#3498DB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  stepBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,
@@ -1014,23 +1179,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   areasGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
     marginBottom: 24,
   },
   areaWrapper: {
-    width: '48%',
+    width: '100%',
     position: 'relative',
   },
   areaCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#E9ECEF',
-    minHeight: 120,
+    minHeight: 56,
   },
   areaCardSelected: {
     borderColor: '#3498DB',
@@ -1039,13 +1204,33 @@ const styles = StyleSheet.create({
   areaCardWithPhotos: {
     borderColor: '#2ECC71',
   },
-  areaHeader: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    right: 8,
+  areaCardEssential: {
+    borderColor: '#FED7CC',
+    backgroundColor: '#FFF9F7',
+  },
+  areaCardPhotoSuccess: {
+    borderColor: '#2ECC71',
+    backgroundColor: '#D5EDDA',
+    shadowColor: '#2ECC71',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  essentialIndicator: {
+    backgroundColor: '#FFF0F0',
+    borderRadius: 10,
+    padding: 2,
+    marginLeft: 4,
+  },
+  areaIcon: {
+    marginLeft: 12,
+    marginRight: 10,
+  },
+  areaIndicators: {
+    marginLeft: 'auto',
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 6,
   },
   checkbox: {
     width: 20,
@@ -1069,16 +1254,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 2,
   },
+  photoIndicatorSuccess: {
+    backgroundColor: '#27AE60',
+    shadowColor: '#2ECC71',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   photoCount: {
     fontSize: 12,
     color: '#FFFFFF',
     fontWeight: '600',
   },
   areaName: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#7F8C8D',
-    marginTop: 8,
-    textAlign: 'center',
+    flex: 1,
   },
   areaNameSelected: {
     color: '#3498DB',
@@ -1092,8 +1284,9 @@ const styles = StyleSheet.create({
   },
   cameraButton: {
     position: 'absolute',
-    bottom: -10,
-    right: '35%',
+    right: 8,
+    top: '50%',
+    marginTop: -18,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     width: 36,
@@ -1105,6 +1298,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  cameraButtonUploading: {
+    backgroundColor: '#E8F4FD',
+    borderWidth: 2,
+    borderColor: '#3498DB',
   },
   photoSummary: {
     flexDirection: 'row',
@@ -1170,13 +1368,14 @@ const styles = StyleSheet.create({
   addRoomCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#3498DB',
     borderStyle: 'dashed',
-    minHeight: 120,
-    justifyContent: 'center',
+    minHeight: 56,
   },
   addRoomText: {
     fontSize: 14,
@@ -1451,24 +1650,72 @@ const styles = StyleSheet.create({
   },
   addFirstRoomCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#E8F4FD',
+    borderColor: '#3498DB',
     borderStyle: 'dashed',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    minHeight: 56,
   },
   addFirstRoomTitle: {
     fontSize: 18,
     fontWeight: '600',
+    color: '#3498DB',
+    marginLeft: 12,
+  },
+  nextStepsCard: {
+    backgroundColor: '#E8F4FD',
+    borderRadius: 16,
+    padding: 20,
+    marginVertical: 16,
+    borderWidth: 1,
+    borderColor: '#D6EAF8',
+  },
+  nextStepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  nextStepsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#2C3E50',
-    marginTop: 12,
-    textAlign: 'center',
+  },
+  nextStepsList: {
+    gap: 12,
+  },
+  nextStepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  nextStepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#3498DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextStepNumberText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  nextStepText: {
+    fontSize: 14,
+    color: '#34495E',
+    flex: 1,
   },
 });
 

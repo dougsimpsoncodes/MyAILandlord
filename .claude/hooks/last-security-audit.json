@@ -1,0 +1,72 @@
+{
+  "critical": [
+    {
+      "check": "rlsPolicies",
+      "name": "RLS Policy Validation",
+      "weight": 9,
+      "passed": false,
+      "message": "RLS policy issues detected",
+      "issues": [
+        "supabase-rls-policies.sql: Missing user context validation",
+        "supabase-storage-setup.sql: Missing user context validation"
+      ]
+    }
+  ],
+  "high": [],
+  "medium": [],
+  "low": [],
+  "passed": [
+    {
+      "check": "npmVulnerabilities",
+      "name": "NPM Vulnerability Scan",
+      "weight": 10,
+      "passed": true,
+      "vulnerabilities": [],
+      "summary": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 0,
+        "total": 0
+      },
+      "message": "Found 0 vulnerabilities (0 critical, 0 high)"
+    },
+    {
+      "check": "environmentSecurity",
+      "name": "Environment Security Check",
+      "weight": 8,
+      "passed": true,
+      "message": "Environment security properly configured",
+      "issues": []
+    },
+    {
+      "check": "authenticationFlow",
+      "name": "Authentication Flow Security",
+      "weight": 7,
+      "passed": true,
+      "message": "Authentication flow secure",
+      "issues": []
+    },
+    {
+      "check": "inputValidation",
+      "name": "Input Validation Coverage",
+      "weight": 6,
+      "passed": true,
+      "message": "Input validation properly implemented",
+      "issues": []
+    },
+    {
+      "check": "securityHeaders",
+      "name": "Security Headers Check",
+      "weight": 5,
+      "passed": true,
+      "message": "Security configuration reviewed",
+      "issues": [
+        "Consider implementing certificate pinning for enhanced security"
+      ],
+      "informational": true
+    }
+  ],
+  "score": 0
+}

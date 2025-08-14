@@ -19,6 +19,16 @@ interface MaintenanceRequest {
   description: string;
 }
 
+interface MaintenanceRequestResponse {
+  id: string;
+  title: string;
+  status: 'new' | 'in_progress' | 'pending_vendor' | 'resolved' | 'closed';
+  priority: 'low' | 'medium' | 'high' | 'emergency';
+  created_at: string;
+  area: string;
+  description: string;
+}
+
 const MaintenanceStatusScreen = () => {
   const navigation = useNavigation<MaintenanceStatusScreenNavigationProp>();
   const apiClient = useApiClient();
@@ -38,7 +48,7 @@ const MaintenanceStatusScreen = () => {
       }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       // Transform the response data to match our interface
-      const transformedRequests = maintenanceRequests.map((request: any) => ({
+      const transformedRequests = maintenanceRequests.map((request: MaintenanceRequestResponse) => ({
         id: request.id,
         title: request.title,
         status: request.status,
@@ -200,7 +210,6 @@ const MaintenanceStatusScreen = () => {
                     style={styles.requestCard}
                     onPress={() => {
                       // Navigate to detail view when implemented
-                      console.log('View request:', request.id);
                     }}
                   >
                     <View style={styles.requestHeader}>
@@ -214,7 +223,7 @@ const MaintenanceStatusScreen = () => {
                           </View>
                           <View style={styles.priorityIndicator}>
                             <Ionicons 
-                              name={getPriorityIcon(request.priority).name as any} 
+                              name={getPriorityIcon(request.priority).name as keyof typeof Ionicons.glyphMap} 
                               size={16} 
                               color={getPriorityIcon(request.priority).color} 
                             />
@@ -261,7 +270,6 @@ const MaintenanceStatusScreen = () => {
                     key={request.id}
                     style={[styles.requestCard, styles.resolvedCard]}
                     onPress={() => {
-                      console.log('View resolved request:', request.id);
                     }}
                   >
                     <View style={styles.requestHeader}>

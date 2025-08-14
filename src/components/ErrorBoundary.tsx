@@ -51,8 +51,8 @@ export class ErrorBoundary extends Component<Props, State> {
       // TODO: Send to crash reporting service
       console.error('Production error:', {
         error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
+        type: error.name,
+        timestamp: new Date().toISOString()
       });
     }
   }
@@ -247,9 +247,9 @@ export const useErrorHandler = () => {
       // TODO: Send to crash reporting service
       console.error('Production error:', {
         error: error.message,
-        stack: error.stack,
+        type: error.name,
         context,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       });
     }
   }, []);

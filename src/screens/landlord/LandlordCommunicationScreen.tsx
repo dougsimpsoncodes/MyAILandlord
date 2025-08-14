@@ -122,12 +122,10 @@ const LandlordCommunicationScreen = () => {
 
   const handleConversationPress = (conversation: Conversation) => {
     // TODO: Navigate to conversation detail
-    console.log('Open conversation:', conversation.id);
   };
 
   const handleNewMessage = () => {
     // TODO: Navigate to new message composer
-    console.log('Compose new message');
   };
 
   if (loading) {

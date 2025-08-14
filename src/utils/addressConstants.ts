@@ -59,8 +59,8 @@ export const ADDRESS_PATTERNS = {
   // US ZIP Code: 5 digits or 5+4 format
   US_ZIP_CODE: /^\d{5}(-\d{4})?$/,
   
-  // Basic street address (number + street name)
-  STREET_ADDRESS: /^\d+[\w\s\-\.\#\/]*$/,
+  // Basic street address (flexible format allowing various street address patterns)
+  STREET_ADDRESS: /^[\w\d\s\-\.\#\/\&\(\)\'\"]+$/,
   
   // City name (letters, spaces, hyphens, apostrophes)
   CITY_NAME: /^[a-zA-Z\s\-\'\.]+$/,

@@ -7,7 +7,7 @@
     },
     {
       "name": "todoCheck",
-      "message": "Found 9 TODOs, 0 critical items",
+      "message": "Found 7 TODOs, 0 critical items",
       "weight": 2
     }
   ],
@@ -15,7 +15,7 @@
     {
       "name": "advisoryProtocols",
       "message": "Advisory protocol violations detected",
-      "details": "src/screens/tenant/ReportIssueScreen.tsx: 'any' type usage detected",
+      "details": "src/screens/landlord/DashboardScreen.tsx: 'any' type usage detected\n    src/screens/tenant/MaintenanceStatusScreen.tsx: 'any' type usage detected",
       "weight": 8,
       "required": true
     }
@@ -24,7 +24,7 @@
     {
       "name": "eslint",
       "message": "ESLint failed",
-      "details": "\nOops! Something went wrong! :(\n\nESLint: 9.32.0\n\nESLint couldn't find an eslint.config.(js|mjs|cjs) file.\n\nFrom ESLint v9.0.0, the default configuration file is now eslint.config.js.\nIf you are using a .eslintrc.* file, please follow the migration guide\nto update your configuration file to the new format:\n\nhttps://eslint.org/docs/latest/use/configure/migration-guide\n\nIf you still have problems after following the migration guide, please stop by\nhttps://eslint.org/chat/help to chat with the team.\n\n",
+      "details": "\nOops! Something went wrong! :(\n\nESLint: 9.33.0\n\nESLint couldn't find an eslint.config.(js|mjs|cjs) file.\n\nFrom ESLint v9.0.0, the default configuration file is now eslint.config.js.\nIf you are using a .eslintrc.* file, please follow the migration guide\nto update your configuration file to the new format:\n\nhttps://eslint.org/docs/latest/use/configure/migration-guide\n\nIf you still have problems after following the migration guide, please stop by\nhttps://eslint.org/chat/help to chat with the team.\n\n",
       "weight": 5,
       "required": false
     },

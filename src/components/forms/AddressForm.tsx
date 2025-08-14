@@ -45,7 +45,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         processedValue = formatZipCode(newValue);
         break;
       case 'city':
-        processedValue = formatCityName(newValue);
+        // Don't format during typing to allow spaces
+        processedValue = newValue;
         break;
       case 'state':
         processedValue = newValue.toUpperCase();
@@ -76,8 +77,13 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           value={value.line1}
           onChangeText={(text) => handleFieldChange('line1', text)}
           onBlur={() => {
-            if (value.line1) {
-              handleFieldChange('line1', formatStreetAddress(value.line1));
+            // Only format if the field has content and is not empty
+            if (value.line1 && value.line1.trim().length > 0) {
+              // Avoid re-formatting if already properly formatted
+              const formatted = formatStreetAddress(value.line1);
+              if (formatted !== value.line1) {
+                handleFieldChange('line1', formatted);
+              }
             }
           }}
           autoComplete="street-address"
@@ -120,6 +126,15 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           placeholder="San Francisco"
           value={value.city}
           onChangeText={(text) => handleFieldChange('city', text)}
+          onBlur={() => {
+            // Format city name on blur to title case
+            if (value.city && value.city.trim().length > 0) {
+              const formatted = formatCityName(value.city);
+              if (formatted !== value.city) {
+                handleFieldChange('city', formatted);
+              }
+            }
+          }}
           autoComplete="address-line2"
           textContentType="addressCity"
           autoCapitalize="words"

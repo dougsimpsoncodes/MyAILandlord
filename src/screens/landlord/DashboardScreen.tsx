@@ -6,6 +6,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
+import { useResponsive } from '../../hooks/useResponsive';
+import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
+import ResponsiveGrid from '../../components/shared/ResponsiveGrid';
+import { ResponsiveText, ResponsiveTitle, ResponsiveSubtitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
 
 type DashboardScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Dashboard'>;
 
@@ -23,9 +27,25 @@ interface CaseFile {
   estimatedCost?: string;
 }
 
+interface MaintenanceRequestResponse {
+  id: string;
+  issue_type: string;
+  description: string;
+  area: string;
+  priority: string;
+  status: 'new' | 'in_progress' | 'resolved';
+  created_at: string;
+  estimated_cost?: number;
+  images?: string[];
+  profiles?: {
+    name?: string;
+  };
+}
+
 const DashboardScreen = () => {
   const navigation = useNavigation<DashboardScreenNavigationProp>();
   const apiClient = useApiClient();
+  const responsive = useResponsive();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
   const [cases, setCases] = useState<CaseFile[]>([]);
@@ -45,7 +65,7 @@ const DashboardScreen = () => {
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       
       // Transform API data to match the expected interface
-      const transformedCases = maintenanceRequests.map((request: any) => ({
+      const transformedCases = maintenanceRequests.map((request: MaintenanceRequestResponse) => ({
         id: request.id,
         tenantName: request.profiles?.name || 'Tenant User',
         tenantUnit: 'N/A', // TODO: Get from tenant_property_links
@@ -157,36 +177,89 @@ const DashboardScreen = () => {
     navigation.navigate('CaseDetail', { caseId });
   };
 
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.welcomeText}>Welcome back!</Text>
-          <Text style={styles.subtitle}>Maintenance Dashboard</Text>
+      <ResponsiveContainer maxWidth="xl" padding={false}>
+        <View style={styles.header}>
+          <View>
+            <ResponsiveTitle fluid>Welcome back!</ResponsiveTitle>
+            <ResponsiveSubtitle style={{ color: '#7F8C8D' }}>Maintenance Dashboard</ResponsiveSubtitle>
+          </View>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons 
+              name="notifications" 
+              size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
+              color="#34495E" 
+            />
+            {newCasesCount > 0 && <View style={styles.notificationBadge} />}
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.notificationButton}>
-          <Ionicons name="notifications" size={24} color="#34495E" />
-          {newCasesCount > 0 && <View style={styles.notificationBadge} />}
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{newCasesCount}</Text>
-          <Text style={styles.statLabel}>New Cases</Text>
-          <Ionicons name="alert-circle" size={24} color="#3498DB" />
+        <View style={styles.statsContainer}>
+          <ResponsiveGrid minItemWidth={200} maxColumns={3}>
+            <View style={styles.statCard}>
+              <ResponsiveText
+                variant="display" 
+                style={{ 
+                  color: '#2C3E50', 
+                  marginBottom: 4,
+                  textAlign: 'center'
+                }}
+              >
+                {newCasesCount}
+              </ResponsiveText>
+              <ResponsiveCaption style={{ color: '#7F8C8D', marginBottom: 8, textAlign: 'center' }}>
+                New Cases
+              </ResponsiveCaption>
+              <Ionicons 
+                name="alert-circle" 
+                size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
+                color="#3498DB" 
+              />
+            </View>
+            <View style={styles.statCard}>
+              <ResponsiveText 
+                variant="display" 
+                style={{ 
+                  color: '#2C3E50', 
+                  marginBottom: 4,
+                  textAlign: 'center'
+                }}
+              >
+                {inProgressCount}
+              </ResponsiveText>
+              <ResponsiveCaption style={{ color: '#7F8C8D', marginBottom: 8, textAlign: 'center' }}>
+                In Progress
+              </ResponsiveCaption>
+              <Ionicons 
+                name="time" 
+                size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
+                color="#F39C12" 
+              />
+            </View>
+            <View style={styles.statCard}>
+              <ResponsiveText 
+                variant="display" 
+                style={{ 
+                  color: '#2C3E50', 
+                  marginBottom: 4,
+                  textAlign: 'center'
+                }}
+              >
+                {resolvedCount}
+              </ResponsiveText>
+              <ResponsiveCaption style={{ color: '#7F8C8D', marginBottom: 8, textAlign: 'center' }}>
+                Resolved
+              </ResponsiveCaption>
+              <Ionicons 
+                name="checkmark-circle" 
+                size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
+                color="#27AE60" 
+              />
+            </View>
+          </ResponsiveGrid>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{inProgressCount}</Text>
-          <Text style={styles.statLabel}>In Progress</Text>
-          <Ionicons name="time" size={24} color="#F39C12" />
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{resolvedCount}</Text>
-          <Text style={styles.statLabel}>Resolved</Text>
-          <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
-        </View>
-      </View>
 
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -202,7 +275,7 @@ const DashboardScreen = () => {
                 styles.filterButton,
                 selectedFilter === filter.key && styles.filterButtonActive,
               ]}
-              onPress={() => setSelectedFilter(filter.key as any)}
+              onPress={() => setSelectedFilter(filter.key as typeof selectedFilter)}
             >
               <Text
                 style={[
@@ -336,6 +409,7 @@ const DashboardScreen = () => {
           </View>
         )}
       </ScrollView>
+      </ResponsiveContainer>
     </SafeAreaView>
   );
 };
@@ -354,15 +428,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E1E8ED',
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
   },
   notificationButton: {
     position: 'relative',
@@ -390,24 +455,10 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    marginBottom: 8,
   },
   filtersContainer: {
     paddingHorizontal: 20,
@@ -444,10 +495,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 6,
@@ -577,7 +625,16 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontWeight: '500',
   },
-  emptyState: {
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 16,
+  },
+  emptyContainer: {
     alignItems: 'center',
     paddingVertical: 60,
   },
@@ -594,25 +651,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 40,
   },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    marginTop: 16,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
   emptySubtitle: {
     fontSize: 14,
     color: '#95A5A6',
     textAlign: 'center',
     paddingHorizontal: 40,
     marginTop: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
   },
 });
 
