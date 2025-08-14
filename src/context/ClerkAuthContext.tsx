@@ -1,6 +1,7 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { ClerkProvider, useAuth, useUser } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
+import { bindClerkTokenGetter } from '../services/supabase/config';
 
 // Secure token storage for Clerk
 const tokenCache = {
@@ -38,9 +39,28 @@ export const ClerkWrapper: React.FC<ClerkWrapperProps> = ({ children }) => {
       tokenCache={tokenCache} 
       publishableKey={publishableKey}
     >
-      {children}
+      <ClerkSupabaseBridge>
+        {children}
+      </ClerkSupabaseBridge>
     </ClerkProvider>
   );
+};
+
+const ClerkSupabaseBridge: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { getToken, isLoaded } = useAuth();
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    bindClerkTokenGetter(async () => {
+      try {
+        return await getToken({ template: 'supabase' });
+      } catch (_e) {
+        return null;
+      }
+    });
+  }, [isLoaded, getToken]);
+
+  return <>{children}</>;
 };
 
 // Custom hook that combines Clerk's auth with your app's user structure

@@ -295,9 +295,10 @@ enabled = false
 
 # Use Clerk as a third-party provider alongside Supabase Auth.
 [auth.third_party.clerk]
-enabled = false
+enabled = true
 # Obtain from https://clerk.com/setup/supabase
-# domain = "example.clerk.accounts.dev"
+# Replace with your actual Clerk instance domain
+# domain = "your-app.clerk.accounts.dev"
 
 [edge_runtime]
 enabled = true
