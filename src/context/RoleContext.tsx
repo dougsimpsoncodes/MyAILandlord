@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, ReactNode, useContext } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppAuth } from './ClerkAuthContext';
 import { useAuth } from '@clerk/clerk-expo';
-import { useApiClient } from '../services/api/client';
+import { AuthService } from '../services/supabase/auth-service';
 
 type UserRole = 'tenant' | 'landlord' | null;
 
@@ -32,9 +32,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [hasInitialized, setHasInitialized] = useState(false);
   const { user } = useAppAuth();
   const { userId } = useAuth();
-  
-  // Always call the hook (React rules), returns null if not authenticated
-  const apiClient = useApiClient();
 
   useEffect(() => {
     if (user && user.id) {
@@ -52,12 +49,34 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const loadStoredRole = async () => {
     try {
+      // Try to load from Supabase first
+      if (user?.id) {
+        const profile = await AuthService.getUserProfile(user.id);
+        if (profile?.role) {
+          setUserRoleState(profile.role);
+          // Also update local storage for offline access
+          await AsyncStorage.setItem(ROLE_STORAGE_KEY, profile.role);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Fallback to local storage
       const storedRole = await AsyncStorage.getItem(ROLE_STORAGE_KEY);
       if (storedRole && (storedRole === 'tenant' || storedRole === 'landlord')) {
         setUserRoleState(storedRole as UserRole);
       }
     } catch (error) {
       console.error('Failed to load stored role:', error);
+      // Fallback to local storage on error
+      try {
+        const storedRole = await AsyncStorage.getItem(ROLE_STORAGE_KEY);
+        if (storedRole && (storedRole === 'tenant' || storedRole === 'landlord')) {
+          setUserRoleState(storedRole as UserRole);
+        }
+      } catch (fallbackError) {
+        console.error('Failed to load from local storage:', fallbackError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -65,13 +84,23 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const setUserRole = async (role: UserRole) => {
     try {
-      // Temporarily skip backend storage due to RLS policy issue
-      // TODO: Fix RLS and re-enable backend role storage
+      // Store in both Supabase and local storage
+      if (role && user?.id) {
+        try {
+          await AuthService.setUserRole(user.id, role);
+        } catch (supabaseError) {
+          console.error('Failed to store role in Supabase:', supabaseError);
+          // Continue with local storage even if Supabase fails
+        }
+      }
+      
+      // Always update local storage for offline access
       if (role) {
         await AsyncStorage.setItem(ROLE_STORAGE_KEY, role);
       } else {
         await AsyncStorage.removeItem(ROLE_STORAGE_KEY);
       }
+      
       setUserRoleState(role);
     } catch (error) {
       console.error('Failed to store role:', error);

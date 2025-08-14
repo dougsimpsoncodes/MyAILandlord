@@ -1,6 +1,7 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { ClerkProvider, useAuth, useUser } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
+import { AuthService } from '../services/supabase/auth-service';
 
 // Secure token storage for Clerk
 const tokenCache = {
@@ -54,6 +55,25 @@ export function useAppAuth() {
     email: user.emailAddresses?.[0]?.emailAddress || user.primaryEmailAddress?.emailAddress || '',
     avatar: user.imageUrl || undefined,
   } : null;
+
+  // Sync user profile with Supabase when user changes
+  useEffect(() => {
+    if (user && isSignedIn) {
+      const syncProfile = async () => {
+        try {
+          await AuthService.syncUserProfile(user.id, {
+            email: appUser?.email || '',
+            name: appUser?.name,
+            avatarUrl: appUser?.avatar,
+          });
+        } catch (error) {
+          console.error('Failed to sync profile:', error);
+        }
+      };
+      
+      syncProfile();
+    }
+  }, [user, isSignedIn]);
 
   return {
     user: appUser,
