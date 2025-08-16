@@ -1,0 +1,17 @@
+title = "MyAILandlord Gitleaks Config"
+[allowlist]
+paths = [
+  "node_modules/.*",
+  "android/.*/build/.*",
+  "ios/.*/Build/.*",
+  "\\.expo/.*",
+  "\\.next/.*",
+  "dist/.*",
+  "build/.*",
+  "coverage/.*",
+  ".*\\.(png|jpg|jpeg|webp|gif|mp4|mov|aab|ipa|apk|map)$"
+]
+regexes = [
+  "(?i)example(_|-)?(secret|token|key)\\s*[:=]\\s*[a-z0-9_\\-]{8,}",
+  "(?i)dummy(_|-)?(secret|token|key)\\s*[:=]\\s*[a-z0-9_\\-]{8,}"
+]

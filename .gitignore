@@ -55,3 +55,4 @@ android/app/google-services.json
 dist
 build
 .vscode/settings.json
+.reports/
