@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Image,
   Alert,
   RefreshControl,
+  Pressable,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +19,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
 import { PropertySetupState } from '../../types/property';
 import { formatAddressString } from '../../utils/addressValidation';
+import DeleteButton from '../../components/shared/DeleteButton';
+import { DataClearer } from '../../utils/dataClearer';
+import Button from '../../components/shared/Button';
+import Card from '../../components/shared/Card';
+import { DesignSystem } from '../../theme/DesignSystem';
+import { getUserProperties } from '../../clients/ClerkSupabaseClient';
 
 type PropertyManagementNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyManagement'>;
 
@@ -33,27 +41,38 @@ interface Property {
 const PropertyManagementScreen = () => {
   const navigation = useNavigation<PropertyManagementNavigationProp>();
   
-  // Mock data for now
-  const [properties, setProperties] = useState<Property[]>([
-    {
-      id: '1',
-      name: 'Sunset Apartments Unit 4B',
-      address: '123 Main St, Apt 4B',
-      type: 'Apartment',
-      image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&q=80',
-      tenants: 1,
-      activeRequests: 2,
-    },
-    {
-      id: '2',
-      name: 'Downtown Condo',
-      address: '456 City Center Dr',
-      type: 'Condo',
-      image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80',
-      tenants: 2,
-      activeRequests: 0,
-    },
-  ]);
+  // Properties will be loaded from backend/database
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+
+  // Load properties on screen mount and when screen is focused
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    try {
+      setIsLoadingProperties(true);
+      const dbProperties = await getUserProperties();
+      
+      // Map database properties to screen interface
+      const mappedProperties = dbProperties.map((prop: any) => ({
+        id: prop.id,
+        name: prop.name || 'Unnamed Property',
+        address: prop.address || 'No Address',
+        type: prop.property_type || 'Unknown',
+        image: '', // TODO: Add property image support
+        tenants: 0, // TODO: Add tenant count
+        activeRequests: 0, // TODO: Add maintenance request count
+      }));
+      
+      setProperties(mappedProperties);
+    } catch (error) {
+      console.error('Error loading properties:', error);
+    } finally {
+      setIsLoadingProperties(false);
+    }
+  };
 
   // Draft management
   const {
@@ -72,8 +91,7 @@ const PropertyManagementScreen = () => {
   };
 
   const handlePropertyPress = (property: Property) => {
-    // TODO: Navigate to property details
-    // Navigate to property details
+    navigation.navigate('PropertyDetails', { property });
   };
 
   const handleDraftPress = (draft: PropertySetupState) => {
@@ -92,26 +110,39 @@ const PropertyManagementScreen = () => {
   };
 
   const handleDeleteDraft = async (draft: PropertySetupState) => {
-    Alert.alert(
-      'Delete Draft',
-      `Are you sure you want to delete the draft for "${draft.propertyData.name || 'Untitled Property'}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDraft(draft.id);
-              Alert.alert('Success', 'Draft deleted successfully.');
-            } catch (error) {
-              // Error already shown in alert
-              Alert.alert('Error', 'Failed to delete draft. Please try again.');
-            }
-          }
-        }
-      ]
-    );
+    const startTime = Date.now();
+    console.log('Property draft delete executing:', {
+      draftId: draft.id,
+      propertyName: draft.propertyData.name || 'Untitled',
+      completionPercentage: draft.completionPercentage,
+      currentStep: draft.currentStep,
+      lastModified: draft.lastModified,
+      platform: Platform.OS,
+      timestamp: new Date().toISOString()
+    });
+    
+    try {
+      await deleteDraft(draft.id);
+      const duration = Date.now() - startTime;
+      
+      console.log('Property draft delete successful:', {
+        draftId: draft.id,
+        duration: `${duration}ms`,
+        remainingDrafts: drafts.length - 1
+      });
+      
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      
+      console.error('Property draft delete failed:', {
+        draftId: draft.id,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        duration: `${duration}ms`,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      Alert.alert('Error', 'Failed to delete draft. Please try again.');
+    }
   };
 
   const handleClearAllDrafts = async () => {
@@ -139,10 +170,41 @@ const PropertyManagementScreen = () => {
     );
   };
 
+  const handleClearAllAppData = async () => {
+    Alert.alert(
+      'Clear All App Data',
+      'This will remove ALL data from the app including drafts, cache, and settings. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear Everything',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const stats = await DataClearer.getStorageStats();
+              console.log('Storage before clear:', stats);
+              
+              await DataClearer.clearAllData();
+              await refreshDrafts(); // Refresh the drafts list
+              
+              Alert.alert('Success', 'All app data cleared successfully.');
+            } catch (error) {
+              console.error('Failed to clear app data:', error);
+              Alert.alert('Error', 'Failed to clear app data. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      await refreshDrafts();
+      await Promise.all([
+        refreshDrafts(),
+        loadProperties()
+      ]);
     } catch (error) {
       // Silently fail refresh
     } finally {
@@ -188,13 +250,22 @@ const PropertyManagementScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color="#2C3E50" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Property Management</Text>
-        <TouchableOpacity onPress={handleAddProperty}>
-          <Ionicons name="add" size={24} color="#3498DB" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <Button
+            title="Clear Data"
+            onPress={handleClearAllAppData}
+            type="danger"
+            size="sm"
+            icon={<Ionicons name="refresh" size={16} color={DesignSystem.colors.dangerText} />}
+          />
+          <TouchableOpacity onPress={handleAddProperty} activeOpacity={0.7} style={styles.addIconButton}>
+            <Ionicons name="add" size={24} color={DesignSystem.colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -221,7 +292,7 @@ const PropertyManagementScreen = () => {
                 </View>
               </View>
               {drafts.length > 1 && (
-                <TouchableOpacity onPress={handleClearAllDrafts}>
+                <TouchableOpacity onPress={handleClearAllDrafts} activeOpacity={0.7}>
                   <Text style={styles.clearAllText}>Clear All</Text>
                 </TouchableOpacity>
               )}
@@ -229,59 +300,68 @@ const PropertyManagementScreen = () => {
 
             <View style={styles.draftsList}>
               {drafts.map((draft) => (
-                <TouchableOpacity
+                <View
                   key={draft.id}
-                  style={styles.draftCard}
-                  onPress={() => handleDraftPress(draft)}
-                  activeOpacity={0.7}
+                  style={styles.draftCardContainer}
                 >
-                  <View style={styles.draftHeader}>
-                    <View style={styles.draftInfo}>
-                      <Text style={styles.draftName}>
-                        {draft.propertyData.name || 'Untitled Property'}
-                      </Text>
-                      <Text style={styles.draftAddress}>
-                        {typeof draft.propertyData.address === 'string' 
-                          ? draft.propertyData.address 
-                          : draft.propertyData.address.line1 
-                            ? formatAddressString(draft.propertyData.address)
-                            : 'No address entered'
-                        }
-                      </Text>
-                    </View>
+                  <Card style={{ flex: 1 }}>
                     <TouchableOpacity
-                      style={styles.deleteDraftButton}
-                      onPress={() => handleDeleteDraft(draft)}
+                      onPress={() => handleDraftPress(draft)}
+                      activeOpacity={0.7}
+                      style={styles.draftCard}
                     >
-                      <Ionicons name="trash-outline" size={20} color="#E74C3C" />
-                    </TouchableOpacity>
-                  </View>
+                    <View style={styles.draftHeader}>
+                      <View style={styles.draftInfo}>
+                        <Text style={styles.draftName}>
+                          {draft.propertyData.name || 'Untitled Property'}
+                        </Text>
+                        <Text style={styles.draftAddress}>
+                          {typeof draft.propertyData.address === 'string' 
+                            ? draft.propertyData.address 
+                            : draft.propertyData.address.line1 
+                              ? formatAddressString(draft.propertyData.address)
+                              : 'No address entered'
+                          }
+                        </Text>
+                      </View>
+                    </View>
                   
-                  <View style={styles.draftStatus}>
-                    <View style={styles.draftStatusInfo}>
-                      <View style={[styles.statusDot, { backgroundColor: getStatusColor(draft.status) }]} />
-                      <Text style={styles.statusText}>{getStatusText(draft.status)}</Text>
-                      <Text style={styles.completionText}>
-                        {draft.completionPercentage}% complete
+                    <View style={styles.draftStatus}>
+                      <View style={styles.draftStatusInfo}>
+                        <View style={[styles.statusDot, { backgroundColor: getStatusColor(draft.status) }]} />
+                        <Text style={styles.statusText}>{getStatusText(draft.status)}</Text>
+                        <Text style={styles.completionText}>
+                          {draft.completionPercentage}% complete
+                        </Text>
+                      </View>
+                      <Text style={styles.draftTime}>
+                        {formatLastModified(new Date(draft.lastModified))}
                       </Text>
                     </View>
-                    <Text style={styles.draftTime}>
-                      {formatLastModified(new Date(draft.lastModified))}
-                    </Text>
-                  </View>
+                    
+                    <View style={styles.progressBar}>
+                      <View 
+                        style={[
+                          styles.progressFill, 
+                          { 
+                            width: `${draft.completionPercentage}%`,
+                            backgroundColor: getStatusColor(draft.status)
+                          }
+                        ]} 
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  </Card>
                   
-                  <View style={styles.progressBar}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { 
-                          width: `${draft.completionPercentage}%`,
-                          backgroundColor: getStatusColor(draft.status)
-                        }
-                      ]} 
-                    />
-                  </View>
-                </TouchableOpacity>
+                  {/* Enhanced delete button with undo functionality */}
+                  <DeleteButton
+                    onDelete={() => handleDeleteDraft(draft)}
+                    itemName={`${draft.propertyData.name || 'Untitled Property'} draft`}
+                    experimentEnabled={true}
+                    iconOnly={true}
+                    style={styles.deleteDraftButton}
+                  />
+                </View>
               ))}
             </View>
           </>
@@ -290,7 +370,7 @@ const PropertyManagementScreen = () => {
         {/* Properties Count */}
         <View style={styles.countSection}>
           <Text style={styles.countText}>{properties.length} Properties</Text>
-          <TouchableOpacity style={styles.filterButton}>
+          <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
             <Ionicons name="filter" size={20} color="#7F8C8D" />
             <Text style={styles.filterText}>Filter</Text>
           </TouchableOpacity>
@@ -299,12 +379,12 @@ const PropertyManagementScreen = () => {
         {/* Properties List */}
         <View style={styles.propertiesList}>
           {properties.map((property) => (
-            <TouchableOpacity
-              key={property.id}
-              style={styles.propertyCard}
-              onPress={() => handlePropertyPress(property)}
-              activeOpacity={0.7}
-            >
+            <Card key={property.id} style={styles.propertyCard}>
+              <TouchableOpacity
+                onPress={() => handlePropertyPress(property)}
+                activeOpacity={0.7}
+                style={styles.propertyCardContent}
+              >
               <Image source={{ uri: property.image }} style={styles.propertyImage} />
               <View style={styles.propertyInfo}>
                 <Text style={styles.propertyName}>{property.name}</Text>
@@ -325,20 +405,27 @@ const PropertyManagementScreen = () => {
               </View>
               <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
             </TouchableOpacity>
+            </Card>
           ))}
         </View>
 
         {/* Add Property Button */}
-        <TouchableOpacity style={styles.addPropertyButton} onPress={handleAddProperty}>
-          <View style={styles.addIconCircle}>
-            <Ionicons name="add" size={32} color="#3498DB" />
-          </View>
-          <View style={styles.addButtonContent}>
-            <Text style={styles.addButtonTitle}>Add New Property</Text>
-            <Text style={styles.addButtonSubtitle}>Set up a property with areas and assets</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={20} color="#3498DB" />
-        </TouchableOpacity>
+        <Card style={styles.addPropertyButton}>
+          <TouchableOpacity 
+            onPress={handleAddProperty} 
+            activeOpacity={0.7}
+            style={styles.addPropertyButtonContent}
+          >
+            <View style={styles.addIconCircle}>
+              <Ionicons name="add" size={32} color={DesignSystem.colors.primary} />
+            </View>
+            <View style={styles.addButtonContent}>
+              <Text style={styles.addButtonTitle}>Add New Property</Text>
+              <Text style={styles.addButtonSubtitle}>Set up a property with areas and assets</Text>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color={DesignSystem.colors.primary} />
+          </TouchableOpacity>
+        </Card>
 
         {/* Empty State (shown when no properties) */}
         {properties.length === 0 && (
@@ -350,10 +437,14 @@ const PropertyManagementScreen = () => {
             <Text style={styles.emptySubtitle}>
               Add your first property to start managing maintenance requests and tenants.
             </Text>
-            <TouchableOpacity style={styles.emptyAddButton} onPress={handleAddProperty}>
-              <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text style={styles.emptyAddButtonText}>Add Your First Property</Text>
-            </TouchableOpacity>
+            <Button
+              title="Add Your First Property"
+              onPress={handleAddProperty}
+              type="primary"
+              size="lg"
+              fullWidth
+              icon={<Ionicons name="add" size={20} color={DesignSystem.colors.primaryText} />}
+            />
           </View>
         )}
       </ScrollView>
@@ -380,6 +471,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#2C3E50',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  clearDataButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFE5E5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  clearDataText: {
+    fontSize: 12,
+    color: '#E74C3C',
+    fontWeight: '500',
   },
   content: {
     flex: 1,
@@ -415,10 +525,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
     marginBottom: 12,
   },
@@ -578,24 +688,25 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     backgroundColor: '#FFFFFF',
   },
+  draftCardContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
   draftCard: {
     backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
+    padding: 16,
   },
   draftHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 12,
+    paddingRight: 50, // Add space for absolutely positioned delete button
   },
   draftInfo: {
     flex: 1,
@@ -613,7 +724,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   deleteDraftButton: {
-    padding: 4,
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 1000,
   },
   draftStatus: {
     flexDirection: 'row',

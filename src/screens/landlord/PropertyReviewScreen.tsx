@@ -16,6 +16,12 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { PropertyData, PropertyArea, InventoryItem, AssetCondition } from '../../types/property';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import Button from '../../components/shared/Button';
+import Card from '../../components/shared/Card';
+import { DesignSystem } from '../../theme/DesignSystem';
+import { insertProperty, insertPropertyAreas } from '../../clients/ClerkSupabaseClient';
+import { useProfileSync } from '../../hooks/useProfileSync';
+import { supabase } from '../../lib/supabaseClient';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -24,6 +30,7 @@ const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
   const { propertyData, areas, draftId } = route.params;
+  const { ready } = useProfileSync();
 
   // Initialize draft management
   const {
@@ -43,6 +50,7 @@ const PropertyReviewScreen = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
 
   // Set current step to 4 (review step)
   useEffect(() => {
@@ -78,40 +86,64 @@ const PropertyReviewScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting || isDraftLoading) return;
+    if (isSubmitting || isDraftLoading || !ready) return;
     
     try {
       setIsSubmitting(true);
       
-      // Save final state
-      if (draftState) {
-        await saveDraft();
-      }
+      if (draftState) await saveDraft();
 
-      // TODO: Submit to Supabase
-      // This would create the actual property record and all related data
+      const propertyPayload = {
+        name: propertyData.name,
+        address_jsonb: propertyData.address,
+        property_type: propertyData.type,
+        unit: propertyData.unit || '',
+        bedrooms: propertyData.bedrooms || 0,
+        bathrooms: propertyData.bathrooms || 0
+      };
       
-      Alert.alert(
-        'Property Added Successfully!',
-        'Your property has been added to your portfolio.',
-        [
-          {
-            text: 'OK',
-            onPress: async () => {
-              // Clean up draft
-              if (draftState) {
-                await deleteDraft();
-              }
-              // Navigate back to property management
-              navigation.navigate('PropertyManagement');
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to submit property. Please try again.');
-    } finally {
+      const newProperty = await insertProperty(propertyPayload);
+      
+      // Create area records
+      if (areas && areas.length > 0) {
+        const areaRecords = areas.map(area => ({
+          property_id: newProperty.id,
+          name: area.name,
+          area_type: area.type,
+          photos: area.photos || []
+        }));
+        
+        try {
+          await insertPropertyAreas(areaRecords);
+        } catch (areasError) {
+          console.error('Error creating areas:', areasError);
+          // Continue anyway - areas are not critical
+        }
+      }
+      
+      console.log('🏠 Property submission complete');
+      
+      // Show success state
+      setSubmissionSuccess(true);
       setIsSubmitting(false);
+      
+      // Clean up draft
+      try {
+        if (draftState) {
+          await deleteDraft();
+        }
+      } catch (error) {
+        console.error('🏠 Error cleaning up draft:', error);
+      }
+      
+      // Navigate to PropertyManagement after 2 seconds
+      setTimeout(() => {
+        navigation.navigate('PropertyManagement');
+      }, 2000);
+    } catch (error) {
+      console.error('🏠 PropertyReviewScreen: Submit error:', error);
+      setIsSubmitting(false);
+      Alert.alert('Error', 'Failed to submit property. Please try again.');
     }
   };
 
@@ -154,8 +186,12 @@ const PropertyReviewScreen = () => {
     </View>
   );
 
+  // Test logging on every render
+  console.log('🔴 PropertyReviewScreen rendered, isSubmitting:', isSubmitting);
+  
   return (
     <SafeAreaView style={styles.container}>
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -199,15 +235,15 @@ const PropertyReviewScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Property Information</Text>
-            <TouchableOpacity 
-              style={styles.editButton}
+            <Button
+              title="Edit"
               onPress={() => handleEdit('property')}
-            >
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
+              type="secondary"
+              size="sm"
+            />
           </View>
           
-          <View style={styles.propertyCard}>
+          <Card style={styles.propertyCard}>
             <Text style={styles.propertyName}>{propertyData.name}</Text>
             <Text style={styles.propertyAddress}>
               {propertyData.address.line1}
@@ -244,22 +280,22 @@ const PropertyReviewScreen = () => {
                 )}
               </View>
             )}
-          </View>
+          </Card>
         </View>
 
         {/* Areas & Assets Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Areas & Assets</Text>
-            <TouchableOpacity 
-              style={styles.editButton}
+            <Button
+              title="Edit"
               onPress={() => handleEdit('assets')}
-            >
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
+              type="secondary"
+              size="sm"
+            />
           </View>
 
-          <View style={styles.summaryCard}>
+          <Card style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total Areas</Text>
               <Text style={styles.summaryValue}>{areas.length}</Text>
@@ -272,10 +308,10 @@ const PropertyReviewScreen = () => {
               <Text style={styles.summaryLabel}>Total Assets</Text>
               <Text style={styles.summaryValue}>{totalAssets}</Text>
             </View>
-          </View>
+          </Card>
 
           {areas.map((area) => (
-            <View key={area.id} style={styles.areaCard}>
+            <Card key={area.id} style={styles.areaCard}>
               <View style={styles.areaHeader}>
                 <View>
                   <Text style={styles.areaName}>{area.name}</Text>
@@ -303,51 +339,55 @@ const PropertyReviewScreen = () => {
                   ItemSeparatorComponent={() => <View style={styles.assetSeparator} />}
                 />
               )}
-            </View>
+            </Card>
           ))}
         </View>
 
         {/* Completion Summary */}
-        <View style={styles.completionCard}>
+        <Card style={styles.completionCard} backgroundColor={submissionSuccess ? DesignSystem.colors.success + '20' : DesignSystem.colors.success + '10'}>
           <View style={styles.completionHeader}>
-            <Ionicons name="checkmark-circle" size={24} color="#2ECC71" />
-            <Text style={styles.completionTitle}>Ready to Submit</Text>
+            <Ionicons 
+              name={submissionSuccess ? "checkmark-circle" : "checkmark-circle"} 
+              size={32} 
+              color={DesignSystem.colors.success} 
+            />
+            <Text style={[styles.completionTitle, submissionSuccess && { fontSize: 20 }]}>
+              {submissionSuccess ? 'Property Added Successfully!' : 'Ready to Submit'}
+            </Text>
           </View>
           <Text style={styles.completionText}>
-            Your property setup is complete with {areas.length} areas and {totalAssets} assets inventoried.
+            {submissionSuccess 
+              ? 'Your property has been added to your portfolio. Redirecting...'
+              : `Your property setup is complete with ${areas.length} areas and ${totalAssets} assets inventoried.`
+            }
           </Text>
-        </View>
+        </Card>
       </ScrollView>
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.saveButton} 
-          onPress={saveDraft}
+        <Button
+          title={isSaving ? 'Saving...' : 'Save Draft'}
+          onPress={() => {
+            console.log('🚨 Save Draft button pressed');
+            saveDraft();
+          }}
+          type="secondary"
+          size="md"
           disabled={isSaving || isDraftLoading}
-        >
-          <Ionicons 
-            name={isSaving ? "sync" : "bookmark-outline"} 
-            size={18} 
-            color={isSaving ? "#007AFF" : "#8E8E93"} 
-          />
-          <Text style={styles.saveButtonText}>
-            {isSaving ? 'Saving...' : 'Save Draft'}
-          </Text>
-        </TouchableOpacity>
+          loading={isSaving}
+          icon={!isSaving ? <Ionicons name="bookmark-outline" size={18} color={DesignSystem.colors.secondaryText} /> : undefined}
+        />
         
-        <TouchableOpacity
-          style={[
-            styles.submitButton, 
-            (isSubmitting || isDraftLoading) && styles.submitButtonDisabled
-          ]}
+        <Button
+          title={isSubmitting ? 'Submitting...' : 'Add Property'}
           onPress={handleSubmit}
+          type="primary"
+          size="md"
           disabled={isSubmitting || isDraftLoading}
-        >
-          <Text style={styles.submitButtonText}>
-            {isSubmitting ? 'Submitting...' : 'Add Property'}
-          </Text>
-        </TouchableOpacity>
+          loading={isSubmitting}
+          style={{ flex: 1, marginLeft: DesignSystem.spacing.md }}
+        />
       </View>
     </SafeAreaView>
   );
@@ -356,7 +396,7 @@ const PropertyReviewScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: DesignSystem.colors.surfaceSecondary,
   },
   header: {
     flexDirection: 'row',
@@ -364,7 +404,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DesignSystem.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
   },
@@ -375,7 +415,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
   },
   saveStatus: {
     flexDirection: 'row',
@@ -392,7 +432,7 @@ const styles = StyleSheet.create({
     color: '#E74C3C',
   },
   progressContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DesignSystem.colors.background,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -427,35 +467,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2C3E50',
-  },
-  editButton: {
-    backgroundColor: '#E8F4FD',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  editButtonText: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
+    color: DesignSystem.colors.text,
   },
   propertyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    // Card styles handled by Card component
+    marginBottom: DesignSystem.spacing.md,
   },
   propertyName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     marginBottom: 4,
   },
   propertyAddress: {
@@ -481,7 +502,7 @@ const styles = StyleSheet.create({
   },
   propertyMetaValue: {
     fontSize: 14,
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -511,12 +532,8 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    marginBottom: 12,
+    // Card styles handled by Card component
+    marginBottom: DesignSystem.spacing.md,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -531,15 +548,11 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
   },
   areaCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
+    // Card styles handled by Card component
+    marginBottom: DesignSystem.spacing.md,
   },
   areaHeader: {
     flexDirection: 'row',
@@ -550,7 +563,7 @@ const styles = StyleSheet.create({
   areaName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
   },
   areaType: {
     fontSize: 12,
@@ -587,7 +600,7 @@ const styles = StyleSheet.create({
   assetName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
   },
   assetDetails: {
     fontSize: 12,
@@ -624,13 +637,9 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   completionCard: {
-    backgroundColor: '#E8F5E8',
-    borderRadius: 12,
-    padding: 20,
-    marginVertical: 16,
+    // Card styles and background handled by Card component
+    marginVertical: DesignSystem.spacing.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#C8E6C9',
   },
   completionHeader: {
     flexDirection: 'row',
@@ -651,53 +660,13 @@ const styles = StyleSheet.create({
   },
   bottomActions: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: DesignSystem.spacing.lg,
+    paddingVertical: DesignSystem.spacing.lg,
+    backgroundColor: DesignSystem.colors.background,
     borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
-    gap: 12,
-  },
-  saveButton: {
-    flexDirection: 'row',
+    borderTopColor: DesignSystem.colors.border,
+    gap: DesignSystem.spacing.md,
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
-    gap: 6,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  submitButton: {
-    flex: 1,
-    backgroundColor: '#2ECC71',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-    shadowColor: '#2ECC71',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  submitButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: -0.4,
   },
 });
 

@@ -17,11 +17,20 @@ import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
 import SendToVendorScreen from '../screens/landlord/SendToVendorScreen';
 import LandlordCommunicationScreen from '../screens/landlord/LandlordCommunicationScreen';
 import PropertyManagementScreen from '../screens/landlord/PropertyManagementScreen';
+import PropertyDetailsScreen from '../screens/landlord/PropertyDetailsScreen';
 import AddPropertyScreen from '../screens/landlord/AddPropertyScreen';
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
 import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScreen';
 import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
 import AddAssetScreen from '../screens/landlord/AddAssetScreen';
+import PropertyBasicsScreen from '../screens/landlord/PropertyBasicsScreen';
+import PropertyPhotosScreen from '../screens/landlord/PropertyPhotosScreen';
+import RoomSelectionScreen from '../screens/landlord/RoomSelectionScreen';
+import RoomPhotographyScreen from '../screens/landlord/RoomPhotographyScreen';
+import AssetScanningScreen from '../screens/landlord/AssetScanningScreen';
+import AssetDetailsScreen from '../screens/landlord/AssetDetailsScreen';
+import AssetPhotosScreen from '../screens/landlord/AssetPhotosScreen';
+import ReviewSubmitScreen from '../screens/landlord/ReviewSubmitScreen';
 import { PropertyAreasParams, PropertyAssetsParams, PropertyReviewParams, AssetTemplate, PropertyData, InventoryItem } from '../types/property';
 
 export type TenantStackParamList = {
@@ -55,7 +64,16 @@ export type LandlordStackParamList = {
   SendToVendor: { caseId: string };
   Communications: undefined;
   PropertyManagement: undefined;
+  PropertyDetails: { property: { id: string; name: string; address: string; type: string; tenants: number; activeRequests: number; } };
   AddProperty: { draftId?: string } | undefined;
+  PropertyBasics: { draftId?: string } | undefined;
+  PropertyPhotos: { propertyData: PropertyData };
+  RoomSelection: { propertyData: PropertyData };
+  RoomPhotography: { propertyData: PropertyData };
+  AssetScanning: { propertyData: PropertyData };
+  AssetDetails: { propertyData: PropertyData };
+  AssetPhotos: { propertyData: PropertyData };
+  ReviewSubmit: { propertyData: PropertyData };
   PropertyAreas: PropertyAreasParams & { draftId?: string };
   PropertyAssets: PropertyAssetsParams & { draftId?: string; newAsset?: InventoryItem };
   PropertyReview: PropertyReviewParams;
@@ -183,8 +201,53 @@ const LandlordNavigator = () => {
         options={{ headerShown: false }}
       />
       <LandlordStack.Screen 
+        name="PropertyDetails" 
+        component={PropertyDetailsScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
         name="AddProperty" 
         component={AddPropertyScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="PropertyBasics" 
+        component={PropertyBasicsScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="PropertyPhotos" 
+        component={PropertyPhotosScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="RoomSelection" 
+        component={RoomSelectionScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="RoomPhotography" 
+        component={RoomPhotographyScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="AssetScanning" 
+        component={AssetScanningScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="AssetDetails" 
+        component={AssetDetailsScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="AssetPhotos" 
+        component={AssetPhotosScreen}
+        options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="ReviewSubmit" 
+        component={ReviewSubmitScreen}
         options={{ headerShown: false }}
       />
       <LandlordStack.Screen 
