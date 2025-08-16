@@ -45,3 +45,13 @@ android/.gradle/
 
 # logs
 *.log
+.env.*
+GoogleService-Info.plist
+android/app/google-services.json
+*.keystore
+*.map
+.expo
+.expo-shared
+dist
+build
+.vscode/settings.json

@@ -17,10 +17,13 @@
     "deps:update": "npx expo install --fix",
     "lint:ts": "npx tsc --noEmit --strict",
     "prebuild:ios": "npm run typecheck && npm run security:audit",
-    "prebuild:android": "npm run typecheck && npm run security:audit"
+    "prebuild:android": "npm run typecheck && npm run security:audit",
+    "scan:secrets": "node scripts/ci/scan-secrets.js",
+    "test:rls": "node scripts/ci/rls-smoke.js"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.14.12",
+    "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-navigation/bottom-tabs": "^7.4.2",
@@ -30,7 +33,8 @@
     "base64-arraybuffer": "^1.0.2",
     "expo": "~53.0.20",
     "expo-auth-session": "^6.2.1",
-    "expo-image-picker": "^16.1.4",
+    "expo-barcode-scanner": "^13.0.1",
+    "expo-image-picker": "~16.1.4",
     "expo-secure-store": "^14.2.3",
     "expo-speech": "^13.1.7",
     "expo-status-bar": "~2.2.3",
@@ -40,7 +44,7 @@
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-web": "^0.20.0",
-    "@expo/metro-runtime": "~5.0.4"
+    "expo-image-manipulator": "~13.1.7"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
