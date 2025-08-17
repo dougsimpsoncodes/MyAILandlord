@@ -725,10 +725,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   assetHeader: {
@@ -823,10 +823,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E9ECEF',
     width: (screenWidth - 64) / 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   suggestionName: {
@@ -851,10 +851,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   dropdownContent: {
@@ -873,10 +873,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
     maxHeight: 300,
   },
@@ -954,15 +954,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 50,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   nextButtonDisabled: {
     backgroundColor: '#C7C7CC',
-    shadowOpacity: 0,
+    
     elevation: 0,
   },
   nextButtonText: {
@@ -1018,10 +1018,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   modalTextArea: {

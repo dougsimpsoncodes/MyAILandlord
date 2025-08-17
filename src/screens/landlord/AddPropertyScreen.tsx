@@ -318,12 +318,16 @@ const AddPropertyScreen = () => {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* DEBUG MARKER */}
+          <View style={{ backgroundColor: 'blue', padding: 10, marginBottom: 20 }}>
+            <Text style={{ color: 'white', fontWeight: 'bold' }}>DEBUG: AddPropertyScreen IS RENDERING</Text>
+          </View>
           {/* Property Name */}
           <View style={styles.section}>
             <Text style={styles.label}>Property Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g., Sunset Apartments Unit 4B"
+              placeholder=""
               value={propertyData.name}
               onChangeText={(text) => handlePropertyDataChange({ name: text })}
             />
@@ -368,16 +372,6 @@ const AddPropertyScreen = () => {
             </View>
           </View>
 
-          {/* Unit Number */}
-          <View style={styles.section}>
-            <Text style={styles.label}>Unit/Apt Number (Optional)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., 4B, 101"
-              value={propertyData.unit}
-              onChangeText={(text) => handlePropertyDataChange({ unit: text })}
-            />
-          </View>
 
           {/* Bedrooms & Bathrooms - Modern Stepper Controls */}
           <View style={styles.section}>
@@ -561,10 +555,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   multilineInput: {
@@ -627,10 +621,10 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 2,
   },
   stepperHeader: {
@@ -659,16 +653,16 @@ const styles = StyleSheet.create({
     borderColor: '#3498DB',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3498DB',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   stepperButtonDisabled: {
     borderColor: '#BDC3C7',
     backgroundColor: '#F8F9FA',
-    shadowOpacity: 0,
+    
     elevation: 0,
   },
   stepperValueContainer: {
@@ -782,15 +776,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 50,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   nextButtonDisabled: {
     backgroundColor: '#C7C7CC',
-    shadowOpacity: 0,
+    boxShadow: 'none',
     elevation: 0,
   },
   nextButtonText: {

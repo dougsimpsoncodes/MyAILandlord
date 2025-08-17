@@ -1,5 +1,6 @@
 import { supabase } from './config';
 import { Database } from './types';
+import { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type MaintenanceRequest = Database['public']['Tables']['maintenance_requests']['Row'];
@@ -8,9 +9,20 @@ type Message = Database['public']['Tables']['messages']['Row'];
 type Announcement = Database['public']['Tables']['announcements']['Row'];
 
 export class SupabaseClient {
+  private client: SupabaseClientType<Database>;
+
+  constructor(client?: SupabaseClientType<Database>) {
+    this.client = client || supabase;
+  }
+
+  // Method to update the client with an authenticated instance
+  setAuthenticatedClient(authenticatedClient: SupabaseClientType<Database>) {
+    this.client = authenticatedClient;
+  }
+
   // Profile methods
   async getProfile(clerkUserId: string): Promise<Profile | null> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('profiles')
       .select('*')
       .eq('clerk_user_id', clerkUserId)
@@ -33,10 +45,10 @@ export class SupabaseClient {
     avatarUrl?: string;
     role?: 'tenant' | 'landlord';
   }): Promise<Profile> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('profiles')
       .insert({
-        clerk_user_id: profileData.clerkUserId,
+        clerk_user_id: profileData.clerkUserId, // Explicitly set clerk_user_id
         email: profileData.email,
         name: profileData.name || null,
         avatar_url: profileData.avatarUrl || null,
@@ -57,7 +69,7 @@ export class SupabaseClient {
     role?: 'tenant' | 'landlord';
     avatarUrl?: string;
   }): Promise<Profile> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('profiles')
       .update({
         ...(updates.name !== undefined && { name: updates.name }),
@@ -86,7 +98,7 @@ export class SupabaseClient {
 
     if (profile.role === 'landlord') {
       // Get properties owned by landlord
-      const { data, error } = await supabase
+      const { data, error } = await this.client
         .from('properties')
         .select('*')
         .eq('landlord_id', profile.id)
@@ -99,7 +111,7 @@ export class SupabaseClient {
       return data || [];
     } else if (profile.role === 'tenant') {
       // Get properties linked to tenant
-      const { data, error } = await supabase
+      const { data, error } = await this.client
         .from('properties')
         .select(`
           *,
@@ -178,7 +190,7 @@ export class SupabaseClient {
     images?: string[];
     voiceNotes?: string[];
   }): Promise<MaintenanceRequest> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('maintenance_requests')
       .insert({
         tenant_id: requestData.tenantId,
@@ -207,7 +219,7 @@ export class SupabaseClient {
     requestId: string,
     updates: Partial<MaintenanceRequest>
   ): Promise<MaintenanceRequest> {
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('maintenance_requests')
       .update({
         ...updates,
@@ -283,7 +295,7 @@ export class SupabaseClient {
       throw new Error('Sender or recipient profile not found');
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await this.client
       .from('messages')
       .insert({
         sender_id: senderProfile.id,
@@ -306,7 +318,7 @@ export class SupabaseClient {
 
   // Real-time subscriptions
   subscribeToMaintenanceRequests(clerkUserId: string, callback: (payload: any) => void) {
-    return supabase
+    return this.client
       .channel('maintenance_requests')
       .on('postgres_changes', 
         { 
@@ -320,7 +332,7 @@ export class SupabaseClient {
   }
 
   subscribeToMessages(clerkUserId: string, callback: (payload: any) => void) {
-    return supabase
+    return this.client
       .channel('messages')
       .on('postgres_changes', 
         { 

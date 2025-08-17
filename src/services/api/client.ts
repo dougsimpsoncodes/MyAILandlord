@@ -1,8 +1,9 @@
 import { useAuth } from '@clerk/clerk-expo';
-import { supabaseClient } from '../supabase/client';
+import { SupabaseClient } from '../supabase/client';
 import { withUserContext } from '../supabase/auth-helper';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote } from '../supabase/storage';
 import { supabase } from '../supabase/config';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import {
   CreateProfileData,
   UpdateProfileData,
@@ -37,19 +38,24 @@ const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL ||
 // Hook for use in components - all API logic is contained within this hook
 export function useApiClient(): UseApiClientReturn | null {
   const { getToken, userId } = useAuth();
+  const { supabase: supabaseClient } = useSupabaseWithAuth();
 
   if (!userId) {
     // Return null instead of throwing when user is not authenticated
     return null;
   }
 
+  // Helper to get authenticated Supabase client
+  const getSupabaseClient = () => {
+    return new SupabaseClient(supabaseClient);
+  };
+
   // ========== USER PROFILE METHODS ==========
   const getUserProfile = async () => {
     try {
-      return await withUserContext(userId, async () => {
-        const profile = await supabaseClient.getProfile(userId);
-        return profile; // Return null if no profile exists - let the calling code handle creation
-      });
+      const client = getSupabaseClient();
+      const profile = await client.getProfile(userId);
+      return profile; // Return null if no profile exists - let the calling code handle creation
     } catch (error) {
       console.error('Error getting user profile:', error);
       throw error;
@@ -67,9 +73,8 @@ export function useApiClient(): UseApiClientReturn | null {
         sanitizeProfileData
       ) as CreateProfileData;
 
-      return await withUserContext(validatedData.clerkUserId, () => 
-        supabaseClient.createProfile(validatedData)
-      );
+      const client = getSupabaseClient();
+      return await client.createProfile(validatedData);
     } catch (error) {
       console.error('Error creating user profile:', error);
       throw new Error(`Failed to create profile: ${getErrorMessage(error)}`);
@@ -103,9 +108,8 @@ export function useApiClient(): UseApiClientReturn | null {
         finalUpdates.email = sanitizeString(updates.email);
       }
 
-      return await withUserContext(userId, () => 
-        supabaseClient.updateProfile(userId, finalUpdates)
-      );
+      const client = getSupabaseClient();
+      return await client.updateProfile(userId, finalUpdates);
     } catch (error) {
       console.error('Error updating user profile:', error);
       throw new Error(`Failed to update profile: ${getErrorMessage(error)}`);
@@ -119,9 +123,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('Invalid role');
       }
 
-      return await withUserContext(userId, () => 
-        supabaseClient.updateProfile(userId, { role })
-      );
+      const client = getSupabaseClient();
+      return await client.updateProfile(userId, { role });
     } catch (error) {
       console.error('Error setting user role:', error);
       throw new Error(`Failed to set role: ${getErrorMessage(error)}`);
@@ -130,16 +133,14 @@ export function useApiClient(): UseApiClientReturn | null {
 
   // ========== PROPERTY METHODS ==========
   const getUserProperties = async () => {
-    return withUserContext(userId, () => 
-      supabaseClient.getUserProperties(userId)
-    );
+    const client = getSupabaseClient();
+    return await client.getUserProperties(userId);
   };
 
   // ========== MAINTENANCE REQUEST METHODS ==========
   const getMaintenanceRequests = async () => {
-    return withUserContext(userId, () => 
-      supabaseClient.getMaintenanceRequests(userId)
-    );
+    const client = getSupabaseClient();
+    return await client.getMaintenanceRequests(userId);
   };
 
   const createMaintenanceRequest = async (requestData: CreateMaintenanceRequestData) => {
@@ -151,28 +152,29 @@ export function useApiClient(): UseApiClientReturn | null {
         sanitizeMaintenanceRequestData
       ) as CreateMaintenanceRequestData;
 
-      return await withUserContext(userId, async () => {
-        const profile = await getUserProfile();
-        if (!profile) {
-          throw new Error('User profile not found. Please try again.');
-        }
-        if (profile.role !== 'tenant') {
-          throw new Error('Only tenants can create maintenance requests');
-        }
+      const profile = await getUserProfile();
+      if (!profile) {
+        throw new Error('User profile not found. Please try again.');
+      }
+      if (profile.role !== 'tenant') {
+        throw new Error('Only tenants can create maintenance requests');
+      }
 
-        // Create the maintenance request first
-        const apiRequestData = {
-          tenantId: profile.id,
-          propertyId: validatedData.propertyId,
-          title: validatedData.title,
-          description: validatedData.description,
-          priority: validatedData.priority,
-          area: validatedData.area,
-          asset: validatedData.asset,
-          issueType: validatedData.issueType,
-        };
-        
-        const maintenanceRequest = await supabaseClient.createMaintenanceRequest(apiRequestData);
+      const client = getSupabaseClient();
+
+      // Create the maintenance request first
+      const apiRequestData = {
+        tenantId: profile.id,
+        propertyId: validatedData.propertyId,
+        title: validatedData.title,
+        description: validatedData.description,
+        priority: validatedData.priority,
+        area: validatedData.area,
+        asset: validatedData.asset,
+        issueType: validatedData.issueType,
+      };
+      
+      const maintenanceRequest = await client.createMaintenanceRequest(apiRequestData);
 
         // If there are images or voice notes, upload them with validation
         const uploadedImages: string[] = [];
@@ -228,14 +230,13 @@ export function useApiClient(): UseApiClientReturn | null {
 
         // Update the maintenance request with uploaded file URLs if any
         if (uploadedImages.length || uploadedVoiceNotes.length) {
-          await supabaseClient.updateMaintenanceRequest(maintenanceRequest.id, {
+          await client.updateMaintenanceRequest(maintenanceRequest.id, {
             images: uploadedImages.length ? uploadedImages : undefined,
             voice_notes: uploadedVoiceNotes.length ? uploadedVoiceNotes : undefined,
           });
         }
 
         return maintenanceRequest;
-      });
     } catch (error) {
       console.error('Error creating maintenance request:', error);
       throw new Error(`Failed to create maintenance request: ${getErrorMessage(error)}`);
@@ -257,7 +258,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('Request ID is required');
       }
 
-      return await supabaseClient.updateMaintenanceRequest(requestId, updates);
+      const client = getSupabaseClient();
+      return await client.updateMaintenanceRequest(requestId, updates);
     } catch (error) {
       console.error('Error updating maintenance request:', error);
       throw new Error(`Failed to update maintenance request: ${getErrorMessage(error)}`);
@@ -271,9 +273,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('User ID is required');
       }
 
-      return await withUserContext(userId, () => 
-        supabaseClient.getMessages(userId, otherUserId)
-      );
+      const client = getSupabaseClient();
+      return await client.getMessages(userId, otherUserId);
     } catch (error) {
       console.error('Error getting messages:', error);
       throw new Error(`Failed to get messages: ${getErrorMessage(error)}`);
@@ -291,9 +292,8 @@ export function useApiClient(): UseApiClientReturn | null {
         sanitizeMessageData
       ) as CreateMessageData;
 
-      return await withUserContext(validatedData.senderClerkId, () => 
-        supabaseClient.sendMessage(validatedData)
-      );
+      const client = getSupabaseClient();
+      return await client.sendMessage(validatedData);
     } catch (error) {
       console.error('Error sending message:', error);
       throw new Error(`Failed to send message: ${getErrorMessage(error)}`);
@@ -426,12 +426,14 @@ export function useApiClient(): UseApiClientReturn | null {
   };
 
   // ========== REAL-TIME SUBSCRIPTIONS ==========
-  const subscribeToMaintenanceRequests = (callback: (payload: any) => void) => {
-    return supabaseClient.subscribeToMaintenanceRequests(userId, callback);
+  const subscribeToMaintenanceRequests = async (callback: (payload: any) => void) => {
+    const client = getSupabaseClient();
+    return client.subscribeToMaintenanceRequests(userId, callback);
   };
 
-  const subscribeToMessages = (callback: (payload: any) => void) => {
-    return supabaseClient.subscribeToMessages(userId, callback);
+  const subscribeToMessages = async (callback: (payload: any) => void) => {
+    const client = getSupabaseClient();
+    return client.subscribeToMessages(userId, callback);
   };
 
   return {

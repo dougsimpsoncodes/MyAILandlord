@@ -271,13 +271,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 6,
   },
   questionHeader: {
@@ -379,13 +376,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   nextButtonText: {

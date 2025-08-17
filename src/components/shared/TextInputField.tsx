@@ -58,6 +58,7 @@ const TextInputField: React.FC<TextInputFieldProps> = ({
       <View
         style={[
           styles.inputContainer,
+          isFocused ? styles.shadowFocused : styles.shadowDefault,
           isFocused && styles.inputContainerFocused,
           error && styles.inputContainerError,
           disabled && styles.inputContainerDisabled,
@@ -145,18 +146,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   inputContainerFocused: {
     borderColor: '#3498DB',
-    shadowOpacity: 0.1,
+    
   },
   inputContainerError: {
     borderColor: '#E74C3C',

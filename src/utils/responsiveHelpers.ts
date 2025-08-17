@@ -40,13 +40,10 @@ export const getResponsiveShadow = (screenSize: string, elevation: 'low' | 'medi
   const scale = screenSize === 'mobile' ? 1 : screenSize === 'tablet' ? 1.2 : 1.5;
   
   return {
-    shadowColor: '#000',
-    shadowOffset: { 
-      width: 0, 
-      height: Math.round(baseElevation * scale) 
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: Math.round(baseElevation * 2 * scale),
+    
+    
+    
+    
     elevation: Math.round(baseElevation * scale),
   };
 };

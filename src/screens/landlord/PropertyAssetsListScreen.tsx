@@ -14,11 +14,13 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { PropertyArea, InventoryItem } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import PhotoPicker from '../../components/media/PhotoPicker';
+import { saveDraftWithoutEmbeddingPhotos } from '../../services/PropertyDraftService.patch';
 import { useResponsive } from '../../hooks/useResponsive';
+import Card from '../../components/shared/Card';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import ResponsiveGrid from '../../components/shared/ResponsiveGrid';
 import { ResponsiveTitle, ResponsiveSubtitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
@@ -31,9 +33,11 @@ interface ExpandableAreaProps {
   isSelected: boolean;
   onToggle: () => void;
   onAddPhoto: () => void;
+  onPhotosUploaded: (photos: { path: string; url: string }[]) => void;
   onAddAsset: () => void;
   onRemoveAsset: (assetId: string) => void;
   responsive: ReturnType<typeof useResponsive>;
+  propertyId: string;
 }
 
 const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
@@ -41,9 +45,11 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
   isSelected,
   onToggle,
   onAddPhoto,
+  onPhotosUploaded,
   onAddAsset,
   onRemoveAsset,
   responsive,
+  propertyId,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const animatedHeight = useState(new Animated.Value(0))[0];
@@ -62,7 +68,7 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
   const isComplete = photoCount > 0 && assetCount > 0;
 
   return (
-    <View style={[styles.areaCard, responsive.isWeb && styles.areaCardWeb]}>
+    <Card style={[styles.areaCard, responsive.isWeb && styles.areaCardWeb]}>
       {/* Area Header - Always Visible */}
       <TouchableOpacity
         style={[styles.areaHeader, expanded && styles.areaHeaderExpanded]}
@@ -100,22 +106,29 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
         />
       </TouchableOpacity>
 
-      {/* Expandable Content */}
-      {expanded && (
-        <View style={styles.areaContent}>
-          {/* Photos Section */}
-          <View style={styles.contentSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Photos</Text>
+      {/* Photos Section - Always Visible */}
+      <View style={styles.areaContent}>
+        <View style={styles.contentSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Photos</Text>
+            <View style={styles.buttonGroup}>
               <TouchableOpacity
                 style={styles.addButton}
                 onPress={onAddPhoto}
                 activeOpacity={0.7}
               >
-                <Ionicons name="add-circle" size={20} color="#3498DB" />
-                <Text style={styles.addButtonText}>Add Photo</Text>
+                <Ionicons name="camera" size={20} color="#3498DB" />
+                <Text style={styles.addButtonText}>Camera</Text>
               </TouchableOpacity>
+              <View style={styles.addButton}>
+                <PhotoPicker 
+                  propertyId={propertyId}
+                  areaId={area.id}
+                  onUploaded={onPhotosUploaded}
+                />
+              </View>
             </View>
+          </View>
             
             {photoCount > 0 ? (
               <ScrollView
@@ -137,9 +150,12 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
             ) : (
               <Text style={styles.emptyText}>No photos yet</Text>
             )}
-          </View>
+        </View>
+      </View>
 
-          {/* Assets Section */}
+      {/* Assets Section - Only when expanded */}
+      {expanded && (
+        <View style={styles.areaContent}>
           <View style={styles.contentSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Assets & Inventory</Text>
@@ -178,7 +194,7 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
           </View>
         </View>
       )}
-    </View>
+    </Card>
   );
 };
 
@@ -205,8 +221,20 @@ const PropertyAssetsListScreen = () => {
     autoSaveDelay: 2000 
   });
 
-  const [selectedAreas, setSelectedAreas] = useState<PropertyArea[]>(areas);
+  const [selectedAreas, setSelectedAreas] = useState<PropertyArea[]>(areas || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  
+  // Debug: Areas are being received correctly
+  console.log('Areas count:', selectedAreas.length);
+  
+  // Use draft areas if available and route areas are empty
+  useEffect(() => {
+    if ((!areas || areas.length === 0) && draftState?.areas && draftState.areas.length > 0) {
+      console.log('Using draft areas instead of route params');
+      setSelectedAreas(draftState.areas);
+    }
+  }, [areas, draftState?.areas]);
 
   // Set current step to 2 (photos & assets step)
   useEffect(() => {
@@ -265,6 +293,34 @@ const PropertyAssetsListScreen = () => {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handlePhotosUploaded = (areaId: string) => (photos: { path: string; url: string }[]) => {
+    console.log('📸 PropertyAssetsListScreen: Photos uploaded:', photos.length);
+    
+    if (photos.length > 0) {
+      const photoUrls = photos.map(p => p.url);
+      
+      const updatedAreas = selectedAreas.map(area => {
+        if (area.id === areaId) {
+          return {
+            ...area,
+            photos: [...area.photos, ...photoUrls]
+          };
+        }
+        return area;
+      });
+
+      console.log('📸 PropertyAssetsListScreen: Updating state with', photoUrls.length, 'photos');
+      setSelectedAreas(updatedAreas);
+      updateAreas(updatedAreas);
+      
+      // Save draft without embedding photos for performance
+      saveDraftWithoutEmbeddingPhotos({
+        ...draftState,
+        areas: updatedAreas
+      }).catch(console.error);
     }
   };
 
@@ -332,20 +388,10 @@ const PropertyAssetsListScreen = () => {
     }
   };
 
-  const getOverallProgress = () => {
-    const totalAreas = selectedAreas.length;
-    const areasWithPhotos = selectedAreas.filter(area => area.photos.length > 0).length;
-    const areasWithAssets = selectedAreas.filter(area => (area.assets || []).length > 0).length;
-    
-    const photoProgress = totalAreas > 0 ? (areasWithPhotos / totalAreas) * 50 : 0;
-    const assetProgress = totalAreas > 0 ? (areasWithAssets / totalAreas) * 50 : 0;
-    
-    return Math.round(photoProgress + assetProgress);
-  };
 
   return (
     <SafeAreaView style={[styles.container, responsive.isWeb && styles.containerWeb]}>
-      <ResponsiveContainer maxWidth={responsive.isLargeScreen() ? 'large' : 'desktop'}>
+      <ResponsiveContainer maxWidth={responsive.isLargeScreen() ? 'large' : 'desktop'} style={{ flex: 1 }}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -378,82 +424,71 @@ const PropertyAssetsListScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Step Counter */}
-        <View style={styles.stepCounterContainer}>
-          <View style={styles.stepCounterHeader}>
-            <Text style={styles.stepCounterTitle}>Property Setup Progress</Text>
-            <Text style={styles.stepCounterSubtitle}>Step 2 of 3</Text>
-          </View>
-          
-          <View style={styles.stepsRow}>
-            <View style={styles.stepItem}>
-              <View style={[styles.stepNumber, styles.stepNumberComplete]}>
-                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.stepLabel, styles.stepLabelComplete]}>Areas Selected</Text>
-            </View>
-            
-            <View style={styles.stepConnector} />
-            
-            <View style={styles.stepItem}>
-              <View style={[styles.stepNumber, styles.stepNumberActive]}>
-                <Text style={[styles.stepNumberText, styles.stepNumberTextActive]}>2</Text>
-              </View>
-              <Text style={[styles.stepLabel, styles.stepLabelActive]}>Photos & Assets</Text>
-            </View>
-            
-            <View style={styles.stepConnector} />
-            
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <Text style={styles.stepLabel}>Review & Save</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Progress Summary */}
-        <View style={styles.progressSummary}>
-          <Text style={styles.progressTitle}>Overall Progress: {getOverallProgress()}%</Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${getOverallProgress()}%` }]} />
-          </View>
-          <Text style={styles.progressHint}>
-            Add at least one photo and one asset to each area for complete documentation
-          </Text>
-        </View>
-
         {/* Areas List */}
-        <ScrollView
-          style={styles.areasList}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.areasListContent}
-        >
-          <ResponsiveGrid
-            minItemWidth={responsive.isLargeScreen() ? 400 : 320}
-            maxColumns={responsive.isLargeScreen() ? 2 : 1}
+        <View style={styles.scrollContainer}>
+          <ScrollView
+            style={styles.areasList}
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={styles.areasListContent}
+            scrollEnabled={true}
           >
-            {selectedAreas.map((area) => (
-              <ExpandableAreaCard
-                key={area.id}
-                area={area}
-                isSelected={false}
-                onToggle={() => {}}
-                onAddPhoto={() => handleAddPhoto(area.id)}
-                onAddAsset={() => handleAddAsset(area.id, area.name)}
-                onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
-                responsive={responsive}
-              />
-            ))}
-          </ResponsiveGrid>
-        </ScrollView>
+          {selectedAreas.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="alert-circle" size={48} color="#8E8E93" />
+              <Text style={styles.emptyStateTitle}>No Areas Selected</Text>
+              <Text style={styles.emptyStateText}>
+                Please go back to Step 1 and select areas for your property.
+              </Text>
+              <Text style={styles.emptyStateText}>
+                Debug: Areas length = {selectedAreas.length}
+              </Text>
+              <TouchableOpacity
+                style={styles.goBackButton}
+                onPress={() => navigation.goBack()}
+              >
+                <Text style={styles.goBackButtonText}>Go Back to Step 1</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.areasContainer}>
+              {selectedAreas.map((area) => (
+                <ExpandableAreaCard
+                  key={area.id}
+                  area={area}
+                  isSelected={false}
+                  onToggle={() => {}}
+                  onAddPhoto={() => handleAddPhoto(area.id)}
+                  onPhotosUploaded={handlePhotosUploaded(area.id)}
+                  onAddAsset={() => handleAddAsset(area.id, area.name)}
+                  onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
+                  responsive={responsive}
+                  propertyId={draftId || 'temp'}
+                />
+              ))}
+            </View>
+          )}
+          </ScrollView>
+        </View>
 
         {/* Bottom Actions */}
         <View style={styles.bottomActions}>
           <TouchableOpacity 
-            style={styles.saveButton} 
-            onPress={saveDraft}
+            style={[
+              styles.saveButton,
+              isSaving && styles.saveButtonActive
+            ]} 
+            onPress={async () => {
+              console.log('Save draft button pressed, isSaving:', isSaving);
+              if (isSaving || isDraftLoading) return;
+              
+              try {
+                await saveDraft();
+                setShowSaveSuccess(true);
+                setTimeout(() => setShowSaveSuccess(false), 2000);
+              } catch (error) {
+                console.error('Save failed:', error);
+              }
+            }}
             disabled={isSaving || isDraftLoading}
             activeOpacity={0.7}
           >
@@ -462,9 +497,19 @@ const PropertyAssetsListScreen = () => {
               size={18} 
               color={isSaving ? "#007AFF" : "#8E8E93"} 
             />
-            <Text style={styles.saveButtonText}>
+            <Text style={[
+              styles.saveButtonText,
+              isSaving && styles.saveButtonTextActive
+            ]}>
               {isSaving ? 'Saving...' : 'Save Draft'}
             </Text>
+            {showSaveSuccess && (
+              <Ionicons 
+                name="checkmark-circle" 
+                size={16} 
+                color="#2ECC71" 
+              />
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity
@@ -636,21 +681,36 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontStyle: 'italic',
   },
+  scrollContainer: {
+    flex: 1,
+    overflow: 'hidden',
+  },
   areasList: {
     flex: 1,
   },
   areasListContent: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 120,
+    flexGrow: 1,
+  },
+  areasContainer: {
+    gap: 16,
+  },
+  debugText: {
+    fontSize: 16,
+    color: '#007AFF',
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '600',
   },
   areaCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   areaCardWeb: {
@@ -724,10 +784,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C3E50',
   },
+  buttonGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: '#F0F8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   addButtonText: {
     fontSize: 14,
@@ -775,6 +843,37 @@ const styles = StyleSheet.create({
     color: '#95A5A6',
     fontStyle: 'italic',
   },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#8E8E93',
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 40,
+  },
+  goBackButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  goBackButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
   bottomActions: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -795,10 +894,18 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: 'center',
   },
+  saveButtonActive: {
+    backgroundColor: '#E3F2FD',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
   saveButtonText: {
     fontSize: 15,
     fontWeight: '500',
     color: '#8E8E93',
+  },
+  saveButtonTextActive: {
+    color: '#007AFF',
   },
   nextButton: {
     flex: 1,
@@ -808,15 +915,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 50,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   nextButtonDisabled: {
     backgroundColor: '#C7C7CC',
-    shadowOpacity: 0,
+    
     elevation: 0,
   },
   nextButtonText: {
