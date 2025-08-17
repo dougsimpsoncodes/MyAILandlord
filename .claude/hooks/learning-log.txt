@@ -373,3 +373,38 @@ Message: chore(security): optimize Gitleaks config and auto-generate .env.exampl
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-08-17T01:30:29Z] Commit a880ef5ee3f8f4f3467c00c87a29ef1ac6986a6d successful
+Message: chore: remove conflicting gitleaks workflow, keep minimal config
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-08-17T01:36:25Z] Commit 678c26b7be30316385ae3a38a84337cfca0ee576 successful
+Message: fix(ci): correct Gitleaks GitHub Action configuration
+
+- Add required GITHUB_TOKEN for PR scanning
+- Fix input parameters (remove invalid 'args')
+- Use config-path instead of args
+- Add proper permissions for pull-requests
+- Upload SARIF report only on failure
+- Set retention to 5 days for efficiency
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-08-17T01:37:46Z] Commit c71d300c0b346a1000af31ae74946fa3db682517 successful
+Message: fix(ci): correct Gitleaks v2 action syntax and parameters
+
+✅ Fixed all GitHub Actions issues:
+- Use 'config:' instead of deprecated 'args' parameter
+- Add required GITHUB_TOKEN for PR scanning capability
+- Set proper report-format: json and report-path
+- Upload artifacts on success/failure with 'if: always()'
+- Focus on main branch pushes and all pull requests
+- 7-day retention for security audit compliance
+
+This resolves:
+- GITHUB_TOKEN requirement error
+- Invalid 'args' input parameter
+- Missing artifact path configuration
+Guidance Applied: 
+Quality Score: 6
+---
