@@ -1,3 +1,5 @@
+[![ci](https://github.com/dougsimpsoncodes/MyAILandlord/actions/workflows/ci.yml/badge.svg)](https://github.com/dougsimpsoncodes/MyAILandlord/actions/workflows/ci.yml)
+
 # My AI Landlord
 
 A secure React Native + Expo app for streamlined maintenance management between landlords and tenants, powered by AI-guided issue reporting. Built with enterprise-grade security using Clerk authentication and Supabase backend.

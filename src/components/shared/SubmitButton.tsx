@@ -43,22 +43,28 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
     
     if (disabled || loading) {
       baseStyle.push(styles.buttonDisabled);
+      baseStyle.push(styles.shadowNone);
     } else {
       switch (variant) {
         case 'secondary':
           baseStyle.push(styles.buttonSecondary);
+          baseStyle.push(styles.shadowSecondary);
           break;
         case 'success':
           baseStyle.push(styles.buttonSuccess);
+          baseStyle.push(styles.shadowDefault);
           break;
         case 'warning':
           baseStyle.push(styles.buttonWarning);
+          baseStyle.push(styles.shadowDefault);
           break;
         case 'danger':
           baseStyle.push(styles.buttonDanger);
+          baseStyle.push(styles.shadowDefault);
           break;
         default:
           baseStyle.push(styles.buttonPrimary);
+          baseStyle.push(styles.shadowDefault);
       }
     }
     
@@ -146,15 +152,19 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
     minHeight: 44, // iOS minimum touch target
+  },
+  shadowDefault: {
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.15)',
+    elevation: 3,
+  },
+  shadowSecondary: {
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.05)',
+    elevation: 3,
+  },
+  shadowNone: {
+    boxShadow: 'none',
+    elevation: 0,
   },
   fullWidth: {
     width: '100%',
@@ -181,7 +191,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7', // iOS Light Gray
     borderWidth: 1,
     borderColor: '#C7C7CC',
-    shadowOpacity: 0.05,
   },
   buttonSuccess: {
     backgroundColor: '#34C759', // iOS Green
@@ -194,8 +203,6 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#C7C7CC', // iOS Disabled Gray
-    shadowOpacity: 0,
-    elevation: 0,
   },
   content: {
     flexDirection: 'row',

@@ -11,7 +11,7 @@ import Constants from 'expo-constants';
 // Note: This component doesn't actually use apiClient, removing import
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
-import { getAssetsByRoom } from '../../data/assetTemplates';
+import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
 import { AreaType } from '../../models/Property';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
@@ -66,12 +66,58 @@ const ReportIssueScreen = () => {
   }));
 
   const assetOptions = selectedArea 
-    ? [] // TODO: Fix after implementing proper asset templates for tenant screens
+    ? getAssetsByRoom(selectedArea).map(asset => ({
+        value: asset.name,
+        label: asset.name,
+        icon: getCategoryIcon(asset.category.toLowerCase()),
+        description: asset.category
+      }))
     : [];
+
+  const getIssueTypesForAsset = (assetName: string) => {
+    const commonIssues: Record<string, { value: string; label: string; icon: string; description: string }[]> = {
+      'Refrigerator': [
+        { value: 'not cooling', label: 'Not cooling properly', icon: 'snow', description: 'Temperature issues' },
+        { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual sounds' },
+        { value: 'water leak', label: 'Water leaking', icon: 'water', description: 'Water on floor' },
+        { value: 'ice maker issue', label: 'Ice maker not working', icon: 'cube', description: 'Ice production problems' }
+      ],
+      'Dishwasher': [
+        { value: 'not cleaning', label: 'Not cleaning dishes', icon: 'ban', description: 'Poor washing performance' },
+        { value: 'water leak', label: 'Water leaking', icon: 'water', description: 'Water on floor' },
+        { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual sounds' },
+        { value: 'not draining', label: 'Not draining properly', icon: 'funnel', description: 'Water remains in bottom' }
+      ],
+      'Kitchen Faucet': [
+        { value: 'dripping', label: 'Dripping/leaking', icon: 'water', description: 'Continuous drip' },
+        { value: 'low pressure', label: 'Low water pressure', icon: 'arrow-down', description: 'Weak water flow' },
+        { value: 'handle loose', label: 'Handle is loose', icon: 'hand-left', description: 'Handle moves freely' },
+        { value: 'no hot water', label: 'No hot water', icon: 'thermometer', description: 'Only cold water flows' }
+      ],
+      'Toilet': [
+        { value: 'running constantly', label: 'Running constantly', icon: 'infinite', description: 'Water keeps running' },
+        { value: 'not flushing', label: 'Not flushing properly', icon: 'close-circle', description: 'Weak or no flush' },
+        { value: 'clogged', label: 'Clogged', icon: 'ban', description: 'Water overflowing' },
+        { value: 'loose', label: 'Toilet is loose', icon: 'move', description: 'Rocks or moves' }
+      ],
+      'Garbage Disposal': [
+        { value: 'not working', label: 'Not working at all', icon: 'close-circle', description: 'No power or response' },
+        { value: 'jammed', label: 'Jammed/stuck', icon: 'lock-closed', description: 'Not grinding' },
+        { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual grinding sounds' },
+        { value: 'water leak', label: 'Water leaking', icon: 'water', description: 'Water under sink' }
+      ]
+    };
+
+    return commonIssues[assetName] || [
+      { value: 'not working', label: 'Not working properly', icon: 'close-circle', description: 'General malfunction' },
+      { value: 'damaged', label: 'Damaged', icon: 'warning', description: 'Physical damage visible' },
+      { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual sounds' }
+    ];
+  };
 
   const issueTypeOptions = selectedAsset
     ? [
-        // TODO: Fix after implementing proper asset templates for tenant screens
+        ...getIssueTypesForAsset(selectedAsset),
         {
           value: 'other',
           label: 'Other (not listed)',
@@ -622,13 +668,10 @@ const styles = StyleSheet.create({
     minHeight: 120,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   voiceButton: {
@@ -672,13 +715,10 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   mediaButtonText: {
@@ -754,13 +794,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   continueButtonText: {
@@ -780,13 +817,10 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   row: {
@@ -807,13 +841,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   pickerText: {

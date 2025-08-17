@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Basics - Visual Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background-color: #F8F9FA;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #F8F9FA;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .header {
+            background-color: #FFFFFF;
+            padding: 24px 20px;
+            border-bottom: 1px solid #E9ECEF;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            color: #6C757D;
+            text-decoration: none;
+            font-size: 16px;
+        }
+
+        .back-button:before {
+            content: "←";
+            margin-right: 8px;
+            font-size: 20px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #343A40;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #6C757D;
+            margin-bottom: 24px;
+        }
+
+        .progress-container {
+            margin-bottom: 0;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: #E9ECEF;
+            border-radius: 2px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #28A745;
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #6C757D;
+            text-align: center;
+        }
+
+        .content {
+            padding: 32px 20px 140px;
+        }
+
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #343A40;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .required-label:after {
+            content: " *";
+            color: #DC3545;
+        }
+
+        .input {
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            border: 1px solid #DEE2E6;
+            min-height: 56px;
+            width: 100%;
+            transition: border-color 0.2s ease;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: #28A745;
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+        }
+
+        .input-error {
+            border-color: #DC3545;
+            background-color: #FEF7F7;
+        }
+
+        .error-text {
+            font-size: 14px;
+            color: #DC3545;
+            margin-top: 4px;
+        }
+
+        .address-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .address-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .address-half {
+            flex: 1;
+        }
+
+        .type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .type-option {
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 2px solid #DEE2E6;
+            min-height: 100px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .type-option:hover {
+            border-color: #28A745;
+        }
+
+        .type-option.selected {
+            border-color: #28A745;
+            background-color: #F8FFF9;
+        }
+
+        .type-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            color: #6C757D;
+        }
+
+        .type-option.selected .type-icon {
+            color: #28A745;
+        }
+
+        .type-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: #343A40;
+            margin-bottom: 4px;
+        }
+
+        .type-description {
+            font-size: 14px;
+            color: #6C757D;
+        }
+
+        .number-input-container {
+            display: flex;
+            align-items: center;
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            border: 1px solid #DEE2E6;
+            min-height: 56px;
+        }
+
+        .number-button {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            margin: 4px;
+            cursor: pointer;
+            background-color: #F8F9FA;
+            border: none;
+            font-size: 20px;
+            color: #343A40;
+            transition: background-color 0.2s ease;
+        }
+
+        .number-button:hover {
+            background-color: #E9ECEF;
+        }
+
+        .number-button:disabled {
+            background-color: transparent;
+            color: #DEE2E6;
+            cursor: not-allowed;
+        }
+
+        .number-display {
+            flex: 1;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #343A40;
+        }
+
+        .dropdown {
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            border: 1px solid #DEE2E6;
+            min-height: 56px;
+            position: relative;
+        }
+
+        .dropdown-trigger {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            cursor: pointer;
+        }
+
+        .dropdown-text {
+            font-size: 16px;
+            color: #6C757D;
+        }
+
+        .dropdown-text.selected {
+            color: #343A40;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 600px;
+            background-color: #FFFFFF;
+            border-top: 1px solid #E9ECEF;
+            padding: 16px 20px;
+        }
+
+        .save-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .save-status-icon {
+            color: #28A745;
+            margin-right: 6px;
+        }
+
+        .save-status-text {
+            font-size: 14px;
+            color: #6C757D;
+        }
+
+        .continue-button {
+            background-color: #28A745;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            min-height: 56px;
+            border: none;
+            color: #FFFFFF;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s ease;
+        }
+
+        .continue-button:hover {
+            background-color: #218838;
+        }
+
+        .continue-button:disabled {
+            background-color: #DEE2E6;
+            color: #6C757D;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 480px) {
+            .type-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .address-row {
+                flex-direction: column;
+            }
+        }
+
+        /* Demo animations */
+        .demo-highlight {
+            animation: highlight 2s ease-in-out;
+        }
+
+        @keyframes highlight {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(40, 167, 69, 0.1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <a href="#" class="back-button">Back</a>
+            
+            <div class="title">Add New Property</div>
+            <div class="subtitle">Let's start with the basics. This should take about 2 minutes.</div>
+            
+            <!-- Progress Indicator -->
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 60%"></div>
+                </div>
+                <div class="progress-text" id="progressText">60% complete • Step 1 of 8</div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Property Name -->
+            <div class="input-group">
+                <label class="label required-label">Property Name</label>
+                <input 
+                    type="text" 
+                    class="input" 
+                    placeholder="e.g., Sunset Apartments"
+                    id="propertyName"
+                    oninput="updateProgress()"
+                >
+            </div>
+
+            <!-- Address -->
+            <div class="section">
+                <label class="label required-label">Address</label>
+                
+                <div class="address-grid">
+                    <input 
+                        type="text" 
+                        class="input" 
+                        placeholder="Street address"
+                        id="address1"
+                        oninput="updateProgress()"
+                    >
+                    
+                    <input 
+                        type="text" 
+                        class="input" 
+                        placeholder="Apartment, suite, etc. (optional)"
+                    >
+                    
+                    <div class="address-row">
+                        <div class="address-half">
+                            <input 
+                                type="text" 
+                                class="input" 
+                                placeholder="City"
+                                id="city"
+                                oninput="updateProgress()"
+                            >
+                        </div>
+                        <div class="address-half">
+                            <div class="dropdown">
+                                <div class="dropdown-trigger" onclick="toggleStateDropdown()">
+                                    <span class="dropdown-text" id="stateText">State</span>
+                                    <span>▼</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <input 
+                        type="text" 
+                        class="input" 
+                        placeholder="ZIP code"
+                        maxlength="10"
+                    >
+                </div>
+            </div>
+
+            <!-- Property Type -->
+            <div class="section">
+                <label class="label required-label">Property Type</label>
+                <div class="type-grid">
+                    <div class="type-option" onclick="selectType(this, 'house')">
+                        <div class="type-icon">🏠</div>
+                        <div class="type-label">House</div>
+                        <div class="type-description">Single-family home</div>
+                    </div>
+                    <div class="type-option selected" onclick="selectType(this, 'apartment')">
+                        <div class="type-icon">🏢</div>
+                        <div class="type-label">Apartment</div>
+                        <div class="type-description">Unit in building</div>
+                    </div>
+                    <div class="type-option" onclick="selectType(this, 'condo')">
+                        <div class="type-icon">📍</div>
+                        <div class="type-label">Condo</div>
+                        <div class="type-description">Owned unit</div>
+                    </div>
+                    <div class="type-option" onclick="selectType(this, 'townhouse')">
+                        <div class="type-icon">🏘️</div>
+                        <div class="type-label">Townhouse</div>
+                        <div class="type-description">Attached home</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Unit Number -->
+            <div class="input-group">
+                <label class="label">Unit Number (Optional)</label>
+                <input 
+                    type="text" 
+                    class="input" 
+                    placeholder="e.g., 2A, Unit 5"
+                >
+            </div>
+
+            <!-- Bedrooms -->
+            <div class="input-group">
+                <label class="label">Bedrooms</label>
+                <div class="number-input-container">
+                    <button class="number-button" onclick="changeNumber('bedrooms', -1)">−</button>
+                    <div class="number-display" id="bedrooms">2</div>
+                    <button class="number-button" onclick="changeNumber('bedrooms', 1)">+</button>
+                </div>
+            </div>
+
+            <!-- Bathrooms -->
+            <div class="input-group">
+                <label class="label">Bathrooms</label>
+                <div class="number-input-container">
+                    <button class="number-button" onclick="changeNumber('bathrooms', -0.5)">−</button>
+                    <div class="number-display" id="bathrooms">1.5</div>
+                    <button class="number-button" onclick="changeNumber('bathrooms', 0.5)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fixed Footer -->
+        <div class="footer">
+            <!-- Save Status -->
+            <div class="save-status">
+                <span class="save-status-icon">✓</span>
+                <span class="save-status-text">All changes saved</span>
+            </div>
+
+            <!-- Continue Button -->
+            <button class="continue-button" onclick="handleContinue()">
+                Continue to Photos
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let selectedType = 'apartment';
+        let bedroomCount = 2;
+        let bathroomCount = 1.5;
+
+        function updateProgress() {
+            const name = document.getElementById('propertyName').value;
+            const address = document.getElementById('address1').value;
+            const city = document.getElementById('city').value;
+            
+            let completed = 0;
+            const total = 5;
+            
+            if (name.trim()) completed++;
+            if (address.trim()) completed++;
+            if (city.trim()) completed++;
+            if (document.getElementById('stateText').textContent !== 'State') completed++;
+            if (selectedType) completed++;
+            
+            const percentage = Math.round((completed / total) * 100);
+            document.getElementById('progressFill').style.width = percentage + '%';
+            document.getElementById('progressText').textContent = `${percentage}% complete • Step 1 of 8`;
+        }
+
+        function selectType(element, type) {
+            // Remove selected class from all options
+            document.querySelectorAll('.type-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked option
+            element.classList.add('selected');
+            selectedType = type;
+            updateProgress();
+            
+            // Add demo highlight
+            element.classList.add('demo-highlight');
+            setTimeout(() => element.classList.remove('demo-highlight'), 2000);
+        }
+
+        function changeNumber(type, change) {
+            if (type === 'bedrooms') {
+                bedroomCount = Math.max(0, Math.min(10, bedroomCount + change));
+                document.getElementById('bedrooms').textContent = bedroomCount;
+            } else if (type === 'bathrooms') {
+                bathroomCount = Math.max(0.5, Math.min(10, bathroomCount + change));
+                document.getElementById('bathrooms').textContent = bathroomCount;
+            }
+        }
+
+        function toggleStateDropdown() {
+            alert('State dropdown would open here with all 50 states');
+            document.getElementById('stateText').textContent = 'California';
+            document.getElementById('stateText').classList.add('selected');
+            updateProgress();
+        }
+
+        function handleContinue() {
+            alert('Form validated! Would navigate to PropertyPhotos screen.\n\nData would be auto-saved and user taken to next step in the 8-page flow.');
+        }
+
+        // Demo auto-fill for showcase
+        setTimeout(() => {
+            document.getElementById('propertyName').value = 'Sunset View Apartments';
+            document.getElementById('address1').value = '123 Main Street';
+            document.getElementById('city').value = 'San Francisco';
+            updateProgress();
+        }, 1000);
+    </script>
+</body>
+</html>

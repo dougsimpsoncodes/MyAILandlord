@@ -303,13 +303,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 6,
   },
   cardTitle: {
@@ -348,13 +345,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 6,
   },
   cardSubtitle: {
@@ -474,13 +468,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#27AE60',
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   submitButtonDisabled: {

@@ -62,21 +62,60 @@ const ReviewIssueScreen = () => {
 
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>(generateTimeSlots());
 
-  const toggleTimeSlot = (dayIndex: number, period: 'morning' | 'afternoon' | 'evening') => {
-    const updated = [...timeSlots];
+  const handleApplyToAllDaysToggle = () => {
+    const newApplyToAllDays = !applyToAllDays;
+    setApplyToAllDays(newApplyToAllDays);
     
+    // If turning ON the toggle, apply any existing selections to all days
+    if (newApplyToAllDays) {
+      // Find all periods that are selected on any day
+      const selectedPeriods = {
+        morning: timeSlots.some(slot => slot.periods.morning),
+        afternoon: timeSlots.some(slot => slot.periods.afternoon),
+        evening: timeSlots.some(slot => slot.periods.evening),
+      };
+      
+      // Apply these selections to all days
+      const updated = timeSlots.map(slot => ({
+        ...slot,
+        periods: {
+          morning: selectedPeriods.morning,
+          afternoon: selectedPeriods.afternoon,
+          evening: selectedPeriods.evening,
+        }
+      }));
+      setTimeSlots(updated);
+    }
+  };
+
+  const toggleTimeSlot = (dayIndex: number, period: 'morning' | 'afternoon' | 'evening') => {
     if (applyToAllDays) {
       // Toggle the same period for all days
-      const newValue = !updated[dayIndex].periods[period];
-      updated.forEach(slot => {
-        slot.periods[period] = newValue;
-      });
+      const newValue = !timeSlots[dayIndex].periods[period];
+      const updated = timeSlots.map(slot => ({
+        ...slot,
+        periods: {
+          ...slot.periods,
+          [period]: newValue
+        }
+      }));
+      setTimeSlots(updated);
     } else {
       // Toggle only the specific day/period
-      updated[dayIndex].periods[period] = !updated[dayIndex].periods[period];
+      const updated = timeSlots.map((slot, index) => {
+        if (index === dayIndex) {
+          return {
+            ...slot,
+            periods: {
+              ...slot.periods,
+              [period]: !slot.periods[period]
+            }
+          };
+        }
+        return slot;
+      });
+      setTimeSlots(updated);
     }
-    
-    setTimeSlots(updated);
   };
 
   const getSelectedSlotsCount = () => {
@@ -348,10 +387,16 @@ Vendor Instructions: ${vendorComment}` : ''}`;
           <View style={styles.toggleContainer}>
             <Text style={styles.toggleLabel}>Apply same times to all days</Text>
             <TouchableOpacity
-              style={[styles.toggleButton, applyToAllDays && styles.toggleButtonActive]}
-              onPress={() => setApplyToAllDays(!applyToAllDays)}
+              style={[
+                styles.toggleButton, 
+                applyToAllDays ? styles.toggleButtonActive : null
+              ]}
+              onPress={handleApplyToAllDaysToggle}
             >
-              <View style={[styles.toggleCircle, applyToAllDays && styles.toggleCircleActive]} />
+              <View style={[
+                styles.toggleCircle, 
+                applyToAllDays ? styles.toggleCircleActive : null
+              ]} />
             </TouchableOpacity>
           </View>
           
@@ -458,10 +503,10 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   summaryHeader: {
@@ -663,10 +708,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   commentHeader: {
@@ -710,6 +755,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     padding: 2,
     justifyContent: 'center',
+    alignItems: 'flex-start',
   },
   toggleButtonActive: {
     backgroundColor: '#27AE60',
@@ -719,14 +765,15 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 2,
+    alignSelf: 'flex-start',
   },
   toggleCircleActive: {
-    transform: [{ translateX: 20 }],
+    alignSelf: 'flex-end',
   },
   footer: {
     padding: 20,
@@ -742,10 +789,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   submitButtonDisabled: {

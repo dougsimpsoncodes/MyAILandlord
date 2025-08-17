@@ -48,7 +48,40 @@ export class PropertyDraftService {
       };
 
       // Save the draft
-      await AsyncStorage.setItem(storageKey, JSON.stringify(draftWithMetadata));
+      try {
+        await AsyncStorage.setItem(storageKey, JSON.stringify(draftWithMetadata));
+      } catch (storageError: any) {
+        // Handle storage quota exceeded
+        if (storageError.name === 'QuotaExceededError' || storageError.message?.includes('quota')) {
+          console.warn('Storage quota exceeded, cleaning up old drafts...');
+          
+          // Try to free up space by cleaning old drafts
+          await this.cleanupOldDrafts(userId, true); // Force cleanup
+          
+          // Try again with simplified data (remove photos from storage)
+          const simplifiedDraft = {
+            ...draftWithMetadata,
+            propertyData: {
+              ...draftWithMetadata.propertyData,
+              photos: [], // Remove photos to save space
+            },
+            areas: draftWithMetadata.areas?.map(area => ({
+              ...area,
+              photos: [], // Remove area photos to save space
+            })),
+          };
+          
+          try {
+            await AsyncStorage.setItem(storageKey, JSON.stringify(simplifiedDraft));
+            console.warn('Saved simplified draft without photos due to storage constraints');
+          } catch (retryError) {
+            console.error('Failed to save even simplified draft:', retryError);
+            throw new Error('Storage full - please clear browser data and try again');
+          }
+        } else {
+          throw storageError;
+        }
+      }
 
       // Update drafts list
       await this.updateDraftsList(userId, draftState.id);
@@ -264,6 +297,29 @@ export class PropertyDraftService {
   }
 
   /**
+   * Clear all drafts for a user (emergency storage cleanup)
+   */
+  static async clearAllUserDrafts(userId: string): Promise<void> {
+    try {
+      console.log('Clearing all drafts for user due to storage issues...');
+      const drafts = await this.getUserDrafts(userId);
+      
+      // Delete all drafts
+      for (const draft of drafts) {
+        await this.deleteDraft(userId, draft.id);
+      }
+      
+      // Clear the drafts list
+      const draftsListKey = this.getUserDraftsListKey(userId);
+      await AsyncStorage.removeItem(draftsListKey);
+      
+      console.log(`Cleared ${drafts.length} drafts for user`);
+    } catch (error) {
+      console.error('Failed to clear user drafts:', error);
+    }
+  }
+
+  /**
    * Calculate storage usage for a user
    */
   static async getStorageUsage(userId: string): Promise<{
@@ -317,21 +373,37 @@ export class PropertyDraftService {
   /**
    * Clean up old drafts if user has too many
    */
-  private static async cleanupOldDrafts(userId: string): Promise<void> {
+  private static async cleanupOldDrafts(userId: string, forceCleanup: boolean = false): Promise<void> {
     try {
       const drafts = await this.getUserDrafts(userId);
       
-      if (drafts.length > this.MAX_DRAFTS_PER_USER) {
-        // Sort by last modified and keep only the newest ones
+      let draftsToDelete: any[] = [];
+      
+      if (forceCleanup) {
+        // If forced cleanup due to storage issues, delete more aggressively
+        const sortedDrafts = drafts.sort((a, b) => 
+          new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+        );
+        // Keep only the most recent draft
+        draftsToDelete = sortedDrafts.slice(1);
+        console.log(`Force cleanup: removing ${draftsToDelete.length} old drafts`);
+      } else if (drafts.length > this.MAX_DRAFTS_PER_USER) {
+        // Normal cleanup - sort by last modified and keep only the newest ones
         const sortedDrafts = drafts.sort((a, b) => 
           new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
         );
 
         // Delete the oldest drafts
-        const draftsToDelete = sortedDrafts.slice(this.MAX_DRAFTS_PER_USER);
-        for (const draft of draftsToDelete) {
-          await this.deleteDraft(userId, draft.id);
-        }
+        draftsToDelete = sortedDrafts.slice(this.MAX_DRAFTS_PER_USER);
+      }
+
+      // Delete identified drafts
+      for (const draft of draftsToDelete) {
+        await this.deleteDraft(userId, draft.id);
+      }
+      
+      if (draftsToDelete.length > 0) {
+        console.log(`Cleaned up ${draftsToDelete.length} old drafts`);
       }
     } catch (error) {
       console.error('Failed to cleanup old drafts:', error);

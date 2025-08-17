@@ -100,10 +100,10 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '100%',
     marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   infoTitle: {
@@ -135,10 +135,10 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   primaryButtonText: {

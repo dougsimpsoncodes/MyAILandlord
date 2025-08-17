@@ -1,0 +1,180 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2575.4">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1">&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1">&lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;</p>
+<p class="p1">&lt;title&gt;MyAILandlord - Property Flow Prototype&lt;/title&gt;</p>
+<p class="p1">&lt;style&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>body {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin: 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-color: #f5f6f7;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>color: #333;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.container {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>max-width: 600px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin: auto;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>padding-bottom: 100px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>header {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-color: #fff;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>padding: 16px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border-bottom: 1px solid #ddd;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>header h1 {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-size: 22px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin: 0 0 4px 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>header p {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-size: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin: 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>color: #666;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.progress {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background: #e0e0e0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border-radius: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>height: 6px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin-top: 12px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>overflow: hidden;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.progress-fill {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background: #28a745;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>height: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>transition: width 0.3s ease;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>main {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>padding: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.field {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin-bottom: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.field label {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>display: block;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-weight: 600;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin-bottom: 6px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-size: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.field input, .field select, .field textarea {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>padding: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border: 1px solid #ccc;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border-radius: 6px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-size: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.photo-grid {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>display: grid;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>grid-template-columns: repeat(2, 1fr);</p>
+<p class="p1"><span class="Apple-converted-space">        </span>gap: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.photo {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-color: #ddd;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border-radius: 8px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>height: 120px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-size: cover;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-position: center;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>footer {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>position: fixed;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>bottom: 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>left: 0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>width: 100%;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-color: #fff;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border-top: 1px solid #ddd;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>padding: 10px 16px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>justify-content: space-between;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>max-width: 600px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>margin: auto;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>right: 0;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.btn {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>padding: 10px 20px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border-radius: 6px;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>border: none;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-weight: bold;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>cursor: pointer;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>font-size: 14px;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.btn-primary {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-color: #28a745;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>color: #fff;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1"><span class="Apple-converted-space">    </span>.btn-secondary {</p>
+<p class="p1"><span class="Apple-converted-space">        </span>background-color: #e0e0e0;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>color: #333;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>}</p>
+<p class="p1">&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p1">&lt;div class="container"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;header&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;h1 id="step-title"&gt;&lt;/h1&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;p id="step-subtitle"&gt;&lt;/p&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;div class="progress"&gt;&lt;div class="progress-fill" id="progress-bar"&gt;&lt;/div&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/header&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;main id="step-content"&gt;&lt;/main&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;footer&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="btn btn-secondary" id="back-btn"&gt;Back&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>&lt;button class="btn btn-primary" id="next-btn"&gt;Next&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>&lt;/footer&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1">const steps = [</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>title: "Property Basics",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subtitle: "Let's start with the basics. This should take about 2 minutes.",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>content: `</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;Property Name&lt;/label&gt;&lt;input value="Sunset View Apartments"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;Street Address&lt;/label&gt;&lt;input value="123 Main Street"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;City&lt;/label&gt;&lt;input value="San Francisco"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;State&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option&gt;California&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;ZIP Code&lt;/label&gt;&lt;input value="94105"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;Property Type&lt;/label&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                    </span>&lt;option&gt;Apartment&lt;/option&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;/select&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;Bedrooms&lt;/label&gt;&lt;input value="2"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;Bathrooms&lt;/label&gt;&lt;input value="1.5"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>`</p>
+<p class="p1"><span class="Apple-converted-space">    </span>},</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>title: "Property Photos",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subtitle: "Upload photos that showcase the property.",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>content: `</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="photo-grid"&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="photo" style="background-image:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAYAAAA...')"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="photo" style="background-color:#ccc;"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="photo" style="background-color:#ccc;"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">                </span>&lt;div class="photo" style="background-color:#ccc;"&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">        </span>`</p>
+<p class="p1"><span class="Apple-converted-space">    </span>},</p>
+<p class="p1"><span class="Apple-converted-space">    </span>{</p>
+<p class="p1"><span class="Apple-converted-space">        </span>title: "Room Selection",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>subtitle: "Choose which rooms to include in documentation.",</p>
+<p class="p1"><span class="Apple-converted-space">        </span>content: `</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;&lt;input type="checkbox" checked&gt; Living Room&lt;/label&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;&lt;input type="checkbox" checked&gt; Kitchen&lt;/label&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"&gt;&lt;label&gt;&lt;input type="checkbox" checked&gt; Bedroom&lt;/label&gt;&lt;/div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">            </span>&lt;div class="field"</p>
+</body>
+</html>

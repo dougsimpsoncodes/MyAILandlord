@@ -18,8 +18,9 @@
     "lint:ts": "npx tsc --noEmit --strict",
     "prebuild:ios": "npm run typecheck && npm run security:audit",
     "prebuild:android": "npm run typecheck && npm run security:audit",
-    "scan:secrets": "node scripts/ci/scan-secrets.js",
-    "test:rls": "node scripts/ci/rls-smoke.js"
+    "scan:secrets": "gitleaks detect --redact --config .gitleaks.toml --report-path .reports/gitleaks.json",
+    "test:rls": "node scripts/ci/rls-smoke.js",
+    "scan:secrets:all": "gitleaks detect --no-git --source . --redact --config .gitleaks.toml --report-path .reports/gitleaks-all.json"
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.14.12",

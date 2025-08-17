@@ -211,6 +211,7 @@ const HomeScreen = () => {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#E74C3C" />
         </TouchableOpacity>
+
       </ScrollView>
 
       {/* Profile Modal */}
@@ -248,10 +249,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    
+    
+    
+    
     elevation: 5,
     overflow: 'hidden',
   },
@@ -323,10 +324,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   actionIconCircle: {
@@ -357,10 +358,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   activityIcon: {

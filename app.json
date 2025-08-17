@@ -37,6 +37,13 @@
         "WRITE_EXTERNAL_STORAGE"
       ]
     },
-    "platforms": ["ios", "android", "web"]
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "plugins": [
+      "expo-barcode-scanner"
+    ]
   }
 }

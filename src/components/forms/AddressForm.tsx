@@ -73,7 +73,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         </Text>
         <TextInput
           style={[styles.input, errors.line1 && styles.inputError]}
-          placeholder="123 Main Street"
+          placeholder=""
           value={value.line1}
           onChangeText={(text) => handleFieldChange('line1', text)}
           onBlur={() => {
@@ -102,7 +102,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         <Text style={styles.label}>Unit, Apt, Suite (Optional)</Text>
         <TextInput
           style={[styles.input, errors.line2 && styles.inputError]}
-          placeholder="Apt 4B, Unit 101, Suite 200"
+          placeholder=""
           value={value.line2 || ''}
           onChangeText={(text) => handleFieldChange('line2', text)}
           autoComplete="street-address"
@@ -123,7 +123,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
         </Text>
         <TextInput
           style={[styles.input, errors.city && styles.inputError]}
-          placeholder="San Francisco"
+          placeholder=""
           value={value.city}
           onChangeText={(text) => handleFieldChange('city', text)}
           onBlur={() => {
@@ -135,7 +135,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               }
             }
           }}
-          autoComplete="address-line2"
+          autoComplete="address-level2"
           textContentType="addressCity"
           autoCapitalize="words"
           returnKeyType="next"
@@ -153,6 +153,25 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           <Text style={styles.label}>
             State <Text style={styles.required}>*</Text>
           </Text>
+          {/* Hidden input for autofill */}
+          <TextInput
+            style={{ position: 'absolute', left: -9999, opacity: 0, height: 0 }}
+            autoComplete="address-level1"
+            textContentType="addressState"
+            value={value.state}
+            onChangeText={(text) => {
+              // Find matching state and update
+              const matchingState = US_STATES.find(state => 
+                state.code.toLowerCase() === text.toLowerCase() ||
+                state.name.toLowerCase() === text.toLowerCase()
+              );
+              if (matchingState) {
+                handleFieldChange('state', matchingState.code);
+              } else {
+                handleFieldChange('state', text.toUpperCase());
+              }
+            }}
+          />
           <TouchableOpacity
             style={[styles.dropdownButton, errors.state && styles.inputError]}
             onPress={() => setShowStateModal(true)}
@@ -176,7 +195,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           </Text>
           <TextInput
             style={[styles.input, errors.zipCode && styles.inputError]}
-            placeholder="12345"
+            placeholder=""
             value={value.zipCode}
             onChangeText={(text) => handleFieldChange('zipCode', text)}
             autoComplete="postal-code"
@@ -280,10 +299,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   inputError: {
@@ -311,10 +330,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
     elevation: 1,
     minHeight: 52,
   },
