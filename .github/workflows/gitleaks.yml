@@ -1,29 +1,26 @@
-name: secret-scan
+name: Secret Scan
 on:
   push:
-    branches: ["**"]
+    branches: [ main ]
   pull_request:
-    branches: ["**"]
 jobs:
   gitleaks:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
+        with:
+          config: .gitleaks.toml
+          report-format: json
+          report-path: gitleaks-report.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          config-path: .gitleaks.toml
-      - name: Upload Gitleaks report
-        if: failure()
+      - name: Upload report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
-          path: results.sarif
-          retention-days: 5
+          path: gitleaks-report.json
+          retention-days: 7
