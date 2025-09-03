@@ -14,7 +14,23 @@ const { width, height } = Dimensions.get('window');
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
   const { signOut, isSignedIn } = useAppAuth();
-  const { clearRole } = useContext(RoleContext);
+  const { clearRole, userRole } = useContext(RoleContext);
+  
+  // Debug logging
+  console.log('🏠 Welcome Screen - Auth State:', { isSignedIn, userRole });
+
+  const handleGetStarted = () => {
+    // If user is authenticated with a role, AppNavigator should automatically
+    // switch to MainStack. If we're still here, user needs to authenticate.
+    if (isSignedIn && userRole) {
+      console.log('User authenticated with role, AppNavigator should auto-redirect');
+      // The AppNavigator will handle the transition automatically
+      return;
+    }
+    
+    // User not authenticated or no role, go to signup
+    navigation.navigate('SignUp');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,10 +65,20 @@ const WelcomeScreen = () => {
 
         <TouchableOpacity
           style={styles.getStartedButton}
-          onPress={() => navigation.navigate('RoleSelect')}
+          onPress={handleGetStarted}
           activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>Get Started</Text>
+          <Text style={styles.buttonText}>
+            {isSignedIn && userRole ? 'Continue to Dashboard' : 'Get Started'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => navigation.navigate('Login')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.loginButtonText}>Already have an account? Sign In</Text>
         </TouchableOpacity>
 
         {isSignedIn && (
@@ -147,6 +173,18 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  loginButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    color: '#3498DB',
+    fontSize: 16,
+    fontWeight: '500',
   },
   signOutButton: {
     backgroundColor: '#E74C3C',
