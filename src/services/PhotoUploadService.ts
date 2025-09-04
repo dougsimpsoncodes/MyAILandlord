@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { supabase } from '../lib/supabaseClient';
+import { storageService } from './supabase/storage';
+import log from '../lib/log';
 
 type PickedAsset = {
   uri: string;
@@ -65,44 +66,23 @@ export async function uploadPropertyPhotos(
     
     const blob = await toBlob(work);
     const name = fileNameFor(propertyId, areaId, a.fileName, mime);
-    const up = await supabase.storage.from(bucket).upload(name, blob, {
-      contentType: mime || 'image/jpeg',
-      upsert: false
-    });
-    
-    if (up.error && String(up.error.message || '').includes('already exists')) {
+    try {
+      // Try primary name
+      await storageService.uploadFile({ bucket: bucket as any, path: name, file: blob, contentType: mime || 'image/jpeg' });
+      const signed = await storageService.getDisplayUrl(bucket as any, name);
+      out.push({ path: name, url: signed || '', width: w, height: h, size: blob.size });
+    } catch (e) {
+      // If exists, retry with alt name
       const alt = fileNameFor(propertyId, areaId, undefined, mime);
-      const r2 = await supabase.storage.from(bucket).upload(alt, blob, {
-        contentType: mime || 'image/jpeg',
-        upsert: false
-      });
-      if (r2.error) {
-        console.error('📸 PhotoUploadService: Failed to upload alternative file:', r2.error);
+      try {
+        await storageService.uploadFile({ bucket: bucket as any, path: alt, file: blob, contentType: mime || 'image/jpeg' });
+        const signed = await storageService.getDisplayUrl(bucket as any, alt);
+        out.push({ path: alt, url: signed || '', width: w, height: h, size: blob.size });
+      } catch (e2) {
+        log.error('PhotoUploadService: Failed to upload file', { error: String(e2) });
         continue;
       }
-      const { data } = supabase.storage.from(bucket).getPublicUrl(alt);
-      out.push({
-        path: alt,
-        url: data.publicUrl,
-        width: w,
-        height: h,
-        size: blob.size
-      });
-      continue;
     }
-    
-    if (up.error) {
-      console.error('📸 PhotoUploadService: Failed to upload file:', up.error);
-      continue;
-    }
-    const { data } = supabase.storage.from(bucket).getPublicUrl(name);
-    out.push({
-      path: name,
-      url: data.publicUrl,
-      width: w,
-      height: h,
-      size: blob.size
-    });
   }
   
   return out;

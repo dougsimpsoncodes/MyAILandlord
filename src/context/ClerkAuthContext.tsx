@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { ClerkProvider, useAuth, useUser } from '@clerk/clerk-expo';
+import { ClerkProvider, useAuth, useUser, useClerk } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 
 // Secure token storage for Clerk
@@ -45,8 +45,9 @@ export const ClerkWrapper: React.FC<ClerkWrapperProps> = ({ children }) => {
 
 // Custom hook that combines Clerk's auth with your app's user structure
 export function useAppAuth() {
-  const { isSignedIn, signOut, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
+  const clerk = useClerk();
 
   const appUser = user ? {
     id: user.id,
@@ -54,6 +55,13 @@ export function useAppAuth() {
     email: user.emailAddresses?.[0]?.emailAddress || user.primaryEmailAddress?.emailAddress || '',
     avatar: user.imageUrl || undefined,
   } : null;
+
+  // Properly handle signOut function
+  const signOut = async () => {
+    if (clerk && clerk.signOut) {
+      return await clerk.signOut();
+    }
+  };
 
   return {
     user: appUser,

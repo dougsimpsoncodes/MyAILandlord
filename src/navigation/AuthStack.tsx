@@ -14,10 +14,19 @@ export type AuthStackParamList = {
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-const AuthStack = () => {
+interface AuthStackProps {
+  initialInvite?: boolean;
+}
+
+const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false }) => {
+  // Choose initial route based on deep link context
+  const initialRouteName = initialInvite ? 'PropertyInviteAccept' : 'Welcome';
+  
+  console.log('🔗 AuthStack initialized with:', { initialInvite, initialRouteName });
+
   return (
     <Stack.Navigator
-      initialRouteName="Welcome"
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',

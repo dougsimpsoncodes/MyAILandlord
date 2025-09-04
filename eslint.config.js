@@ -1,0 +1,38 @@
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import react from 'eslint-plugin-react';
+import reactNative from 'eslint-plugin-react-native';
+
+export default [
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 2021,
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+      globals: {
+        File: 'readonly',
+        Blob: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        __DEV__: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+      },
+    },
+    plugins: { react, 'react-native': reactNative },
+    rules: {
+      'no-console': 'error',
+      'react/react-in-jsx-scope': 'off',
+    },
+    settings: { react: { version: 'detect' } },
+  },
+  {
+    files: ['src/lib/log.ts', '**/*.test.ts', '**/*.test.tsx', 'e2e/**/*'],
+    rules: { 'no-console': 'off' },
+  },
+];

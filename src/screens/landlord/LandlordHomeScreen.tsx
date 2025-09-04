@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/ClerkAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { UserProfile } from '../../components/shared/UserProfile';
+import { getUserProperties } from '../../clients/ClerkSupabaseClient';
 
 type LandlordHomeNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Home'>;
 
@@ -33,6 +34,21 @@ const LandlordHomeScreen = () => {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [totalProperties, setTotalProperties] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Load property count on screen mount
+  useEffect(() => {
+    const loadPropertyCount = async () => {
+      try {
+        const properties = await getUserProperties();
+        setTotalProperties(properties.length);
+      } catch (error) {
+        console.error('Error loading property count:', error);
+        setTotalProperties(0);
+      }
+    };
+
+    loadPropertyCount();
+  }, []);
 
   const quickActions: QuickAction[] = [
     {

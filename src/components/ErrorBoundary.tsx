@@ -2,6 +2,8 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ERROR_MESSAGES } from '../utils/constants';
 import { getErrorMessage } from '../utils/helpers';
+import { log } from '../lib/log';
+import { captureException } from '../lib/monitoring';
 
 interface Props {
   children: ReactNode;
@@ -34,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    log.error('ErrorBoundary caught an error', { error: { name: error.name, message: error.message, stack: error.stack }, info: { componentStack: errorInfo.componentStack } });
     
     this.setState({
       error,
@@ -48,12 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     // Log to crash reporting service in production
     if (!__DEV__) {
-      // TODO: Send to crash reporting service
-      console.error('Production error:', {
-        error: error.message,
-        type: error.name,
-        timestamp: new Date().toISOString()
-      });
+      captureException(error, { where: 'ErrorBoundary' });
     }
   }
 
@@ -176,7 +173,8 @@ const styles = StyleSheet.create({
 // Specialized error boundary for authentication errors
 export const AuthErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
   const handleAuthError = (error: Error, errorInfo: ErrorInfo) => {
-    console.error('Authentication error:', error, errorInfo);
+    log.error('Authentication error', { error: { name: error.name, message: error.message }, info: { componentStack: errorInfo.componentStack } });
+    if (!__DEV__) captureException(error, { where: 'AuthErrorBoundary' });
     // Could redirect to login screen or show specific auth error UI
   };
 
@@ -205,7 +203,8 @@ export const AuthErrorBoundary: React.FC<{ children: ReactNode }> = ({ children 
 // Specialized error boundary for API errors
 export const ApiErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => {
   const handleApiError = (error: Error, errorInfo: ErrorInfo) => {
-    console.error('API error:', error, errorInfo);
+    log.error('API error', { error: { name: error.name, message: error.message }, info: { componentStack: errorInfo.componentStack } });
+    if (!__DEV__) captureException(error, { where: 'ApiErrorBoundary' });
     // Could show network status or retry mechanisms
   };
 
@@ -234,18 +233,8 @@ export const ApiErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }
 // Hook for handling errors in functional components
 export const useErrorHandler = () => {
   const handleError = React.useCallback((error: Error, context?: string) => {
-    console.error(`Error in ${context || 'component'}:`, error);
-    
-    // In a real app, you'd send this to a crash reporting service
-    if (!__DEV__) {
-      // TODO: Send to crash reporting service
-      console.error('Production error:', {
-        error: error.message,
-        type: error.name,
-        context,
-        timestamp: new Date().toISOString()
-      });
-    }
+    log.error('Component error', { error: { name: error.name, message: error.message }, context });
+    if (!__DEV__) captureException(error, { where: 'useErrorHandler', context });
   }, []);
 
   return { handleError };

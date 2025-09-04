@@ -2,29 +2,34 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Parse allowed origins once at start
-const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'http://localhost:8081,https://myailandlord.app,exp://192.168.0.14:8081')
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'https://myailandlord.app,https://www.myailandlord.app')
   .split(',')
   .map(s => s.trim().toLowerCase())
   .filter(Boolean)
 
+// Development mode check (set ENABLE_DEV_ORIGINS=true in dev/staging)
+const isDevelopment = Deno.env.get('ENABLE_DEV_ORIGINS') === 'true'
+
+// Pre-compute allowed origins Set for O(1) lookup
+const allowedOriginsSet = new Set(allowedOrigins)
+
 function originAllowed(origin: string | null): boolean {
   if (!origin) return false
-  try {
-    const o = origin.toLowerCase()
-    
-    // Check exact matches first
-    if (allowedOrigins.includes(o)) return true
-    
-    // Allow Expo development origins (exp:// protocol with any IP on port 8081)
+  
+  const o = origin.toLowerCase()
+  
+  // Fast exact match check (O(1) with Set)
+  if (allowedOriginsSet.has(o)) return true
+  
+  // Only allow development origins if explicitly enabled
+  if (isDevelopment) {
+    // Expo development origins
     if (o.startsWith('exp://') && o.endsWith(':8081')) return true
-    
-    // Allow localhost variations for development
-    if (o.includes('localhost') || o.includes('127.0.0.1')) return true
-    
-    return false
-  } catch {
-    return false
+    // Local development
+    if (o.startsWith('http://localhost') || o.startsWith('http://127.0.0.1')) return true
   }
+  
+  return false
 }
 
 function corsHeaders(origin: string | null) {

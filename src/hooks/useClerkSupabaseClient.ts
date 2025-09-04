@@ -1,3 +1,4 @@
+// DEPRECATED: Use useSupabaseWithAuth from 'src/hooks/useSupabaseWithAuth' instead.
 import { useSession, useUser } from '@clerk/clerk-expo';
 import { supabase } from '../lib/supabaseClient';
 

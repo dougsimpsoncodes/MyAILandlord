@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import log from '../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, InventoryItem } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
 import { useAppAuth } from '../context/ClerkAuthContext';
@@ -83,7 +84,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
           pendingChanges.current = false;
           setError(null);
         } catch (err) {
-          console.error('Auto-save failed:', err);
+          log.error('Auto-save failed', { error: String(err) });
           setError('Failed to auto-save draft');
         } finally {
           setIsSaving(false);

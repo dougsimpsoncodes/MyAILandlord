@@ -14,11 +14,9 @@ type SignUpScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 
 const SignUpScreen = () => {
   const route = useRoute<SignUpScreenRouteProp>();
   const navigation = useNavigation<SignUpScreenNavigationProp>();
-  const { role } = route.params;
   const { signUp, setActive, isLoaded } = useSignUp();
   const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
   const { startOAuthFlow: appleOAuth } = useOAuth({ strategy: 'oauth_apple' });
-  const { setUserRole } = useContext(RoleContext);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +56,7 @@ const SignUpScreen = () => {
 
       if (signUpAttempt.status === 'complete') {
         await setActive({ session: signUpAttempt.createdSessionId });
-        setUserRole(role);
+        // Role will be set automatically by useProfileSync hook (defaults to landlord)
       } else {
         Alert.alert('Verification Error', 'Unable to verify email. Please try again.');
       }
@@ -78,7 +76,7 @@ const SignUpScreen = () => {
       
       if (createdSessionId && oauthSetActive) {
         await oauthSetActive({ session: createdSessionId });
-        setUserRole(role);
+        // Role will be set automatically by useProfileSync hook (defaults to landlord)
       }
     } catch (error: any) {
       Alert.alert('OAuth Error', error.message || `Failed to sign up with ${provider}. Please try again.`);
@@ -88,7 +86,7 @@ const SignUpScreen = () => {
   };
 
   const navigateToSignIn = () => {
-    navigation.navigate('Login', { role });
+    navigation.navigate('Login');
   };
 
   if (pendingVerification) {
@@ -150,12 +148,12 @@ const SignUpScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={styles.roleIcon}>{role === 'tenant' ? '🏘️' : '🏢'}</Text>
+          <Text style={styles.roleIcon}>🏠</Text>
           <Text style={styles.title}>
-            Create {role === 'tenant' ? 'Tenant' : 'Landlord'} Account
+            Create Account
           </Text>
           <Text style={styles.subtitle}>
-            Sign up to access your {role === 'tenant' ? 'maintenance portal' : 'management dashboard'}
+            Sign up to get started with My AI Landlord
           </Text>
         </View>
 

@@ -5,23 +5,20 @@ import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { useSignIn, useOAuth } from '@clerk/clerk-expo';
-import { RoleContext } from '../context/RoleContext';
 import { Ionicons } from '@expo/vector-icons';
 
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 const LoginScreen = () => {
-  const route = useRoute<LoginScreenRouteProp>();
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { role } = route.params;
   const { signIn, setActive, isLoaded } = useSignIn();
   const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
   const { startOAuthFlow: appleOAuth } = useOAuth({ strategy: 'oauth_apple' });
-  const { setUserRole } = useContext(RoleContext);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
+  
 
   const handleLogin = async () => {
     if (!isLoaded) return;
@@ -36,7 +33,7 @@ const LoginScreen = () => {
 
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId });
-        setUserRole(role);
+        // Role will be set automatically by useProfileSync hook
       } else {
         Alert.alert('Sign In Error', 'Unable to complete sign in. Please try again.');
       }
@@ -56,7 +53,7 @@ const LoginScreen = () => {
       
       if (createdSessionId && oauthSetActive) {
         await oauthSetActive({ session: createdSessionId });
-        setUserRole(role);
+        // Role will be set automatically by useProfileSync hook
       }
     } catch (error: any) {
       Alert.alert('OAuth Error', error.message || `Failed to sign in with ${provider}. Please try again.`);
@@ -66,7 +63,7 @@ const LoginScreen = () => {
   };
 
   const navigateToSignUp = () => {
-    navigation.navigate('SignUp', { role });
+    navigation.navigate('SignUp');
   };
 
   return (
@@ -80,12 +77,12 @@ const LoginScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={styles.roleIcon}>{role === 'tenant' ? '🏘️' : '🏢'}</Text>
+          <Text style={styles.roleIcon}>🏠</Text>
           <Text style={styles.title}>
-            {role === 'tenant' ? 'Tenant Login' : 'Landlord Login'}
+            Welcome Back
           </Text>
           <Text style={styles.subtitle}>
-            Sign in to access your {role === 'tenant' ? 'maintenance portal' : 'management dashboard'}
+            Sign in to your My AI Landlord account
           </Text>
         </View>
 

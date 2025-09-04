@@ -23,9 +23,37 @@ interface TimeSlot {
 }
 
 const ReviewIssueScreen = () => {
+  console.log('=== ReviewIssueScreen MOUNTED at', new Date().toISOString(), '===');
+  
   const navigation = useNavigation<ReviewIssueScreenNavigationProp>();
   const route = useRoute<ReviewIssueScreenRouteProp>();
-  const { reviewData } = route.params;
+  
+  console.log('Route params:', route.params);
+  console.log('Raw route params string:', JSON.stringify(route.params));
+  
+  const { reviewData } = route.params || {};
+  console.log('ReviewData received:', reviewData);
+  console.log('ReviewData stringified:', JSON.stringify(reviewData));
+  
+  // Safety check for reviewData
+  if (!reviewData || typeof reviewData !== 'object') {
+    console.error('Invalid reviewData received:', reviewData);
+    // Navigate back or show error
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Error: Invalid review data received</Text>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
   const apiClient = useApiClient();
 
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<TimeSlot[]>([]);
@@ -241,24 +269,30 @@ Vendor Instructions: ${vendorComment}` : ''}`;
         return;
       }
       
-      const response = await apiClient.createMaintenanceRequest({
-        propertyId: 'property-id', // TODO: Get from user profile
-        title: reviewData.issueType,
-        description: reviewData.additionalDetails || 'No additional details provided',
-        priority: 'medium',
+      const maintenanceRequestData = {
+        propertyId: reviewData.propertyId,
+        title: reviewData.title || reviewData.issueType,
+        description: structuredDescription,
+        priority: reviewData.priority,
         area: reviewData.area,
         asset: reviewData.asset,
         issueType: reviewData.issueType,
         images: reviewData.mediaItems || []
-      });
+      };
+      
+      console.log('=== SUBMITTING MAINTENANCE REQUEST ===');
+      console.log('Request data:', JSON.stringify(maintenanceRequestData, null, 2));
+      
+      const response = await apiClient.createMaintenanceRequest(maintenanceRequestData);
       
       // Navigate to success screen
       navigation.navigate('SubmissionSuccess');
     } catch (error) {
-      console.error('Error creating case:', error);
+      console.error('Error creating maintenance request:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       Alert.alert(
         'Submission Failed',
-        'Failed to submit your request. Please try again.',
+        `Failed to submit your request: ${errorMessage}`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -467,7 +501,6 @@ Vendor Instructions: ${vendorComment}` : ''}`;
           <Text style={styles.submitButtonText}>
             {isSubmitting ? 'Submitting...' : 'Submit Request'}
           </Text>
-          {!isSubmitting && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -782,7 +815,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#E1E8ED',
   },
   submitButton: {
-    backgroundColor: '#27AE60',
+    backgroundColor: '#3498DB',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -796,10 +829,33 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: '#95A5A6',
-    opacity: 0.7,
+    backgroundColor: '#27AE60',
+    opacity: 1,
   },
   submitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#E74C3C',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  backButton: {
+    backgroundColor: '#3498DB',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  backButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

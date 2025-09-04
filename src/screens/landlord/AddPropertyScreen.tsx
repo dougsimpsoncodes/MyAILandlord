@@ -318,10 +318,6 @@ const AddPropertyScreen = () => {
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* DEBUG MARKER */}
-          <View style={{ backgroundColor: 'blue', padding: 10, marginBottom: 20 }}>
-            <Text style={{ color: 'white', fontWeight: 'bold' }}>DEBUG: AddPropertyScreen IS RENDERING</Text>
-          </View>
           {/* Property Name */}
           <View style={styles.section}>
             <Text style={styles.label}>Property Name</Text>

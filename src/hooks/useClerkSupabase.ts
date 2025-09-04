@@ -1,12 +1,11 @@
+// DEPRECATED: Use useSupabaseWithAuth from 'src/hooks/useSupabaseWithAuth' instead.
+// This file is kept temporarily to avoid widespread import breaks and will be removed
+// once all usages have migrated.
 import { useAuth } from '@clerk/clerk-expo';
 import { supabase } from '../lib/supabaseClient';
 import { useEffect, useState } from 'react';
 import { Database } from '../services/supabase/types';
-
-/**
- * Custom hook for Clerk + Supabase integration
- * Uses centralized client to avoid multiple instances
- */
+import log from '../lib/log';
 export function useClerkSupabase() {
   const { isLoaded, isSignedIn } = useAuth();
 
@@ -50,12 +49,12 @@ export function useSupabaseProfile() {
         // Profile doesn't exist, create it
         await createProfile();
       } else if (error) {
-        console.error('Error fetching profile:', error);
+        log.error('Error fetching profile', { error: String(error) });
       } else {
         setProfile(data);
       }
     } catch (error) {
-      console.error('Profile fetch error:', error);
+      log.error('Profile fetch error', { error: String(error) });
     } finally {
       setLoading(false);
     }
@@ -76,12 +75,12 @@ export function useSupabaseProfile() {
         .single();
 
       if (error) {
-        console.error('Error creating profile:', error);
+        log.error('Error creating profile', { error: String(error) });
       } else {
         setProfile(data);
       }
     } catch (error) {
-      console.error('Profile creation error:', error);
+      log.error('Profile creation error', { error: String(error) });
     }
   };
 
@@ -97,14 +96,14 @@ export function useSupabaseProfile() {
         .single();
 
       if (error) {
-        console.error('Error updating profile:', error);
+        log.error('Error updating profile', { error: String(error) });
         return { error };
       }
 
       setProfile(data);
       return { data };
     } catch (error) {
-      console.error('Profile update error:', error);
+      log.error('Profile update error', { error: String(error) });
       return { error };
     }
   };

@@ -44,56 +44,9 @@ const CommunicationHubScreen = () => {
   
   const [activeTab, setActiveTab] = useState<'messages' | 'announcements'>('messages');
   const [messageText, setMessageText] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Hi! Welcome to your new apartment. Let me know if you need anything.',
-      sender: 'landlord',
-      timestamp: new Date(Date.now() - 86400000 * 2),
-      read: true,
-    },
-    {
-      id: '2',
-      text: 'Thank you! The place looks great.',
-      sender: 'tenant',
-      timestamp: new Date(Date.now() - 86400000),
-      read: true,
-    },
-    {
-      id: '3',
-      text: 'Just a reminder that the plumber will be coming tomorrow at 2 PM to fix the kitchen sink.',
-      sender: 'landlord',
-      timestamp: new Date(Date.now() - 3600000 * 5),
-      read: false,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
 
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    {
-      id: '1',
-      title: 'Building Maintenance Scheduled',
-      content: 'The building water will be shut off on Saturday, March 15th from 9 AM to 12 PM for maintenance.',
-      priority: 'high',
-      timestamp: new Date(Date.now() - 86400000),
-      read: false,
-    },
-    {
-      id: '2',
-      title: 'Parking Lot Resurfacing',
-      content: 'Please move your vehicles by Friday evening. The parking lot will be resurfaced over the weekend.',
-      priority: 'medium',
-      timestamp: new Date(Date.now() - 86400000 * 3),
-      read: true,
-    },
-    {
-      id: '3',
-      title: 'Holiday Trash Schedule',
-      content: 'Due to the holiday, trash pickup will be delayed by one day next week.',
-      priority: 'low',
-      timestamp: new Date(Date.now() - 86400000 * 7),
-      read: true,
-    },
-  ]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     // Mark messages as read when viewing

@@ -80,3 +80,22 @@ When working with Supabase:
 5. Monitor Edge Function logs for errors
 
 NEVER allow direct database access without proper RLS protection.
+
+## LEARNED PATTERNS
+
+### Database Clearing Issues & Solutions (2025-01-03)
+
+**Problem**: Needed to clear all database data for testing but encountered multiple issues:
+1. Missing `SUPABASE_SERVICE_ROLE_KEY` in `.env` file (only had anon key)
+2. `supabase db reset` failed with local socket connection errors
+3. Referenced non-existent tables (tenants, property_invitations, invite_links)
+4. RLS policies prevented complete data deletion with anon key
+
+**Solution**: Created a Node.js script using the anon key that:
+- Works within RLS policy constraints
+- Clears tables in foreign key dependency order
+- Only attempts to clear existing tables
+- Reports what data was successfully cleared
+- Accepts that some orphaned data might remain due to RLS
+
+**Key Insight**: When service role key is unavailable, work within RLS constraints rather than trying to bypass them. This is often sufficient for development/testing scenarios.

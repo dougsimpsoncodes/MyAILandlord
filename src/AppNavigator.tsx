@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import AuthStack from './navigation/AuthStack';
@@ -11,6 +11,8 @@ import { LoadingScreen } from './components/LoadingSpinner';
 const AppNavigator = () => {
   const { user, isSignedIn, isLoading } = useAppAuth();
   const { userRole, isLoading: roleLoading } = useContext(RoleContext);
+  const [initialUrl, setInitialUrl] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
   
   // Debug logging
   console.log('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
@@ -18,14 +20,39 @@ const AppNavigator = () => {
   // Sync Clerk user with Supabase profile
   useProfileSync();
 
-  // Show proper loading screen during authentication check
-  if (isLoading || roleLoading) {
+  // Get initial URL for deep link handling
+  useEffect(() => {
+    const getInitialURL = async () => {
+      try {
+        const url = await Linking.getInitialURL();
+        console.log('🔗 Initial URL detected:', url);
+        setInitialUrl(url);
+      } catch (error) {
+        console.log('🔗 Could not get initial URL:', error);
+      } finally {
+        setIsReady(true);
+      }
+    };
+
+    getInitialURL();
+  }, []);
+
+  // Show loading while checking both auth and initial URL
+  if (isLoading || roleLoading || !isReady) {
     return <LoadingScreen message="Checking authentication..." />;
   }
 
-  // If user is signed in but doesn't have a role, show AuthStack to select role
-  const shouldShowMainStack = isSignedIn && user && userRole;
-  console.log('🧭 shouldShowMainStack:', shouldShowMainStack);
+  // Determine if we should force AuthStack for deep link invite
+  const isInviteLink = initialUrl && initialUrl.includes('/invite');
+  const shouldShowMainStack = isSignedIn && user && userRole && !isInviteLink;
+  
+  console.log('🧭 Navigation decision:', { 
+    shouldShowMainStack, 
+    isInviteLink, 
+    isSignedIn, 
+    hasRole: !!userRole,
+    initialUrl 
+  });
 
   // Configure deep linking
   const linking = {
@@ -34,21 +61,39 @@ const AppNavigator = () => {
       'https://myailandlord.app',
       'https://www.myailandlord.app'
     ],
+    async getInitialURL() {
+      // Handle deep link URL manually
+      const url = await Linking.getInitialURL();
+      console.log('🔗 getInitialURL called:', url);
+      return url;
+    },
+    subscribe(listener: (url: string) => void) {
+      const subscription = Linking.addEventListener('url', ({ url }) => {
+        console.log('🔗 URL event received:', url);
+        listener(url);
+      });
+      return () => subscription?.remove();
+    },
     config: {
       screens: {
-        // Main screens (shown when authenticated with role)
-        PropertyInviteAccept: 'invite',
+        // Screens accessible to both authenticated and unauthenticated users
+        PropertyInviteAccept: {
+          path: 'invite',
+          parse: {
+            property: (property: string) => property,
+          }
+        },
+        // Auth screens
+        Welcome: 'welcome',
+        Login: 'login',
+        SignUp: 'signup',
+        // Main app screens
         Home: 'home',
         PropertyCodeEntry: 'link',
         PropertyManagement: 'properties',
         InviteTenant: 'invite-tenant',
-        // Tenant issue flow (web linking support)
         ReportIssue: 'report-issue',
         ReviewIssue: 'review-issue',
-        // Auth screens (shown when not authenticated)
-        Welcome: 'welcome',
-        Login: 'login',
-        SignUp: 'signup'
       }
     }
   };
@@ -58,7 +103,7 @@ const AppNavigator = () => {
       {shouldShowMainStack ? (
         <MainStack userRole={userRole} />
       ) : (
-        <AuthStack />
+        <AuthStack initialInvite={isInviteLink} />
       )}
     </NavigationContainer>
   );

@@ -3,6 +3,7 @@ import { Platform, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Button from '../shared/Button';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
+import { log } from '../../lib/log';
 
 type Props = {
   propertyId: string;
@@ -30,18 +31,53 @@ async function pickNative() {
 }
 
 async function pickWeb(input: HTMLInputElement) {
-  return new Promise<{ uri: string; fileName?: string; mimeType?: string }[]>((resolve) => {
+  return new Promise<{ uri: string; fileName?: string; mimeType?: string; file?: File }[]>((resolve) => {
     input.onchange = () => {
       const files = Array.from(input.files || []);
       const out = files.map(f => ({
         uri: URL.createObjectURL(f),
         fileName: f.name,
-        mimeType: f.type
+        mimeType: f.type,
+        file: f,
       }));
       resolve(out);
       input.value = '';
     };
     input.click();
+  });
+}
+
+async function compressImageWeb(file: File, maxWidth = 1600, quality = 0.85): Promise<{ uri: string; mimeType: string; fileName: string }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.onload = () => {
+        try {
+          const ratio = img.width > maxWidth ? maxWidth / img.width : 1;
+          const targetW = Math.round(img.width * ratio);
+          const targetH = Math.round(img.height * ratio);
+          const canvas = document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas not supported');
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          canvas.toBlob((blob) => {
+            if (!blob) return reject(new Error('Failed to encode image'));
+            const uri = URL.createObjectURL(blob);
+            const fileName = (file.name.replace(/\.[^.]+$/, '') || 'image') + '.jpg';
+            resolve({ uri, mimeType: 'image/jpeg', fileName });
+          }, 'image/jpeg', quality);
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.onerror = reject;
+      img.src = reader.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
 }
 
@@ -59,11 +95,27 @@ export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled }
   }
   
   const handlePick = async () => {
-    const assets = Platform.OS === 'web' 
+    let assets = Platform.OS === 'web' 
       ? await pickWeb(inputRef.current as HTMLInputElement)
       : await pickNative();
 
     if (!assets.length) return;
+
+    // Web: compress and strip EXIF via canvas re-encode
+    if (Platform.OS === 'web') {
+      try {
+        const processed = await Promise.all(
+          (assets as any[]).map(async (a) => {
+            if (!a.file) return a; // Fallback if no File object
+            const { uri, mimeType, fileName } = await compressImageWeb(a.file);
+            return { ...a, uri, mimeType, fileName };
+          })
+        );
+        assets = processed as any;
+      } catch (e) {
+        log.warn('PhotoPicker web compression failed, using originals', { error: String(e) });
+      }
+    }
 
     const uploaded = await uploadPropertyPhotos(propertyId, areaId, assets as any);
     onUploaded(uploaded.map(u => ({ path: u.path, url: u.url })));

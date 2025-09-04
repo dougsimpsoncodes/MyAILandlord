@@ -1,5 +1,20 @@
-import { supabase } from './config';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import log from '../../lib/log';
 import { decode } from 'base64-arraybuffer';
+
+// Storage client must be set by authenticated context
+let storageClient: SupabaseClient | null = null;
+
+export function setStorageSupabaseClient(client: SupabaseClient) {
+  storageClient = client;
+}
+
+function requireClient(): SupabaseClient {
+  if (!storageClient) {
+    throw new Error('Storage client not set. Call setStorageSupabaseClient first.');
+  }
+  return storageClient;
+}
 
 export type StorageBucket = 'maintenance-images' | 'voice-notes' | 'property-images' | 'documents';
 
@@ -11,11 +26,25 @@ export interface UploadOptions {
 }
 
 export interface UploadResult {
-  path: string;
-  url: string;
+  path: string; // Intentionally no URL; use getSignedUrl/getDisplayUrl
 }
 
 export class SupabaseStorageService {
+  private signedUrlCache = new Map<string, { url: string; expires: number }>();
+  private maxCacheSize = 200;
+
+  private addToCache(key: string, value: { url: string; expires: number }) {
+    // purge expired
+    for (const [k, v] of this.signedUrlCache.entries()) {
+      if (v.expires < Date.now()) this.signedUrlCache.delete(k);
+    }
+    // bound size (FIFO-ish)
+    if (this.signedUrlCache.size >= this.maxCacheSize) {
+      const firstKey = this.signedUrlCache.keys().next().value as string | undefined;
+      if (firstKey) this.signedUrlCache.delete(firstKey);
+    }
+    this.signedUrlCache.set(key, value);
+  }
   /**
    * Upload a file to Supabase Storage
    */
@@ -34,7 +63,7 @@ export class SupabaseStorageService {
         uploadData = file;
       }
 
-      const { data, error } = await supabase.storage
+      const { data, error } = await requireClient().storage
         .from(bucket)
         .upload(path, uploadData, {
           contentType: contentType || this.getContentType(path),
@@ -45,17 +74,9 @@ export class SupabaseStorageService {
         throw new Error(`Upload failed: ${error.message}`);
       }
 
-      // Get public URL for the uploaded file
-      const { data: urlData } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
-
-      return {
-        path: data.path,
-        url: urlData.publicUrl,
-      };
+      return { path: data.path };
     } catch (error) {
-      console.error('Storage upload error:', error);
+      log.error('Storage upload error', { error: String(error) });
       throw error;
     }
   }
@@ -72,14 +93,22 @@ export class SupabaseStorageService {
    * Get a signed URL for private file access
    */
   async getSignedUrl(bucket: StorageBucket, path: string, expiresIn = 3600): Promise<string> {
-    const { data, error } = await supabase.storage
+    const cacheKey = `${bucket}:${path}`;
+    const cached = this.signedUrlCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+      return cached.url;
+    }
+    const { data, error } = await requireClient().storage
       .from(bucket)
       .createSignedUrl(path, expiresIn);
 
     if (error) {
       throw new Error(`Failed to get signed URL: ${error.message}`);
     }
-
+    this.addToCache(cacheKey, {
+      url: data.signedUrl,
+      expires: Date.now() + (expiresIn - 60) * 1000,
+    });
     return data.signedUrl;
   }
 
@@ -87,7 +116,7 @@ export class SupabaseStorageService {
    * Delete a file
    */
   async deleteFile(bucket: StorageBucket, path: string): Promise<void> {
-    const { error } = await supabase.storage
+    const { error } = await requireClient().storage
       .from(bucket)
       .remove([path]);
 
@@ -100,7 +129,7 @@ export class SupabaseStorageService {
    * Delete multiple files
    */
   async deleteFiles(bucket: StorageBucket, paths: string[]): Promise<void> {
-    const { error } = await supabase.storage
+    const { error } = await requireClient().storage
       .from(bucket)
       .remove(paths);
 
@@ -113,7 +142,7 @@ export class SupabaseStorageService {
    * List files in a folder
    */
   async listFiles(bucket: StorageBucket, folder: string) {
-    const { data, error } = await supabase.storage
+    const { data, error } = await requireClient().storage
       .from(bucket)
       .list(folder);
 
@@ -122,6 +151,15 @@ export class SupabaseStorageService {
     }
 
     return data;
+  }
+
+  async getDisplayUrl(bucket: StorageBucket, path: string | null): Promise<string | null> {
+    if (!path) return null;
+    try {
+      return await this.getSignedUrl(bucket, path);
+    } catch {
+      return null;
+    }
   }
 
   /**

@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Management - Modern Card Design</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+            color: #1A202C;
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            background: #F7FAFC;
+            min-height: 100vh;
+            margin: 0 auto;
+            max-width: 600px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, #3B82F6, #8B5CF6);
+            opacity: 0.03;
+            z-index: -1;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: rgba(59, 130, 246, 0.1);
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            color: #3B82F6;
+        }
+
+        .back-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateX(-2px);
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .add-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border: none;
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .add-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6);
+        }
+
+        /* Content */
+        .content {
+            padding: 20px;
+        }
+
+        /* Drafts Section */
+        .drafts-section {
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .drafts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #F8FAFC, #EDF2F7);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .drafts-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #4A5568;
+        }
+
+        .draft-icon {
+            width: 20px;
+            height: 20px;
+            color: #8B5CF6;
+        }
+
+        .draft-count {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 12px;
+            min-width: 22px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        .clear-all-btn {
+            font-size: 12px;
+            color: #EF4444;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .clear-all-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .draft-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .draft-item:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(139, 92, 246, 0.03));
+            transform: translateX(4px);
+        }
+
+        .draft-item:last-child {
+            border-bottom: none;
+        }
+
+        .draft-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .draft-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1A202C;
+            margin-bottom: 4px;
+        }
+
+        .draft-address {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 6px;
+        }
+
+        .draft-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: #E2E8F0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 10px;
+            font-weight: 600;
+            color: #4A5568;
+            min-width: 45px;
+            text-align: right;
+        }
+
+        .delete-draft {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            margin-left: 12px;
+        }
+
+        .delete-draft:hover {
+            background: rgba(239, 68, 68, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* Properties Section */
+        .properties-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .properties-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1A202C;
+        }
+
+        .filter-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border: 1px solid #E2E8F0;
+            background: white;
+            border-radius: 10px;
+            font-size: 13px;
+            color: #4A5568;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .filter-btn:hover {
+            border-color: #3B82F6;
+            background: rgba(59, 130, 246, 0.05);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* Property Cards */
+        .properties-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .property-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            position: relative;
+        }
+
+        .property-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+        }
+
+        .property-header {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(241, 245, 249, 0.8);
+            background: linear-gradient(135deg, #F8FAFC, #EDF2F7);
+        }
+
+        .property-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin-right: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .property-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .property-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1A202C;
+            margin-bottom: 2px;
+        }
+
+        .property-address {
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .property-content {
+            padding: 16px 20px;
+        }
+
+        .property-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .stat-card {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: rgba(248, 250, 252, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .tenants-value {
+            color: #3B82F6;
+        }
+
+        .requests-value {
+            color: #10B981;
+        }
+
+        .requests-value.urgent {
+            color: #EF4444;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #718096;
+            font-weight: 500;
+        }
+
+        .stat-icon {
+            width: 14px;
+            height: 14px;
+            margin-bottom: 4px;
+        }
+
+        /* Add Property Card */
+        .add-property-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(139, 92, 246, 0.05));
+            border: 2px dashed rgba(59, 130, 246, 0.3);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .add-property-card:hover {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .add-property-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #3B82F6, #8B5CF6);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            margin: 0 auto 12px;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .add-property-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #3B82F6;
+            margin-bottom: 4px;
+        }
+
+        .add-property-subtitle {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        /* Icons */
+        .icon {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .icon-sm {
+            width: 14px;
+            height: 14px;
+        }
+
+        .icon-xs {
+            width: 12px;
+            height: 12px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .property-card,
+        .drafts-section,
+        .add-property-card {
+            animation: fadeIn 0.6s ease forwards;
+        }
+
+        .property-card:nth-child(2) { animation-delay: 0.1s; }
+        .property-card:nth-child(3) { animation-delay: 0.2s; }
+        .property-card:nth-child(4) { animation-delay: 0.3s; }
+        .property-card:nth-child(5) { animation-delay: 0.4s; }
+
+        /* Mobile responsiveness */
+        @media (max-width: 480px) {
+            .content {
+                padding: 16px;
+            }
+            
+            .header {
+                padding: 16px;
+            }
+            
+            .property-stats {
+                gap: 12px;
+            }
+            
+            .stat-card {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="back-btn">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                </button>
+                <h1 class="header-title">Properties</h1>
+            </div>
+            <button class="add-btn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M12 5v14m-7-7h14"/>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Content -->
+        <main class="content">
+            <!-- Drafts Section -->
+            <section class="drafts-section">
+                <div class="drafts-header">
+                    <div class="drafts-title">
+                        <svg class="draft-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                        </svg>
+                        Drafts
+                        <span class="draft-count">2</span>
+                    </div>
+                    <a href="#" class="clear-all-btn">Clear All</a>
+                </div>
+                
+                <div class="draft-item">
+                    <div class="draft-content">
+                        <div class="draft-name">Sunset Apartments</div>
+                        <div class="draft-address">123 Main St, San Francisco, CA</div>
+                        <div class="draft-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+                            <span class="progress-text">65%</span>
+                        </div>
+                    </div>
+                    <button class="delete-draft">
+                        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="draft-item">
+                    <div class="draft-content">
+                        <div class="draft-name">Ocean View Condos</div>
+                        <div class="draft-address">456 Ocean Blvd, Santa Monica, CA</div>
+                        <div class="draft-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 30%"></div>
+                            </div>
+                            <span class="progress-text">30%</span>
+                        </div>
+                    </div>
+                    <button class="delete-draft">
+                        <svg class="icon-xs" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M18 6L6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Properties Section -->
+            <div class="properties-header">
+                <div class="properties-title">4 Properties</div>
+                <button class="filter-btn">
+                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46 22,3"/>
+                    </svg>
+                    Filter
+                </button>
+            </div>
+
+            <div class="properties-grid">
+                <!-- Property 1 -->
+                <div class="property-card">
+                    <div class="property-header">
+                        <div class="property-icon">🏠</div>
+                        <div class="property-info">
+                            <div class="property-name">Downtown Loft</div>
+                            <div class="property-address">789 Market St, San Francisco</div>
+                        </div>
+                    </div>
+                    <div class="property-content">
+                        <div class="property-stats">
+                            <div class="stat-card">
+                                <svg class="stat-icon tenants-value" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <div class="stat-value tenants-value">2</div>
+                                <div class="stat-label">Tenants</div>
+                            </div>
+                            <div class="stat-card">
+                                <svg class="stat-icon requests-value" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                                </svg>
+                                <div class="stat-value requests-value">0</div>
+                                <div class="stat-label">Requests</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Property 2 -->
+                <div class="property-card">
+                    <div class="property-header">
+                        <div class="property-icon">🏡</div>
+                        <div class="property-info">
+                            <div class="property-name">Garden Townhouse</div>
+                            <div class="property-address">321 Garden Ave, Oakland</div>
+                        </div>
+                    </div>
+                    <div class="property-content">
+                        <div class="property-stats">
+                            <div class="stat-card">
+                                <svg class="stat-icon tenants-value" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <div class="stat-value tenants-value">1</div>
+                                <div class="stat-label">Tenant</div>
+                            </div>
+                            <div class="stat-card">
+                                <svg class="stat-icon requests-value urgent" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                                </svg>
+                                <div class="stat-value requests-value urgent">2</div>
+                                <div class="stat-label">Requests</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Property 3 -->
+                <div class="property-card">
+                    <div class="property-header">
+                        <div class="property-icon">🏢</div>
+                        <div class="property-info">
+                            <div class="property-name">Hilltop Studio</div>
+                            <div class="property-address">555 Hill St, Berkeley</div>
+                        </div>
+                    </div>
+                    <div class="property-content">
+                        <div class="property-stats">
+                            <div class="stat-card">
+                                <svg class="stat-icon tenants-value" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <div class="stat-value tenants-value">1</div>
+                                <div class="stat-label">Tenant</div>
+                            </div>
+                            <div class="stat-card">
+                                <svg class="stat-icon requests-value" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                                </svg>
+                                <div class="stat-value requests-value">0</div>
+                                <div class="stat-label">Requests</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Property 4 -->
+                <div class="property-card">
+                    <div class="property-header">
+                        <div class="property-icon">🏝</div>
+                        <div class="property-info">
+                            <div class="property-name">Bayfront Condo</div>
+                            <div class="property-address">777 Bay St, Redwood City</div>
+                        </div>
+                    </div>
+                    <div class="property-content">
+                        <div class="property-stats">
+                            <div class="stat-card">
+                                <svg class="stat-icon tenants-value" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <div class="stat-value tenants-value">3</div>
+                                <div class="stat-label">Tenants</div>
+                            </div>
+                            <div class="stat-card">
+                                <svg class="stat-icon requests-value urgent" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                                </svg>
+                                <div class="stat-value requests-value urgent">1</div>
+                                <div class="stat-label">Request</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Property Card -->
+                <div class="add-property-card">
+                    <div class="add-property-icon">+</div>
+                    <div class="add-property-title">Add New Property</div>
+                    <div class="add-property-subtitle">Set up a property with areas and assets</div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

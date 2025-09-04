@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,7 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import Constants from 'expo-constants';
-// Note: This component doesn't actually use apiClient, removing import
+import { useAuth } from '@clerk/clerk-expo';
+import { useApiClient } from '../../services/api/client';
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
@@ -37,11 +38,18 @@ const getCategoryIcon = (category: string) => {
 
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
+  const { isSignedIn, getToken } = useAuth();
+  const apiClient = useApiClient();
   const [issueDescription, setIssueDescription] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
+  
+  // Property context
+  const [tenantProperties, setTenantProperties] = useState<any[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<any>(null);
+  const [loadingProperties, setLoadingProperties] = useState(true);
   
   // Smart dropdown states
   const [selectedArea, setSelectedArea] = useState<string>('');
@@ -56,6 +64,82 @@ const ReportIssueScreen = () => {
   const [showQuickTip, setShowQuickTip] = useState<boolean>(false);
   
   const speechRecognitionRef = useRef<object | null>(null);
+
+  // Load tenant properties on component mount
+  useEffect(() => {
+    loadTenantProperties();
+  }, []);
+
+  const loadTenantProperties = async () => {
+    if (!apiClient) {
+      setLoadingProperties(false);
+      return;
+    }
+
+    try {
+      console.log('=== LOADING TENANT PROPERTIES ===');
+      
+      // Debug: Check Clerk token structure
+      if (isSignedIn) {
+        const token = await getToken();
+        if (token) {
+          console.log('=== CLERK TOKEN DEBUG ===');
+          // Decode JWT to check claims (for debugging only)
+          try {
+            const [header, payload, signature] = token.split('.');
+            const decodedPayload = JSON.parse(atob(payload));
+            console.log('JWT claims:', decodedPayload);
+            console.log('Has role claim?', 'role' in decodedPayload);
+            console.log('Role value:', decodedPayload.role);
+          } catch (e) {
+            console.log('Could not decode JWT:', e);
+          }
+        }
+      }
+      
+      const properties = await apiClient.getTenantProperties();
+      console.log('API returned properties:', properties);
+      console.log('Properties count:', properties?.length);
+      console.log('Properties data:', JSON.stringify(properties, null, 2));
+      
+      setTenantProperties(properties || []);
+      
+      // Auto-select if only one property
+      if (properties && properties.length === 1) {
+        console.log('Auto-selecting single property:', properties[0]);
+        setSelectedProperty(properties[0]);
+        console.log('selectedProperty state should now be:', properties[0]);
+      } else if (!properties || properties.length === 0) {
+        // FOR TESTING: Add a temporary property
+        console.log('=== NO PROPERTIES - ADDING TEST PROPERTY ===');
+        const testProperty = {
+          id: 'test-link-1',
+          tenant_id: 'test-tenant-1',
+          unit_number: '2A',
+          is_active: true,
+          properties: {
+            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            name: 'Test Apartment Complex',
+            address: '123 Test Street, Test City, TC 12345',
+            wifi_network: 'TestWiFi',
+            wifi_password: 'test123',
+            emergency_contact: 'Test Property Management',
+            emergency_phone: '555-TEST-911'
+          }
+        };
+        
+        setTenantProperties([testProperty]);
+        setSelectedProperty(testProperty);
+        console.log('Test property added:', testProperty);
+      }
+    } catch (error) {
+      console.error('Error loading tenant properties:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', 'Failed to load your properties. Please try again.');
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
 
   // Get dropdown options based on selections
   const areaOptions = AREA_TEMPLATES.map(area => ({
@@ -311,18 +395,48 @@ const ReportIssueScreen = () => {
   };
 
   const handleSubmit = async () => {
+    console.log('=== handleSubmit called at', new Date().toISOString(), '===');
+    console.log('Button was clicked!');
+    console.log('selectedProperty:', selectedProperty);
+    console.log('navigation object:', navigation);
+    console.log('navigation state:', navigation.getState());
+    
+    // Check if function is even executing
+    window.LAST_HANDLE_SUBMIT = new Date().toISOString();
+    
+    if (!selectedProperty) {
+      console.log('No property selected - showing alert');
+      Alert.alert('Missing Information', 'Please select a property first.');
+      return;
+    }
+    
+    console.log('Checking required fields...');
+    console.log('selectedArea:', selectedArea);
+    console.log('selectedAsset:', selectedAsset);
+    console.log('selectedIssueType:', selectedIssueType);
+    console.log('selectedPriority:', selectedPriority);
+    console.log('selectedDuration:', selectedDuration);
+    console.log('selectedTiming:', selectedTiming);
+    
     if (!selectedArea || !selectedAsset || !selectedIssueType || !selectedPriority || !selectedDuration || !selectedTiming) {
+      console.log('Missing required fields - showing alert');
       Alert.alert('Missing Information', 'Please complete all required fields (Steps 1-6) to continue.');
       return;
     }
     
     if (selectedIssueType === 'other' && !otherIssueDescription.trim()) {
+      console.log('Other issue selected but no description - showing alert');
       Alert.alert('Missing Information', 'Please describe the issue since you selected "Other".');
       return;
     }
 
+    console.log('All validations passed, creating reviewData...');
+    
     // Navigate to review screen with all collected data
     const reviewData = {
+      propertyId: selectedProperty.properties?.id || selectedProperty.id,
+      propertyName: selectedProperty.properties?.name || selectedProperty.name,
+      unitNumber: selectedProperty.unit_number,
       area: selectedArea,
       asset: selectedAsset,
       issueType: selectedIssueType === 'other' ? otherIssueDescription.trim() : selectedIssueType,
@@ -333,17 +447,72 @@ const ReportIssueScreen = () => {
       mediaItems: mediaItems.map(item => item.uri),
       title: title.trim()
     };
-
-    navigation.navigate('ReviewIssue', { reviewData });
+    
+    console.log('reviewData created:', JSON.stringify(reviewData, null, 2));
+    
+    try {
+      console.log('Attempting navigation to ReviewIssue...');
+      navigation.navigate('ReviewIssue', { reviewData });
+      console.log('Navigation.navigate() called successfully');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', `Failed to navigate: ${error.message}`);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Report Maintenance Issue</Text>
           <Text style={styles.subtitle}>Follow the steps below to submit your request</Text>
         </View>
+
+        {/* Property Selection */}
+        {tenantProperties.length > 1 && (
+          <View style={styles.stepSection}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepNumber}>
+                <Ionicons name="home" size={16} color="#007AFF" />
+              </View>
+              <Text style={styles.stepTitle}>Select Property</Text>
+            </View>
+            <SmartDropdown
+              label=""
+              placeholder="Choose which property has the issue"
+              options={tenantProperties.map(prop => ({
+                value: prop.properties?.id || prop.id,
+                label: `${prop.properties.name}${prop.unit_number ? ` - Unit ${prop.unit_number}` : ''}`,
+                icon: 'home',
+                description: prop.properties.address
+              }))}
+              value={selectedProperty?.properties?.id || selectedProperty?.id || ''}
+              onSelect={(value) => {
+                const property = tenantProperties.find(p => p.properties?.id === value || p.id === value);
+                console.log('Property selected:', property);
+                setSelectedProperty(property);
+              }}
+            />
+          </View>
+        )}
+
+        {/* Current Property Display */}
+        {selectedProperty && (
+          <View style={styles.propertyDisplay}>
+            <View style={styles.propertyHeader}>
+              <Ionicons name="home" size={20} color="#007AFF" />
+              <Text style={styles.propertyName}>{selectedProperty.properties.name}</Text>
+            </View>
+            <Text style={styles.propertyAddress}>
+              {selectedProperty.properties.address}
+              {selectedProperty.unit_number && ` • Unit ${selectedProperty.unit_number}`}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.stepSection}>
           <View style={styles.stepHeader}>
@@ -583,8 +752,31 @@ const ReportIssueScreen = () => {
         <View style={styles.submitSection}>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={handleSubmit}
+            onPress={() => {
+              console.log('=== BUTTON CLICKED at', new Date().toISOString(), '===');
+              console.log('Button onPress triggered!');
+              console.log('Current state values:');
+              console.log('- selectedProperty:', selectedProperty);
+              console.log('- selectedArea:', selectedArea);
+              console.log('- selectedAsset:', selectedAsset);
+              console.log('- selectedIssueType:', selectedIssueType);
+              console.log('- selectedPriority:', selectedPriority);
+              console.log('- selectedDuration:', selectedDuration);
+              console.log('- selectedTiming:', selectedTiming);
+              console.log('- mediaItems count:', mediaItems.length);
+              
+              try {
+                handleSubmit();
+                console.log('handleSubmit called successfully');
+              } catch (error) {
+                console.error('Error calling handleSubmit:', error);
+                console.error('Stack trace:', error.stack);
+                Alert.alert('Error', 'Failed to process request: ' + error.message);
+              }
+            }}
             activeOpacity={0.8}
+            onPressIn={() => console.log('Button press started at', new Date().toISOString())}
+            onPressOut={() => console.log('Button press ended at', new Date().toISOString())}
           >
             <Text style={styles.continueButtonText}>
               Review Request
@@ -975,6 +1167,30 @@ const styles = StyleSheet.create({
     minHeight: 80,
     borderWidth: 1,
     borderColor: '#E1E8ED',
+  },
+  propertyDisplay: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e1e5e9',
+  },
+  propertyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  propertyName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  propertyAddress: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 18,
   },
 });
 

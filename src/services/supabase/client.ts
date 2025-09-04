@@ -10,6 +10,7 @@ type Announcement = Database['public']['Tables']['announcements']['Row'];
 
 export class SupabaseClient {
   private client: SupabaseClientType<Database>;
+  private currentClerkUserId: string | null = null;
 
   constructor(client?: SupabaseClientType<Database>) {
     this.client = client || supabase;
@@ -20,8 +21,21 @@ export class SupabaseClient {
     this.client = authenticatedClient;
   }
 
+  // Method to set the RLS context for the current user
+  private async setRLSContext(clerkUserId: string) {
+    if (this.currentClerkUserId !== clerkUserId) {
+      // NOTE: With native Clerk integration, JWT tokens are automatically sent via accessToken callback
+      // No need to manually set RLS context - auth.jwt() will be available in RLS policies
+      console.log('RLS context set for Clerk user:', clerkUserId);
+      this.currentClerkUserId = clerkUserId;
+    }
+  }
+
   // Profile methods
   async getProfile(clerkUserId: string): Promise<Profile | null> {
+    // Set RLS context for this user
+    await this.setRLSContext(clerkUserId);
+    
     const { data, error } = await this.client
       .from('profiles')
       .select('*')
@@ -190,6 +204,26 @@ export class SupabaseClient {
     images?: string[];
     voiceNotes?: string[];
   }): Promise<MaintenanceRequest> {
+    console.log('=== MAINTENANCE REQUEST CREATION DEBUG ===');
+    console.log('Request data:', {
+      tenant_id: requestData.tenantId,
+      property_id: requestData.propertyId,
+      title: requestData.title,
+      description: requestData.description,
+      priority: requestData.priority,
+      area: requestData.area,
+      asset: requestData.asset,
+      issue_type: requestData.issueType,
+    });
+    
+    // Test JWT context by querying auth functions
+    try {
+      const jwtTest = await this.client.rpc('test_jwt_context');
+      console.log('JWT context test result:', jwtTest);
+    } catch (jwtError) {
+      console.log('JWT test failed (expected if function doesn\'t exist):', jwtError);
+    }
+    
     const { data, error } = await this.client
       .from('maintenance_requests')
       .insert({
@@ -209,8 +243,16 @@ export class SupabaseClient {
       .single();
 
     if (error) {
+      console.error('=== SUPABASE INSERT ERROR ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      console.error('Error hint:', error.hint);
       throw new Error(`Failed to create maintenance request: ${error.message}`);
     }
+    
+    console.log('=== SUPABASE INSERT SUCCESS ===');
+    console.log('Created maintenance request:', data);
 
     return data;
   }

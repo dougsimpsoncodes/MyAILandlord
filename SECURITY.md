@@ -14,8 +14,14 @@ This document outlines the security measures, protocols, and best practices impl
 - **Session Security**: Automatic token refresh and secure session management
 - **OAuth Integration**: Google OAuth for social login with proper scope limitations
 
+#### Clerk JWT Setup
+- **Clerk↔Supabase JWT**: Authentication is handled by Clerk, which generates a JWT that is passed to Supabase. The JWT is signed with an RS256 key and contains the user's role and other metadata. The `aud` claim is set to the Supabase project reference.
+
+#### Storage Privacy
+- **Private Storage**: All file storage is private. Files can only be accessed via a signed URL with a short-lived TTL (1 hour). The application generates these signed URLs on demand.
+
 #### Database Security (Supabase)
-- **Row Level Security (RLS)**: Implemented on all tables (currently disabled for testing)
+- **Row Level Security (RLS)**: Implemented on all tables to ensure data isolation between tenants and landlords. Policies rely on `auth.jwt()->>'sub'` matching `profiles.clerk_user_id`.
 - **User Context**: All database operations validate user permissions
 - **Role-Based Access**: Tenant and landlord roles with different permissions
 - **API Authentication**: Supabase client uses authenticated requests
@@ -147,6 +153,33 @@ const validateMaintenanceRequest = (data) => {
 #### Disabled for Testing ⚠️
 - **Row Level Security**: Currently disabled for testing compatibility with Clerk
 - **File Upload Validation**: Some validations relaxed for development
+
+### Logging & Monitoring Security
+
+#### Centralized Logging Policy
+- **Logging Module**: All logging must use `src/lib/log.ts` 
+- **No Direct Console**: ESLint enforces `no-console` rule outside of logger and tests
+- **Sanitization**: No sensitive data (tokens, passwords, PII) in logs
+- **Log Levels**: Info, warn, error with appropriate usage
+
+#### Error Monitoring
+- **Sentry Integration**: Optional Sentry DSN support via `EXPO_PUBLIC_SENTRY_DSN`
+- **Exception Capture**: Structured error reporting with context
+- **Production Monitoring**: Real-time error tracking and alerting
+- **Development Mode**: Local logging fallback when DSN not configured
+
+#### Security Logging Requirements
+```typescript
+// ✅ Allowed: General application events
+log.info('User login attempt', { userId: 'user_123' })
+
+// ❌ Forbidden: Sensitive data
+log.error('Auth failed', { password: 'secret123' })  // NEVER
+log.info('JWT token', { token: 'actual.jwt.token' }) // NEVER
+
+// ✅ Proper error handling
+captureException(error, { context: 'auth_flow', userId })
+```
 
 ### Security Incident Response
 

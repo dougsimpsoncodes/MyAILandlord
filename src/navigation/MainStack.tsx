@@ -11,6 +11,10 @@ import FollowUpScreen from '../screens/tenant/FollowUpScreen';
 import ConfirmSubmissionScreen from '../screens/tenant/ConfirmSubmissionScreen';
 import CommunicationHubScreen from '../screens/tenant/CommunicationHubScreen';
 import PropertyInfoScreen from '../screens/tenant/PropertyInfoScreen';
+import PropertyCodeEntryScreen from '../screens/tenant/PropertyCodeEntryScreen';
+import PropertyWelcomeScreen from '../screens/tenant/PropertyWelcomeScreen';
+import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
+import InviteAcceptScreen from '../screens/tenant/InviteAcceptScreen';
 import LandlordHomeScreen from '../screens/landlord/LandlordHomeScreen';
 import DashboardScreen from '../screens/landlord/DashboardScreen';
 import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
@@ -31,6 +35,7 @@ import AssetScanningScreen from '../screens/landlord/AssetScanningScreen';
 import AssetDetailsScreen from '../screens/landlord/AssetDetailsScreen';
 import AssetPhotosScreen from '../screens/landlord/AssetPhotosScreen';
 import ReviewSubmitScreen from '../screens/landlord/ReviewSubmitScreen';
+import InviteTenantScreen from '../screens/landlord/InviteTenantScreen';
 import { PropertyAreasParams, PropertyAssetsParams, PropertyReviewParams, AssetTemplate, PropertyData, InventoryItem } from '../types/property';
 
 export type TenantStackParamList = {
@@ -39,6 +44,9 @@ export type TenantStackParamList = {
   ReportIssue: undefined;
   ReviewIssue: { 
     reviewData: {
+      propertyId?: string;
+      propertyName?: string;
+      unitNumber?: string;
       area: string;
       asset: string;
       issueType: string;
@@ -55,6 +63,23 @@ export type TenantStackParamList = {
   ConfirmSubmission: { issueId: string };
   CommunicationHub: undefined;
   PropertyInfo: undefined;
+  PropertyCodeEntry: undefined;
+  PropertyInviteAccept: { propertyId?: string; property?: string };
+  UnitSelection: {
+    propertyCode: string;
+    propertyName: string;
+    propertyAddress: string;
+  };
+  PropertyWelcome: {
+    propertyName: string;
+    propertyAddress: string;
+    wifiNetwork?: string;
+    wifiPassword?: string;
+  };
+  PropertySearch: undefined;
+  InviteAccept: {
+    propertyCode: string;
+  };
 };
 
 export type LandlordStackParamList = {
@@ -83,6 +108,11 @@ export type LandlordStackParamList = {
     template: AssetTemplate | null;
     propertyData: PropertyData;
     draftId?: string;
+  };
+  InviteTenant: {
+    propertyId: string;
+    propertyName: string;
+    propertyCode: string;
   };
 };
 
@@ -149,6 +179,26 @@ const TenantNavigator = () => {
         name="PropertyInfo" 
         component={PropertyInfoScreen}
         options={{ headerShown: false }}
+      />
+      <TenantStack.Screen 
+        name="PropertyCodeEntry" 
+        component={PropertyCodeEntryScreen}
+        options={{ title: 'Link to Property' }}
+      />
+      <TenantStack.Screen 
+        name="PropertyInviteAccept" 
+        component={PropertyInviteAcceptScreen}
+        options={{ title: 'Accept Invitation' }}
+      />
+      <TenantStack.Screen 
+        name="PropertyWelcome" 
+        component={PropertyWelcomeScreen}
+        options={{ title: 'Welcome', headerShown: false }}
+      />
+      <TenantStack.Screen 
+        name="InviteAccept" 
+        component={InviteAcceptScreen}
+        options={{ title: 'Accept Invitation', headerShown: false }}
       />
     </TenantStack.Navigator>
   );
@@ -269,6 +319,11 @@ const LandlordNavigator = () => {
         name="AddAsset" 
         component={AddAssetScreen}
         options={{ headerShown: false }}
+      />
+      <LandlordStack.Screen 
+        name="InviteTenant" 
+        component={InviteTenantScreen}
+        options={{ title: 'Invite Tenant' }}
       />
     </LandlordStack.Navigator>
   );

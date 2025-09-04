@@ -20,7 +20,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { insertProperty, insertPropertyAreas } from '../../clients/ClerkSupabaseClient';
-import { useProfileSync } from '../../hooks/useProfileSync';
+import { useAuth } from '@clerk/clerk-expo';
 import { supabase } from '../../lib/supabaseClient';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
@@ -30,7 +30,7 @@ const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
   const { propertyData, areas, draftId } = route.params;
-  const { ready } = useProfileSync();
+  const { getToken } = useAuth();
 
   // Initialize draft management
   const {
@@ -86,10 +86,23 @@ const PropertyReviewScreen = () => {
   };
 
   const handleSubmit = async () => {
-    if (isSubmitting || isDraftLoading || !ready) return;
+    console.log('🚨🚨🚨 handleSubmit called! State:', { isSubmitting, isDraftLoading });
+    
+    if (isSubmitting || isDraftLoading) {
+      console.log('🚨 Exiting handleSubmit due to loading conditions:', { isSubmitting, isDraftLoading });
+      return;
+    }
+
     
     try {
       setIsSubmitting(true);
+      
+      // Get authentication token
+      const token = await getToken();
+      if (!token) {
+        throw new Error('Authentication token not available');
+      }
+      const tokenProvider = { getToken: async () => token };
       
       if (draftState) await saveDraft();
 
@@ -102,7 +115,9 @@ const PropertyReviewScreen = () => {
         bathrooms: propertyData.bathrooms || 0
       };
       
-      const newProperty = await insertProperty(propertyPayload);
+      console.log('🏠 Submitting property with payload:', propertyPayload);
+      const newProperty = await insertProperty(propertyPayload, tokenProvider);
+      console.log('🏠 Property created successfully:', newProperty);
       
       // Create area records
       if (areas && areas.length > 0) {
@@ -114,7 +129,7 @@ const PropertyReviewScreen = () => {
         }));
         
         try {
-          await insertPropertyAreas(areaRecords);
+          await insertPropertyAreas(areaRecords, tokenProvider);
         } catch (areasError) {
           console.error('Error creating areas:', areasError);
           // Continue anyway - areas are not critical
@@ -143,7 +158,25 @@ const PropertyReviewScreen = () => {
     } catch (error) {
       console.error('🏠 PropertyReviewScreen: Submit error:', error);
       setIsSubmitting(false);
-      Alert.alert('Error', 'Failed to submit property. Please try again.');
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      if (errorMessage.includes('Authentication') || errorMessage.includes('token')) {
+        Alert.alert(
+          'Authentication Error', 
+          'Please sign out and sign back in to refresh your authentication, then try again.',
+          [
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Error', 
+          `Failed to submit property: ${errorMessage}\n\nPlease check your internet connection and try again.`,
+          [
+            { text: 'OK' }
+          ]
+        );
+      }
     }
   };
 
@@ -187,7 +220,7 @@ const PropertyReviewScreen = () => {
   );
 
   // Test logging on every render
-  console.log('🔴 PropertyReviewScreen rendered, isSubmitting:', isSubmitting);
+  console.log('🔴 PropertyReviewScreen rendered, isSubmitting:', isSubmitting, 'isDraftLoading:', isDraftLoading);
   
   return (
     <SafeAreaView style={styles.container}>

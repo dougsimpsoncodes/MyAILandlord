@@ -55,6 +55,11 @@ Before first run, ensure you have:
 - **Storage**: Supabase Storage with file validation
 - **Edge Functions**: Supabase Edge Functions for AI processing
 
+### Security Hardening (Stage 1)
+- **Clerk↔Supabase JWT Setup**: Authentication is handled by Clerk, which generates a JWT that is passed to Supabase. The JWT is signed with an RS256 key and contains the user's role and other metadata. The `aud` claim is set to the Supabase project reference.
+- **Storage Privacy via Signed URLs**: All file storage is private. Files can only be accessed via a signed URL with a short-lived TTL (1 hour). The application generates these signed URLs on demand.
+- **RLS Enablement + Isolation Testing**: Row Level Security is enabled on all tables to ensure that users can only access their own data. The RLS policies rely on the `auth.jwt()->>'sub'` matching the `profiles.clerk_user_id`. A smoke test is included in the CI pipeline to verify that RLS is working correctly.
+
 ### Navigation Structure
 - **AuthStack**: Welcome → Role Selection → Login (Clerk)
 - **MainStack**: Role-based navigation with secure route protection
@@ -182,8 +187,26 @@ scripts/
 # Check for TypeScript errors
 npx tsc --noEmit
 
+# Run lint checks (enforces no-console rule)
+npx eslint . --ext .ts,.tsx
+
 # Validate environment setup
 npm run validate:env
+```
+
+### Logging Policy
+- **Centralized Logging**: All logging must go through `src/lib/log.ts`
+- **No Console Usage**: Direct `console.*` usage is forbidden outside of `src/lib/log.ts` and tests
+- **ESLint Enforcement**: The `no-console` rule prevents accidental console usage
+- **Monitoring Integration**: When `EXPO_PUBLIC_SENTRY_DSN` is provided, errors are captured by Sentry
+
+### Monitoring Setup
+```bash
+# Optional: Set Sentry DSN for error tracking (Expo-compatible)
+export EXPO_PUBLIC_SENTRY_DSN=https://your-sentry-dsn
+
+# Test monitoring in development (triggers test exception)
+# Available via hidden dev button or debug menu
 ```
 
 ### API Development
