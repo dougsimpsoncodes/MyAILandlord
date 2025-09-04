@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +15,7 @@ import { ResponsiveTitle, ResponsiveBody, ResponsiveCaption } from '../../compon
 import CustomButton from '../../components/shared/CustomButton';
 import { supabase } from '../../services/supabase/config';
 import { useRole } from '../../context/RoleContext';
+import * as Linking from 'expo-linking';
 
 // Union type to handle both AuthStack and TenantStack navigation
 type PropertyInviteAcceptNavigationProp = 
@@ -32,21 +33,41 @@ const PropertyInviteAcceptScreen = () => {
   const { user } = useUser();
   
   // Extract propertyId from route params or query parameters
-  const getPropertyId = () => {
+  const getPropertyId = async () => {
     const params = route.params as any;
+    console.log('🔗 PropertyInviteAcceptScreen route params:', params);
+    console.log('🔗 PropertyInviteAcceptScreen route:', route);
+    
     // Try route params first (for direct navigation)
     if (params?.propertyId) {
+      console.log('🔗 Found propertyId in route params:', params.propertyId);
       return params.propertyId;
     }
     // Try query parameters (for deep linking)
     if (params?.property) {
+      console.log('🔗 Found property in route params:', params.property);
       return params.property;
     }
-    // Fallback: try to extract from URL if available
+    
+    // Fallback: extract from initial URL directly
+    try {
+      const url = await Linking.getInitialURL();
+      console.log('🔗 Checking initial URL for property ID:', url);
+      if (url && url.includes('property=')) {
+        const match = url.match(/property=([^&]+)/);
+        if (match) {
+          console.log('🔗 Extracted property ID from URL:', match[1]);
+          return match[1];
+        }
+      }
+    } catch (error) {
+      console.error('🔗 Error getting initial URL:', error);
+    }
+    
+    console.log('🔗 No property ID found anywhere');
     return null;
   };
   
-  const propertyId = getPropertyId();
   const apiClient = useApiClient();
   const responsive = useResponsive();
   const { setUserRole } = useRole();
@@ -54,6 +75,16 @@ const PropertyInviteAcceptScreen = () => {
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<any>(null);
   const [error, setError] = useState('');
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+
+  // Extract propertyId on component mount
+  useEffect(() => {
+    const extractPropertyId = async () => {
+      const id = await getPropertyId();
+      setPropertyId(id);
+    };
+    extractPropertyId();
+  }, []);
 
   useEffect(() => {
     if (!propertyId) {
@@ -84,20 +115,20 @@ const PropertyInviteAcceptScreen = () => {
   const fetchPropertyDetails = async () => {
     try {
       setLoading(true);
-      // Fetch basic property details for invite preview
-      // For testing: Use anonymous Supabase client to fetch property details
-      // TODO: In production, create proper public property view for invites
-      const { data, error } = await supabase
-        .from('properties')
-        .select('id, name, address, property_type')
-        .eq('id', propertyId)
-        .single();
+      
+      // Use the property-invite-preview Edge Function for safe property access
+      const { data: propertyData, error } = await supabase.functions.invoke(
+        'property-invite-preview',
+        {
+          body: { propertyId }
+        }
+      );
 
-      if (error || !data) {
-        throw new Error('Property not found');
+      if (error || !propertyData) {
+        throw new Error('Property not found or invite is invalid');
       }
 
-      setProperty(data);
+      setProperty(propertyData);
     } catch (err) {
       console.error('Error fetching property:', err);
       setError('Unable to load property details. The invite link may be invalid.');
@@ -200,10 +231,14 @@ const PropertyInviteAcceptScreen = () => {
         .select()
         .single();
         
-      console.log('🔗 Link result:', { linkData, linkError });
+      // Log only success/failure status (not sensitive data)
+      if (linkError) {
+        console.log('❌ Tenant property link creation failed');
+      } else {
+        console.log('✅ Tenant property link created successfully');
+      }
 
       if (linkError) {
-        console.log('❌ Link error occurred:', linkError);
         // Check if already linked
         if (linkError.code === '23505') { // Unique violation
           console.log('⚠️ Already connected - showing alert');
