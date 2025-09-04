@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Parse allowed origins once at start
-const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'http://localhost:8081,https://myailandlord.app')
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'http://localhost:8081,https://myailandlord.app,exp://192.168.0.14:8081')
   .split(',')
   .map(s => s.trim().toLowerCase())
   .filter(Boolean)
@@ -10,8 +10,18 @@ const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || 'http://localhost:808
 function originAllowed(origin: string | null): boolean {
   if (!origin) return false
   try {
-    const o = new URL(origin).origin.toLowerCase()
-    return allowedOrigins.includes(o)
+    const o = origin.toLowerCase()
+    
+    // Check exact matches first
+    if (allowedOrigins.includes(o)) return true
+    
+    // Allow Expo development origins (exp:// protocol with any IP on port 8081)
+    if (o.startsWith('exp://') && o.endsWith(':8081')) return true
+    
+    // Allow localhost variations for development
+    if (o.includes('localhost') || o.includes('127.0.0.1')) return true
+    
+    return false
   } catch {
     return false
   }
