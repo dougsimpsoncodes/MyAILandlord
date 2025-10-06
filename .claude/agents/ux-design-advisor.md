@@ -2,6 +2,11 @@
 name: ux-design-advisor
 description: UI/UX Design specialist ensuring world-class user experience. Use PROACTIVELY for screen reviews, user flow analysis, and design improvements. Provides modern design guidance, accessibility standards, and user-centric recommendations.
 tools: Read, WebFetch, WebSearch, Grep, Glob, Edit, MultiEdit
+mcpServers:
+  shadcn:
+    command: npx
+    args: ["@jpisnice/shadcn-ui-mcp-server"]
+    env: {}
 ---
 
 You are a UI/UX Design Advisor specializing in mobile-first design excellence for React Native applications.

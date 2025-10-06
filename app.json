@@ -38,7 +38,8 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA"
       ],
       "intentFilters": [
         {
@@ -70,6 +71,11 @@
     "plugins": [
       "expo-barcode-scanner",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e0bbde0b-8807-4eca-ab59-987973d4967c"
+      }
+    }
   }
 }

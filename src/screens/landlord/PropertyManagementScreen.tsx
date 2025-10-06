@@ -25,7 +25,7 @@ import { DataClearer } from '../../utils/dataClearer';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
-import { getUserProperties, deleteProperty } from '../../clients/ClerkSupabaseClient';
+import { useApiClient } from '../../services/api/client';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -51,6 +51,7 @@ const PropertyManagementScreen = () => {
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const api = useApiClient();
 
   // Load properties on screen mount and when screen is focused
   useEffect(() => {
@@ -59,8 +60,9 @@ const PropertyManagementScreen = () => {
 
   const loadProperties = async () => {
     try {
+      if (!api) return;
       setIsLoadingProperties(true);
-      const dbProperties = await getUserProperties();
+      const dbProperties = await api.getUserProperties({ limit: pageSize, offset: 0 });
       
       // Map database properties to screen interface
       const mappedProperties = dbProperties.map((prop: any) => ({
@@ -78,10 +80,41 @@ const PropertyManagementScreen = () => {
       }));
       
       setProperties(mappedProperties);
+      setPage(1);
+      setHasMore(dbProperties.length === pageSize);
     } catch (error) {
       console.error('Error loading properties:', error);
     } finally {
       setIsLoadingProperties(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (!api || isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const offset = page * pageSize;
+      const more = await api.getUserProperties({ limit: pageSize, offset });
+      const mapped = more.map((prop: any) => ({
+        id: prop.id,
+        name: prop.name || 'Unnamed Property',
+        address: typeof prop.address === 'string'
+          ? prop.address
+          : prop.address
+            ? formatAddressString(prop.address)
+            : 'No Address',
+        type: prop.property_type || 'Unknown',
+        image: '',
+        tenants: 0,
+        activeRequests: 0,
+      }));
+      setProperties(prev => [...prev, ...mapped]);
+      setPage(prev => prev + 1);
+      setHasMore(more.length === pageSize);
+    } catch (e) {
+      console.error('Error loading more properties:', e);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -96,6 +129,10 @@ const PropertyManagementScreen = () => {
   } = usePropertyDrafts();
 
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const handleAddProperty = () => {
     navigation.navigate('AddProperty');
@@ -502,6 +539,20 @@ const PropertyManagementScreen = () => {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Load More */}
+        {hasMore && (
+          <View style={styles.loadMoreContainer}>
+            <TouchableOpacity 
+              style={[styles.loadMoreButton, isLoadingMore && { opacity: 0.7 }]}
+              onPress={loadMore}
+              disabled={isLoadingMore}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.loadMoreText}>{isLoadingMore ? 'Loading...' : 'Load More'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
 
       {/* Custom Delete Modal */}
@@ -537,7 +588,8 @@ const PropertyManagementScreen = () => {
                   try {
                     const count = selectedProperties.size;
                     const ids = Array.from(selectedProperties);
-                    await Promise.all(ids.map(id => deleteProperty(id)));
+                    if (!api) throw new Error('Not authenticated');
+                    await Promise.all(ids.map(id => api.deleteProperty(id)));
                     
                     setSelectedProperties(new Set());
                     setIsDeleteMode(false);
@@ -824,6 +876,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  loadMoreContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  loadMoreButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  loadMoreText: {
+    color: '#2C3E50',
+    fontWeight: '600',
+  },
   
   // Delete Action Bar
   deleteActionBar: {
@@ -958,3 +1027,19 @@ const styles = StyleSheet.create({
 });
 
 export default PropertyManagementScreen;
+  const handleDeleteSelected = async () => {
+    if (!api) return;
+    try {
+      const ids = Array.from(selectedProperties);
+      for (const id of ids) {
+        await api.deleteProperty(id);
+      }
+      // Refresh list after delete
+      await loadProperties();
+      setSelectedProperties(new Set());
+      setIsDeleteMode(false);
+      setShowDeleteModal(false);
+    } catch (err) {
+      console.error('Error deleting properties:', err);
+    }
+  };

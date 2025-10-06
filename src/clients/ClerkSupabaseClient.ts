@@ -1,6 +1,7 @@
 import { restGet, restInsert, restPatch, restDelete, TokenProvider } from '../lib/rest'
 import { formatAddressFromJson } from '../lib/address'
 import { supabase } from '../lib/supabaseClient'
+import { log } from '../lib/log'
 type Profile={id:string;clerk_user_id:string;email?:string;name?:string;avatar_url?:string;role?:string}
 export async function getProfileByClerkId(clerkId:string, tokenProvider?: TokenProvider):Promise<Profile|null>{
   const rows=await restGet('profiles_api',{select:'*',clerk_user_id:`eq.${clerkId}`}, tokenProvider)
@@ -35,7 +36,7 @@ export async function insertProperty(payload:PropertyInsert, tokenProvider?: Tok
   // If property code wasn't generated, we need to update it
   // This is a fallback in case the database trigger isn't set up
   if (!newProperty.property_code) {
-    console.log('⚠️ Property created without code, attempting to generate one...')
+    log.warn('⚠️ Property created without code, attempting to generate one...')
     try {
       // Call the database function to generate a code
       const { data: codeData, error } = await supabase.rpc('generate_property_code')
@@ -51,11 +52,11 @@ export async function insertProperty(payload:PropertyInsert, tokenProvider?: Tok
           }, 
           tokenProvider
         )
-        console.log('✅ Property code generated and updated:', codeData)
+        log.info('✅ Property code generated and updated:', codeData)
         return updateRows[0]
       }
     } catch (error) {
-      console.error('Failed to generate property code:', error)
+      log.error('Failed to generate property code:', error as any)
     }
   }
   

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log } from '../lib/log';
 
 /**
  * Comprehensive data clearing utility for the MyAILandlord app
@@ -11,18 +12,18 @@ export class DataClearer {
    */
   static async clearAsyncStorage(): Promise<void> {
     try {
-      console.log('🧹 Clearing all AsyncStorage data...');
+      log.info('🧹 Clearing all AsyncStorage data...');
       const keys = await AsyncStorage.getAllKeys();
-      console.log(`Found ${keys.length} keys in AsyncStorage:`, keys);
+      log.info(`Found ${keys.length} keys in AsyncStorage:`, keys);
       
       if (keys.length > 0) {
         await AsyncStorage.multiRemove(keys);
-        console.log('✅ AsyncStorage cleared successfully');
+        log.info('✅ AsyncStorage cleared successfully');
       } else {
-        console.log('ℹ️ AsyncStorage was already empty');
+        log.info('ℹ️ AsyncStorage was already empty');
       }
     } catch (error) {
-      console.error('❌ Failed to clear AsyncStorage:', error);
+      log.error('❌ Failed to clear AsyncStorage:', error as any);
       throw error;
     }
   }
@@ -32,7 +33,7 @@ export class DataClearer {
    */
   static async clearPropertyDrafts(): Promise<void> {
     try {
-      console.log('🧹 Clearing property drafts...');
+      log.info('🧹 Clearing property drafts...');
       const keys = await AsyncStorage.getAllKeys();
       const draftKeys = keys.filter(key => 
         key.includes('property_draft') || 
@@ -41,14 +42,14 @@ export class DataClearer {
       );
       
       if (draftKeys.length > 0) {
-        console.log(`Found ${draftKeys.length} draft keys:`, draftKeys);
+        log.info(`Found ${draftKeys.length} draft keys:`, draftKeys);
         await AsyncStorage.multiRemove(draftKeys);
-        console.log('✅ Property drafts cleared successfully');
+        log.info('✅ Property drafts cleared successfully');
       } else {
-        console.log('ℹ️ No property drafts found');
+        log.info('ℹ️ No property drafts found');
       }
     } catch (error) {
-      console.error('❌ Failed to clear property drafts:', error);
+      log.error('❌ Failed to clear property drafts:', error as any);
       throw error;
     }
   }
@@ -58,7 +59,7 @@ export class DataClearer {
    */
   static async clearCache(): Promise<void> {
     try {
-      console.log('🧹 Clearing cached data...');
+      log.info('🧹 Clearing cached data...');
       const keys = await AsyncStorage.getAllKeys();
       const cacheKeys = keys.filter(key => 
         key.includes('cache') || 
@@ -68,14 +69,14 @@ export class DataClearer {
       );
       
       if (cacheKeys.length > 0) {
-        console.log(`Found ${cacheKeys.length} cache keys:`, cacheKeys);
+        log.info(`Found ${cacheKeys.length} cache keys:`, cacheKeys);
         await AsyncStorage.multiRemove(cacheKeys);
-        console.log('✅ Cache cleared successfully');
+        log.info('✅ Cache cleared successfully');
       } else {
-        console.log('ℹ️ No cached data found');
+        log.info('ℹ️ No cached data found');
       }
     } catch (error) {
-      console.error('❌ Failed to clear cache:', error);
+      log.error('❌ Failed to clear cache:', error as any);
       throw error;
     }
   }
@@ -84,22 +85,22 @@ export class DataClearer {
    * Clear all app data (full reset)
    */
   static async clearAllData(): Promise<void> {
-    console.log('🚀 Starting complete data clear...');
+    log.info('🚀 Starting complete data clear...');
     
     try {
       await this.clearAsyncStorage();
-      console.log('✅ Complete data clear successful');
+      log.info('✅ Complete data clear successful');
       
       // Return storage statistics
       const remainingKeys = await AsyncStorage.getAllKeys();
-      console.log(`📊 Storage after clear: ${remainingKeys.length} keys remaining`);
+      log.info(`📊 Storage after clear: ${remainingKeys.length} keys remaining`);
       
       if (remainingKeys.length > 0) {
-        console.log('⚠️ Some keys remain:', remainingKeys);
+        log.warn('⚠️ Some keys remain:', remainingKeys);
       }
       
     } catch (error) {
-      console.error('❌ Data clear failed:', error);
+      log.error('❌ Data clear failed:', error as any);
       throw error;
     }
   }
@@ -139,7 +140,7 @@ export class DataClearer {
         allKeys
       };
     } catch (error) {
-      console.error('Failed to get storage stats:', error);
+      log.error('Failed to get storage stats:', error as any);
       return {
         totalKeys: 0,
         draftKeys: 0,

@@ -4,6 +4,7 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
+import { log } from '../lib/log';
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -22,7 +23,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false }) => {
   // Choose initial route based on deep link context
   const initialRouteName = initialInvite ? 'PropertyInviteAccept' : 'Welcome';
   
-  console.log('🔗 AuthStack initialized with:', { initialInvite, initialRouteName });
+  log.info('🔗 AuthStack initialized with:', { initialInvite, initialRouteName });
 
   return (
     <Stack.Navigator

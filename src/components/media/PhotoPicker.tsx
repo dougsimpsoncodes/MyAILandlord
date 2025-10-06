@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, View, TouchableOpacity, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import Button from '../shared/Button';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
 import { log } from '../../lib/log';
 
@@ -122,14 +122,29 @@ export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled }
   };
   
   return (
-    <View style={{ width: '100%' }}>
-      <Button 
-        title="Add Photos" 
-        onPress={handlePick} 
-        type="secondary" 
-        disabled={disabled} 
-        fullWidth 
-      />
-    </View>
+    <TouchableOpacity 
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F0F8FF',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        opacity: disabled ? 0.6 : 1,
+        width: '100%',
+        justifyContent: 'center'
+      }}
+      onPress={handlePick}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      <Ionicons name="images" size={20} color="#3498DB" />
+      <Text style={{
+        fontSize: 14,
+        color: '#3498DB',
+        fontWeight: '500',
+      }}>Add Photos</Text>
+    </TouchableOpacity>
   );
 }

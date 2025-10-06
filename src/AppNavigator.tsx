@@ -7,6 +7,7 @@ import { useAppAuth } from './context/ClerkAuthContext';
 import { RoleContext } from './context/RoleContext';
 import { useProfileSync } from './hooks/useProfileSync';
 import { LoadingScreen } from './components/LoadingSpinner';
+import { log } from './lib/log';
 
 const AppNavigator = () => {
   const { user, isSignedIn, isLoading } = useAppAuth();
@@ -14,8 +15,8 @@ const AppNavigator = () => {
   const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   
-  // Debug logging
-  console.log('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
+  // Debug logging (centralized)
+  log.info('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
   
   // Sync Clerk user with Supabase profile
   useProfileSync();
@@ -25,10 +26,10 @@ const AppNavigator = () => {
     const getInitialURL = async () => {
       try {
         const url = await Linking.getInitialURL();
-        console.log('🔗 Initial URL detected:', url);
+        log.info('🔗 Initial URL detected:', url);
         setInitialUrl(url);
       } catch (error) {
-        console.log('🔗 Could not get initial URL:', error);
+        log.warn('🔗 Could not get initial URL:', error);
       } finally {
         setIsReady(true);
       }
@@ -44,9 +45,10 @@ const AppNavigator = () => {
 
   // Determine if we should force AuthStack for deep link invite
   const isInviteLink = initialUrl && initialUrl.includes('/invite');
-  const shouldShowMainStack = isSignedIn && user && userRole && !isInviteLink;
+  // Show MainStack if user is fully authenticated, even if they came from invite
+  const shouldShowMainStack = isSignedIn && user && userRole;
   
-  console.log('🧭 Navigation decision:', { 
+  log.info('🧭 Navigation decision:', { 
     shouldShowMainStack, 
     isInviteLink, 
     isSignedIn, 

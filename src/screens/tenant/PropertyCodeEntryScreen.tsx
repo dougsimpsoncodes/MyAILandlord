@@ -7,7 +7,7 @@ import { TenantStackParamList } from '../../navigation/TenantStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useApiClient } from '../../services/api/client';
-import { upsertProfile, getProfileByClerkId } from '../../clients/ClerkSupabaseClient';
+import { log } from '../../lib/log';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveTitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
@@ -28,33 +28,16 @@ const PropertyCodeEntryScreen = () => {
   const [error, setError] = useState('');
 
   const ensureProfileExists = async () => {
-    if (!user || !userId) {
+    if (!user || !userId || !apiClient) {
       throw new Error('User not authenticated');
     }
-
-    const token = await getToken();
-    if (!token) {
-      throw new Error('Failed to get authentication token');
-    }
-
-    const tokenProvider = { getToken: async () => token };
-    
-    // Check if profile exists
-    const existingProfile = await getProfileByClerkId(userId, tokenProvider);
-    
-    if (!existingProfile) {
-      // Create profile
+    const profile = await apiClient.getUserProfile();
+    if (!profile) {
       const email = user.primaryEmailAddress?.emailAddress || '';
       const name = user.fullName || user.username || '';
-      const avatar_url = user.imageUrl || '';
-      
-      await upsertProfile({ 
-        id: '', 
-        clerk_user_id: userId, 
-        email, 
-        name, 
-        avatar_url 
-      }, tokenProvider);
+      const avatarUrl = user.imageUrl || '';
+      await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
+      log.info('Profile created for tenant via code entry');
     }
   };
 
@@ -117,7 +100,7 @@ const PropertyCodeEntryScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Property code validation error:', error);
+      log.error('Property code validation error:', error as any);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
       if (errorMessage.includes('authentication') || errorMessage.includes('token')) {

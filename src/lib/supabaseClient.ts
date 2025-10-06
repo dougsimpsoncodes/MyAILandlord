@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { log } from './log'
 
 declare global { var __sb: SupabaseClient | undefined }
 
@@ -31,6 +32,6 @@ export const authenticatedClient = {
   getClient: () => supabase,
   // Deprecated: setSession is no longer needed with native Clerk integration
   setSession: async () => {
-    console.warn('setSession is deprecated - use useClerkSupabase hook instead')
+    log.warn('setSession is deprecated - use useClerkSupabase hook instead')
   }
 }

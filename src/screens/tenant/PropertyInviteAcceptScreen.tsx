@@ -8,12 +8,12 @@ import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 import { useApiClient } from '../../services/api/client';
-import { upsertProfile, getProfileByClerkId } from '../../clients/ClerkSupabaseClient';
+import { log } from '../../lib/log';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveTitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
 import CustomButton from '../../components/shared/CustomButton';
-import { supabase } from '../../services/supabase/config';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useRole } from '../../context/RoleContext';
 import * as Linking from 'expo-linking';
 
@@ -31,40 +31,41 @@ const PropertyInviteAcceptScreen = () => {
   const route = useRoute();
   const { userId, getToken } = useAuth();
   const { user } = useUser();
+  const { supabase } = useSupabaseWithAuth();
   
   // Extract propertyId from route params or query parameters
   const getPropertyId = async () => {
     const params = route.params as any;
-    console.log('🔗 PropertyInviteAcceptScreen route params:', params);
-    console.log('🔗 PropertyInviteAcceptScreen route:', route);
+    log.info('🔗 PropertyInviteAcceptScreen route params:', params);
+    log.info('🔗 PropertyInviteAcceptScreen route:', route);
     
     // Try route params first (for direct navigation)
     if (params?.propertyId) {
-      console.log('🔗 Found propertyId in route params:', params.propertyId);
+      log.info('🔗 Found propertyId in route params:', params.propertyId);
       return params.propertyId;
     }
     // Try query parameters (for deep linking)
     if (params?.property) {
-      console.log('🔗 Found property in route params:', params.property);
+      log.info('🔗 Found property in route params:', params.property);
       return params.property;
     }
     
     // Fallback: extract from initial URL directly
     try {
       const url = await Linking.getInitialURL();
-      console.log('🔗 Checking initial URL for property ID:', url);
+      log.info('🔗 Checking initial URL for property ID:', url);
       if (url && url.includes('property=')) {
         const match = url.match(/property=([^&]+)/);
         if (match) {
-          console.log('🔗 Extracted property ID from URL:', match[1]);
+          log.info('🔗 Extracted property ID from URL:', match[1]);
           return match[1];
         }
       }
     } catch (error) {
-      console.error('🔗 Error getting initial URL:', error);
+      log.error('🔗 Error getting initial URL:', error as any);
     }
     
-    console.log('🔗 No property ID found anywhere');
+    log.info('🔗 No property ID found anywhere');
     return null;
   };
   
@@ -99,12 +100,12 @@ const PropertyInviteAcceptScreen = () => {
   useEffect(() => {
     const setTenantRoleOnAuth = async () => {
       if (userId) {
-        console.log('🎯 User authenticated via invite link - setting role to tenant');
+        log.info('🎯 User authenticated via invite link - setting role to tenant');
         try {
           await setUserRole('tenant');
-          console.log('✅ Role automatically set to tenant via invite');
+          log.info('✅ Role automatically set to tenant via invite');
         } catch (error) {
-          console.error('Failed to set tenant role:', error);
+          log.error('Failed to set tenant role:', error as any);
         }
       }
     };
@@ -130,7 +131,7 @@ const PropertyInviteAcceptScreen = () => {
 
       setProperty(propertyData);
     } catch (err) {
-      console.error('Error fetching property:', err);
+      log.error('Error fetching property:', err as any);
       setError('Unable to load property details. The invite link may be invalid.');
     } finally {
       setLoading(false);
@@ -142,40 +143,21 @@ const PropertyInviteAcceptScreen = () => {
       throw new Error('User not authenticated');
     }
 
-    const token = await getToken();
-    if (!token) {
-      throw new Error('Failed to get authentication token');
-    }
-
-    const tokenProvider = { getToken: async () => token };
-    
-    // Check if profile exists
-    const existingProfile = await getProfileByClerkId(userId, tokenProvider);
-    
-    if (!existingProfile) {
-      // Create profile
+    if (!apiClient || !user) throw new Error('User not authenticated');
+    const existing = await apiClient.getUserProfile();
+    if (!existing) {
       const email = user.primaryEmailAddress?.emailAddress || '';
       const name = user.fullName || user.username || '';
-      const avatar_url = user.imageUrl || '';
-      
-      await upsertProfile({ 
-        id: '', 
-        clerk_user_id: userId, 
-        email, 
-        name, 
-        avatar_url,
-        role: 'tenant' // Auto-set as tenant when accepting invite
-      }, tokenProvider);
-      
-      // Immediately set tenant role in RoleContext after profile creation
-      console.log('👤 Setting tenant role in context after profile creation...');
+      const avatarUrl = user.imageUrl || '';
+      await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
+      log.info('👤 Tenant profile created during invite acceptance');
       await setUserRole('tenant');
-      console.log('✅ Tenant role set in context');
+      log.info('✅ Tenant role set in context');
     }
   };
 
   const handleAcceptInvite = async () => {
-    console.log('🎯 Accept button clicked!', { property, userId });
+    log.info('🎯 Accept button clicked!', { hasProperty: !!property, hasUser: !!userId });
     
     if (!property) {
       Alert.alert('Error', 'Property information is missing. Please try again.');
@@ -184,72 +166,37 @@ const PropertyInviteAcceptScreen = () => {
 
     // If user is not authenticated, redirect to signup with invite context
     if (!userId) {
-      console.log('🔄 Redirecting to signup - user not authenticated');
+      log.info('🔄 Redirecting to signup - user not authenticated');
       navigation.navigate('SignUp');
       return;
     }
 
-    console.log('🚀 Starting invite acceptance process for authenticated user');
+    log.info('🚀 Starting invite acceptance process for authenticated user');
 
     try {
-      console.log('🔧 Setting loading state...');
+      log.info('🔧 Setting loading state...');
       setLoading(true);
       setError('');
 
-      console.log('👤 Ensuring profile exists...');
+      log.info('👤 Ensuring profile exists...');
       await ensureProfileExists();
-      console.log('✅ Profile exists confirmed');
+      log.info('✅ Profile exists confirmed');
 
       // Get the user's profile ID
-      console.log('🎫 Getting auth token...');
-      const token = await getToken();
-      const tokenProvider = { getToken: async () => token };
-      
-      console.log('👤 Getting user profile...');
-      const profile = await getProfileByClerkId(userId, tokenProvider);
-      console.log('✅ Profile retrieved:', profile);
-
-      if (!profile) {
-        throw new Error('Profile not found');
-      }
-
-      // Link tenant to property using authenticated Supabase client
-      console.log('🔗 Creating tenant property link...', {
-        tenant_id: profile.id,
-        property_id: propertyId,
-        unit_number: property.unit || null,
-      });
-      
-      const { data: linkData, error: linkError } = await supabase
-        .from('tenant_property_links')
-        .insert({
-          tenant_id: profile.id,
-          property_id: propertyId,
-          unit_number: property.unit || null,
-          is_active: true,
-        })
-        .select()
-        .single();
-        
-      // Log only success/failure status (not sensitive data)
-      if (linkError) {
-        console.log('❌ Tenant property link creation failed');
-      } else {
-        console.log('✅ Tenant property link created successfully');
-      }
-
-      if (linkError) {
-        // Check if already linked
-        if (linkError.code === '23505') { // Unique violation
-          console.log('⚠️ Already connected - showing alert');
+      // Link tenant to property via unified API
+      try {
+        await apiClient.linkTenantToPropertyById(propertyId!, property?.unit || undefined);
+        log.info('✅ Tenant property link created successfully');
+      } catch (linkError: any) {
+        // Check if already linked (unique violation)
+        const message = (linkError && linkError.message) || '';
+        if (message.includes('duplicate') || message.includes('23505')) {
+          log.warn('⚠️ Already connected - showing alert');
           Alert.alert(
             'Already Connected',
-            `You're already connected to ${property.name}`,
+            `You're already connected to ${property?.name || 'this property'}`,
             [
-              {
-                text: 'Continue',
-                onPress: () => navigation.navigate('Welcome')
-              }
+              { text: 'Continue', onPress: () => navigation.navigate('Welcome') }
             ]
           );
           return;
@@ -258,18 +205,17 @@ const PropertyInviteAcceptScreen = () => {
       }
 
       // Success! Property connected - navigate to home to trigger AppNavigator
-      console.log('🎉 Success! Tenant connected to property');
+      log.info('🎉 Success! Tenant connected to property');
       
       // Clear any error state
       setError('');
       
       // Navigate to home URL to trigger AppNavigator to show tenant dashboard
-      console.log('🚀 Navigating to home to show tenant dashboard');
+      log.info('🚀 Navigating to home to show tenant dashboard');
       window.location.href = window.location.origin;
-      
-      console.log('✅ Navigation to tenant dashboard initiated');
+      log.info('✅ Navigation to tenant dashboard initiated');
     } catch (error) {
-      console.error('Error accepting invite:', error);
+      log.error('Error accepting invite:', error as any);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError('Failed to connect to property. Please try again.');
     } finally {

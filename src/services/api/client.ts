@@ -33,6 +33,7 @@ import { validateImageFile, validateAudioFile, getErrorMessage, validateRequired
 import { FileValidation } from '../../types/api';
 import { ENV_CONFIG } from '../../utils/constants';
 import log from '../../lib/log';
+import { captureException } from '../../lib/monitoring';
 
 const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL || 
   `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
@@ -137,15 +138,95 @@ export function useApiClient(): UseApiClientReturn | null {
   };
 
   // ========== PROPERTY METHODS ==========
-  const getUserProperties = async () => {
+  const getUserProperties = async (opts?: { limit?: number; offset?: number }) => {
     const client = getSupabaseClient();
-    return await client.getUserProperties(userId);
+    return await client.getUserProperties(userId, opts);
+  };
+
+  const createProperty = async (payload: {
+    name: string;
+    address_jsonb: any;
+    property_type: string;
+    unit?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+  }) => {
+    // Insert property; rely on DB triggers for code, with fallback if needed
+    const { data, error } = await supabaseClient
+      .from('properties')
+      .insert({
+        name: payload.name,
+        address_jsonb: payload.address_jsonb,
+        property_type: payload.property_type,
+        unit: payload.unit || null,
+        bedrooms: payload.bedrooms ?? null,
+        bathrooms: payload.bathrooms ?? null,
+        allow_tenant_signup: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      log.error('Error creating property', { error: getErrorMessage(error) });
+      captureException(error, { op: 'createProperty' });
+      throw new Error(`Failed to create property: ${error.message}`);
+    }
+
+    // Fallback: if property_code missing, call RPC and patch
+    if (data && !data.property_code) {
+      try {
+        const { data: codeData, error: codeError } = await supabaseClient.rpc('generate_property_code');
+        if (codeError) throw codeError;
+        if (codeData) {
+          const { data: updated, error: patchError } = await supabaseClient
+            .from('properties')
+            .update({
+              property_code: codeData,
+              code_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              allow_tenant_signup: true,
+            })
+            .eq('id', data.id)
+            .select()
+            .single();
+          if (patchError) throw patchError;
+          return updated;
+        }
+      } catch (fallbackError) {
+        log.warn('Property code generation fallback failed', { error: getErrorMessage(fallbackError) });
+      }
+    }
+
+    return data;
+  };
+
+  const createPropertyAreas = async (areas: Array<{ property_id: string; name: string; area_type: string; photos?: string[] }>) => {
+    const { error } = await supabaseClient
+      .from('property_areas')
+      .insert(areas);
+    if (error) {
+      log.error('Error creating property areas', { error: getErrorMessage(error) });
+      captureException(error, { op: 'createPropertyAreas' });
+      throw new Error(`Failed to create property areas: ${error.message}`);
+    }
+    return true;
+  };
+
+  const deleteProperty = async (propertyId: string) => {
+    const { error } = await supabaseClient
+      .from('properties')
+      .delete()
+      .eq('id', propertyId);
+    if (error) {
+      log.error('Error deleting property', { propertyId, error: getErrorMessage(error) });
+      throw new Error(`Failed to delete property: ${error.message}`);
+    }
+    return true;
   };
 
   // ========== MAINTENANCE REQUEST METHODS ==========
-  const getMaintenanceRequests = async () => {
+  const getMaintenanceRequests = async (opts?: { limit?: number; offset?: number }) => {
     // Use REST API with injected token provider (works web + native)
-    return await getMaintenanceRequestsREST({ getToken: async () => await getAccessToken() });
+    return await getMaintenanceRequestsREST({ getToken: async () => await getAccessToken() }, opts || {});
   };
 
   const createMaintenanceRequest = async (requestData: CreateMaintenanceRequestData) => {
@@ -166,9 +247,9 @@ export function useApiClient(): UseApiClientReturn | null {
       }
 
       // Use the Supabase client directly (with proper JWT token transmission)
-      console.log('=== DIRECT SUPABASE INSERT DEBUG ===');
-      console.log('Profile:', { id: profile.id, clerk_user_id: profile.clerk_user_id, role: profile.role });
-      console.log('Request data:', {
+      log.info('=== DIRECT SUPABASE INSERT DEBUG ===');
+      log.info('Profile:', { id: profile.id, clerk_user_id: profile.clerk_user_id, role: profile.role });
+      log.info('Request data:', {
         tenant_id: profile.id,
         property_id: validatedData.propertyId,
         title: validatedData.title,
@@ -193,13 +274,13 @@ export function useApiClient(): UseApiClientReturn | null {
         .single();
 
       if (error) {
-        console.error('=== DIRECT SUPABASE INSERT ERROR ===');
-        console.error('Error:', error);
+        log.error('=== DIRECT SUPABASE INSERT ERROR ===');
+        log.error('Error:', error as any);
         throw new Error(`Failed to create maintenance request: ${error.message}`);
       }
 
-      console.log('=== DIRECT SUPABASE INSERT SUCCESS ===');
-      console.log('Created:', maintenanceRequest);
+      log.info('=== DIRECT SUPABASE INSERT SUCCESS ===');
+      log.info('Created:', maintenanceRequest);
 
       // If there are images or voice notes, upload them with validation
       const uploadedImages: string[] = [];
@@ -275,6 +356,7 @@ export function useApiClient(): UseApiClientReturn | null {
       return maintenanceRequest;
     } catch (error) {
       log.error('Error creating maintenance request', { error: getErrorMessage(error) });
+      captureException(error, { op: 'createMaintenanceRequest' });
       throw new Error(`Failed to create maintenance request: ${getErrorMessage(error)}`);
     }
   };
@@ -298,6 +380,7 @@ export function useApiClient(): UseApiClientReturn | null {
       return await client.updateMaintenanceRequest(requestId, updates);
     } catch (error) {
       log.error('Error updating maintenance request', { error: getErrorMessage(error) });
+      captureException(error, { op: 'updateMaintenanceRequest', requestId });
       throw new Error(`Failed to update maintenance request: ${getErrorMessage(error)}`);
     }
   };
@@ -370,6 +453,7 @@ export function useApiClient(): UseApiClientReturn | null {
       return data;
     } catch (error) {
       log.error('Error analyzing maintenance request', { error: getErrorMessage(error) });
+      captureException(error, { op: 'analyzeMaintenanceRequest' });
       throw new Error(`Failed to analyze maintenance request: ${getErrorMessage(error)}`);
     }
   };
@@ -423,6 +507,7 @@ export function useApiClient(): UseApiClientReturn | null {
       });
     } catch (error) {
       log.error('Error uploading file', { error: getErrorMessage(error) });
+      captureException(error, { op: 'uploadFile', bucket });
       throw new Error(`Failed to upload file: ${getErrorMessage(error)}`);
     }
   };
@@ -440,6 +525,7 @@ export function useApiClient(): UseApiClientReturn | null {
       return await storageService.getSignedUrl(bucket, sanitizedPath);
     } catch (error) {
       log.error('Error getting signed URL', { error: getErrorMessage(error) });
+      captureException(error, { op: 'getSignedUrl', bucket });
       throw new Error(`Failed to get signed URL: ${getErrorMessage(error)}`);
     }
   };
@@ -457,6 +543,7 @@ export function useApiClient(): UseApiClientReturn | null {
       return await storageService.deleteFile(bucket, sanitizedPath);
     } catch (error) {
       log.error('Error deleting file', { error: getErrorMessage(error) });
+      captureException(error, { op: 'deleteFile', bucket });
       throw new Error(`Failed to delete file: ${getErrorMessage(error)}`);
     }
   };
@@ -553,6 +640,26 @@ export function useApiClient(): UseApiClientReturn | null {
     }
   };
 
+  const linkTenantToPropertyById = async (propertyId: string, unitNumber?: string) => {
+    // Fetch profile to get tenant UUID
+    const profile = await getUserProfile();
+    if (!profile) throw new Error('User profile not found');
+    const { error } = await supabaseClient
+      .from('tenant_property_links')
+      .insert({
+        tenant_id: profile.id,
+        property_id: propertyId,
+        unit_number: unitNumber || null,
+        is_active: true,
+      });
+    if (error) {
+      log.error('Error linking tenant by propertyId', { error: getErrorMessage(error) });
+      captureException(error, { op: 'linkTenantToPropertyById' });
+      throw new Error(`Failed to link to property: ${error.message}`);
+    }
+    return true;
+  };
+
   return {
     // User methods
     getUserProfile,
@@ -562,11 +669,15 @@ export function useApiClient(): UseApiClientReturn | null {
     
     // Property methods
     getUserProperties,
+    createProperty,
+    createPropertyAreas,
+    deleteProperty,
     
     // Property code methods  
     validatePropertyCode,
     linkTenantToProperty,
     getTenantProperties,
+    linkTenantToPropertyById,
     
     // Maintenance request methods
     getMaintenanceRequests,

@@ -19,3 +19,6 @@ export const log = {
     console.error(...args);
   },
 };
+
+// Provide a default export for compatibility with existing imports
+export default log;

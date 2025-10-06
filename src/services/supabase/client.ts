@@ -1,6 +1,7 @@
 import { supabase } from './config';
 import { Database } from './types';
 import { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
+import { log } from '../../lib/log';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type MaintenanceRequest = Database['public']['Tables']['maintenance_requests']['Row'];
@@ -26,7 +27,7 @@ export class SupabaseClient {
     if (this.currentClerkUserId !== clerkUserId) {
       // NOTE: With native Clerk integration, JWT tokens are automatically sent via accessToken callback
       // No need to manually set RLS context - auth.jwt() will be available in RLS policies
-      console.log('RLS context set for Clerk user:', clerkUserId);
+      log.info('RLS context set for Clerk user:', { clerkUserId });
       this.currentClerkUserId = clerkUserId;
     }
   }
@@ -103,7 +104,13 @@ export class SupabaseClient {
   }
 
   // Property methods
-  async getUserProperties(clerkUserId: string): Promise<Property[]> {
+  async getUserProperties(
+    clerkUserId: string,
+    opts?: { limit?: number; offset?: number }
+  ): Promise<Property[]> {
+    const limit = Math.max(1, Math.min(opts?.limit ?? 20, 200));
+    const offset = Math.max(0, opts?.offset ?? 0);
+    const to = offset + limit - 1;
     // First get the user's profile to determine their role
     const profile = await this.getProfile(clerkUserId);
     if (!profile) {
@@ -116,7 +123,8 @@ export class SupabaseClient {
         .from('properties')
         .select('*')
         .eq('landlord_id', profile.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(offset, to);
 
       if (error) {
         throw new Error(`Failed to get landlord properties: ${error.message}`);
@@ -135,7 +143,8 @@ export class SupabaseClient {
           )
         `)
         .eq('tenant_property_links.tenant_id', profile.id)
-        .eq('tenant_property_links.is_active', true);
+        .eq('tenant_property_links.is_active', true)
+        .range(offset, to);
 
       if (error) {
         throw new Error(`Failed to get tenant properties: ${error.message}`);
@@ -204,8 +213,8 @@ export class SupabaseClient {
     images?: string[];
     voiceNotes?: string[];
   }): Promise<MaintenanceRequest> {
-    console.log('=== MAINTENANCE REQUEST CREATION DEBUG ===');
-    console.log('Request data:', {
+    log.info('=== MAINTENANCE REQUEST CREATION DEBUG ===');
+    log.info('Request data:', {
       tenant_id: requestData.tenantId,
       property_id: requestData.propertyId,
       title: requestData.title,
@@ -219,9 +228,9 @@ export class SupabaseClient {
     // Test JWT context by querying auth functions
     try {
       const jwtTest = await this.client.rpc('test_jwt_context');
-      console.log('JWT context test result:', jwtTest);
+      log.info('JWT context test result:', jwtTest as any);
     } catch (jwtError) {
-      console.log('JWT test failed (expected if function doesn\'t exist):', jwtError);
+      log.warn("JWT test failed (expected if function doesn't exist):", jwtError as any);
     }
     
     const { data, error } = await this.client
@@ -243,16 +252,16 @@ export class SupabaseClient {
       .single();
 
     if (error) {
-      console.error('=== SUPABASE INSERT ERROR ===');
-      console.error('Error details:', error);
-      console.error('Error message:', error.message);
-      console.error('Error code:', error.code);
-      console.error('Error hint:', error.hint);
+      log.error('=== SUPABASE INSERT ERROR ===');
+      log.error('Error details:', error as any);
+      log.error('Error message:', (error as any).message);
+      log.error('Error code:', (error as any).code);
+      log.error('Error hint:', (error as any).hint);
       throw new Error(`Failed to create maintenance request: ${error.message}`);
     }
     
-    console.log('=== SUPABASE INSERT SUCCESS ===');
-    console.log('Created maintenance request:', data);
+    log.info('=== SUPABASE INSERT SUCCESS ===');
+    log.info('Created maintenance request:', data);
 
     return data;
   }

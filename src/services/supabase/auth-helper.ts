@@ -1,4 +1,5 @@
 import { supabase } from './config';
+import { log } from '../../lib/log';
 
 /**
  * IMPORTANT: This function requires proper JWT template configuration in Clerk
@@ -23,7 +24,7 @@ import { supabase } from './config';
  * Note: This function is deprecated. Use the authenticated client from useSupabaseWithClerk instead.
  */
 export async function setSupabaseUserContext(clerkUserId: string) {
-  console.warn('setSupabaseUserContext is deprecated. Use useSupabaseWithClerk hook instead.');
+  log.warn('setSupabaseUserContext is deprecated. Use useSupabaseWithClerk hook instead.');
   
   // This function is no longer needed when using JWT tokens
   // The JWT token automatically sets the user context for RLS policies
@@ -40,7 +41,7 @@ export async function withUserContext<T>(
   clerkUserId: string,
   queryFn: () => Promise<T>
 ): Promise<T> {
-  console.warn('withUserContext is deprecated. Use useSupabaseWithClerk hook instead.');
+  log.warn('withUserContext is deprecated. Use useSupabaseWithClerk hook instead.');
   
   // When using JWT tokens, the context is automatically set
   return queryFn();

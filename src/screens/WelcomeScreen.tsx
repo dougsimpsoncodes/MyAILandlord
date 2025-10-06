@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { useAppAuth } from '../context/ClerkAuthContext';
 import { RoleContext } from '../context/RoleContext';
+import { log } from '../lib/log';
 
 type WelcomeScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -17,13 +18,13 @@ const WelcomeScreen = () => {
   const { clearRole, userRole } = useContext(RoleContext);
   
   // Debug logging
-  console.log('🏠 Welcome Screen - Auth State:', { isSignedIn, userRole });
+  log.info('🏠 Welcome Screen - Auth State:', { isSignedIn, userRole });
 
   const handleGetStarted = () => {
     // If user is authenticated with a role, AppNavigator should automatically
     // switch to MainStack. If we're still here, user needs to authenticate.
     if (isSignedIn && userRole) {
-      console.log('User authenticated with role, AppNavigator should auto-redirect');
+      log.info('User authenticated with role, AppNavigator should auto-redirect');
       // The AppNavigator will handle the transition automatically
       return;
     }

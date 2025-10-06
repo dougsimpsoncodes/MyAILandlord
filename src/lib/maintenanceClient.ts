@@ -26,12 +26,19 @@ export type MaintenanceRequest = {
   }
 }
 
-export async function getMaintenanceRequests(tokenProvider?: TokenProvider): Promise<MaintenanceRequest[]> {
+export async function getMaintenanceRequests(
+  tokenProvider?: TokenProvider,
+  opts: { limit?: number; offset?: number } = {}
+): Promise<MaintenanceRequest[]> {
   try {
+    const limit = opts.limit ?? 50;
+    const offset = opts.offset ?? 0;
     // Fetch maintenance requests using REST API with Clerk auth
     const requests = await restGet('maintenance_requests', {
       select: '*,profiles!tenant_id(name,email),properties(name,address)',
-      order: 'created_at.desc'
+      order: 'created_at.desc',
+      limit: String(limit),
+      offset: String(offset)
     }, tokenProvider)
     
     return Array.isArray(requests) ? requests : []

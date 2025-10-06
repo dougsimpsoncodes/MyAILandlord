@@ -2,6 +2,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Platform } from 'react-native';
+import { log } from '../lib/log';
 import { 
   Photo, 
   CameraOptions, 
@@ -34,7 +35,7 @@ export class PhotoService {
       
       return true;
     } catch (error) {
-      console.error('Error requesting permissions:', error);
+      log.error('Error requesting permissions:', error as any);
       return false;
     }
   }
@@ -90,7 +91,7 @@ export class PhotoService {
 
       return photo;
     } catch (error) {
-      console.error('Error capturing photo:', error);
+      log.error('Error capturing photo:', error as any);
       Alert.alert('Error', 'Failed to capture photo. Please try again.');
       return null;
     }
@@ -100,11 +101,11 @@ export class PhotoService {
    * Select photos from device gallery
    */
   static async selectFromGallery(options?: Partial<ImagePickerOptions>): Promise<Photo[]> {
-    console.log('📸 PhotoService: selectFromGallery called with options:', options);
+    log.info('📸 PhotoService: selectFromGallery called with options:', options);
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
-        console.log('📸 PhotoService: No permissions, returning empty array');
+        log.warn('📸 PhotoService: No permissions, returning empty array');
         return [];
       }
 
@@ -120,16 +121,16 @@ export class PhotoService {
         ...defaultOptions,
         ...options,
       };
-      console.log('📸 PhotoService: Final options for ImagePicker:', finalOptions);
+      log.info('📸 PhotoService: Final options for ImagePicker:', finalOptions);
 
       const result = await ImagePicker.launchImageLibraryAsync(finalOptions);
 
       if (result.canceled || !result.assets) {
-        console.log('📸 PhotoService: Selection canceled or no assets');
+        log.info('📸 PhotoService: Selection canceled or no assets');
         return [];
       }
 
-      console.log('📸 PhotoService: Processing', result.assets.length, 'selected assets');
+      log.info('📸 PhotoService: Processing', result.assets.length, 'selected assets');
       const photos: Photo[] = [];
       for (const asset of result.assets) {
         const photo = await this.processImageAsset(asset);
@@ -145,10 +146,10 @@ export class PhotoService {
         }
       }
 
-      console.log('📸 PhotoService: Returning', photos.length, 'processed photos');
+      log.info('📸 PhotoService: Returning', photos.length, 'processed photos');
       return photos;
     } catch (error) {
-      console.error('Error selecting from gallery:', error);
+      log.error('Error selecting from gallery:', error as any);
       Alert.alert('Error', 'Failed to select photos. Please try again.');
       return [];
     }
@@ -184,7 +185,7 @@ export class PhotoService {
         compressed: true,
       };
     } catch (error) {
-      console.error('Error compressing photo:', error);
+      log.error('Error compressing photo:', error as any);
       return photo; // Return original if compression fails
     }
   }
@@ -197,7 +198,7 @@ export class PhotoService {
       await FileSystem.deleteAsync(photoUri, { idempotent: true });
       return true;
     } catch (error) {
-      console.error('Error deleting photo:', error);
+      log.error('Error deleting photo:', error as any);
       return false;
     }
   }
@@ -266,7 +267,7 @@ export class PhotoService {
       );
       return result.uri;
     } catch (error) {
-      console.error('Error generating thumbnail:', error);
+      log.error('Error generating thumbnail:', error as any);
       return photo.uri; // Return original if thumbnail generation fails
     }
   }

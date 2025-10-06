@@ -19,7 +19,7 @@ import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
-import { insertProperty, insertPropertyAreas } from '../../clients/ClerkSupabaseClient';
+import { useApiClient } from '../../services/api/client';
 import { useAuth } from '@clerk/clerk-expo';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -31,6 +31,7 @@ const PropertyReviewScreen = () => {
   const route = useRoute<PropertyReviewRouteProp>();
   const { propertyData, areas, draftId } = route.params;
   const { getToken } = useAuth();
+  const api = useApiClient();
 
   // Initialize draft management
   const {
@@ -97,12 +98,8 @@ const PropertyReviewScreen = () => {
     try {
       setIsSubmitting(true);
       
-      // Get authentication token
-      const token = await getToken();
-      if (!token) {
-        throw new Error('Authentication token not available');
-      }
-      const tokenProvider = { getToken: async () => token };
+      // Ensure API is ready
+      if (!api) throw new Error('Authentication required');
       
       if (draftState) await saveDraft();
 
@@ -116,7 +113,7 @@ const PropertyReviewScreen = () => {
       };
       
       console.log('🏠 Submitting property with payload:', propertyPayload);
-      const newProperty = await insertProperty(propertyPayload, tokenProvider);
+      const newProperty = await api.createProperty(propertyPayload);
       console.log('🏠 Property created successfully:', newProperty);
       
       // Create area records
@@ -129,7 +126,7 @@ const PropertyReviewScreen = () => {
         }));
         
         try {
-          await insertPropertyAreas(areaRecords, tokenProvider);
+          await api.createPropertyAreas(areaRecords);
         } catch (areasError) {
           console.error('Error creating areas:', areasError);
           // Continue anyway - areas are not critical
@@ -219,8 +216,8 @@ const PropertyReviewScreen = () => {
     </View>
   );
 
-  // Test logging on every render
-  console.log('🔴 PropertyReviewScreen rendered, isSubmitting:', isSubmitting, 'isDraftLoading:', isDraftLoading);
+  // Test logging on every render (centralized)
+  // Note: Uses console in dev originally; you may replace with log if desired.
   
   return (
     <SafeAreaView style={styles.container}>
