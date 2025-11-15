@@ -60,3 +60,7 @@ build
 .gitleaks-history.json
 .gitleaks-report.json
 .gitleaks-cache*
+
+# test artifacts
+test-results/
+playwright-report/

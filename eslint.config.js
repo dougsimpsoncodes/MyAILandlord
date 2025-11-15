@@ -27,6 +27,22 @@ export default [
     plugins: { react, 'react-native': reactNative },
     rules: {
       'no-console': 'error',
+      // Prevent importing legacy client directly from screens/hooks
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '../clients/ClerkSupabaseClient',
+              message: 'Use useApiClient from services/api/client instead.',
+            },
+            {
+              name: '../../clients/ClerkSupabaseClient',
+              message: 'Use useApiClient from services/api/client instead.',
+            },
+          ],
+        },
+      ],
       'react/react-in-jsx-scope': 'off',
     },
     settings: { react: { version: 'detect' } },

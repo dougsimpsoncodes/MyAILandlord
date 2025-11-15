@@ -8,6 +8,7 @@ This document provides a comprehensive index of all documentation for the My AI 
 - **[README.md](./README.md)** - Main project overview and quick start
 - **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Complete installation and configuration
 - **[SECURITY.md](./SECURITY.md)** - Security protocols and best practices
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - How to propose changes and open PRs
 
 ### Development
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Development workflow and coding standards
@@ -90,14 +91,29 @@ Critical security information:
 ### 🔧 Build & Deployment
 Production deployment information:
 
-1. **[build_instructions.txt](./build_instructions.txt)**
-   - Current build status
-   - Build commands
-   - Production requirements
+1. **Guides**
+   - **[DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** - End-to-end deployment steps
+   - **[BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md)** - Backup and restore runbook
+   - **[ROLLBACK_PROCEDURES.md](docs/ROLLBACK_PROCEDURES.md)** - Safe rollback steps
+   - **[supabase-edge-functions.md](docs/deployment/supabase-edge-functions.md)** - Edge functions notes
+   - **[build_instructions.txt](./build_instructions.txt)** - Build commands and requirements
 
 2. **Build Lessons**
    - **[BUILD_SYSTEM_LESSONS.md](./BUILD_SYSTEM_LESSONS.md)** - Build system learnings
-   - **[CRITICAL_SECURITY_FIX.md](./CRITICAL_SECURITY_FIX.md)** - Security fix documentation
+   - **[CRITICAL_SECURITY_FIX.md](docs/archive/implementations/CRITICAL_SECURITY_FIX.md)** - Security fix documentation
+
+### 🧪 Testing
+Guides and reports for test execution:
+
+1. **Guides**
+   - **[TEST_EXECUTION_GUIDE.md](docs/testing/TEST_EXECUTION_GUIDE.md)** - How to run tests
+   - **[RLS_TESTING.md](docs/testing/RLS_TESTING.md)** - RLS testing overview
+   - **[TESTING_NAVIGATION_GUIDE.md](docs/testing/TESTING_NAVIGATION_GUIDE.md)** - UI testing notes
+
+2. **Reports**
+   - **[TEST_SUITE_SUMMARY.md](docs/testing/TEST_SUITE_SUMMARY.md)**
+   - **[E2E_TEST_SUITE_REPORT.md](docs/testing/E2E_TEST_SUITE_REPORT.md)**
+   - **[E2E_TEST_EXECUTION_REPORT.md](docs/testing/E2E_TEST_EXECUTION_REPORT.md)**
 
 ### 📱 Business
 Product and business documentation:
@@ -177,7 +193,7 @@ All documentation includes a "Project Learnings & Changelog" section managed by 
 
 **AI Features:**
 - API: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md#ai-services-api)
-- Edge Functions: [supabase/functions/](./supabase/functions/)
+- Edge Functions: [supabase/functions/](./supabase/functions/) • [Notes](docs/deployment/supabase-edge-functions.md)
 
 **Error Handling:**
 - Development: [DEVELOPMENT.md](./DEVELOPMENT.md#error-handling)
@@ -206,7 +222,7 @@ All documentation includes a "Project Learnings & Changelog" section managed by 
 ---
 
 **Document Index Version**: 1.0  
-**Last Updated**: July 26, 2025  
-**Next Review**: August 26, 2025
+**Last Updated**: Nov 14, 2025  
+**Next Review**: Dec 14, 2025
 
 > This index is automatically updated when documentation changes. For specific questions not covered in the documentation, please refer to the development team.

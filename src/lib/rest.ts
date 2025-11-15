@@ -3,11 +3,19 @@ const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 
 export interface TokenProvider { getToken: () => Promise<string | null> }
 
+interface WindowWithClerk extends Window {
+  Clerk?: {
+    session?: {
+      getToken?: (options: { template: string }) => Promise<string | null>;
+    };
+  };
+}
+
 async function authHeaders(tokenProvider?: TokenProvider, retries = 6, delayMs = 200): Promise<HeadersInit> {
   // Prefer injected provider; fallback to window.Clerk for web to preserve compatibility
   const getToken = async () => {
     if (tokenProvider) return tokenProvider.getToken()
-    const w: any = typeof window !== 'undefined' ? window : {}
+    const w = (typeof window !== 'undefined' ? window : {}) as WindowWithClerk
     return (await w?.Clerk?.session?.getToken?.({ template: 'supabase' })) ?? null
   }
 

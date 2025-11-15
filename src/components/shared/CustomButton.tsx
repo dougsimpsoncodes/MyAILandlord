@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, ViewStyle, StyleProp } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface CustomButtonProps {
@@ -8,8 +8,8 @@ interface CustomButtonProps {
   disabled?: boolean;
   loading?: boolean;
   variant?: 'primary' | 'outline' | 'text';
-  style?: any;
-  icon?: string;
+  style?: StyleProp<ViewStyle>;
+  icon?: keyof typeof Ionicons.glyphMap;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({
@@ -50,10 +50,10 @@ const CustomButton: React.FC<CustomButtonProps> = ({
       ) : (
         <View style={styles.content}>
           {icon && (
-            <Ionicons 
-              name={icon as any} 
-              size={20} 
-              color={variant === 'primary' ? '#fff' : '#007AFF'} 
+            <Ionicons
+              name={icon}
+              size={20}
+              color={variant === 'primary' ? '#fff' : '#007AFF'}
               style={styles.icon}
             />
           )}

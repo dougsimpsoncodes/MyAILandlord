@@ -187,9 +187,9 @@ const PropertyInviteAcceptScreen = () => {
       try {
         await apiClient.linkTenantToPropertyById(propertyId!, property?.unit || undefined);
         log.info('✅ Tenant property link created successfully');
-      } catch (linkError: any) {
+      } catch (linkError: unknown) {
         // Check if already linked (unique violation)
-        const message = (linkError && linkError.message) || '';
+        const message = linkError instanceof Error ? linkError.message : '';
         if (message.includes('duplicate') || message.includes('23505')) {
           log.warn('⚠️ Already connected - showing alert');
           Alert.alert(

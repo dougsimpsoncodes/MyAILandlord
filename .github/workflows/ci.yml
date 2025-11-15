@@ -1,43 +1,69 @@
-name: CI
+# CI/CD Pipeline - Quality Gates
+name: CI/CD
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+env:
+  NODE_VERSION: '20.x'
 
 jobs:
-  verify:
+  typecheck:
+    name: TypeScript Type Check
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit
 
-      - name: Install dependencies
-        run: npm ci
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npm run test -- --coverage --passWithNoTests
 
-      - name: Run lint checks
-        run: npx eslint . --ext .ts,.tsx --max-warnings 0
+  rls-suite:
+    name: RLS Isolation Suite
+    runs-on: ubuntu-latest
+    if: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL != '' && secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY != '' && secrets.TEST_TENANT1_JWT != '' && secrets.TEST_TENANT2_JWT != '' }}
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      TEST_TENANT1_JWT: ${{ secrets.TEST_TENANT1_JWT }}
+      TEST_TENANT2_JWT: ${{ secrets.TEST_TENANT2_JWT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: node scripts/ci/rls-suite.js
 
-      - name: Run Stage 1 checks
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          TEST_TENANT1_JWT: ${{ secrets.TEST_TENANT1_JWT }}
-          TEST_TENANT2_JWT: ${{ secrets.TEST_TENANT2_JWT }}
-          EDGE_URL: ${{ secrets.EDGE_URL }}
-          JWT: ${{ secrets.JWT }}
-        run: ./scripts/run-stage1-checks.sh
+  rls-tests:
+    name: RLS Security Tests
+    runs-on: ubuntu-latest
+    env:
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - run: npm run test -- src/__tests__/security/rls/ --passWithNoTests

@@ -210,12 +210,10 @@ captureException(error, { context: 'auth_flow', userId })
 
 ## Security Testing
 
-### Automated Testing
+### Automated Checks
 ```bash
-# TODO: Implement security testing
-npm run security:audit    # Dependency vulnerability scan
-npm run security:lint     # Security linting
-npm run security:test     # Security unit tests
+npm run security:audit       # Dependency vulnerability scan
+npm run security:check-secrets  # Git history scan for secrets
 ```
 
 ### Manual Testing

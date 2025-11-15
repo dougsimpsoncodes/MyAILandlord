@@ -25,19 +25,19 @@ interface ClerkWrapperProps {
 }
 
 export const ClerkWrapper: React.FC<ClerkWrapperProps> = ({ children }) => {
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  if (!publishableKey) {
+  if (!publishableKey && !authDisabled) {
     throw new Error(
       'Missing Publishable Key. Please set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env file.'
     );
   }
 
+  // Always render ClerkProvider so downstream hooks don't break,
+  // even if we ignore its state in auth-disabled mode
   return (
-    <ClerkProvider 
-      tokenCache={tokenCache} 
-      publishableKey={publishableKey}
-    >
+    <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey!}>
       {children}
     </ClerkProvider>
   );
@@ -45,16 +45,37 @@ export const ClerkWrapper: React.FC<ClerkWrapperProps> = ({ children }) => {
 
 // Custom hook that combines Clerk's auth with your app's user structure
 export function useAppAuth() {
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
   const clerk = useClerk();
 
-  const appUser = user ? {
-    id: user.id,
-    name: user.fullName || user.firstName || 'User',
-    email: user.emailAddresses?.[0]?.emailAddress || user.primaryEmailAddress?.emailAddress || '',
-    avatar: user.imageUrl || undefined,
-  } : null;
+  if (authDisabled) {
+    const devUser = {
+      id: 'dev_user_1',
+      name: 'Dev User',
+      email: 'dev@example.com',
+      avatar: undefined as string | undefined,
+    };
+    return {
+      user: devUser,
+      isLoading: false,
+      isSignedIn: true,
+      signOut: async () => {},
+    };
+  }
+
+  const appUser = user
+    ? {
+        id: user.id,
+        name: user.fullName || user.firstName || 'User',
+        email:
+          user.emailAddresses?.[0]?.emailAddress ||
+          user.primaryEmailAddress?.emailAddress ||
+          '',
+        avatar: user.imageUrl || undefined,
+      }
+    : null;
 
   // Properly handle signOut function
   const signOut = async () => {

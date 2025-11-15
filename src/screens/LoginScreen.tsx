@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useSignIn, useOAuth } from '@clerk/clerk-expo';
+import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -12,33 +12,30 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { signIn, setActive, isLoaded } = useSignIn();
-  const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
-  const { startOAuthFlow: appleOAuth } = useOAuth({ strategy: 'oauth_apple' });
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   
 
   const handleLogin = async () => {
-    if (!isLoaded) return;
-
     try {
       setLoading(true);
-      
-      const signInAttempt = await signIn.create({
-        identifier: emailAddress,
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailAddress,
         password,
       });
 
-      if (signInAttempt.status === 'complete') {
-        await setActive({ session: signInAttempt.createdSessionId });
-        // Role will be set automatically by useProfileSync hook
-      } else {
-        Alert.alert('Sign In Error', 'Unable to complete sign in. Please try again.');
+      if (error) {
+        Alert.alert('Login Error', error.message);
+        return;
       }
-    } catch (error: any) {
-      Alert.alert('Login Error', error.errors?.[0]?.message || 'Failed to sign in. Please try again.');
+
+      // Session is automatically set by Supabase
+      // Role will be set automatically by useProfileSync hook
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in. Please try again.';
+      Alert.alert('Login Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -47,16 +44,20 @@ const LoginScreen = () => {
   const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
-      
-      const oauthFlow = provider === 'google' ? googleOAuth : appleOAuth;
-      const { createdSessionId, setActive: oauthSetActive } = await oauthFlow();
-      
-      if (createdSessionId && oauthSetActive) {
-        await oauthSetActive({ session: createdSessionId });
-        // Role will be set automatically by useProfileSync hook
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+      });
+
+      if (error) {
+        Alert.alert('OAuth Error', error.message);
+        return;
       }
-    } catch (error: any) {
-      Alert.alert('OAuth Error', error.message || `Failed to sign in with ${provider}. Please try again.`);
+
+      // OAuth flow will redirect - session will be set automatically
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to sign in with ${provider}. Please try again.`;
+      Alert.alert('OAuth Error', errorMessage);
     } finally {
       setLoading(false);
     }

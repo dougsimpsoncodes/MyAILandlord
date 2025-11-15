@@ -1,12 +1,12 @@
 import React from 'react';
-import { Platform, TouchableOpacity, Text } from 'react-native';
+import { Platform, TouchableOpacity, Text, ViewStyle, StyleProp } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface DeleteButtonProps {
   onDelete: () => void;
   itemName: string;
   iconOnly?: boolean;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export default function DeleteButton({ 

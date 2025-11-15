@@ -2,6 +2,8 @@ import { restGet, restInsert, restPatch, restDelete, TokenProvider } from '../li
 import { formatAddressFromJson } from '../lib/address'
 import { supabase } from '../lib/supabaseClient'
 import { log } from '../lib/log'
+import { PropertyAddress } from '../types/property'
+
 type Profile={id:string;clerk_user_id:string;email?:string;name?:string;avatar_url?:string;role?:string}
 export async function getProfileByClerkId(clerkId:string, tokenProvider?: TokenProvider):Promise<Profile|null>{
   const rows=await restGet('profiles_api',{select:'*',clerk_user_id:`eq.${clerkId}`}, tokenProvider)
@@ -17,7 +19,8 @@ export async function upsertProfile(p:Profile, tokenProvider?: TokenProvider):Pr
   }
   const rows=await restPatch('profiles_api',{id:`eq.${existing.id}`},p, tokenProvider);return rows[0]
 }
-type PropertyInsert={name:string;address_jsonb:any;property_type:string;unit?:string;bedrooms?:number;bathrooms?:number}
+
+type PropertyInsert={name:string;address_jsonb:PropertyAddress;property_type:string;unit?:string;bedrooms?:number;bathrooms?:number}
 export async function insertProperty(payload:PropertyInsert, tokenProvider?: TokenProvider){
   const address=formatAddressFromJson(payload.address_jsonb,payload.unit)
   
@@ -66,7 +69,14 @@ export async function getUserProperties(tokenProvider?: TokenProvider){
   const rows=await restGet('properties',{select:'*',order:'created_at.desc'}, tokenProvider)
   return rows||[]
 }
-export async function insertPropertyAreas(areas:any[], tokenProvider?: TokenProvider){
+interface PropertyAreaInsert {
+  property_id: string;
+  name: string;
+  area_type: string;
+  [key: string]: unknown;
+}
+
+export async function insertPropertyAreas(areas: PropertyAreaInsert[], tokenProvider?: TokenProvider){
   const rows=await restInsert('property_areas',areas, tokenProvider)
   return rows
 }

@@ -13,7 +13,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 // Import barcode scanner conditionally to handle Expo Go limitations
-let BarCodeScanner: any = null;
+let BarCodeScanner: typeof import('expo-barcode-scanner').BarCodeScanner | null = null;
 try {
   BarCodeScanner = require('expo-barcode-scanner').BarCodeScanner;
 } catch (error) {

@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
+import { PropertyAddress } from '../../types/property';
 
 /**
  * Clerk-Supabase authenticated client that always sends proper JWT tokens
@@ -83,7 +84,7 @@ export class ClerkSupabaseAuthClient {
     getToken: () => Promise<string | null>,
     propertyData: {
       name: string;
-      address_jsonb: any;
+      address_jsonb: PropertyAddress;
       property_type: string;
       unit?: string;
       bedrooms?: number;

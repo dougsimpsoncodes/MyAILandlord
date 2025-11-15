@@ -51,9 +51,11 @@ export class PropertyDraftService {
       // Save the draft
       try {
         await AsyncStorage.setItem(storageKey, JSON.stringify(draftWithMetadata));
-      } catch (storageError: any) {
+      } catch (storageError: unknown) {
         // Handle storage quota exceeded
-        if (storageError.name === 'QuotaExceededError' || storageError.message?.includes('quota')) {
+        const errorName = storageError instanceof Error ? storageError.name : '';
+        const errorMessage = storageError instanceof Error ? storageError.message : '';
+        if (errorName === 'QuotaExceededError' || errorMessage?.includes('quota')) {
           log.warn('Storage quota exceeded, cleaning up old drafts...');
           
           // Try to free up space by cleaning old drafts
@@ -377,12 +379,12 @@ export class PropertyDraftService {
   private static async cleanupOldDrafts(userId: string, forceCleanup: boolean = false): Promise<void> {
     try {
       const drafts = await this.getUserDrafts(userId);
-      
-      let draftsToDelete: any[] = [];
-      
+
+      let draftsToDelete: PropertySetupState[] = [];
+
       if (forceCleanup) {
         // If forced cleanup due to storage issues, delete more aggressively
-        const sortedDrafts = drafts.sort((a, b) => 
+        const sortedDrafts = drafts.sort((a, b) =>
           new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
         );
         // Keep only the most recent draft

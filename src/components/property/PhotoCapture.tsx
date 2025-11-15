@@ -7,6 +7,8 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  ViewStyle,
+  StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Photo, CameraOptions, ImagePickerOptions } from '../../types/photo';
@@ -20,7 +22,7 @@ interface PhotoCaptureProps {
   aspectRatio?: [number, number];
   quality?: number;
   disabled?: boolean;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const PhotoCapture: React.FC<PhotoCaptureProps> = ({

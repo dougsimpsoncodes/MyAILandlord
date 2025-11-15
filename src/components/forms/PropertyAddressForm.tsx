@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { Platform, View, Text, TextInput as RNTextInput, ScrollView, NativeSyntheticEvent, TextInputSubmitEditingEventData } from 'react-native';
+import { Platform, View, Text, TextInput as RNTextInput, ScrollView, NativeSyntheticEvent, TextInputSubmitEditingEventData, KeyboardTypeOptions, TextInputIOSProps } from 'react-native';
 import Button from '../shared/Button';
 import { DesignSystem } from '../../theme/DesignSystem';
 
@@ -66,8 +66,8 @@ const Field = ({
   placeholder?: string;
   id: string;
   autoComplete: string;
-  textContentType?: any;
-  keyboardType?: any;
+  textContentType?: TextInputIOSProps['textContentType'];
+  keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   error?: string;
   onSubmitEditing?: (e: NativeSyntheticEvent<TextInputSubmitEditingEventData>) => void;

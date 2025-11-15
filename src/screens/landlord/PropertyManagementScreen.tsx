@@ -26,6 +26,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
+import { Property as DbProperty } from '../../types/api';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -63,14 +64,14 @@ const PropertyManagementScreen = () => {
       if (!api) return;
       setIsLoadingProperties(true);
       const dbProperties = await api.getUserProperties({ limit: pageSize, offset: 0 });
-      
+
       // Map database properties to screen interface
-      const mappedProperties = dbProperties.map((prop: any) => ({
+      const mappedProperties = dbProperties.map((prop: DbProperty) => ({
         id: prop.id,
         name: prop.name || 'Unnamed Property',
-        address: typeof prop.address === 'string' 
-          ? prop.address 
-          : prop.address 
+        address: typeof prop.address === 'string'
+          ? prop.address
+          : prop.address
             ? formatAddressString(prop.address)
             : 'No Address',
         type: prop.property_type || 'Unknown',
@@ -95,7 +96,7 @@ const PropertyManagementScreen = () => {
     try {
       const offset = page * pageSize;
       const more = await api.getUserProperties({ limit: pageSize, offset });
-      const mapped = more.map((prop: any) => ({
+      const mapped = more.map((prop: DbProperty) => ({
         id: prop.id,
         name: prop.name || 'Unnamed Property',
         address: typeof prop.address === 'string'

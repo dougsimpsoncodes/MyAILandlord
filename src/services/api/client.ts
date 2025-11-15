@@ -1,9 +1,9 @@
-import { useAuth } from '@clerk/clerk-expo';
 import { SupabaseClient } from '../supabase/client';
 import { withUserContext } from '../supabase/auth-helper';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
 import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { getMaintenanceRequests as getMaintenanceRequestsREST } from '../../lib/maintenanceClient';
 import {
   CreateProfileData,
@@ -16,8 +16,12 @@ import {
   StorageBucket,
   UseApiClientReturn,
   UserRole,
-  Priority
+  Priority,
+  RealtimePayload,
+  MaintenanceRequest,
+  Message
 } from '../../types/api';
+import { PropertyAddress } from '../../types/property';
 import {
   validateAndSanitize,
   validateProfileData,
@@ -34,17 +38,24 @@ import { FileValidation } from '../../types/api';
 import { ENV_CONFIG } from '../../utils/constants';
 import log from '../../lib/log';
 import { captureException } from '../../lib/monitoring';
+import { createMockApiClient } from './mockClient';
 
 const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL || 
   `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
 
 // Hook for use in components - all API logic is contained within this hook
 export function useApiClient(): UseApiClientReturn | null {
-  const { getToken, userId } = useAuth();
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+  const { user } = useAppAuth();
   const { supabase: supabaseClient, getAccessToken } = useSupabaseWithAuth();
+  const userId = user?.id;
 
   // Set the storage client to use the authenticated Supabase instance
   setStorageSupabaseClient(supabaseClient);
+
+  if (authDisabled) {
+    return createMockApiClient('dev_user_1');
+  }
 
   if (!userId) {
     // Return null instead of throwing when user is not authenticated
@@ -68,10 +79,10 @@ export function useApiClient(): UseApiClientReturn | null {
     }
   };
 
-  const createUserProfile = async (profileData: Omit<CreateProfileData, 'clerkUserId'>) => {
+  const createUserProfile = async (profileData: Omit<CreateProfileData, 'userId'>) => {
     try {
-      const fullProfileData = { ...profileData, clerkUserId: userId };
-      
+      const fullProfileData = { ...profileData, userId };
+
       // Validate and sanitize input
       const validatedData = validateAndSanitize(
         fullProfileData,
@@ -145,7 +156,7 @@ export function useApiClient(): UseApiClientReturn | null {
 
   const createProperty = async (payload: {
     name: string;
-    address_jsonb: any;
+    address_jsonb: PropertyAddress;
     property_type: string;
     unit?: string;
     bedrooms?: number;
@@ -400,10 +411,10 @@ export function useApiClient(): UseApiClientReturn | null {
     }
   };
 
-  const sendMessage = async (messageData: Omit<CreateMessageData, 'senderClerkId'>) => {
+  const sendMessage = async (messageData: Omit<CreateMessageData, 'senderId'>) => {
     try {
-      const fullMessageData = { ...messageData, senderClerkId: userId };
-      
+      const fullMessageData = { ...messageData, senderId: userId };
+
       // Validate and sanitize input
       const validatedData = validateAndSanitize(
         fullMessageData,
@@ -438,11 +449,11 @@ export function useApiClient(): UseApiClientReturn | null {
 
       const sanitizedDescription = sanitizeString(description);
 
-      const { data, error } = await supabase.functions.invoke('analyze-maintenance-request', {
-        body: { 
-          description: sanitizedDescription, 
-          images: images || [], 
-          clerkUserId: userId 
+      const { data, error } = await supabaseClient.functions.invoke('analyze-maintenance-request', {
+        body: {
+          description: sanitizedDescription,
+          images: images || [],
+          userId: userId
         }
       });
 
@@ -549,12 +560,12 @@ export function useApiClient(): UseApiClientReturn | null {
   };
 
   // ========== REAL-TIME SUBSCRIPTIONS ==========
-  const subscribeToMaintenanceRequests = async (callback: (payload: any) => void) => {
+  const subscribeToMaintenanceRequests = async (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => {
     const client = getSupabaseClient();
     return client.subscribeToMaintenanceRequests(userId, callback);
   };
 
-  const subscribeToMessages = async (callback: (payload: any) => void) => {
+  const subscribeToMessages = async (callback: (payload: RealtimePayload<Message>) => void) => {
     const client = getSupabaseClient();
     return client.subscribeToMessages(userId, callback);
   };

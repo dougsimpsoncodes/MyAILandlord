@@ -71,15 +71,15 @@ const PropertyRoomSelectionScreen = () => {
       // Merge saved rooms with defaults
       const savedRooms = draftState.propertyData.rooms;
       const mergedRooms = rooms.map(room => {
-        const saved = savedRooms.find((r: any) => r.id === room.id);
+        const saved = savedRooms.find((r: Room) => r.id === room.id);
         return saved ? { ...room, selected: true } : room;
       });
-      
+
       // Add any custom rooms
-      const customRooms = savedRooms.filter((r: any) => 
+      const customRooms = savedRooms.filter((r: Room) =>
         !defaultRooms.find(dr => dr.id === r.id)
       );
-      
+
       setRooms([...mergedRooms, ...customRooms]);
     }
   }, [draftState]);

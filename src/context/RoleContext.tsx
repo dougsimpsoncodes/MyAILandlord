@@ -1,8 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import { log } from '../lib/log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppAuth } from './ClerkAuthContext';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAppAuth } from './SupabaseAuthContext';
 
 type UserRole = 'tenant' | 'landlord' | null;
 
@@ -31,7 +30,6 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
   const { user } = useAppAuth();
-  const { userId } = useAuth();
 
   useEffect(() => {
     if (user && user.id) {

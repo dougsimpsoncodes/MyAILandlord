@@ -1,49 +1,50 @@
-import { useAuth } from '@clerk/clerk-expo'
+import { useAppAuth } from '../context/SupabaseAuthContext'
 import { createClient } from '@supabase/supabase-js'
 import { useMemo } from 'react'
+import { isTestMode } from '../lib/testMode'
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL as string
 const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 
 export function useSupabaseWithAuth() {
-  const { isLoaded, isSignedIn, getToken } = useAuth()
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
+  const { session, isSignedIn, isLoading } = useAppAuth()
 
-  // Create a Supabase client with Clerk integration (official pattern)
+  // In auth-disabled or test mode, use basic Supabase client
+  if (authDisabled || isTestMode) {
+    const supabase = useMemo(() => {
+      return createClient(url, anon, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+          detectSessionInUrl: false,
+        },
+      })
+    }, [])
+
+    const getAccessToken = async () => (isTestMode ? 'test-jwt-token' : null)
+    return { supabase, getAccessToken, isLoaded: true, isSignedIn: authDisabled || isTestMode }
+  }
+
+  // Create Supabase client with access token from session
   const supabase = useMemo(() => {
     return createClient(url, anon, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
+      global: {
+        headers: session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {},
       },
-      accessToken: async () => {
-        // This is the official Clerk-Supabase integration pattern
-        if (!isSignedIn) {
-          console.log('Not signed in - no access token')
-          return null
-        }
-        
-        try {
-          const token = await getToken()
-          console.log('Clerk access token for Supabase:', token ? 'present' : 'null')
-          return token
-        } catch (error) {
-          console.error('Error getting Clerk access token:', error)
-          return null
-        }
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
       },
     })
-  }, [isSignedIn, getToken])
+  }, [session?.access_token])
 
   const getAccessToken = async () => {
-    if (!isSignedIn) return null
-    return await getToken() // No template parameter - use native Clerk token
+    return session?.access_token || null
   }
 
-  return { 
-    supabase, 
-    getAccessToken, 
-    isLoaded, 
-    isSignedIn 
-  }
+  return { supabase, getAccessToken, isLoaded: !isLoading, isSignedIn }
 }

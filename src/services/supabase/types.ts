@@ -3,8 +3,7 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
-          id: string;
-          clerk_user_id: string;
+          id: string; // References auth.users.id
           email: string;
           name: string | null;
           avatar_url: string | null;
@@ -13,8 +12,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
-          id?: string;
-          clerk_user_id: string;
+          id: string; // Must match auth.users.id
           email: string;
           name?: string | null;
           avatar_url?: string | null;
@@ -24,7 +22,6 @@ export type Database = {
         };
         Update: {
           id?: string;
-          clerk_user_id?: string;
           email?: string;
           name?: string | null;
           avatar_url?: string | null;

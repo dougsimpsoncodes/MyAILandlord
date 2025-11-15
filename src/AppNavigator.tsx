@@ -11,6 +11,7 @@ import { log } from './lib/log';
 
 const AppNavigator = () => {
   const { user, isSignedIn, isLoading } = useAppAuth();
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
   const { userRole, isLoading: roleLoading } = useContext(RoleContext);
   const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -46,7 +47,7 @@ const AppNavigator = () => {
   // Determine if we should force AuthStack for deep link invite
   const isInviteLink = initialUrl && initialUrl.includes('/invite');
   // Show MainStack if user is fully authenticated, even if they came from invite
-  const shouldShowMainStack = isSignedIn && user && userRole;
+  const shouldShowMainStack = authDisabled ? true : (isSignedIn && user && userRole);
   
   log.info('🧭 Navigation decision:', { 
     shouldShowMainStack, 

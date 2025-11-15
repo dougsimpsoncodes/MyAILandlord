@@ -8,6 +8,8 @@ import {
   Dimensions,
   Alert,
   FlatList,
+  ViewStyle,
+  StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Photo } from '../../types/photo';
@@ -21,7 +23,7 @@ interface PhotoGridProps {
   emptyStateText: string;
   showDeleteButton?: boolean;
   numColumns?: number;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }
 
 const { width: screenWidth } = Dimensions.get('window');

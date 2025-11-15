@@ -1,4 +1,4 @@
-import { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
+import { SupabaseClient as SupabaseClientType, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { Database } from './types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -281,7 +281,7 @@ export class ClerkSupabaseClient {
 
   // Real-time subscriptions
   subscribeToMaintenanceRequests(
-    callback: (payload: any) => void
+    callback: (payload: RealtimePostgresChangesPayload<MaintenanceRequest>) => void
   ) {
     if (!this.clerkUserId) {
       throw new Error('User not authenticated');

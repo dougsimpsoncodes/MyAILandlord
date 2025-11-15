@@ -203,7 +203,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
       if (photo) {
         addPhoto(photo);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Photo capture error:', error);
       setError('Failed to capture photo. Please try again.');
     } finally {
@@ -233,7 +233,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
       if (selectedPhotos.length > 0) {
         addPhotos(selectedPhotos);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Gallery selection error:', error);
       setError('Failed to select photos. Please try again.');
     } finally {

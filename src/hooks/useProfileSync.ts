@@ -1,43 +1,63 @@
 import { useEffect, useState, useContext } from 'react'
-import { useAuth, useUser } from '@clerk/clerk-expo'
+import { useAppAuth } from '../context/SupabaseAuthContext'
 import { RoleContext } from '../context/RoleContext'
 import { log } from '../lib/log'
 import { useApiClient } from '../services/api/client'
+import { isTestMode } from '../lib/testMode'
+import { useSupabaseWithAuth } from './useSupabaseWithAuth'
 
 export function useProfileSync() {
-  const { isSignedIn, isLoaded, getToken } = useAuth()
-  const { user } = useUser()
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
+  const { isSignedIn, isLoading, user } = useAppAuth()
   const { setUserRole, userRole } = useContext(RoleContext)
   const [ready, setReady] = useState(false)
   const api = useApiClient()
+  const { supabase } = useSupabaseWithAuth()
   useEffect(() => {
     let cancelled = false
     async function run() {
       try {
-        log.info('🔄 useProfileSync starting...', { isLoaded, isSignedIn, userId: user?.id });
-        
-        if (!isLoaded || !isSignedIn || !user) {
-          log.info('🔄 useProfileSync: waiting for auth...', { isLoaded, isSignedIn, hasUser: !!user });
+        // In auth-disabled mode, set a default role and exit
+        if (authDisabled) {
+          const finalRole = userRole || 'landlord'
+          await setUserRole(finalRole as 'landlord' | 'tenant')
+          if (!cancelled) {
+            setReady(true)
+          }
+          return
+        }
+
+        log.info('🔄 useProfileSync starting...', { isLoading, isSignedIn, userId: user?.id });
+
+        if (isLoading || !isSignedIn || !user) {
+          log.info('🔄 useProfileSync: waiting for auth...', { isLoading, isSignedIn, hasUser: !!user });
           return;
         }
-        
-        const t = await getToken() // Use native Clerk token
-        if (!t) {
-          log.warn('🔄 useProfileSync: no token available');
-          return;
+
+        // Test mode only: Ping Supabase to verify connectivity
+        if (isTestMode) {
+          try {
+            const ping = await supabase.from('profiles').select('id').limit(1);
+            console.log('🔍 DEBUG: profiles ping:', ping.error ? { code: (ping.error as any).code, message: ping.error.message } : { count: ping.data?.length || 0 });
+          } catch (e) {
+            console.log('🔍 DEBUG: profiles ping threw:', (e as any)?.message || e);
+          }
         }
-        
-        const clerkId = user.id
-        const email = user.primaryEmailAddress?.emailAddress || ''
-        const name = user.fullName || user.username || ''
-        const avatarUrl = user.imageUrl || ''
-        
-        log.info('🔄 useProfileSync: syncing profile for', { clerkId, email, name });
-        
+
+        const userId = user.id
+        const email = user.email || ''
+        const name = user.name || ''
+        const avatarUrl = user.avatar || ''
+
+        log.info('🔄 useProfileSync: syncing profile for', { userId, email, name });
+
+        log.info('🔍 DEBUG: API client status:', { hasApi: !!api, apiType: typeof api });
         if (!api) {
           log.warn('🔄 useProfileSync: API not ready yet')
           return;
         }
+
+        log.info('🔍 DEBUG: About to call api.getUserProfile()...');
         const ex = await api.getUserProfile()
         
         log.info('🔄 useProfileSync: existing profile:', ex);
@@ -69,6 +89,6 @@ export function useProfileSync() {
     }
     run()
     return () => { cancelled = true }
-  }, [isLoaded, isSignedIn, user, userRole, api])
+  }, [isLoading, isSignedIn, user, userRole, api])
   return { ready }
 }

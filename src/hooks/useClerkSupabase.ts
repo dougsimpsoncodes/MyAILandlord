@@ -6,6 +6,9 @@ import { supabase } from '../lib/supabaseClient';
 import { useEffect, useState } from 'react';
 import { Database } from '../services/supabase/types';
 import log from '../lib/log';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 export function useClerkSupabase() {
   const { isLoaded, isSignedIn } = useAuth();
 
@@ -22,7 +25,7 @@ export function useClerkSupabase() {
 export function useSupabaseProfile() {
   const { supabase, isAuthenticated } = useClerkSupabase();
   const { user } = useAuth();
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -84,7 +87,7 @@ export function useSupabaseProfile() {
     }
   };
 
-  const updateProfile = async (updates: any) => {
+  const updateProfile = async (updates: ProfileUpdate) => {
     if (!supabase || !user) return;
 
     try {

@@ -1,6 +1,6 @@
 import { supabase } from './config';
 import { Database } from './types';
-import { SupabaseClient as SupabaseClientType } from '@supabase/supabase-js';
+import { SupabaseClient as SupabaseClientType, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { log } from '../../lib/log';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -163,7 +163,7 @@ export class SupabaseClient {
       throw new Error('User profile not found');
     }
 
-    let query = supabase
+    let query = this.client
       .from('maintenance_requests')
       .select(`
         *,
@@ -228,9 +228,9 @@ export class SupabaseClient {
     // Test JWT context by querying auth functions
     try {
       const jwtTest = await this.client.rpc('test_jwt_context');
-      log.info('JWT context test result:', jwtTest as any);
+      log.info('JWT context test result:', jwtTest);
     } catch (jwtError) {
-      log.warn("JWT test failed (expected if function doesn't exist):", jwtError as any);
+      log.warn("JWT test failed (expected if function doesn't exist):", jwtError);
     }
     
     const { data, error } = await this.client
@@ -253,10 +253,10 @@ export class SupabaseClient {
 
     if (error) {
       log.error('=== SUPABASE INSERT ERROR ===');
-      log.error('Error details:', error as any);
-      log.error('Error message:', (error as any).message);
-      log.error('Error code:', (error as any).code);
-      log.error('Error hint:', (error as any).hint);
+      log.error('Error details:', error);
+      log.error('Error message:', error.message);
+      log.error('Error code:', error.code);
+      log.error('Error hint:', error.hint);
       throw new Error(`Failed to create maintenance request: ${error.message}`);
     }
     
@@ -294,7 +294,7 @@ export class SupabaseClient {
       throw new Error('User profile not found');
     }
 
-    let query = supabase
+    let query = this.client
       .from('messages')
       .select(`
         *,
@@ -368,29 +368,29 @@ export class SupabaseClient {
   }
 
   // Real-time subscriptions
-  subscribeToMaintenanceRequests(clerkUserId: string, callback: (payload: any) => void) {
+  subscribeToMaintenanceRequests(clerkUserId: string, callback: (payload: RealtimePostgresChangesPayload<MaintenanceRequest>) => void) {
     return this.client
       .channel('maintenance_requests')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'maintenance_requests' 
-        }, 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'maintenance_requests'
+        },
         callback
       )
       .subscribe();
   }
 
-  subscribeToMessages(clerkUserId: string, callback: (payload: any) => void) {
+  subscribeToMessages(clerkUserId: string, callback: (payload: RealtimePostgresChangesPayload<Message>) => void) {
     return this.client
       .channel('messages')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'messages' 
-        }, 
+      .on('postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages'
+        },
         callback
       )
       .subscribe();

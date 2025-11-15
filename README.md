@@ -198,6 +198,17 @@ npm run validate:env
 - **Centralized Logging**: All logging must go through `src/lib/log.ts`
 - **No Console Usage**: Direct `console.*` usage is forbidden outside of `src/lib/log.ts` and tests
 - **ESLint Enforcement**: The `no-console` rule prevents accidental console usage
+
+## 📚 Documentation
+- Overview index: `DOCUMENTATION_INDEX.md`
+- Getting started: `SETUP_GUIDE.md`, `DEVELOPMENT.md`, `SECURITY.md`
+- Deployment and operations: `docs/DEPLOYMENT_GUIDE.md`, `docs/BACKUP_RESTORE.md`, `docs/ROLLBACK_PROCEDURES.md`
+- Supabase Edge Functions: `docs/deployment/supabase-edge-functions.md`
+- Testing guides and reports: `docs/testing/`
+- Security hardening: `docs/SECURITY_HEADERS_SETUP.md`, `docs/RATE_LIMITING_SETUP.md`, `docs/VIRUS_SCANNING_SETUP.md`, `docs/SENTRY_SETUP.md`
+- Archives and plans: `docs/archive/`
+
+Contributing guidelines: `CONTRIBUTING.md`
 - **Monitoring Integration**: When `EXPO_PUBLIC_SENTRY_DSN` is provided, errors are captured by Sentry
 
 ### Monitoring Setup
