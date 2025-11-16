@@ -10,7 +10,7 @@ This document provides a detailed overview of the technology stack, dependencies
 - **TypeScript 5.8.3**: Type-safe JavaScript development
 
 ### Authentication & Backend
-- **Clerk 2.14.12**: User authentication and session management
+- **Supabase Auth**: User authentication and session management
 - **Supabase**: PostgreSQL database with real-time capabilities
 - **Supabase Edge Functions**: Serverless functions for AI processing
 
@@ -33,8 +33,7 @@ This document provides a detailed overview of the technology stack, dependencies
 ### Authentication
 ```json
 {
-  "@clerk/clerk-expo": "^2.14.12",
-  "expo-auth-session": "^6.2.1",
+  "@supabase/supabase-js": "^2.x",
   "expo-secure-store": "^14.2.3"
 }
 ```
@@ -115,7 +114,7 @@ This document provides a detailed overview of the technology stack, dependencies
 ### Database Schema
 
 #### Core Tables
-1. **profiles**: User profiles linked to Clerk authentication
+1. **profiles**: User profiles linked to Supabase auth.users
 2. **properties**: Property information and metadata
 3. **tenant_property_links**: Many-to-many tenant-property relationships
 4. **maintenance_requests**: Complete request lifecycle tracking
@@ -130,8 +129,8 @@ This document provides a detailed overview of the technology stack, dependencies
 
 ## Authentication Architecture
 
-### Clerk Features
-- **OAuth Integration**: Google, Apple, email authentication
+### Authentication Features
+- **Email/Password & OAuth** (optional): via Supabase Auth
 - **Session Management**: Automatic token refresh and validation
 - **User Profiles**: Metadata storage and management
 - **Security**: Industry-standard authentication protocols
@@ -148,7 +147,7 @@ const apiClient = useApiClient(); // Automatically includes user context
 ## State Management
 
 ### Context Providers
-1. **ClerkWrapper**: Authentication state and token management
+1. **SupabaseAuthProvider**: Authentication state and session management
 2. **RoleProvider**: User role management and UI customization
 3. **Error Boundaries**: Comprehensive error handling and recovery
 

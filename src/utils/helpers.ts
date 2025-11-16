@@ -117,24 +117,24 @@ export const generateUniqueFileName = (originalName: string): string => {
   return `${timestamp}_${random}.${extension}`;
 };
 
-export const debounce = <T extends (...args: any[]) => any>(
+export const debounce = <T extends (...args: unknown[]) => unknown>(
   func: T,
   delay: number = APP_CONSTANTS.DEBOUNCE_DELAY
 ): (...args: Parameters<T>) => void => {
   let timeoutId: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId);
     timeoutId = setTimeout(() => func(...args), delay);
   };
 };
 
-export const throttle = <T extends (...args: any[]) => any>(
+export const throttle = <T extends (...args: unknown[]) => unknown>(
   func: T,
   delay: number
 ): (...args: Parameters<T>) => void => {
   let lastCall = 0;
-  
+
   return (...args: Parameters<T>) => {
     const now = Date.now();
     if (now - lastCall >= delay) {
@@ -163,16 +163,20 @@ export const isNetworkError = (error: unknown): boolean => {
 };
 
 // Type guards
-export const isValidPriority = (value: string): value is 'low' | 'medium' | 'high' | 'urgent' => {
-  return APP_CONSTANTS.PRIORITY_LEVELS.includes(value as any);
+type Priority = 'low' | 'medium' | 'high' | 'urgent';
+type RequestStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+type UserRole = 'tenant' | 'landlord';
+
+export const isValidPriority = (value: string): value is Priority => {
+  return APP_CONSTANTS.PRIORITY_LEVELS.includes(value as Priority);
 };
 
-export const isValidStatus = (value: string): value is 'pending' | 'in_progress' | 'completed' | 'cancelled' => {
-  return APP_CONSTANTS.REQUEST_STATUSES.includes(value as any);
+export const isValidStatus = (value: string): value is RequestStatus => {
+  return APP_CONSTANTS.REQUEST_STATUSES.includes(value as RequestStatus);
 };
 
-export const isValidRole = (value: string): value is 'tenant' | 'landlord' => {
-  return APP_CONSTANTS.USER_ROLES.includes(value as any);
+export const isValidRole = (value: string): value is UserRole => {
+  return APP_CONSTANTS.USER_ROLES.includes(value as UserRole);
 };
 
 // Safe parsing helpers

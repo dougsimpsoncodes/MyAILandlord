@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/ClerkAuthContext';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { UserProfile } from '../../components/shared/UserProfile';
 
@@ -23,7 +23,7 @@ interface QuickAction {
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user, signOut } = useAppAuth();
-  const { clearRole } = useContext(RoleContext);
+  const { clearRole, setUserRole } = useContext(RoleContext);
   const [propertyData, setPropertyData] = useState({
     address: '123 Main St, Apt 4B',
     image: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=800&q=80',
@@ -32,6 +32,18 @@ const HomeScreen = () => {
   const [activeRequests, setActiveRequests] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(2);
   const [showProfile, setShowProfile] = useState(false);
+  
+  // Quick role switch for testing
+  const handleSwitchToLandlord = async () => {
+    try {
+      await setUserRole('landlord');
+      Alert.alert('Role Switched', 'You are now viewing as a landlord. The app will reload.', [
+        { text: 'OK' }
+      ]);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to switch role');
+    }
+  };
 
   const quickActions: QuickAction[] = [
     {
@@ -58,34 +70,17 @@ const HomeScreen = () => {
       color: '#9B59B6',
       route: 'PropertyInfo',
     },
+    {
+      id: 'link-property',
+      title: 'Link to Property',
+      subtitle: 'Enter property code from landlord',
+      icon: 'link',
+      color: '#3498DB',
+      route: 'PropertyCodeEntry',
+    },
   ];
 
-  const recentActivity = [
-    {
-      id: '1',
-      type: 'maintenance',
-      title: 'Kitchen sink repair completed',
-      time: '2 hours ago',
-      icon: 'checkmark-circle',
-      color: '#2ECC71',
-    },
-    {
-      id: '2',
-      type: 'message',
-      title: 'New message from landlord',
-      time: '5 hours ago',
-      icon: 'mail',
-      color: '#3498DB',
-    },
-    {
-      id: '3',
-      type: 'announcement',
-      title: 'Building maintenance scheduled',
-      time: 'Yesterday',
-      icon: 'megaphone',
-      color: '#F39C12',
-    },
-  ];
+  const recentActivity = [];
 
   const handleQuickAction = (route: keyof TenantStackParamList) => {
     navigation.navigate(route as any);
@@ -143,14 +138,25 @@ const HomeScreen = () => {
                 <Text style={styles.greeting}>{getGreeting()}, {user?.name?.split(' ')[0] || 'Tenant'}!</Text>
                 <Text style={styles.propertyAddress}>{propertyData.address}</Text>
               </View>
-              <TouchableOpacity 
-                style={styles.profileButton} 
-                onPress={() => setShowProfile(true)}
-                accessibilityLabel="Open profile menu"
-                accessibilityHint="Double tap to open profile and settings menu"
-              >
-                <Ionicons name="person-circle-outline" size={28} color="#7F8C8D" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {/* Temporary role switch button for testing */}
+                <TouchableOpacity 
+                  style={[styles.profileButton, { backgroundColor: '#34495E' }]}
+                  onPress={handleSwitchToLandlord}
+                  accessibilityLabel="Switch to landlord"
+                  accessibilityHint="Testing: Switch to landlord view"
+                >
+                  <Ionicons name="business" size={24} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.profileButton} 
+                  onPress={() => setShowProfile(true)}
+                  accessibilityLabel="Open profile menu"
+                  accessibilityHint="Double tap to open profile and settings menu"
+                >
+                  <Ionicons name="person-circle-outline" size={28} color="#7F8C8D" />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -211,6 +217,7 @@ const HomeScreen = () => {
           </View>
           <Ionicons name="chevron-forward" size={20} color="#E74C3C" />
         </TouchableOpacity>
+
       </ScrollView>
 
       {/* Profile Modal */}
@@ -248,10 +255,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    
+    
+    
+    
     elevation: 5,
     overflow: 'hidden',
   },
@@ -323,10 +330,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   actionIconCircle: {
@@ -357,10 +364,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   activityIcon: {

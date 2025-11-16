@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useAppAuth } from '../context/ClerkAuthContext';
+import { useAppAuth } from '../context/SupabaseAuthContext';
 import { RoleContext } from '../context/RoleContext';
+import { log } from '../lib/log';
 
 type WelcomeScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
 
@@ -14,7 +15,23 @@ const { width, height } = Dimensions.get('window');
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
   const { signOut, isSignedIn } = useAppAuth();
-  const { clearRole } = useContext(RoleContext);
+  const { clearRole, userRole } = useContext(RoleContext);
+  
+  // Debug logging
+  log.info('🏠 Welcome Screen - Auth State:', { isSignedIn, userRole });
+
+  const handleGetStarted = () => {
+    // If user is authenticated with a role, AppNavigator should automatically
+    // switch to MainStack. If we're still here, user needs to authenticate.
+    if (isSignedIn && userRole) {
+      log.info('User authenticated with role, AppNavigator should auto-redirect');
+      // The AppNavigator will handle the transition automatically
+      return;
+    }
+    
+    // User not authenticated or no role, go to signup
+    navigation.navigate('SignUp');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,10 +66,20 @@ const WelcomeScreen = () => {
 
         <TouchableOpacity
           style={styles.getStartedButton}
-          onPress={() => navigation.navigate('RoleSelect')}
+          onPress={handleGetStarted}
           activeOpacity={0.8}
         >
-          <Text style={styles.buttonText}>Get Started</Text>
+          <Text style={styles.buttonText}>
+            {isSignedIn && userRole ? 'Continue to Dashboard' : 'Get Started'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => navigation.navigate('Login')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.loginButtonText}>Already have an account? Sign In</Text>
         </TouchableOpacity>
 
         {isSignedIn && (
@@ -94,13 +121,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#3498DB',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 8,
   },
   logoText: {
@@ -143,19 +167,25 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 4,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  loginButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+  },
+  loginButtonText: {
+    color: '#3498DB',
+    fontSize: 16,
+    fontWeight: '500',
   },
   signOutButton: {
     backgroundColor: '#E74C3C',

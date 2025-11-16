@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import log from '../lib/log';
 import { PropertySetupState } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
-import { useAppAuth } from '../context/ClerkAuthContext';
+import { useAppAuth } from '../context/SupabaseAuthContext';
 
 interface UsePropertyDraftsReturn {
   drafts: PropertySetupState[];
@@ -42,7 +43,7 @@ export function usePropertyDrafts(): UsePropertyDraftsReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load drafts';
       setError(errorMessage);
-      console.error('Failed to load drafts:', err);
+      log.error('Failed to load drafts', { error: String(err) });
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +102,7 @@ export function usePropertyDrafts(): UsePropertyDraftsReturn {
     try {
       return await PropertyDraftService.getStorageUsage(user.id);
     } catch (err) {
-      console.error('Failed to get storage usage:', err);
+      log.error('Failed to get storage usage', { error: String(err) });
       return { draftCount: 0, estimatedSizeKB: 0 };
     }
   }, [user?.id]);

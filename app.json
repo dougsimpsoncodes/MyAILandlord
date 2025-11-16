@@ -24,7 +24,11 @@
         "NSMicrophoneUsageDescription": "This app uses the microphone to record audio with videos of maintenance issues.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images of maintenance issues."
       },
-      "bundleIdentifier": "com.example.myailandlord"
+      "bundleIdentifier": "com.example.myailandlord",
+      "associatedDomains": [
+        "applinks:myailandlord.app",
+        "applinks:www.myailandlord.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -34,9 +38,44 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "myailandlord.app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.myailandlord.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
-    "platforms": ["ios", "android", "web"]
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "scheme": "myailandlord",
+    "plugins": [
+      "expo-barcode-scanner",
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e0bbde0b-8807-4eca-ab59-987973d4967c"
+      }
+    }
   }
 }

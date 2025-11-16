@@ -129,7 +129,14 @@ export const validateImageFile = async (
 
     // For now, we'll do basic validation
     // In a full implementation, you'd check file size, type, etc.
-    const isValidUri = uri.startsWith('file://') || uri.startsWith('content://') || uri.startsWith('ph://');
+    const isValidUri = uri.startsWith('file://') || 
+                      uri.startsWith('content://') || 
+                      uri.startsWith('ph://') ||
+                      uri.startsWith('blob:') ||
+                      uri.startsWith('http://') ||
+                      uri.startsWith('https://') ||
+                      uri.startsWith('/') ||
+                      uri.includes('/'); // Basic file path check for web
     
     if (!isValidUri) {
       return {

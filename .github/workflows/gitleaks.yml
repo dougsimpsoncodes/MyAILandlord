@@ -1,23 +1,25 @@
-name: secret-scan
+name: gitleaks
 on:
-  push:
-    branches: ["**"]
   pull_request:
-    branches: ["**"]
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * *"
+
 jobs:
-  gitleaks:
+  scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # Official action, v2 configuration uses ENV vars (not inputs)
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
-        with:
-          args: detect --source . --redact --config .gitleaks.toml --report-path gitleaks.json
-      - name: Upload report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitleaks-report
-          path: gitleaks.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}           # required for PRs
+          GITLEAKS_CONFIG: .gitleaks.toml                     # optional if you have one
+          GITLEAKS_VERSION: latest                            # optional
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "true"             # uploads SARIF when leaks found
+          GITLEAKS_ENABLE_SUMMARY: "true"                     # shows job summary

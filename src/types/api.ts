@@ -7,7 +7,7 @@ export type StorageBucket = 'maintenance-images' | 'voice-notes' | 'property-ima
 
 // Profile interfaces
 export interface CreateProfileData {
-  clerkUserId: string;
+  userId: string; // Supabase auth.users.id
   email: string;
   name?: string;
   avatarUrl?: string;
@@ -46,8 +46,8 @@ export interface UpdateMaintenanceRequestData {
 
 // Message interfaces
 export interface CreateMessageData {
-  senderClerkId: string;
-  recipientClerkId: string;
+  senderId: string; // Supabase user ID
+  recipientId: string; // Supabase user ID
   content: string;
   messageType?: MessageType;
   attachmentUrl?: string;
@@ -69,7 +69,7 @@ export interface FileValidation {
 
 // AI analysis interfaces
 export interface AnalyzeMaintenanceRequestData {
-  clerkUserId: string;
+  userId: string; // Supabase user ID
   description: string;
   images?: string[];
 }
@@ -92,37 +92,118 @@ export interface PaginatedResponse<T> {
   hasMore: boolean;
 }
 
+// Database record interfaces
+export interface Profile {
+  id: string; // Supabase auth.users.id
+  email: string;
+  name?: string;
+  avatar_url?: string;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Property {
+  id: string;
+  landlord_id: string;
+  name: string;
+  address: string;
+  property_type: string;
+  bedrooms?: number;
+  bathrooms?: number;
+  property_code?: string;
+  allow_tenant_signup: boolean;
+  code_expires_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceRequest {
+  id: string;
+  property_id: string;
+  tenant_id: string;
+  title: string;
+  description: string;
+  priority: Priority;
+  status: RequestStatus;
+  area: string;
+  asset: string;
+  issue_type: string;
+  images?: string[];
+  voice_notes?: string[];
+  assigned_vendor_email?: string;
+  vendor_notes?: string;
+  estimated_cost?: number;
+  actual_cost?: number;
+  completion_notes?: string;
+  created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export interface Message {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  message_type: MessageType;
+  attachment_url?: string;
+  property_id?: string;
+  read_at?: string;
+  created_at: string;
+}
+
+export interface StorageFile {
+  path: string;
+  signedUrl: string;
+  expiresAt: number;
+}
+
+// Realtime subscription payload
+export interface RealtimePayload<T> {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: T;
+  old: T;
+  errors: string[] | null;
+}
+
 // Hook interfaces
 export interface UseApiClientReturn {
   // User methods
-  getUserProfile: () => Promise<any>;
-  createUserProfile: (profileData: Omit<CreateProfileData, 'clerkUserId'>) => Promise<any>;
-  updateUserProfile: (updates: UpdateProfileData) => Promise<any>;
-  setUserRole: (role: UserRole) => Promise<any>;
-  
+  getUserProfile: () => Promise<Profile | null>;
+  createUserProfile: (profileData: Omit<CreateProfileData, 'userId'>) => Promise<Profile>;
+  updateUserProfile: (updates: UpdateProfileData) => Promise<Profile>;
+  setUserRole: (role: UserRole) => Promise<Profile>;
+
   // Property methods
-  getUserProperties: () => Promise<any[]>;
-  
+  getUserProperties: () => Promise<Property[]>;
+
   // Maintenance request methods
-  getMaintenanceRequests: () => Promise<any[]>;
-  createMaintenanceRequest: (data: CreateMaintenanceRequestData) => Promise<any>;
-  updateMaintenanceRequest: (id: string, updates: UpdateMaintenanceRequestData) => Promise<any>;
-  
+  getMaintenanceRequests: () => Promise<MaintenanceRequest[]>;
+  createMaintenanceRequest: (data: CreateMaintenanceRequestData) => Promise<MaintenanceRequest>;
+  updateMaintenanceRequest: (id: string, updates: UpdateMaintenanceRequestData) => Promise<MaintenanceRequest>;
+
   // Messaging methods
-  getMessages: (otherUserId?: string) => Promise<any[]>;
-  sendMessage: (data: Omit<CreateMessageData, 'senderClerkId'>) => Promise<any>;
-  
+  getMessages: (otherUserId?: string) => Promise<Message[]>;
+  sendMessage: (data: Omit<CreateMessageData, 'senderId'>) => Promise<Message>;
+
   // AI methods
-  analyzeMaintenanceRequest: (description: string, images?: string[]) => Promise<any>;
-  
+  analyzeMaintenanceRequest: (description: string, images?: string[]) => Promise<{
+    suggestedPriority: Priority;
+    suggestedArea: string;
+    suggestedAsset: string;
+    suggestedIssueType: string;
+    analysis: string;
+  }>;
+
   // Storage methods
-  uploadFile: (bucket: StorageBucket, file: File | Blob | string, fileName: string, folder?: string) => Promise<any>;
-  getSignedUrl: (bucket: StorageBucket, path: string) => Promise<any>;
-  deleteFile: (bucket: StorageBucket, path: string) => Promise<any>;
-  
+  uploadFile: (bucket: StorageBucket, file: File | Blob | string, fileName: string, folder?: string) => Promise<StorageFile>;
+  getSignedUrl: (bucket: StorageBucket, path: string) => Promise<string>;
+  deleteFile: (bucket: StorageBucket, path: string) => Promise<void>;
+
   // Subscriptions
-  subscribeToMaintenanceRequests: (callback: (payload: any) => void) => any;
-  subscribeToMessages: (callback: (payload: any) => void) => any;
+  subscribeToMaintenanceRequests: (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => { unsubscribe: () => void };
+  subscribeToMessages: (callback: (payload: RealtimePayload<Message>) => void) => { unsubscribe: () => void };
 }
 
 // Error types
@@ -134,5 +215,5 @@ export interface ValidationError extends Error {
 export interface ApiError extends Error {
   status?: number;
   code?: string;
-  details?: any;
+  details?: unknown;
 }

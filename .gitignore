@@ -56,3 +56,11 @@ dist
 build
 .vscode/settings.json
 .reports/
+!.env.example
+.gitleaks-history.json
+.gitleaks-report.json
+.gitleaks-cache*
+
+# test artifacts
+test-results/
+playwright-report/

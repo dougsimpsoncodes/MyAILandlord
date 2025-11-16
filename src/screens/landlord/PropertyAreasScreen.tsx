@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,11 @@ import { PropertyData, PropertyArea, AssetCondition } from '../../types/property
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { useResponsive } from '../../hooks/useResponsive';
+import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
+import Button from '../../components/shared/Button';
+import Card from '../../components/shared/Card';
+import Input from '../../components/shared/Input';
+import { DesignSystem } from '../../theme/DesignSystem';
 
 type PropertyAreasNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAreasRouteProp = RouteProp<LandlordStackParamList, 'PropertyAreas'>;
@@ -157,8 +162,8 @@ const PropertyAreasScreen = () => {
     if (draftState?.areas && draftState.areas.length > 0) {
       return draftState.areas.map(area => area.id);
     }
-    const initialAreas = propertyData ? generateDynamicAreas(propertyData) : [];
-    return initialAreas.filter(area => area.isDefault).map(area => area.id);
+    // Start with no areas selected - user chooses what they want
+    return [];
   };
 
   const [areas, setAreas] = useState<PropertyArea[]>(initializeAreas);
@@ -173,6 +178,7 @@ const PropertyAreasScreen = () => {
   // Use draft photos if available, otherwise use route params
   const currentPropertyData = draftState?.propertyData || propertyData;
   const [propertyPhotos, setPropertyPhotos] = useState<string[]>(currentPropertyData.photos || []);
+  const isInitialized = useRef(false);
 
   // Sync with draft state when it changes
   useEffect(() => {
@@ -187,9 +193,10 @@ const PropertyAreasScreen = () => {
     }
   }, [draftState?.areas, draftState?.propertyData?.photos]);
 
-  // Update draft when route property data changes (if no existing draft areas)
+  // Update draft when route property data changes (if no existing draft areas) - only run once
   useEffect(() => {
-    if (draftState && propertyData && (!draftState.areas || draftState.areas.length === 0)) {
+    if (!isInitialized.current && draftState && propertyData && (!draftState.areas || draftState.areas.length === 0)) {
+      isInitialized.current = true;
       updatePropertyData(propertyData);
       const newAreas = generateDynamicAreas(propertyData);
       const defaultSelectedAreas = newAreas.filter(area => area.isDefault);
@@ -197,14 +204,14 @@ const PropertyAreasScreen = () => {
       setSelectedAreas(defaultSelectedAreas.map(area => area.id));
       updateAreas(defaultSelectedAreas);
     }
-  }, [draftState?.areas?.length, propertyData?.bedrooms, propertyData?.bathrooms]);
+  }, [draftState, propertyData]);
 
-  // Set current step to 1 (areas step)
+  // Set current step to 1 (areas step) - only run once
   useEffect(() => {
     if (draftState && draftState.currentStep !== 1) {
       updateCurrentStep(1);
     }
-  }, [draftState?.currentStep]);
+  }, []); // Remove dependency to prevent infinite loop
 
   // Handle draft error display
   useEffect(() => {
@@ -306,6 +313,7 @@ const PropertyAreasScreen = () => {
               <TouchableOpacity
                 style={styles.removePropertyPhotoButton}
                 onPress={() => removePhoto(index)}
+                activeOpacity={0.7}
               >
                 <Ionicons name="close-circle" size={24} color="#E74C3C" />
               </TouchableOpacity>
@@ -317,6 +325,7 @@ const PropertyAreasScreen = () => {
               <TouchableOpacity 
                 style={[styles.addPropertyPhotoButton, { width: photoSize, height: photoSize }]} 
                 onPress={handlePickImages}
+                activeOpacity={0.7}
               >
                 <Ionicons name="images" size={28} color="#3498DB" />
                 <Text style={styles.addPropertyPhotoText}>Add Photos</Text>
@@ -326,6 +335,7 @@ const PropertyAreasScreen = () => {
                 <TouchableOpacity 
                   style={[styles.addPropertyPhotoButton, { width: photoSize, height: photoSize }]} 
                   onPress={handleTakePhoto}
+                  activeOpacity={0.7}
                 >
                   <Ionicons name="camera" size={28} color="#3498DB" />
                   <Text style={styles.addPropertyPhotoText}>Take Photo</Text>
@@ -455,6 +465,35 @@ const PropertyAreasScreen = () => {
     try {
       setUploadingPhoto(areaId);
       
+      // Show options for camera or gallery
+      Alert.alert(
+        'Add Photo',
+        'Choose how you want to add a photo',
+        [
+          {
+            text: 'Camera',
+            onPress: () => handleCameraPhoto(areaId),
+          },
+          {
+            text: 'Gallery',
+            onPress: () => handleGalleryPhoto(areaId),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => setUploadingPhoto(null),
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error adding photo:', error);
+      Alert.alert('Error', 'Failed to add photo. Please try again.');
+      setUploadingPhoto(null);
+    }
+  };
+
+  const handleCameraPhoto = async (areaId: string) => {
+    try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Camera permission is required to take photos.');
@@ -468,37 +507,81 @@ const PropertyAreasScreen = () => {
       });
 
       if (!result.canceled && result.assets) {
-        const imageUri = result.assets[0].uri;
-        
-        // Validate the image
-        const validation = await validateImageFile(imageUri);
-        if (!validation.isValid) {
-          Alert.alert('Invalid Image', validation.error || 'Please select a valid image.');
-          setUploadingPhoto(null);
-          return;
-        }
-
-        const updatedAreas = areas.map(area => 
-          area.id === areaId 
-            ? { ...area, photos: [...area.photos, imageUri] }
-            : area
-        );
-        
-        setAreas(updatedAreas);
-        
-        // Update draft with new photo
-        const selectedAreaData = updatedAreas.filter(area => selectedAreas.includes(area.id));
-        updateAreas(selectedAreaData);
-        
-        // Show visual success feedback
-        setRecentlyAddedPhoto(areaId);
-        setTimeout(() => {
-          setRecentlyAddedPhoto(null);
-        }, 2000); // Clear the success indicator after 2 seconds
+        await processAreaPhoto(areaId, result.assets[0].uri);
+      } else {
+        setUploadingPhoto(null);
       }
     } catch (error) {
-      console.error('Error adding photo:', error);
-      Alert.alert('Error', 'Failed to add photo. Please try again.');
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+      setUploadingPhoto(null);
+    }
+  };
+
+  const handleGalleryPhoto = async (areaId: string) => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Photo library permission is required to select photos.');
+        setUploadingPhoto(null);
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+        base64: false,
+      });
+
+      if (!result.canceled && result.assets) {
+        await processAreaPhoto(areaId, result.assets[0].uri);
+      } else {
+        setUploadingPhoto(null);
+      }
+    } catch (error) {
+      console.error('Error picking photo:', error);
+      Alert.alert('Error', 'Failed to pick photo. Please try again.');
+      setUploadingPhoto(null);
+    }
+  };
+
+  const processAreaPhoto = async (areaId: string, imageUri: string) => {
+    try {
+      console.log('Processing area photo:', { areaId, imageUri });
+      
+      // Validate the image
+      const validation = await validateImageFile(imageUri);
+      console.log('Image validation result:', validation);
+      
+      if (!validation.isValid) {
+        console.error('Image validation failed:', validation.error);
+        Alert.alert('Invalid Image', validation.error || 'Please select a valid image.');
+        setUploadingPhoto(null);
+        return;
+      }
+
+      const updatedAreas = areas.map(area => 
+        area.id === areaId 
+          ? { ...area, photos: [...area.photos, imageUri] }
+          : area
+      );
+      
+      console.log('Updated areas:', updatedAreas.find(a => a.id === areaId)?.photos);
+      setAreas(updatedAreas);
+      
+      // Update draft with new photo
+      const selectedAreaData = updatedAreas.filter(area => selectedAreas.includes(area.id));
+      updateAreas(selectedAreaData);
+      console.log('Photo successfully added to area:', areaId);
+      
+      // Show visual success feedback
+      setRecentlyAddedPhoto(areaId);
+      setTimeout(() => {
+        setRecentlyAddedPhoto(null);
+      }, 2000); // Clear the success indicator after 2 seconds
+    } catch (error) {
+      console.error('Error processing photo:', error);
+      Alert.alert('Error', 'Failed to process photo. Please try again.');
     } finally {
       setUploadingPhoto(null);
     }
@@ -511,6 +594,11 @@ const PropertyAreasScreen = () => {
       setIsSubmitting(true);
       
       const selectedAreaData = areas.filter(area => selectedAreas.includes(area.id));
+      
+      // Debug logging
+      console.log('PropertyAreasScreen - areas:', areas);
+      console.log('PropertyAreasScreen - selectedAreas:', selectedAreas);
+      console.log('PropertyAreasScreen - selectedAreaData:', selectedAreaData);
       
       if (selectedAreaData.length === 0) {
         Alert.alert('No Areas Selected', 'Please select at least one area to continue.');
@@ -563,10 +651,10 @@ const PropertyAreasScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, responsive.isWeb && styles.containerWeb]}>
-      <View style={[styles.contentWrapper, responsive.maxWidth() as any]}>
+      <ResponsiveContainer style={{ flex: 1 }} padding={false}>
         {/* Header */}
         <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={24} color="#2C3E50" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -589,58 +677,19 @@ const PropertyAreasScreen = () => {
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')}>
+        <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')} activeOpacity={0.7}>
           <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Step Counter */}
-      <View style={styles.stepCounterContainer}>
-        <View style={styles.stepCounterHeader}>
-          <Text style={styles.stepCounterTitle}>Property Areas Setup</Text>
-          <Text style={styles.stepCounterSubtitle}>3 steps to complete</Text>
-        </View>
-        
-        <View style={styles.stepsRow}>
-          <View style={styles.stepItem}>
-            <View style={[styles.stepNumber, styles.stepNumberActive]}>
-              <Text style={[styles.stepNumberText, styles.stepNumberTextActive]}>1</Text>
-            </View>
-            <Text style={[styles.stepLabel, styles.stepLabelActive]}>Identify Areas</Text>
-          </View>
-          
-          <View style={styles.stepConnector} />
-          
-          <View style={styles.stepItem}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>2</Text>
-            </View>
-            <Text style={styles.stepLabel}>Add Photos</Text>
-          </View>
-          
-          <View style={styles.stepConnector} />
-          
-          <View style={styles.stepItem}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>3</Text>
-            </View>
-            <Text style={styles.stepLabel}>Add Inventory</Text>
-          </View>
-        </View>
-      </View>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Step 1: Identify Areas Section */}
+        {/* Areas Section */}
         <View style={styles.section}>
-          <View style={styles.stepSectionHeader}>
-            <View style={styles.stepBadge}>
-              <Text style={styles.stepBadgeText}>STEP 1</Text>
-            </View>
-            <Text style={styles.title}>Identify Areas in Your Property</Text>
+          <View style={styles.headerSection}>
+            <Text style={styles.title}>Select Property Areas</Text>
           </View>
           <Text style={styles.subtitle}>
-            Based on your property details ({propertyData?.bedrooms} bedrooms, {propertyData?.bathrooms} bathrooms), 
-            we've pre-selected the essential areas. Choose additional areas below. On the next screen, you will be able to add photos and provide a list of the inventory in these areas of your home.
+            Choose which areas of your property you want to document.
           </Text>
         </View>
 
@@ -667,7 +716,6 @@ const PropertyAreasScreen = () => {
                         styles.areaCard,
                         isSelected && styles.areaCardSelected,
                         hasPhotos && styles.areaCardWithPhotos,
-                        area.isDefault && styles.areaCardEssential, // Special styling only for essential areas
                         recentlyAddedPhoto === area.id && styles.areaCardPhotoSuccess, // Success animation
                       ]}
                       onPress={() => toggleArea(area.id)}
@@ -689,12 +737,6 @@ const PropertyAreasScreen = () => {
                       </Text>
                       
                       <View style={styles.areaIndicators}>
-                        {/* Essential area lock indicator - only for default areas */}
-                        {area.isDefault && (
-                          <View style={styles.essentialIndicator}>
-                            <Ionicons name="lock-closed" size={12} color="#E74C3C" />
-                          </View>
-                        )}
                         {hasPhotos && (
                           <View style={[
                             styles.photoIndicator,
@@ -711,22 +753,7 @@ const PropertyAreasScreen = () => {
                       </View>
                     </TouchableOpacity>
                     
-                    {isSelected && (
-                      <TouchableOpacity
-                        style={[
-                          styles.cameraButton,
-                          uploadingPhoto === area.id && styles.cameraButtonUploading
-                        ]}
-                        onPress={() => handleAddPhoto(area.id)}
-                        disabled={uploadingPhoto === area.id}
-                      >
-                        {uploadingPhoto === area.id ? (
-                          <Ionicons name="sync" size={20} color="#3498DB" />
-                        ) : (
-                          <Ionicons name="camera" size={20} color="#3498DB" />
-                        )}
-                      </TouchableOpacity>
-                    )}
+                    {/* Camera button removed - Photos will be added in Step 2 */}
                   </View>
                 );
               })}
@@ -772,7 +799,6 @@ const PropertyAreasScreen = () => {
                         styles.areaCard,
                         isSelected && styles.areaCardSelected,
                         hasPhotos && styles.areaCardWithPhotos,
-                        area.isDefault && styles.areaCardEssential, // Special styling only for essential areas
                         recentlyAddedPhoto === area.id && styles.areaCardPhotoSuccess, // Success animation
                       ]}
                       onPress={() => toggleArea(area.id)}
@@ -794,12 +820,6 @@ const PropertyAreasScreen = () => {
                       </Text>
                       
                       <View style={styles.areaIndicators}>
-                        {/* Essential area lock indicator - only for default areas */}
-                        {area.isDefault && (
-                          <View style={styles.essentialIndicator}>
-                            <Ionicons name="lock-closed" size={12} color="#E74C3C" />
-                          </View>
-                        )}
                         {hasPhotos && (
                           <View style={[
                             styles.photoIndicator,
@@ -816,22 +836,7 @@ const PropertyAreasScreen = () => {
                       </View>
                     </TouchableOpacity>
                     
-                    {isSelected && (
-                      <TouchableOpacity
-                        style={[
-                          styles.cameraButton,
-                          uploadingPhoto === area.id && styles.cameraButtonUploading
-                        ]}
-                        onPress={() => handleAddPhoto(area.id)}
-                        disabled={uploadingPhoto === area.id}
-                      >
-                        {uploadingPhoto === area.id ? (
-                          <Ionicons name="sync" size={20} color="#3498DB" />
-                        ) : (
-                          <Ionicons name="camera" size={20} color="#3498DB" />
-                        )}
-                      </TouchableOpacity>
-                    )}
+                    {/* Camera button removed - Photos will be added in Step 2 */}
                   </View>
                 );
               })}
@@ -848,59 +853,30 @@ const PropertyAreasScreen = () => {
           </Text>
         </View>
 
-        {/* Next Steps Preview */}
-        <View style={styles.nextStepsCard}>
-          <View style={styles.nextStepsHeader}>
-            <Ionicons name="information-circle" size={20} color="#3498DB" />
-            <Text style={styles.nextStepsTitle}>What's Next?</Text>
-          </View>
-          <View style={styles.nextStepsList}>
-            <View style={styles.nextStepItem}>
-              <View style={styles.nextStepNumber}>
-                <Text style={styles.nextStepNumberText}>2</Text>
-              </View>
-              <Text style={styles.nextStepText}>Add photos for each selected area</Text>
-            </View>
-            <View style={styles.nextStepItem}>
-              <View style={styles.nextStepNumber}>
-                <Text style={styles.nextStepNumberText}>3</Text>
-              </View>
-              <Text style={styles.nextStepText}>Document appliances and assets in each area</Text>
-            </View>
-          </View>
-        </View>
       </ScrollView>
 
       {/* Bottom Actions */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.saveButton} 
+        <Button
+          title={isSaving ? 'Saving...' : 'Save Draft'}
           onPress={handleSaveDraft}
+          type="secondary"
+          size="md"
           disabled={isSaving || isDraftLoading}
-          activeOpacity={0.7}
-        >
-          <Ionicons 
-            name={isSaving ? "sync" : "bookmark-outline"} 
-            size={18} 
-            color={isSaving ? "#007AFF" : "#8E8E93"} 
-          />
-          <Text style={styles.saveButtonText}>
-            {isSaving ? 'Saving...' : 'Save Draft'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.nextButton, 
-            (selectedAreas.length === 0 || isSubmitting || isDraftLoading) && styles.nextButtonDisabled
-          ]}
+          loading={isSaving}
+          icon={!isSaving ? <Ionicons name="bookmark-outline" size={18} color={DesignSystem.colors.secondaryText} /> : undefined}
+        />
+        
+        <Button
+          title={isSubmitting ? 'Processing...' : 'Continue to Photos & Assets'}
           onPress={handleNext}
+          type="primary"
+          size="lg"
+          fullWidth
           disabled={selectedAreas.length === 0 || isSubmitting || isDraftLoading}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.nextButtonText}>
-            {isSubmitting ? 'Processing...' : 'Continue to Photos & Assets'}
-          </Text>
-        </TouchableOpacity>
+          loading={isSubmitting}
+          style={{ flex: 1, marginLeft: DesignSystem.spacing.md }}
+        />
       </View>
 
       {/* Add Custom Room Modal */}
@@ -1005,24 +981,21 @@ const PropertyAreasScreen = () => {
 
             {/* Custom Name Field - Only shown for "Other" */}
             {newRoomType === 'other' && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Room Name</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="Enter custom room name"
-                  value={customRoomName}
-                  onChangeText={(text) => {
-                    setCustomRoomName(text);
-                    setNewRoomName(text);
-                  }}
-                  autoFocus
-                />
-              </View>
+              <Input
+                label="Room Name"
+                placeholder="Enter custom room name"
+                value={customRoomName}
+                onChangeText={(text) => {
+                  setCustomRoomName(text);
+                  setNewRoomName(text);
+                }}
+                autoFocus
+              />
             )}
           </View>
         </SafeAreaView>
       </Modal>
-      </View>
+      </ResponsiveContainer>
     </SafeAreaView>
   );
 };
@@ -1034,9 +1007,6 @@ const styles = StyleSheet.create({
   },
   containerWeb: {
     backgroundColor: '#F8F9FA',
-  },
-  contentWrapper: {
-    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -1167,6 +1137,9 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  headerSection: {
+    marginBottom: 8,
+  },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
@@ -1211,9 +1184,9 @@ const styles = StyleSheet.create({
   areaCardPhotoSuccess: {
     borderColor: '#2ECC71',
     backgroundColor: '#D5EDDA',
-    shadowColor: '#2ECC71',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    
+    
+    
     elevation: 6,
   },
   essentialIndicator: {
@@ -1256,10 +1229,10 @@ const styles = StyleSheet.create({
   },
   photoIndicatorSuccess: {
     backgroundColor: '#27AE60',
-    shadowColor: '#2ECC71',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   photoCount: {
@@ -1293,10 +1266,10 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   cameraButtonUploading: {
@@ -1505,15 +1478,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 50,
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   nextButtonDisabled: {
     backgroundColor: '#C7C7CC',
-    shadowOpacity: 0,
+    
     elevation: 0,
   },
   nextButtonText: {
@@ -1548,10 +1521,10 @@ const styles = StyleSheet.create({
     right: -8,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   addPropertyPhotoButton: {
@@ -1593,10 +1566,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
     minHeight: 52,
   },
@@ -1617,10 +1590,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
     maxHeight: 300,
   },
@@ -1659,10 +1632,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#3498DB',
     borderStyle: 'dashed',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 2,
     minHeight: 56,
   },

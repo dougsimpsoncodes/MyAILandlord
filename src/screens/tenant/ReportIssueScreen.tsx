@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -8,10 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import Constants from 'expo-constants';
-// Note: This component doesn't actually use apiClient, removing import
+import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useApiClient } from '../../services/api/client';
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
-import { getAssetsByRoom } from '../../data/assetTemplates';
+import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
 import { AreaType } from '../../models/Property';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
@@ -37,11 +38,18 @@ const getCategoryIcon = (category: string) => {
 
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
+  const { isSignedIn } = useAppAuth();
+  const apiClient = useApiClient();
   const [issueDescription, setIssueDescription] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
+  
+  // Property context
+  const [tenantProperties, setTenantProperties] = useState<any[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<any>(null);
+  const [loadingProperties, setLoadingProperties] = useState(true);
   
   // Smart dropdown states
   const [selectedArea, setSelectedArea] = useState<string>('');
@@ -57,6 +65,66 @@ const ReportIssueScreen = () => {
   
   const speechRecognitionRef = useRef<object | null>(null);
 
+  // Load tenant properties on component mount
+  useEffect(() => {
+    loadTenantProperties();
+  }, []);
+
+  const loadTenantProperties = async () => {
+    if (!apiClient) {
+      setLoadingProperties(false);
+      return;
+    }
+
+    try {
+      console.log('=== LOADING TENANT PROPERTIES ===');
+      
+      // Auth debug removed in Supabase migration
+      
+      const properties = await apiClient.getTenantProperties();
+      console.log('API returned properties:', properties);
+      console.log('Properties count:', properties?.length);
+      console.log('Properties data:', JSON.stringify(properties, null, 2));
+      
+      setTenantProperties(properties || []);
+      
+      // Auto-select if only one property
+      if (properties && properties.length === 1) {
+        console.log('Auto-selecting single property:', properties[0]);
+        setSelectedProperty(properties[0]);
+        console.log('selectedProperty state should now be:', properties[0]);
+      } else if (!properties || properties.length === 0) {
+        // FOR TESTING: Add a temporary property
+        console.log('=== NO PROPERTIES - ADDING TEST PROPERTY ===');
+        const testProperty = {
+          id: 'test-link-1',
+          tenant_id: 'test-tenant-1',
+          unit_number: '2A',
+          is_active: true,
+          properties: {
+            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            name: 'Test Apartment Complex',
+            address: '123 Test Street, Test City, TC 12345',
+            wifi_network: 'TestWiFi',
+            wifi_password: 'test123',
+            emergency_contact: 'Test Property Management',
+            emergency_phone: '555-TEST-911'
+          }
+        };
+        
+        setTenantProperties([testProperty]);
+        setSelectedProperty(testProperty);
+        console.log('Test property added:', testProperty);
+      }
+    } catch (error) {
+      console.error('Error loading tenant properties:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      Alert.alert('Error', 'Failed to load your properties. Please try again.');
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
   // Get dropdown options based on selections
   const areaOptions = AREA_TEMPLATES.map(area => ({
     value: area.type,
@@ -66,12 +134,58 @@ const ReportIssueScreen = () => {
   }));
 
   const assetOptions = selectedArea 
-    ? [] // TODO: Fix after implementing proper asset templates for tenant screens
+    ? getAssetsByRoom(selectedArea).map(asset => ({
+        value: asset.name,
+        label: asset.name,
+        icon: getCategoryIcon(asset.category.toLowerCase()),
+        description: asset.category
+      }))
     : [];
+
+  const getIssueTypesForAsset = (assetName: string) => {
+    const commonIssues: Record<string, { value: string; label: string; icon: string; description: string }[]> = {
+      'Refrigerator': [
+        { value: 'not cooling', label: 'Not cooling properly', icon: 'snow', description: 'Temperature issues' },
+        { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual sounds' },
+        { value: 'water leak', label: 'Water leaking', icon: 'water', description: 'Water on floor' },
+        { value: 'ice maker issue', label: 'Ice maker not working', icon: 'cube', description: 'Ice production problems' }
+      ],
+      'Dishwasher': [
+        { value: 'not cleaning', label: 'Not cleaning dishes', icon: 'ban', description: 'Poor washing performance' },
+        { value: 'water leak', label: 'Water leaking', icon: 'water', description: 'Water on floor' },
+        { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual sounds' },
+        { value: 'not draining', label: 'Not draining properly', icon: 'funnel', description: 'Water remains in bottom' }
+      ],
+      'Kitchen Faucet': [
+        { value: 'dripping', label: 'Dripping/leaking', icon: 'water', description: 'Continuous drip' },
+        { value: 'low pressure', label: 'Low water pressure', icon: 'arrow-down', description: 'Weak water flow' },
+        { value: 'handle loose', label: 'Handle is loose', icon: 'hand-left', description: 'Handle moves freely' },
+        { value: 'no hot water', label: 'No hot water', icon: 'thermometer', description: 'Only cold water flows' }
+      ],
+      'Toilet': [
+        { value: 'running constantly', label: 'Running constantly', icon: 'infinite', description: 'Water keeps running' },
+        { value: 'not flushing', label: 'Not flushing properly', icon: 'close-circle', description: 'Weak or no flush' },
+        { value: 'clogged', label: 'Clogged', icon: 'ban', description: 'Water overflowing' },
+        { value: 'loose', label: 'Toilet is loose', icon: 'move', description: 'Rocks or moves' }
+      ],
+      'Garbage Disposal': [
+        { value: 'not working', label: 'Not working at all', icon: 'close-circle', description: 'No power or response' },
+        { value: 'jammed', label: 'Jammed/stuck', icon: 'lock-closed', description: 'Not grinding' },
+        { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual grinding sounds' },
+        { value: 'water leak', label: 'Water leaking', icon: 'water', description: 'Water under sink' }
+      ]
+    };
+
+    return commonIssues[assetName] || [
+      { value: 'not working', label: 'Not working properly', icon: 'close-circle', description: 'General malfunction' },
+      { value: 'damaged', label: 'Damaged', icon: 'warning', description: 'Physical damage visible' },
+      { value: 'strange noise', label: 'Making strange noises', icon: 'volume-high', description: 'Unusual sounds' }
+    ];
+  };
 
   const issueTypeOptions = selectedAsset
     ? [
-        // TODO: Fix after implementing proper asset templates for tenant screens
+        ...getIssueTypesForAsset(selectedAsset),
         {
           value: 'other',
           label: 'Other (not listed)',
@@ -265,18 +379,48 @@ const ReportIssueScreen = () => {
   };
 
   const handleSubmit = async () => {
+    console.log('=== handleSubmit called at', new Date().toISOString(), '===');
+    console.log('Button was clicked!');
+    console.log('selectedProperty:', selectedProperty);
+    console.log('navigation object:', navigation);
+    console.log('navigation state:', navigation.getState());
+    
+    // Check if function is even executing
+    window.LAST_HANDLE_SUBMIT = new Date().toISOString();
+    
+    if (!selectedProperty) {
+      console.log('No property selected - showing alert');
+      Alert.alert('Missing Information', 'Please select a property first.');
+      return;
+    }
+    
+    console.log('Checking required fields...');
+    console.log('selectedArea:', selectedArea);
+    console.log('selectedAsset:', selectedAsset);
+    console.log('selectedIssueType:', selectedIssueType);
+    console.log('selectedPriority:', selectedPriority);
+    console.log('selectedDuration:', selectedDuration);
+    console.log('selectedTiming:', selectedTiming);
+    
     if (!selectedArea || !selectedAsset || !selectedIssueType || !selectedPriority || !selectedDuration || !selectedTiming) {
+      console.log('Missing required fields - showing alert');
       Alert.alert('Missing Information', 'Please complete all required fields (Steps 1-6) to continue.');
       return;
     }
     
     if (selectedIssueType === 'other' && !otherIssueDescription.trim()) {
+      console.log('Other issue selected but no description - showing alert');
       Alert.alert('Missing Information', 'Please describe the issue since you selected "Other".');
       return;
     }
 
+    console.log('All validations passed, creating reviewData...');
+    
     // Navigate to review screen with all collected data
     const reviewData = {
+      propertyId: selectedProperty.properties?.id || selectedProperty.id,
+      propertyName: selectedProperty.properties?.name || selectedProperty.name,
+      unitNumber: selectedProperty.unit_number,
       area: selectedArea,
       asset: selectedAsset,
       issueType: selectedIssueType === 'other' ? otherIssueDescription.trim() : selectedIssueType,
@@ -287,17 +431,72 @@ const ReportIssueScreen = () => {
       mediaItems: mediaItems.map(item => item.uri),
       title: title.trim()
     };
-
-    navigation.navigate('ReviewIssue', { reviewData });
+    
+    console.log('reviewData created:', JSON.stringify(reviewData, null, 2));
+    
+    try {
+      console.log('Attempting navigation to ReviewIssue...');
+      navigation.navigate('ReviewIssue', { reviewData });
+      console.log('Navigation.navigate() called successfully');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Navigation Error', `Failed to navigate: ${error.message}`);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.header}>
           <Text style={styles.title}>Report Maintenance Issue</Text>
           <Text style={styles.subtitle}>Follow the steps below to submit your request</Text>
         </View>
+
+        {/* Property Selection */}
+        {tenantProperties.length > 1 && (
+          <View style={styles.stepSection}>
+            <View style={styles.stepHeader}>
+              <View style={styles.stepNumber}>
+                <Ionicons name="home" size={16} color="#007AFF" />
+              </View>
+              <Text style={styles.stepTitle}>Select Property</Text>
+            </View>
+            <SmartDropdown
+              label=""
+              placeholder="Choose which property has the issue"
+              options={tenantProperties.map(prop => ({
+                value: prop.properties?.id || prop.id,
+                label: `${prop.properties.name}${prop.unit_number ? ` - Unit ${prop.unit_number}` : ''}`,
+                icon: 'home',
+                description: prop.properties.address
+              }))}
+              value={selectedProperty?.properties?.id || selectedProperty?.id || ''}
+              onSelect={(value) => {
+                const property = tenantProperties.find(p => p.properties?.id === value || p.id === value);
+                console.log('Property selected:', property);
+                setSelectedProperty(property);
+              }}
+            />
+          </View>
+        )}
+
+        {/* Current Property Display */}
+        {selectedProperty && (
+          <View style={styles.propertyDisplay}>
+            <View style={styles.propertyHeader}>
+              <Ionicons name="home" size={20} color="#007AFF" />
+              <Text style={styles.propertyName}>{selectedProperty.properties.name}</Text>
+            </View>
+            <Text style={styles.propertyAddress}>
+              {selectedProperty.properties.address}
+              {selectedProperty.unit_number && ` • Unit ${selectedProperty.unit_number}`}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.stepSection}>
           <View style={styles.stepHeader}>
@@ -537,8 +736,31 @@ const ReportIssueScreen = () => {
         <View style={styles.submitSection}>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={handleSubmit}
+            onPress={() => {
+              console.log('=== BUTTON CLICKED at', new Date().toISOString(), '===');
+              console.log('Button onPress triggered!');
+              console.log('Current state values:');
+              console.log('- selectedProperty:', selectedProperty);
+              console.log('- selectedArea:', selectedArea);
+              console.log('- selectedAsset:', selectedAsset);
+              console.log('- selectedIssueType:', selectedIssueType);
+              console.log('- selectedPriority:', selectedPriority);
+              console.log('- selectedDuration:', selectedDuration);
+              console.log('- selectedTiming:', selectedTiming);
+              console.log('- mediaItems count:', mediaItems.length);
+              
+              try {
+                handleSubmit();
+                console.log('handleSubmit called successfully');
+              } catch (error) {
+                console.error('Error calling handleSubmit:', error);
+                console.error('Stack trace:', error.stack);
+                Alert.alert('Error', 'Failed to process request: ' + error.message);
+              }
+            }}
             activeOpacity={0.8}
+            onPressIn={() => console.log('Button press started at', new Date().toISOString())}
+            onPressOut={() => console.log('Button press ended at', new Date().toISOString())}
           >
             <Text style={styles.continueButtonText}>
               Review Request
@@ -622,13 +844,10 @@ const styles = StyleSheet.create({
     minHeight: 120,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   voiceButton: {
@@ -672,13 +891,10 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   mediaButtonText: {
@@ -754,13 +970,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   continueButtonText: {
@@ -780,13 +993,10 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   row: {
@@ -807,13 +1017,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   pickerText: {
@@ -944,6 +1151,30 @@ const styles = StyleSheet.create({
     minHeight: 80,
     borderWidth: 1,
     borderColor: '#E1E8ED',
+  },
+  propertyDisplay: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e1e5e9',
+  },
+  propertyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  propertyName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  propertyAddress: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 18,
   },
 });
 

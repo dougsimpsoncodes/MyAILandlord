@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import log from '../../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, PropertyAsset } from '../../types/property';
 
 /**
@@ -48,7 +49,42 @@ export class PropertyDraftService {
       };
 
       // Save the draft
-      await AsyncStorage.setItem(storageKey, JSON.stringify(draftWithMetadata));
+      try {
+        await AsyncStorage.setItem(storageKey, JSON.stringify(draftWithMetadata));
+      } catch (storageError: unknown) {
+        // Handle storage quota exceeded
+        const errorName = storageError instanceof Error ? storageError.name : '';
+        const errorMessage = storageError instanceof Error ? storageError.message : '';
+        if (errorName === 'QuotaExceededError' || errorMessage?.includes('quota')) {
+          log.warn('Storage quota exceeded, cleaning up old drafts...');
+          
+          // Try to free up space by cleaning old drafts
+          await this.cleanupOldDrafts(userId, true); // Force cleanup
+          
+          // Try again with simplified data (remove photos from storage)
+          const simplifiedDraft = {
+            ...draftWithMetadata,
+            propertyData: {
+              ...draftWithMetadata.propertyData,
+              photos: [], // Remove photos to save space
+            },
+            areas: draftWithMetadata.areas?.map(area => ({
+              ...area,
+              photos: [], // Remove area photos to save space
+            })),
+          };
+          
+          try {
+            await AsyncStorage.setItem(storageKey, JSON.stringify(simplifiedDraft));
+            log.warn('Saved simplified draft without photos due to storage constraints');
+          } catch (retryError) {
+            log.error('Failed to save even simplified draft', { error: String(retryError) });
+            throw new Error('Storage full - please clear browser data and try again');
+          }
+        } else {
+          throw storageError;
+        }
+      }
 
       // Update drafts list
       await this.updateDraftsList(userId, draftState.id);
@@ -57,7 +93,7 @@ export class PropertyDraftService {
       await this.cleanupOldDrafts(userId);
 
     } catch (error) {
-      console.error('Failed to save property draft:', error);
+      log.error('Failed to save property draft', { error: String(error) });
       throw new Error('Failed to save property draft');
     }
   }
@@ -85,7 +121,7 @@ export class PropertyDraftService {
 
       // Security check: ensure draft belongs to the requesting user
       if (draft.userId !== userId) {
-        console.warn('Draft access denied: user mismatch');
+        log.warn('Draft access denied: user mismatch');
         return null;
       }
 
@@ -105,7 +141,7 @@ export class PropertyDraftService {
       };
 
     } catch (error) {
-      console.error('Failed to load property draft:', error);
+      log.error('Failed to load property draft', { error: String(error) });
       return null;
     }
   }
@@ -143,7 +179,7 @@ export class PropertyDraftService {
       );
 
     } catch (error) {
-      console.error('Failed to load user drafts:', error);
+      log.error('Failed to load user drafts', { error: String(error) });
       return [];
     }
   }
@@ -173,7 +209,7 @@ export class PropertyDraftService {
       }
 
     } catch (error) {
-      console.error('Failed to delete property draft:', error);
+      log.error('Failed to delete property draft', { error: String(error) });
       throw new Error('Failed to delete property draft');
     }
   }
@@ -199,7 +235,7 @@ export class PropertyDraftService {
       await AsyncStorage.removeItem(draftsListKey);
 
     } catch (error) {
-      console.error('Failed to clear all user drafts:', error);
+      log.error('Failed to clear all user drafts', { error: String(error) });
       throw new Error('Failed to clear all user drafts');
     }
   }
@@ -264,6 +300,29 @@ export class PropertyDraftService {
   }
 
   /**
+   * Clear all drafts for a user (emergency storage cleanup)
+   */
+  static async clearAllUserDrafts(userId: string): Promise<void> {
+    try {
+      log.info('Clearing all drafts for user due to storage issues...');
+      const drafts = await this.getUserDrafts(userId);
+      
+      // Delete all drafts
+      for (const draft of drafts) {
+        await this.deleteDraft(userId, draft.id);
+      }
+      
+      // Clear the drafts list
+      const draftsListKey = this.getUserDraftsListKey(userId);
+      await AsyncStorage.removeItem(draftsListKey);
+      
+      log.info(`Cleared ${drafts.length} drafts for user`);
+    } catch (error) {
+      log.error('Failed to clear user drafts', { error: String(error) });
+    }
+  }
+
+  /**
    * Calculate storage usage for a user
    */
   static async getStorageUsage(userId: string): Promise<{
@@ -288,7 +347,7 @@ export class PropertyDraftService {
       };
 
     } catch (error) {
-      console.error('Failed to calculate storage usage:', error);
+      log.error('Failed to calculate storage usage', { error: String(error) });
       return { draftCount: 0, estimatedSizeKB: 0 };
     }
   }
@@ -310,31 +369,47 @@ export class PropertyDraftService {
 
       await AsyncStorage.setItem(draftsListKey, JSON.stringify(draftIds));
     } catch (error) {
-      console.error('Failed to update drafts list:', error);
+      log.error('Failed to update drafts list', { error: String(error) });
     }
   }
 
   /**
    * Clean up old drafts if user has too many
    */
-  private static async cleanupOldDrafts(userId: string): Promise<void> {
+  private static async cleanupOldDrafts(userId: string, forceCleanup: boolean = false): Promise<void> {
     try {
       const drafts = await this.getUserDrafts(userId);
-      
-      if (drafts.length > this.MAX_DRAFTS_PER_USER) {
-        // Sort by last modified and keep only the newest ones
+
+      let draftsToDelete: PropertySetupState[] = [];
+
+      if (forceCleanup) {
+        // If forced cleanup due to storage issues, delete more aggressively
+        const sortedDrafts = drafts.sort((a, b) =>
+          new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+        );
+        // Keep only the most recent draft
+        draftsToDelete = sortedDrafts.slice(1);
+        log.info(`Force cleanup: removing ${draftsToDelete.length} old drafts`);
+      } else if (drafts.length > this.MAX_DRAFTS_PER_USER) {
+        // Normal cleanup - sort by last modified and keep only the newest ones
         const sortedDrafts = drafts.sort((a, b) => 
           new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
         );
 
         // Delete the oldest drafts
-        const draftsToDelete = sortedDrafts.slice(this.MAX_DRAFTS_PER_USER);
-        for (const draft of draftsToDelete) {
-          await this.deleteDraft(userId, draft.id);
-        }
+        draftsToDelete = sortedDrafts.slice(this.MAX_DRAFTS_PER_USER);
+      }
+
+      // Delete identified drafts
+      for (const draft of draftsToDelete) {
+        await this.deleteDraft(userId, draft.id);
+      }
+      
+      if (draftsToDelete.length > 0) {
+        log.info(`Cleaned up ${draftsToDelete.length} old drafts`);
       }
     } catch (error) {
-      console.error('Failed to cleanup old drafts:', error);
+      log.error('Failed to cleanup old drafts', { error: String(error) });
     }
   }
 
@@ -378,7 +453,7 @@ export class PropertyDraftService {
         assets: (draftObj.assets as PropertyAsset[]) || [],
       };
     } catch (error) {
-      console.error('Failed to migrate draft:', error);
+      log.error('Failed to migrate draft', { error: String(error) });
       return null;
     }
   }

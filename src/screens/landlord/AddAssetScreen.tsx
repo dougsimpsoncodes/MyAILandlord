@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { AssetTemplate, AssetCondition, InventoryItem, PropertyData } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { extractAssetDataFromImage, validateAndEnhanceData } from '../../services/ai/labelExtraction';
+import Button from '../../components/shared/Button';
+import Card from '../../components/shared/Card';
+import Input from '../../components/shared/Input';
+import { DesignSystem } from '../../theme/DesignSystem';
 
 type AddAssetNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddAssetRouteProp = RouteProp<LandlordStackParamList, 'AddAsset'>;
@@ -48,6 +52,7 @@ const AddAssetScreen = () => {
   const [customBrand, setCustomBrand] = useState('');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const dropdownRef = useRef<View>(null);
 
   // Brand options based on template or general brands
   const brandOptions = template?.commonBrands || [
@@ -239,22 +244,9 @@ const AddAssetScreen = () => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Asset Type Info */}
-        {template && (
-          <View style={styles.templateCard}>
-            <View style={styles.templateHeader}>
-              <Ionicons name="checkmark-circle" size={20} color="#2ECC71" />
-              <Text style={styles.templateText}>
-                Adding {template.name} to {areaName}
-              </Text>
-            </View>
-            <Text style={styles.templateCategory}>{template.category}</Text>
-          </View>
-        )}
 
         {/* AI Scan Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Setup</Text>
           <TouchableOpacity
             style={styles.scanButton}
             onPress={handleScanLabel}
@@ -279,7 +271,6 @@ const AddAssetScreen = () => {
 
         {/* Basic Information */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Information</Text>
           
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Asset Name *</Text>
@@ -288,57 +279,80 @@ const AddAssetScreen = () => {
               placeholder={template ? template.name : "Enter asset name"}
               value={assetName}
               onChangeText={setAssetName}
+              autoComplete="name"
+              textContentType="name"
+              autoCorrect={false}
+              autoCapitalize="words"
             />
           </View>
 
           {/* Brand Dropdown */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Brand</Text>
-            <TouchableOpacity
-              style={styles.dropdown}
-              onPress={() => setShowBrandDropdown(!showBrandDropdown)}
-            >
-              <Text style={[styles.dropdownText, selectedBrand && styles.dropdownTextSelected]}>
-                {selectedBrand || 'Select brand...'}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#7F8C8D" />
-            </TouchableOpacity>
-            
-            {showBrandDropdown && (
-              <View style={styles.dropdownMenu}>
-                {brandOptions.map((brand, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.dropdownItem}
-                    onPress={() => {
-                      setSelectedBrand(brand);
-                      setShowBrandDropdown(false);
-                      setCustomBrand('');
-                    }}
-                  >
-                    <Text style={styles.dropdownItemText}>{brand}</Text>
-                    {selectedBrand === brand && (
-                      <Ionicons name="checkmark" size={16} color="#3498DB" />
-                    )}
-                  </TouchableOpacity>
-                ))}
-                <View style={styles.dropdownDivider} />
-                <View style={styles.customBrandSection}>
-                  <Text style={styles.customBrandLabel}>Other brand:</Text>
-                  <TextInput
-                    style={styles.customBrandInput}
-                    placeholder="Enter custom brand"
-                    value={customBrand}
-                    onChangeText={(text) => {
-                      setCustomBrand(text);
-                      if (text.trim()) {
-                        setSelectedBrand('');
-                      }
-                    }}
+            <View style={styles.dropdownContainer} ref={dropdownRef}>
+              <TouchableOpacity
+                style={styles.dropdown}
+                onPress={() => setShowBrandDropdown(!showBrandDropdown)}
+              >
+                <Text style={[styles.dropdownText, selectedBrand && styles.dropdownTextSelected]}>
+                  {selectedBrand || 'Select brand...'}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#7F8C8D" />
+              </TouchableOpacity>
+              
+              {showBrandDropdown && (
+                <>
+                  <TouchableOpacity 
+                    style={styles.dropdownBackdrop}
+                    onPress={() => setShowBrandDropdown(false)}
+                    activeOpacity={1}
                   />
-                </View>
-              </View>
-            )}
+                  <View style={styles.dropdownMenu}>
+                    <ScrollView 
+                      style={styles.dropdownScrollView}
+                      showsVerticalScrollIndicator={false}
+                      nestedScrollEnabled={true}
+                    >
+                    {brandOptions.map((brand, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.dropdownItem}
+                        onPress={() => {
+                          setSelectedBrand(brand);
+                          setShowBrandDropdown(false);
+                          setCustomBrand('');
+                        }}
+                      >
+                        <Text style={styles.dropdownItemText}>{brand}</Text>
+                        {selectedBrand === brand && (
+                          <Ionicons name="checkmark" size={16} color="#3498DB" />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                    <View style={styles.dropdownDivider} />
+                    <View style={styles.customBrandSection}>
+                      <Text style={styles.customBrandLabel}>Other brand:</Text>
+                      <TextInput
+                        style={styles.customBrandInput}
+                        placeholder="Enter custom brand"
+                        value={customBrand}
+                        onChangeText={(text) => {
+                          setCustomBrand(text);
+                          if (text.trim()) {
+                            setSelectedBrand('');
+                          }
+                        }}
+                        autoComplete="organization"
+                        textContentType="organizationName"
+                        autoCorrect={false}
+                        autoCapitalize="words"
+                      />
+                    </View>
+                    </ScrollView>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -348,6 +362,9 @@ const AddAssetScreen = () => {
               placeholder="e.g., WRF555SDFZ"
               value={model}
               onChangeText={setModel}
+              autoComplete="off"
+              autoCorrect={false}
+              autoCapitalize="characters"
             />
           </View>
 
@@ -358,6 +375,9 @@ const AddAssetScreen = () => {
               placeholder="e.g., WH1234567890"
               value={serialNumber}
               onChangeText={setSerialNumber}
+              autoComplete="off"
+              autoCorrect={false}
+              autoCapitalize="characters"
             />
           </View>
 
@@ -369,6 +389,9 @@ const AddAssetScreen = () => {
               value={year}
               onChangeText={setYear}
               keyboardType="numeric"
+              autoComplete="off"
+              autoCorrect={false}
+              maxLength={4}
             />
           </View>
         </View>
@@ -442,6 +465,9 @@ const AddAssetScreen = () => {
               placeholder="MM/DD/YYYY"
               value={warrantyEndDate}
               onChangeText={setWarrantyEndDate}
+              autoComplete="off"
+              autoCorrect={false}
+              keyboardType="numeric"
             />
           </View>
 
@@ -453,6 +479,7 @@ const AddAssetScreen = () => {
               value={purchasePrice}
               onChangeText={setPurchasePrice}
               keyboardType="decimal-pad"
+              autoCorrect={false}
             />
           </View>
 
@@ -466,6 +493,9 @@ const AddAssetScreen = () => {
               multiline
               numberOfLines={3}
               textAlignVertical="top"
+              autoComplete="off"
+              autoCorrect={true}
+              autoCapitalize="sentences"
             />
           </View>
         </View>
@@ -571,10 +601,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#8E44AD',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   scanContent: {
@@ -609,15 +639,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
     elevation: 1,
   },
   textArea: {
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  dropdownContainer: {
+    position: 'relative',
+    zIndex: 1000,
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
   },
   dropdown: {
     backgroundColor: '#FFFFFF',
@@ -628,10 +667,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
     elevation: 1,
   },
   dropdownText: {
@@ -642,16 +678,21 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
   },
   dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginTop: 8,
+    marginTop: 4,
     borderWidth: 1,
     borderColor: '#E9ECEF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+    elevation: 5,
+    maxHeight: 200,
+    zIndex: 1001,
+  },
+  dropdownScrollView: {
     maxHeight: 200,
   },
   dropdownItem: {
@@ -780,15 +821,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 50,
-    shadowColor: '#2ECC71',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 3,
   },
   saveButtonDisabled: {
     backgroundColor: '#BDC3C7',
-    shadowOpacity: 0,
+    boxShadow: 'none',
     elevation: 0,
   },
   saveButtonText: {

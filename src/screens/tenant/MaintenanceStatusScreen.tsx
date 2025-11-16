@@ -294,6 +294,29 @@ const MaintenanceStatusScreen = () => {
             )}
           </>
         )}
+
+        {hasMore && (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 16, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#FFFFFF',
+                borderWidth: 1,
+                borderColor: '#E1E8ED',
+                borderRadius: 8,
+                paddingVertical: 10,
+                paddingHorizontal: 16,
+                opacity: isLoadingMore ? 0.7 : 1,
+              }}
+              onPress={loadMore}
+              disabled={isLoadingMore}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: '#2C3E50', fontWeight: '600' }}>
+                {isLoadingMore ? 'Loading...' : 'Load More'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -341,10 +364,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 4,
     minWidth: 70,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   newRequestButtonText: {
@@ -400,10 +423,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   resolvedCard: {

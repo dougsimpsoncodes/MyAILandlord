@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/ClerkAuthContext';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';
@@ -50,41 +50,8 @@ const LandlordCommunicationScreen = () => {
       setLoading(true);
       
       // TODO: Load actual conversations from API
-      // For now, using mock data
-      const mockConversations: Conversation[] = [
-        {
-          id: '1',
-          tenantName: 'Sarah Johnson',
-          tenantEmail: 'sarah.johnson@email.com',
-          property: 'Apartment 2B - Oak Street',
-          lastMessage: 'The repair work looks great! Thank you for the quick response.',
-          lastMessageTime: '2 hours ago',
-          unreadCount: 0,
-          priority: 'low',
-        },
-        {
-          id: '2',
-          tenantName: 'Mike Chen',
-          tenantEmail: 'mike.chen@email.com',
-          property: 'Unit 15 - Maple Avenue',
-          lastMessage: 'When can we schedule the maintenance visit?',
-          lastMessageTime: '5 hours ago',
-          unreadCount: 2,
-          priority: 'medium',
-        },
-        {
-          id: '3',
-          tenantName: 'Emily Rodriguez',
-          tenantEmail: 'emily.rodriguez@email.com',
-          property: 'House 42 - Pine Street',
-          lastMessage: 'Emergency: Water leak in the basement!',
-          lastMessageTime: '1 day ago',
-          unreadCount: 3,
-          priority: 'high',
-        },
-      ];
-
-      setConversations(mockConversations);
+      // No mock data - start with empty state
+      setConversations([]);
     } catch (error) {
       handleApiError(error, 'Loading conversations');
     } finally {
@@ -372,10 +339,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
     elevation: 2,
   },
   conversationHeader: {

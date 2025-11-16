@@ -246,7 +246,7 @@ const PropertyInfoScreen = () => {
       case 'email': return 'mail';
       case 'wifi': return 'copy';
       case 'link': return 'document';
-      case 'text': return (item: any) => item.copyable ? 'copy' : 'information-circle';
+      case 'text': return (item: InfoItem) => item.copyable ? 'copy' : 'information-circle';
       default: return 'information-circle';
     }
   };
@@ -405,10 +405,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   infoItem: {

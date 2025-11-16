@@ -1,5 +1,7 @@
 // Property-related TypeScript interfaces for type safety
 
+export type PropertyType = 'apartment' | 'house' | 'condo' | 'townhouse' | '';
+
 // Multi-field address structure following industry standards
 export interface PropertyAddress {
   line1: string;           // Street number and name (required)
@@ -18,6 +20,33 @@ export interface PropertyData {
   bedrooms: number;
   bathrooms: number;
   photos: string[];
+  // Optional, used by landlord asset flows
+  rooms?: Room[];
+  detectedAssets?: DetectedAsset[];
+  assetDetails?: any[]; // Detailed per-asset entries collected in AssetDetailsScreen
+  assetPhotos?: any[];  // Per-asset photos collected in AssetPhotosScreen
+  // Optional: room-level photos used in some flows
+  roomPhotos?: { roomId: string; photos: string[] }[];
+}
+
+export interface Room {
+  id: string;
+  name: string;
+  icon?: string;
+  selected?: boolean;
+  required?: boolean;
+  custom?: boolean;
+}
+
+export interface DetectedAsset {
+  id: string;
+  name: string;
+  category: string;
+  roomId: string;
+  brand?: string;
+  model?: string;
+  confidence?: number;
+  scannedData?: string;
 }
 
 export interface PropertyArea {

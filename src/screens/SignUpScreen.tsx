@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useSignUp, useOAuth } from '@clerk/clerk-expo';
+import { supabase } from '../lib/supabaseClient';
 import { RoleContext } from '../context/RoleContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -14,56 +14,34 @@ type SignUpScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 
 const SignUpScreen = () => {
   const route = useRoute<SignUpScreenRouteProp>();
   const navigation = useNavigation<SignUpScreenNavigationProp>();
-  const { role } = route.params;
-  const { signUp, setActive, isLoaded } = useSignUp();
-  const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
-  const { startOAuthFlow: appleOAuth } = useOAuth({ strategy: 'oauth_apple' });
-  const { setUserRole } = useContext(RoleContext);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState('');
 
   const handleSignUp = async () => {
-    if (!isLoaded) return;
-
     try {
       setLoading(true);
-      
-      await signUp.create({
-        emailAddress,
+
+      const { data, error } = await supabase.auth.signUp({
+        email: emailAddress,
         password,
       });
 
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      
-      setPendingVerification(true);
-    } catch (error: any) {
-      Alert.alert('Sign Up Error', error.errors?.[0]?.message || 'Failed to create account. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerification = async () => {
-    if (!isLoaded) return;
-
-    try {
-      setLoading(true);
-      
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
-      });
-
-      if (signUpAttempt.status === 'complete') {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        setUserRole(role);
-      } else {
-        Alert.alert('Verification Error', 'Unable to verify email. Please try again.');
+      if (error) {
+        Alert.alert('Sign Up Error', error.message);
+        return;
       }
-    } catch (error: any) {
-      Alert.alert('Verification Error', error.errors?.[0]?.message || 'Failed to verify code. Please try again.');
+
+      // Supabase handles email verification automatically
+      // Session will be set automatically after verification
+      // Role will be set automatically by useProfileSync hook (defaults to landlord)
+      Alert.alert(
+        'Check Your Email',
+        'We sent you a verification link. Please check your email to complete sign up.'
+      );
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
+      Alert.alert('Sign Up Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -72,72 +50,28 @@ const SignUpScreen = () => {
   const handleOAuthSignUp = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
-      
-      const oauthFlow = provider === 'google' ? googleOAuth : appleOAuth;
-      const { createdSessionId, setActive: oauthSetActive } = await oauthFlow();
-      
-      if (createdSessionId && oauthSetActive) {
-        await oauthSetActive({ session: createdSessionId });
-        setUserRole(role);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+      });
+
+      if (error) {
+        Alert.alert('OAuth Error', error.message);
+        return;
       }
-    } catch (error: any) {
-      Alert.alert('OAuth Error', error.message || `Failed to sign up with ${provider}. Please try again.`);
+
+      // OAuth flow will redirect - session will be set automatically
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to sign up with ${provider}. Please try again.`;
+      Alert.alert('OAuth Error', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const navigateToSignIn = () => {
-    navigation.navigate('Login', { role });
+    navigation.navigate('Login');
   };
-
-  if (pendingVerification) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => setPendingVerification(false)}
-          >
-            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-
-          <View style={styles.header}>
-            <Text style={styles.roleIcon}>✉️</Text>
-            <Text style={styles.title}>Verify Your Email</Text>
-            <Text style={styles.subtitle}>
-              We sent a verification code to {emailAddress}
-            </Text>
-          </View>
-
-          <View style={styles.loginContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter verification code"
-              value={code}
-              onChangeText={setCode}
-              keyboardType="number-pad"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <TouchableOpacity
-              style={[styles.loginButton, styles.primaryButton]}
-              onPress={handleVerification}
-              disabled={loading || !code}
-              activeOpacity={0.8}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>Verify Email</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -150,12 +84,12 @@ const SignUpScreen = () => {
         </TouchableOpacity>
 
         <View style={styles.header}>
-          <Text style={styles.roleIcon}>{role === 'tenant' ? '🏘️' : '🏢'}</Text>
+          <Text style={styles.roleIcon}>🏠</Text>
           <Text style={styles.title}>
-            Create {role === 'tenant' ? 'Tenant' : 'Landlord'} Account
+            Create Account
           </Text>
           <Text style={styles.subtitle}>
-            Sign up to access your {role === 'tenant' ? 'maintenance portal' : 'management dashboard'}
+            Sign up to get started with My AI Landlord
           </Text>
         </View>
 
@@ -270,13 +204,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 2,
   },
   header: {
@@ -319,13 +250,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
     elevation: 4,
   },
   primaryButton: {

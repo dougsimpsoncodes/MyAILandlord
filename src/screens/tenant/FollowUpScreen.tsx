@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ViewStyle, TextStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -99,24 +99,24 @@ const FollowUpScreen = () => {
     }
   };
 
-  const getOptionStyle = (questionId: string, option: string) => {
+  const getOptionStyle = (questionId: string, option: string): ViewStyle[] => {
     const isSelected = answers[questionId] === option;
-    const baseStyle: any[] = [styles.optionButton];
-    
+    const baseStyle: ViewStyle[] = [styles.optionButton];
+
     if (isSelected) {
       baseStyle.push(styles.optionButtonSelected);
       if (questionId === '4') {
         baseStyle.push({ borderColor: getUrgencyColor(option) });
       }
     }
-    
+
     return baseStyle;
   };
 
-  const getOptionTextStyle = (questionId: string, option: string) => {
+  const getOptionTextStyle = (questionId: string, option: string): TextStyle[] => {
     const isSelected = answers[questionId] === option;
-    const baseStyle: any[] = [styles.optionText];
-    
+    const baseStyle: TextStyle[] = [styles.optionText];
+
     if (isSelected) {
       baseStyle.push(styles.optionTextSelected);
       if (questionId === '4') {
@@ -271,13 +271,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    
+    
+    
+    
     elevation: 6,
   },
   questionHeader: {
@@ -379,13 +376,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    
+    
+    
+    
     elevation: 4,
   },
   nextButtonText: {

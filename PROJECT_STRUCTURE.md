@@ -74,7 +74,7 @@ components/
 
 ```
 context/
-├── ClerkAuthContext.tsx          # Clerk authentication provider
+├── SupabaseAuthContext.tsx       # Supabase authentication provider
 └── RoleContext.tsx               # User role management
 ```
 
@@ -123,7 +123,7 @@ navigation/
 
 ```
 screens/
-├── LoginScreen.tsx               # Clerk authentication screen
+├── LoginScreen.tsx               # Supabase authentication screen
 ├── RoleSelectScreen.tsx          # User role selection
 ├── SignUpScreen.tsx              # User registration
 ├── WelcomeScreen.tsx             # App welcome screen
@@ -190,7 +190,7 @@ utils/
 ### Supabase Database Schema
 
 **Tables:**
-- `profiles` - User profiles linked to Clerk authentication
+- `profiles` - User profiles linked to Supabase auth.users
 - `properties` - Property information managed by landlords
 - `tenant_property_links` - Many-to-many relationship between tenants and properties
 - `maintenance_requests` - Maintenance requests with full lifecycle tracking
@@ -216,14 +216,14 @@ utils/
 
 ## Authentication Architecture
 
-### Clerk Integration
-- **Primary Authentication**: Clerk handles all user authentication
-- **OAuth Support**: Google and email authentication
+### Authentication
+- **Primary Authentication**: Supabase Auth handles user authentication
+- **OAuth Support**: Optional providers via Supabase
 - **Token Management**: Secure token storage using expo-secure-store
 - **Session Handling**: Automatic token refresh and validation
 
 ### User Flow
-1. Welcome Screen → Role Selection → Clerk Authentication
+1. Welcome Screen → Role Selection → Authentication
 2. Profile Creation/Sync with Supabase
 3. Role-based Navigation to Tenant or Landlord flows
 

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+build/
+.expo/
+web-build/
+coverage/
+supabase/functions/**/dist/
+supabase/functions/**/node_modules/

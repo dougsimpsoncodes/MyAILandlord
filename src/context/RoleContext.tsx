@@ -1,8 +1,7 @@
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
+import { log } from '../lib/log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppAuth } from './ClerkAuthContext';
-import { useAuth } from '@clerk/clerk-expo';
-import { useApiClient } from '../services/api/client';
+import { useAppAuth } from './SupabaseAuthContext';
 
 type UserRole = 'tenant' | 'landlord' | null;
 
@@ -31,14 +30,11 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
   const { user } = useAppAuth();
-  const { userId } = useAuth();
-  
-  // Always call the hook (React rules), returns null if not authenticated
-  const apiClient = useApiClient();
 
   useEffect(() => {
     if (user && user.id) {
-      // Load existing role if user is authenticated
+      // Load existing role from local storage only
+      // The actual role will be set by useProfileSync when it loads the profile
       if (!hasInitialized) {
         loadStoredRole();
         setHasInitialized(true);
@@ -57,7 +53,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
         setUserRoleState(storedRole as UserRole);
       }
     } catch (error) {
-      console.error('Failed to load stored role:', error);
+      log.error('Failed to load stored role', { error: String(error) });
     } finally {
       setIsLoading(false);
     }
@@ -65,16 +61,16 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
 
   const setUserRole = async (role: UserRole) => {
     try {
-      // Temporarily skip backend storage due to RLS policy issue
-      // TODO: Fix RLS and re-enable backend role storage
+      // Store role locally for quick access
       if (role) {
         await AsyncStorage.setItem(ROLE_STORAGE_KEY, role);
       } else {
         await AsyncStorage.removeItem(ROLE_STORAGE_KEY);
       }
       setUserRoleState(role);
+      log.info('Role set successfully', { role });
     } catch (error) {
-      console.error('Failed to store role:', error);
+      log.error('Failed to store role', { error: String(error) });
       throw error;
     }
   };
@@ -84,7 +80,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       await AsyncStorage.removeItem(ROLE_STORAGE_KEY);
       setUserRoleState(null);
     } catch (error) {
-      console.error('Failed to clear role:', error);
+      log.error('Failed to clear role', { error: String(error) });
     }
   };
 

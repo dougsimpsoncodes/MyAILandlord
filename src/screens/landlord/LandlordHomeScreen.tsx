@@ -5,9 +5,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/ClerkAuthContext';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { UserProfile } from '../../components/shared/UserProfile';
+import { useApiClient } from '../../services/api/client';
 
 type LandlordHomeNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Home'>;
 
@@ -25,20 +26,37 @@ const LandlordHomeScreen = () => {
   const { user, signOut } = useAppAuth();
   const { clearRole } = useContext(RoleContext);
   const [portfolioData, setPortfolioData] = useState({
-    name: 'Premium Properties',
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80',
+    name: '',
+    image: '',
   });
 
-  const [activeRequests, setActiveRequests] = useState(3);
-  const [unreadMessages, setUnreadMessages] = useState(5);
-  const [totalProperties, setTotalProperties] = useState(8);
+  const [activeRequests, setActiveRequests] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [totalProperties, setTotalProperties] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+  const api = useApiClient();
+
+  // Load property count on screen mount
+  useEffect(() => {
+    const loadPropertyCount = async () => {
+      try {
+        if (!api) return;
+        const properties = await api.getUserProperties();
+        setTotalProperties(properties.length);
+      } catch (error) {
+        console.error('Error loading property count:', error);
+        setTotalProperties(0);
+      }
+    };
+
+    loadPropertyCount();
+  }, [api]);
 
   const quickActions: QuickAction[] = [
     {
       id: 'maintenance',
       title: 'Maintenance Hub',
-      subtitle: `${activeRequests} active requests`,
+      subtitle: activeRequests > 0 ? `${activeRequests} active ${activeRequests === 1 ? 'request' : 'requests'}` : 'No active requests',
       icon: 'construct',
       color: '#3498DB',
       route: 'Dashboard',
@@ -46,7 +64,7 @@ const LandlordHomeScreen = () => {
     {
       id: 'messages',
       title: 'Communication Hub',
-      subtitle: `${unreadMessages} tenant messages`,
+      subtitle: unreadMessages > 0 ? `${unreadMessages} unread ${unreadMessages === 1 ? 'message' : 'messages'}` : 'No new messages',
       icon: 'chatbubbles',
       color: '#2ECC71',
       route: 'Communications',
@@ -54,39 +72,21 @@ const LandlordHomeScreen = () => {
     {
       id: 'properties',
       title: 'Property Management',
-      subtitle: `${totalProperties} properties`,
+      subtitle: totalProperties > 0 ? `${totalProperties} ${totalProperties === 1 ? 'property' : 'properties'}` : 'No properties yet',
       icon: 'business',
       color: '#9B59B6',
       route: 'PropertyManagement',
     },
   ];
 
-  const recentActivity = [
-    {
-      id: '1',
-      type: 'maintenance',
-      title: 'New maintenance request submitted',
-      time: '1 hour ago',
-      icon: 'construct',
-      color: '#3498DB',
-    },
-    {
-      id: '2',
-      type: 'message',
-      title: 'Tenant message from Unit 4B',
-      time: '3 hours ago',
-      icon: 'mail',
-      color: '#2ECC71',
-    },
-    {
-      id: '3',
-      type: 'urgent',
-      title: 'Urgent: Heating issue reported',
-      time: '5 hours ago',
-      icon: 'warning',
-      color: '#E74C3C',
-    },
-  ];
+  const [recentActivity, setRecentActivity] = useState<Array<{
+    id: string;
+    type: string;
+    title: string;
+    time: string;
+    icon: string;
+    color: string;
+  }>>([]);
 
   const handleQuickAction = (route: keyof LandlordStackParamList) => {
     navigation.navigate(route as any);
@@ -142,7 +142,11 @@ const LandlordHomeScreen = () => {
             <View style={styles.greetingContainer}>
               <View>
                 <Text style={styles.greeting}>{getGreeting()}, {user?.name?.split(' ')[0] || 'Landlord'}!</Text>
-                <Text style={styles.portfolioName}>{portfolioData.name}</Text>
+                {portfolioData.name ? (
+                  <Text style={styles.portfolioName}>{portfolioData.name}</Text>
+                ) : (
+                  <Text style={styles.portfolioName}>Welcome to MyAILandlord</Text>
+                )}
               </View>
               <TouchableOpacity 
                 style={styles.profileButton} 
@@ -181,37 +185,41 @@ const LandlordHomeScreen = () => {
         </View>
 
         {/* Recent Activity */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View all</Text>
-            </TouchableOpacity>
+        {recentActivity.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              <TouchableOpacity>
+                <Text style={styles.viewAllText}>View all</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {recentActivity.map((activity, index) => (
+              <TouchableOpacity key={activity.id} style={styles.activityItem}>
+                <View style={[styles.activityIcon, { backgroundColor: `${activity.color}15` }]}>
+                  <Ionicons name={activity.icon as any} size={20} color={activity.color} />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>{activity.title}</Text>
+                  <Text style={styles.activityTime}>{activity.time}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
+              </TouchableOpacity>
+            ))}
           </View>
-          
-          {recentActivity.map((activity, index) => (
-            <TouchableOpacity key={activity.id} style={styles.activityItem}>
-              <View style={[styles.activityIcon, { backgroundColor: `${activity.color}15` }]}>
-                <Ionicons name={activity.icon as any} size={20} color={activity.color} />
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>{activity.title}</Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
-            </TouchableOpacity>
-          ))}
-        </View>
+        )}
 
-        {/* Analytics Card */}
-        <TouchableOpacity style={styles.analyticsCard}>
-          <Ionicons name="bar-chart" size={24} color="#9B59B6" />
-          <View style={styles.analyticsContent}>
-            <Text style={styles.analyticsTitle}>View Analytics & Reports</Text>
-            <Text style={styles.analyticsSubtitle}>Performance insights and portfolio metrics</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9B59B6" />
-        </TouchableOpacity>
+        {/* Analytics Card - Only show when there's data */}
+        {totalProperties > 0 && (
+          <TouchableOpacity style={styles.analyticsCard}>
+            <Ionicons name="bar-chart" size={24} color="#9B59B6" />
+            <View style={styles.analyticsContent}>
+              <Text style={styles.analyticsTitle}>View Analytics & Reports</Text>
+              <Text style={styles.analyticsSubtitle}>Performance insights and portfolio metrics</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9B59B6" />
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Profile Modal */}
@@ -249,10 +257,10 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    
+    
+    
+    
     elevation: 5,
     overflow: 'hidden',
   },
@@ -324,10 +332,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    
+    
+    
+    
     elevation: 1,
   },
   actionIconCircle: {
@@ -358,10 +366,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 2,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.03)',
     elevation: 1,
   },
   activityIcon: {
