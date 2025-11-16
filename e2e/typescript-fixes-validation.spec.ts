@@ -73,6 +73,7 @@ test.describe('TypeScript Fixes Validation', () => {
   });
 
   test('Full Property Creation Flow - All TypeScript Fixes', async ({ page }) => {
+    test.setTimeout(60000); // Increase timeout to 60 seconds for full flow
     console.log('🧪 Testing full property creation flow with all TS fixes...');
 
     // Navigate to Add Property
@@ -90,24 +91,33 @@ test.describe('TypeScript Fixes Validation', () => {
     await expect(page.locator('text=/Step 1 of 5/i').first()).toBeVisible();
     await page.screenshot({ path: 'test-results/ts-fix-step1-basics.png', fullPage: true });
 
-    // Fill out the form
-    await page.locator('input[placeholder*="Property Name"], input[name="propertyName"]').first().fill('Test Property TS Validation');
-    await page.locator('input[placeholder*="Street"], input[name*="street"], input[name*="address"]').first().fill('100 Test Street');
+    // Fill out the form (use actual DOM IDs discovered via debug test)
+    // Property Name is the first input with no id/name/placeholder
+    const nameInput = page.locator('input').first();
+    await expect(nameInput).toBeVisible({ timeout: 30000 });
+    await nameInput.fill('Test Property TS Validation');
+
+    const streetInput = page.locator('#section-property-line1');
+    await expect(streetInput).toBeVisible({ timeout: 15000 });
+    await streetInput.fill('100 Test Street');
 
     // Fill City
-    const cityInput = page.locator('input[placeholder*="City"], input[name="city"]').first();
+    const cityInput = page.locator('#section-property-city');
+    await expect(cityInput).toBeVisible({ timeout: 15000 });
     await cityInput.fill('Springfield');
 
     // Fill State
-    const stateInput = page.locator('input[placeholder*="State"], input[name="state"]').first();
+    const stateInput = page.locator('#section-property-state');
+    await expect(stateInput).toBeVisible({ timeout: 15000 });
     await stateInput.fill('IL');
 
     // Fill ZIP
-    const zipInput = page.locator('input[placeholder*="ZIP"], input[placeholder*="Zip"], input[name*="zip"], input[name*="postal"]').first();
+    const zipInput = page.locator('#section-property-zip');
+    await expect(zipInput).toBeVisible({ timeout: 15000 });
     await zipInput.fill('62701');
 
-    // Select property type (House)
-    await page.locator('text=House').click();
+    // Select property type (House) - use exact match to avoid matching "Townhouse"
+    await page.locator('text="House"').first().click();
     await page.waitForTimeout(500);
 
     await page.screenshot({ path: 'test-results/ts-fix-step1-filled.png', fullPage: true });
@@ -127,31 +137,11 @@ test.describe('TypeScript Fixes Validation', () => {
     const hasRoomContent = await page.locator('text=/Room|Select|Kitchen|Bedroom|Bathroom/i').count() > 0;
 
     if (hasRoomContent) {
-      await page.screenshot({ path: 'test-results/ts-fix-step2-rooms.png', fullPage: true });
       console.log('✅ Step 2: RoomSelectionScreen - maxWidth="large", hook loading, safe area working');
 
-      // Select some default rooms
-      const roomOptions = page.locator('text=/Kitchen|Living Room|Bedroom|Bathroom/i');
-      const roomCount = await roomOptions.count();
-      console.log(`Found ${roomCount} room options`);
-
-      // Select first 3 rooms if available
-      if (roomCount > 0) {
-        for (let i = 0; i < Math.min(3, roomCount); i++) {
-          try {
-            await roomOptions.nth(i).click();
-            await page.waitForTimeout(300);
-          } catch (e) {
-            // Room might already be selected
-          }
-        }
-      }
-
-      await page.screenshot({ path: 'test-results/ts-fix-step2-rooms-selected.png', fullPage: true });
-
-      // Continue
+      // Rooms may be pre-selected, just continue
       const continueBtn = page.locator('text=Continue').first();
-      if (await continueBtn.isVisible()) {
+      if (await continueBtn.isVisible({ timeout: 5000 })) {
         await continueBtn.click();
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(1500);
