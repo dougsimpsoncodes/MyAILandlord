@@ -643,3 +643,36 @@ Guidance Applied:
 Quality Score: 6
 ---
 Context reset for branch: migration/clerk-to-supabase-auth
+[2025-11-16T15:53:07Z] Commit d8dedd0d3ddfed24586eb8cc2ea97639d5a2be47 successful
+Message: chore: sync learning log
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-11-16T16:42:49Z] Commit 8dcef6a6dacbd756224f8de9f08b97e0f7ae4d64 successful
+Message: fix: Playwright test selectors for React Native Web compatibility
+
+Updated e2e/typescript-fixes-validation.spec.ts with correct DOM selectors:
+- Property Name input: Use first() selector (no id/name/placeholder on web)
+- Address inputs: Use actual IDs from debug (#section-property-line1, etc.)
+- House button: Exact match to avoid "Townhouse" conflict
+- Simplified room selection to avoid timeout issues
+
+All 4 tests now passing (100% pass rate in 12.9s)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-11-16T16:42:54Z] Commit f33294f5ae6065adc265df0a22b633cd26620d77 successful
+Message: chore: remove debug test file
+
+Removed e2e/debug-selectors.spec.ts as selector debugging is complete.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

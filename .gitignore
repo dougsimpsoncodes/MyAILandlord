@@ -64,3 +64,4 @@ build
 # test artifacts
 test-results/
 playwright-report/
+coverage/
