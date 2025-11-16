@@ -20,7 +20,7 @@ import {
 describe('validateProfileData', () => {
   test('validates valid profile data', () => {
     const result = validateProfileData({
-      clerkUserId: 'user_123',
+      userId: 'user_123',
       email: 'test@example.com',
       name: 'John Doe',
       role: 'tenant',
@@ -41,7 +41,7 @@ describe('validateProfileData', () => {
 
   test('rejects empty required fields', () => {
     const result = validateProfileData({
-      clerkUserId: '',
+      userId: '',
       email: '',
       name: '',
     });
@@ -207,8 +207,8 @@ describe('validateMaintenanceRequestUpdate', () => {
 describe('validateMessageData', () => {
   test('validates valid message data', () => {
     const result = validateMessageData({
-      senderClerkId: 'user_123',
-      recipientClerkId: 'user_456',
+      senderId: 'user_123',
+      recipientId: 'user_456',
       content: 'Hello, how are you?',
       messageType: 'text',
     });
@@ -228,8 +228,8 @@ describe('validateMessageData', () => {
 
   test('rejects invalid message type', () => {
     const result = validateMessageData({
-      senderClerkId: 'user_123',
-      recipientClerkId: 'user_456',
+      senderId: 'user_123',
+      recipientId: 'user_456',
       content: 'Test message',
       messageType: 'video', // Invalid
     });
@@ -240,8 +240,8 @@ describe('validateMessageData', () => {
 
   test('rejects invalid attachment URL', () => {
     const result = validateMessageData({
-      senderClerkId: 'user_123',
-      recipientClerkId: 'user_456',
+      senderId: 'user_123',
+      recipientId: 'user_456',
       content: 'Test',
       attachmentUrl: 'not-a-url',
     });
@@ -330,7 +330,7 @@ describe('Sanitization Functions', () => {
 describe('validateAndSanitize', () => {
   test('combines validation and sanitization', () => {
     const data = {
-      clerkUserId: 'user_123',
+      userId: 'user_123',
       email: 'test@example.com',
       name: 'John Doe',
       role: 'tenant',
