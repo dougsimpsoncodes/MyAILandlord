@@ -33,7 +33,7 @@ export async function getMaintenanceRequests(
   try {
     const limit = opts.limit ?? 50;
     const offset = opts.offset ?? 0;
-    // Fetch maintenance requests using REST API with Clerk auth
+    // Fetch maintenance requests using REST API
     const requests = await restGet('maintenance_requests', {
       select: '*,profiles!tenant_id(name,email),properties(name,address)',
       order: 'created_at.desc',

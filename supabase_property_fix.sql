@@ -49,7 +49,7 @@ begin
   if new.landlord_id is null then
     select p.id into new.landlord_id
     from public.profiles p
-    where p.clerk_user_id = (select auth.jwt()->>'sub')
+    where p.id = auth.uid()
     limit 1;
   end if;
   return new;

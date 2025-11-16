@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/ClerkAuthContext';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';

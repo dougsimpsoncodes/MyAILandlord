@@ -3,28 +3,11 @@ const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 
 export interface TokenProvider { getToken: () => Promise<string | null> }
 
-interface WindowWithClerk extends Window {
-  Clerk?: {
-    session?: {
-      getToken?: (options: { template: string }) => Promise<string | null>;
-    };
-  };
-}
-
-async function authHeaders(tokenProvider?: TokenProvider, retries = 6, delayMs = 200): Promise<HeadersInit> {
-  // Prefer injected provider; fallback to window.Clerk for web to preserve compatibility
-  const getToken = async () => {
-    if (tokenProvider) return tokenProvider.getToken()
-    const w = (typeof window !== 'undefined' ? window : {}) as WindowWithClerk
-    return (await w?.Clerk?.session?.getToken?.({ template: 'supabase' })) ?? null
-  }
-
-  for (let i = 0; i < retries; i++) {
-    const t = await getToken()
-    if (t) return { apikey: anon, Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }
-    await new Promise(r => setTimeout(r, delayMs))
-  }
-  throw new Error('AUTH_NOT_READY')
+async function authHeaders(tokenProvider?: TokenProvider): Promise<HeadersInit> {
+  if (!tokenProvider) throw new Error('AUTH_NOT_READY')
+  const t = await tokenProvider.getToken()
+  if (!t) throw new Error('AUTH_NOT_READY')
+  return { apikey: anon, Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }
 }
 
 export async function restGet(path: string, qs: Record<string, string>, tokenProvider?: TokenProvider) {

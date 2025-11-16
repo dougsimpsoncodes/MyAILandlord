@@ -9,7 +9,7 @@ This comprehensive testing plan covers 160+ Playwright E2E tests across all crit
 
 ### Critical Path Tests (New Suite - 76 tests)
 1. **Authentication** (47 tests)
-   - Clerk Authentication: 13 tests
+  - Authentication: 13 tests
    - OAuth Flows: 14 tests
    - Account Creation: 9 tests
    - Session Management: 11 tests
@@ -64,7 +64,7 @@ This comprehensive testing plan covers 160+ Playwright E2E tests across all crit
 - [ ] Install Playwright browsers: `npx playwright install`
 - [ ] Create `.env.test` from `.env.test.example`
 - [ ] Fill in all required credentials
-- [ ] Create 2 test users in Clerk (see credentials section below)
+- [ ] Create 2 test users in Supabase Auth (see credentials section below)
 - [ ] Verify Supabase database is accessible
 - [ ] Start the app: `npm run web`
 - [ ] Verify app loads at http://localhost:8082
@@ -85,7 +85,7 @@ Role: Tenant
 
 #### Success Criteria:
 - ✅ App loads successfully
-- ✅ Clerk authentication widget appears
+- ✅ Authentication screen appears
 - ✅ Smoke test passes
 - ✅ No console errors
 
@@ -544,7 +544,7 @@ npm run web
 #### Issue: Authentication failures
 **Solution:**
 ```bash
-# Verify test user exists in Clerk
+# Verify test user exists in Supabase
 # Check .env.test credentials match
 # Clear browser storage: await authHelper.clearAuthState()
 ```
@@ -608,7 +608,7 @@ jobs:
 
 1. **Create Dedicated Test Environment:**
    - Separate Supabase project for testing
-   - Separate Clerk application for testing
+   - Separate Supabase project for testing
    - Isolated test data
 
 2. **Test Data Lifecycle:**

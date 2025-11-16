@@ -26,7 +26,7 @@ async function checkTenantPropertyLink() {
   const clerkUserId = 'user_30ODEM6qBd8hMikaCUGP59IClEG';
   const propertyId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
   
-  console.log(`👤 Clerk User ID: ${clerkUserId}`);
+  console.log(`👤 User ID: ${clerkUserId}`);
   console.log(`🏠 Property ID: ${propertyId}`);
   
   try {
@@ -34,8 +34,8 @@ async function checkTenantPropertyLink() {
     console.log('\n📋 Looking up profile...');
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, clerk_user_id, role')
-      .eq('clerk_user_id', clerkUserId)
+      .select('id, email, role')
+      .eq('id', clerkUserId)
       .single();
     
     if (profileError) {

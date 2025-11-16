@@ -20,7 +20,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
@@ -30,7 +30,6 @@ const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
   const { propertyData, areas, draftId } = route.params;
-  const { getToken } = useAuth();
   const api = useApiClient();
 
   // Initialize draft management

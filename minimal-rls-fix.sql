@@ -6,7 +6,7 @@
 DO $$
 BEGIN
   IF auth.jwt() ->> 'sub' IS NULL THEN
-    RAISE EXCEPTION 'CRITICAL: No JWT access - fix Supabase JWKS config for Clerk first';
+    RAISE EXCEPTION 'CRITICAL: No JWT access - fix Supabase JWKS config first';
   END IF;
   RAISE NOTICE 'JWT OK: %', auth.jwt() ->> 'sub';
 END $$;
@@ -21,14 +21,14 @@ DROP POLICY IF EXISTS profiles_insert_own ON profiles;
 DROP POLICY IF EXISTS profiles_update_own ON profiles;
 
 CREATE POLICY profiles_select_own ON profiles
-  FOR SELECT USING (clerk_user_id = auth.jwt() ->> 'sub');
+  FOR SELECT USING (id = auth.uid());
 
 CREATE POLICY profiles_insert_own ON profiles  
-  FOR INSERT WITH CHECK (clerk_user_id = auth.jwt() ->> 'sub');
+  FOR INSERT WITH CHECK (id = auth.uid());
 
 CREATE POLICY profiles_update_own ON profiles
-  FOR UPDATE USING (clerk_user_id = auth.jwt() ->> 'sub')
-  WITH CHECK (clerk_user_id = auth.jwt() ->> 'sub');
+  FOR UPDATE USING (id = auth.uid())
+  WITH CHECK (id = auth.uid());
 
 -- Ensure tenant can see their own tenant_property_links (required for maintenance request subqueries)
 DROP POLICY IF EXISTS tpl_select_landlord_or_self ON tenant_property_links;

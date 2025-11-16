@@ -552,3 +552,47 @@ Guidance Applied:
 Quality Score: 6
 ---
 Context reset for branch: migration/clerk-to-supabase-auth
+[2025-11-15T21:46:29Z] Commit e291b9dfd1e6630487fc605b034145f7e54ca9d2 successful
+Message: feat: migrate from Clerk to Supabase Auth
+
+BREAKING CHANGE: All existing users must re-register
+
+## Summary
+Complete migration from Clerk authentication to Supabase Auth including:
+- New SupabaseAuthContext replacing ClerkAuthContext
+- Updated all auth flows (login, signup, session management)
+- Database schema migration (removed clerk_user_id, added auth.users FK)
+- RLS policies updated to use auth.uid() instead of Clerk JWT claims
+- Removed @clerk/clerk-expo dependency
+
+## Code Changes
+- Created: src/context/SupabaseAuthContext.tsx
+- Updated: 11 files (App.tsx, LoginScreen, SignUpScreen, API client, etc.)
+- Removed: @clerk/clerk-expo from package.json
+
+## Database Changes
+- Migration 1: Remove clerk_user_id, add auth.users FK, create auto-profile trigger
+- Migration 2: Update all RLS policies to use auth.uid()
+
+## Documentation
+See CLERK_TO_SUPABASE_MIGRATION.md for complete details
+
+🤖 Generated with Claude Code
+https://claude.com/claude-code
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-11-16T02:36:55Z] Commit c6c6278e2f1e0bb371220154d9b35d0e2434eb36 successful
+Message: fix: update validation tests to use userId instead of clerkUserId
+
+- Replace clerkUserId with userId in validateProfileData tests
+- Completes migration from Clerk to Supabase Auth
+- Resolves final migration-related TypeScript errors
+
+Related changes:
+- Lines 23, 44, 333: clerkUserId → userId
+Guidance Applied: 
+Quality Score: 6
+---

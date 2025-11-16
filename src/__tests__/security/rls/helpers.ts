@@ -9,7 +9,6 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface TestUser {
   id: string;
-  clerkId: string;
   email: string;
   role: 'landlord' | 'tenant';
   token: string;
@@ -33,14 +32,14 @@ export interface TestMaintenanceRequest {
 }
 
 /**
- * Create a test landlord user with mocked Clerk authentication
+ * Create a test landlord user with mocked authentication
  */
 export async function createTestLandlord(email?: string): Promise<TestUser> {
   const testEmail = email || `landlord_${Date.now()}@test.com`;
-  const mockClerkId = `clerk_landlord_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const mockUserId = `user_landlord_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-  // Create mock JWT token (in real tests, this would come from Clerk)
-  const mockToken = createMockJWT(mockClerkId, 'landlord');
+  // Create mock JWT token
+  const mockToken = createMockJWT(mockUserId, 'landlord');
 
   // Create Supabase client with mocked auth
   const supabaseClient = createClient(
@@ -59,10 +58,10 @@ export async function createTestLandlord(email?: string): Promise<TestUser> {
   const { data: profile, error } = await supabaseClient
     .from('profiles')
     .insert({
-      clerk_user_id: mockClerkId,
+      id: mockUserId,
       email: testEmail,
       role: 'landlord',
-      name: `Test Landlord ${mockClerkId.slice(-6)}`,
+      name: `Test Landlord ${mockUserId.slice(-6)}`,
     })
     .select()
     .single();
@@ -73,7 +72,6 @@ export async function createTestLandlord(email?: string): Promise<TestUser> {
 
   return {
     id: profile.id,
-    clerkId: mockClerkId,
     email: testEmail,
     role: 'landlord',
     token: mockToken,
@@ -82,13 +80,13 @@ export async function createTestLandlord(email?: string): Promise<TestUser> {
 }
 
 /**
- * Create a test tenant user with mocked Clerk authentication
+ * Create a test tenant user with mocked authentication
  */
 export async function createTestTenant(email?: string): Promise<TestUser> {
   const testEmail = email || `tenant_${Date.now()}@test.com`;
-  const mockClerkId = `clerk_tenant_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const mockUserId = `user_tenant_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-  const mockToken = createMockJWT(mockClerkId, 'tenant');
+  const mockToken = createMockJWT(mockUserId, 'tenant');
 
   const supabaseClient = createClient(
     process.env.EXPO_PUBLIC_SUPABASE_URL || 'http://localhost:54321',
@@ -105,10 +103,10 @@ export async function createTestTenant(email?: string): Promise<TestUser> {
   const { data: profile, error } = await supabaseClient
     .from('profiles')
     .insert({
-      clerk_user_id: mockClerkId,
+      id: mockUserId,
       email: testEmail,
       role: 'tenant',
-      name: `Test Tenant ${mockClerkId.slice(-6)}`,
+      name: `Test Tenant ${mockUserId.slice(-6)}`,
     })
     .select()
     .single();
@@ -119,7 +117,6 @@ export async function createTestTenant(email?: string): Promise<TestUser> {
 
   return {
     id: profile.id,
-    clerkId: mockClerkId,
     email: testEmail,
     role: 'tenant',
     token: mockToken,
@@ -236,7 +233,7 @@ export async function assertCannotAccess(
   if (data !== null) {
     throw new Error(
       message ||
-        `RLS VIOLATION: ${user.role} ${user.clerkId} was able to access ${table} record ${recordId}`
+        `RLS VIOLATION: ${user.role} ${user.id} was able to access ${table} record ${recordId}`
     );
   }
 
@@ -264,7 +261,7 @@ export async function assertCanAccess(
   if (error || !data) {
     throw new Error(
       message ||
-        `RLS ERROR: ${user.role} ${user.clerkId} could not access ${table} record ${recordId} (expected access)`
+        `RLS ERROR: ${user.role} ${user.id} could not access ${table} record ${recordId} (expected access)`
     );
   }
 }
@@ -283,7 +280,7 @@ export async function assertCannotInsert(
   if (!error) {
     throw new Error(
       message ||
-        `RLS VIOLATION: ${user.role} ${user.clerkId} was able to INSERT into ${table} (should be blocked)`
+        `RLS VIOLATION: ${user.role} ${user.id} was able to INSERT into ${table} (should be blocked)`
     );
   }
 
@@ -308,7 +305,7 @@ export async function assertCannotUpdate(
   if (!error) {
     throw new Error(
       message ||
-        `RLS VIOLATION: ${user.role} ${user.clerkId} was able to UPDATE ${table} record ${recordId} (should be blocked)`
+        `RLS VIOLATION: ${user.role} ${user.id} was able to UPDATE ${table} record ${recordId} (should be blocked)`
     );
   }
 }
@@ -330,7 +327,7 @@ export async function assertCannotDelete(
   if (!error) {
     throw new Error(
       message ||
-        `RLS VIOLATION: ${user.role} ${user.clerkId} was able to DELETE ${table} record ${recordId} (should be blocked)`
+        `RLS VIOLATION: ${user.role} ${user.id} was able to DELETE ${table} record ${recordId} (should be blocked)`
     );
   }
 }
@@ -341,7 +338,7 @@ export async function assertCannotDelete(
 export async function cleanupTestUser(user: TestUser): Promise<void> {
   // In a real implementation, would delete all related records
   // For now, just log cleanup
-  console.log(`Cleanup: ${user.role} ${user.clerkId}`);
+  console.log(`Cleanup: ${user.role} ${user.id}`);
 
   // Note: Supabase CASCADE deletes should handle most cleanup
   // But we may need to manually clean up some records
@@ -350,15 +347,15 @@ export async function cleanupTestUser(user: TestUser): Promise<void> {
 
 /**
  * Create a mock JWT token for testing
- * In production, this would come from Clerk
+ * In production, this would come from Supabase Auth
  */
-function createMockJWT(clerkUserId: string, role: string): string {
+function createMockJWT(userId: string, role: string): string {
   // This is a simplified mock - real implementation would use proper JWT library
   // For testing purposes, we just need the claims structure
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64');
   const payload = Buffer.from(
     JSON.stringify({
-      sub: clerkUserId,
+      sub: userId,
       role: role,
       aud: 'supabase',
       exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now

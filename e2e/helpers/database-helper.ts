@@ -36,7 +36,7 @@ export class DatabaseHelper {
 
   /**
    * Clean up test data for a specific user
-   * @param userId - Clerk user ID
+   * @param userId - Supabase auth user ID
    */
   async cleanupUserData(userId: string): Promise<boolean> {
     if (!this.supabase) {
@@ -67,7 +67,7 @@ export class DatabaseHelper {
       await this.supabase
         .from('profiles')
         .delete()
-        .eq('clerk_user_id', userId);
+        .eq('id', userId);
 
       return true;
     } catch (error) {
@@ -78,7 +78,7 @@ export class DatabaseHelper {
 
   /**
    * Create a test profile
-   * @param userId - Clerk user ID
+   * @param userId - Supabase auth user ID
    * @param role - User role
    * @param name - User name
    */
@@ -89,7 +89,7 @@ export class DatabaseHelper {
       const { error } = await this.supabase
         .from('profiles')
         .insert({
-          clerk_user_id: userId,
+          id: userId,
           role,
           name,
           email,
@@ -110,7 +110,7 @@ export class DatabaseHelper {
 
   /**
    * Create a test property
-   * @param landlordId - Landlord's Clerk user ID
+   * @param landlordId - Landlord's Supabase user ID
    * @param propertyData - Property information
    */
   async createTestProperty(landlordId: string, propertyData: {
@@ -147,7 +147,7 @@ export class DatabaseHelper {
 
   /**
    * Create a test maintenance request
-   * @param tenantId - Tenant's Clerk user ID
+   * @param tenantId - Tenant's Supabase user ID
    * @param propertyId - Property ID
    * @param requestData - Maintenance request information
    */
@@ -186,7 +186,7 @@ export class DatabaseHelper {
 
   /**
    * Get user profile
-   * @param userId - Clerk user ID
+   * @param userId - Supabase user ID
    */
   async getUserProfile(userId: string): Promise<any | null> {
     if (!this.supabase) return null;
@@ -195,7 +195,7 @@ export class DatabaseHelper {
       const { data, error } = await this.supabase
         .from('profiles')
         .select('*')
-        .eq('clerk_user_id', userId)
+        .eq('id', userId)
         .single();
 
       if (error) {
@@ -212,7 +212,7 @@ export class DatabaseHelper {
 
   /**
    * Get maintenance requests for a user
-   * @param userId - Clerk user ID
+   * @param userId - Supabase user ID
    * @param role - User role (tenant or landlord)
    */
   async getMaintenanceRequests(userId: string, role: 'tenant' | 'landlord'): Promise<any[]> {
@@ -301,7 +301,7 @@ export class DatabaseHelper {
 
   /**
    * Verify RLS policies are working
-   * @param userId - Clerk user ID
+   * @param userId - Supabase user ID
    */
   async verifyRLSPolicies(userId: string): Promise<{ working: boolean; errors: string[] }> {
     if (!this.supabase) {
@@ -315,7 +315,7 @@ export class DatabaseHelper {
       const { data: otherUserData } = await this.supabase
         .from('profiles')
         .select('*')
-        .neq('clerk_user_id', userId)
+        .neq('id', userId)
         .limit(1);
 
       if (otherUserData && otherUserData.length > 0) {

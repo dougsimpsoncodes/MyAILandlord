@@ -59,8 +59,7 @@ async function loadState(userId: string) {
   // Seed data if empty
   if (!profile) {
     profile = {
-      id: 'uuid-profile-1',
-      clerk_user_id: userId,
+      id: userId,
       email: 'dev@example.com',
       name: 'Dev User',
       avatar_url: undefined as any,
@@ -73,7 +72,6 @@ async function loadState(userId: string) {
   // Secondary tenant profile (for messaging/tests)
   const tenantProfile: Profile = {
     id: 'uuid-tenant-1',
-    clerk_user_id: 'tenant_user_1',
     email: 'tenant@example.com',
     name: 'Test Tenant',
     avatar_url: undefined as any,
@@ -218,11 +216,10 @@ export function createMockApiClient(userId: string): UseApiClientReturn {
       await loadState(userId)
       return profile
     },
-    async createUserProfile(data: Omit<CreateProfileData, 'clerkUserId'>) {
+    async createUserProfile(data: Omit<CreateProfileData, 'userId'>) {
       await loadState(userId)
       profile = {
-        id: profile?.id || 'uuid-profile-1',
-        clerk_user_id: userId,
+        id: profile?.id || userId,
         email: data.email,
         name: data.name,
         avatar_url: data.avatarUrl,
@@ -316,12 +313,12 @@ export function createMockApiClient(userId: string): UseApiClientReturn {
       await loadState(userId)
       return messages
     },
-    async sendMessage(data: Omit<CreateMessageData, 'senderClerkId'>) {
+    async sendMessage(data: Omit<CreateMessageData, 'senderId'>) {
       await loadState(userId)
       const msg: Message = {
         id: `uuid-msg-${messages.length + 1}`,
         sender_id: profile?.id || 'uuid-tenant-1',
-        recipient_id: data.recipientClerkId,
+        recipient_id: data.recipientId!,
         content: data.content,
         message_type: (data.messageType || 'text') as any,
         attachment_url: data.attachmentUrl,

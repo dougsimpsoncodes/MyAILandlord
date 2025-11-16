@@ -2,7 +2,7 @@
 
 # My AI Landlord
 
-A secure React Native + Expo app for streamlined maintenance management between landlords and tenants, powered by AI-guided issue reporting. Built with enterprise-grade security using Clerk authentication and Supabase backend.
+A secure React Native + Expo app for streamlined maintenance management between landlords and tenants, powered by AI-guided issue reporting. Built with enterprise-grade security using Supabase Auth and Supabase backend.
 
 ## 🚀 Quick Start
 
@@ -19,7 +19,7 @@ npm install
 
 # Copy environment template and configure
 cp .env.example .env
-# Edit .env with your Clerk and Supabase credentials
+# Edit .env with your Supabase credentials
 
 # Start development server
 npx expo start
@@ -27,8 +27,7 @@ npx expo start
 
 ### Security Setup
 Before first run, ensure you have:
-1. Clerk publishable key configured
-2. Supabase URL and anon key configured
+1. Supabase URL and anon key configured
 3. Run security audit: `./scripts/security-audit.sh`
 
 ## 📱 Features
@@ -50,23 +49,23 @@ Before first run, ensure you have:
 ## 🏗️ Architecture
 
 ### Security Architecture
-- **Authentication**: Clerk for secure user management
+- **Authentication**: Supabase Auth for secure user management
 - **Database**: Supabase PostgreSQL with Row Level Security (RLS)
 - **Storage**: Supabase Storage with file validation
 - **Edge Functions**: Supabase Edge Functions for AI processing
 
 ### Security Hardening (Stage 1)
-- **Clerk↔Supabase JWT Setup**: Authentication is handled by Clerk, which generates a JWT that is passed to Supabase. The JWT is signed with an RS256 key and contains the user's role and other metadata. The `aud` claim is set to the Supabase project reference.
+- **Supabase Auth JWT**: Authentication is handled by Supabase. The JWT is managed by the Supabase client with secure session handling.
 - **Storage Privacy via Signed URLs**: All file storage is private. Files can only be accessed via a signed URL with a short-lived TTL (1 hour). The application generates these signed URLs on demand.
 - **RLS Enablement + Isolation Testing**: Row Level Security is enabled on all tables to ensure that users can only access their own data. The RLS policies rely on the `auth.jwt()->>'sub'` matching the `profiles.clerk_user_id`. A smoke test is included in the CI pipeline to verify that RLS is working correctly.
 
 ### Navigation Structure
-- **AuthStack**: Welcome → Role Selection → Login (Clerk)
+- **AuthStack**: Welcome → Role Selection → Login
 - **MainStack**: Role-based navigation with secure route protection
 
 ### Key Screens
 **Shared:**
-- WelcomeScreen, LoginScreen (Clerk OAuth)
+- WelcomeScreen, LoginScreen (Supabase Auth)
 
 **Tenant Flow:**
 - HomeScreen → ReportIssueScreen → PropertyInfoScreen → CommunicationHub
@@ -95,7 +94,7 @@ Before first run, ensure you have:
 - **UI Components**: Custom design system with error boundaries
 
 ### Backend & Services
-- **Authentication**: Clerk (replaces Firebase Auth)
+- **Authentication**: Supabase Auth
 - **Database**: Supabase PostgreSQL with RLS policies
 - **Storage**: Supabase Storage with file validation
 - **AI Processing**: Supabase Edge Functions + OpenAI
@@ -116,7 +115,7 @@ src/
 │   ├── ErrorBoundary.tsx    # Error boundary components
 │   └── LoadingSpinner.tsx   # Loading state components
 ├── context/
-│   ├── ClerkAuthContext.tsx # Clerk authentication provider
+│   ├── SupabaseAuthContext.tsx # Supabase authentication provider
 │   └── RoleContext.tsx      # Role management
 ├── hooks/
 │   ├── useErrorHandling.ts  # Error handling hooks
@@ -125,7 +124,7 @@ src/
 ├── screens/
 │   ├── tenant/             # Tenant-specific screens
 │   ├── landlord/           # Landlord-specific screens
-│   ├── LoginScreen.tsx     # Clerk authentication
+│   ├── LoginScreen.tsx     # Supabase authentication
 │   └── WelcomeScreen.tsx   # App entry point
 ├── services/
 │   ├── api/
@@ -160,7 +159,7 @@ scripts/
 ## 🔒 Security Features
 
 ### Authentication & Authorization
-- **Clerk Integration**: Secure OAuth with Google Sign-In
+- **Auth Integration**: Secure email/password and optional OAuth via Supabase
 - **Token Management**: Encrypted token storage with expo-secure-store
 - **Session Security**: Automatic refresh and secure session handling
 - **Role-Based Access**: Tenant/landlord permissions with database isolation
@@ -285,7 +284,7 @@ Built with Claude Code for rapid development and professional quality output.
 <!-- GEMINI_LEARNINGS_START -->
 <!-- Do not edit this section manually. It is managed by the /update-docs command. -->
 **2025-07-26 15:30 PM**
-- **Major Migration:** Complete architectural migration from Firebase to Supabase + Clerk
+- **Major Migration:** Complete architectural migration from Clerk to Supabase Auth
 - **Security:** Implemented enterprise-grade security with comprehensive input validation
 - **Type Safety:** Eliminated all TypeScript 'any' types with proper interfaces
 - **Error Handling:** Added comprehensive error boundaries and loading states

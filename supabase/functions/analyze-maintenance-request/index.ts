@@ -1,6 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': Deno.env.get('DENO_ENV') === 'development' ? 'http://localhost:8081' : 'https://myailandlord.app',
@@ -30,7 +29,7 @@ function rateLimited(key: string) {
 interface RequestBody {
   description: string
   images?: string[]
-  clerkUserId: string
+  userId: string
 }
 
 serve(async (req) => {
@@ -40,38 +39,20 @@ serve(async (req) => {
   }
 
   try {
-    // Require Authorization header
+    // Require Authorization header (Supabase user JWT)
     const authHeader = req.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
     const token = authHeader.substring(7)
 
-    // Verify JWT signature against Clerk JWKS
-    const instance = Deno.env.get('CLERK_INSTANCE')
-    const jwksUrl = Deno.env.get('CLERK_JWKS_URL') || (instance ? `https://${instance}.clerk.accounts.dev/.well-known/jwks.json` : 'https://api.clerk.dev/v1/jwks')
-    const issuer = Deno.env.get('CLERK_ISSUER') || (instance ? `https://${instance}.clerk.accounts.dev` : undefined)
-    const audience = Deno.env.get('SUPABASE_PROJECT_REF')
-
-    let sub: string | undefined
-    try {
-      const JWKS = jose.createRemoteJWKSet(new URL(jwksUrl))
-      const { payload } = await jose.jwtVerify(token, JWKS, {
-        ...(issuer ? { issuer } : {}),
-        ...(audience ? { audience } : {}),
-      } as any)
-      sub = (payload?.sub as string | undefined) || undefined
-    } catch (_err) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-    }
-
     // Apply rate limiting per user (sub) or token hash fallback
-    const key = sub || `anon:${token.slice(0,16)}`
+    const key = `user:${token.slice(0,16)}`
     if (rateLimited(key)) {
       return new Response(JSON.stringify({ error: 'Too Many Requests' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const { description, images, clerkUserId } = await req.json() as RequestBody
+    const { description, images, userId } = await req.json() as RequestBody
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -88,11 +69,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Verify user exists
+    // Verify profile exists for provided userId
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
-      .eq('clerk_user_id', clerkUserId)
+      .eq('id', userId)
       .single()
 
     if (!profile) {

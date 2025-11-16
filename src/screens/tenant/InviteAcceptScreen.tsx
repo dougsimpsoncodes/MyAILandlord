@@ -5,7 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
@@ -22,7 +22,7 @@ const InviteAcceptScreen = () => {
   const navigation = useNavigation<InviteAcceptNavigationProp>();
   const route = useRoute();
   const { propertyCode } = route.params as RouteParams;
-  const { userId } = useAuth();
+  const { user } = useAppAuth();
   const apiClient = useApiClient();
   const responsive = useResponsive();
   
@@ -35,7 +35,7 @@ const InviteAcceptScreen = () => {
   }, []);
 
   const validateInviteCode = async () => {
-    if (!apiClient || !userId) {
+    if (!apiClient || !user) {
       setLoading(false);
       return;
     }

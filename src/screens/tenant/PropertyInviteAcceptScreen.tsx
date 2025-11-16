@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -29,8 +29,7 @@ interface RouteParams {
 const PropertyInviteAcceptScreen = () => {
   const navigation = useNavigation<PropertyInviteAcceptNavigationProp>();
   const route = useRoute();
-  const { userId, getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useAppAuth();
   const { supabase } = useSupabaseWithAuth();
   
   // Extract propertyId from route params or query parameters
@@ -99,7 +98,7 @@ const PropertyInviteAcceptScreen = () => {
   // Set tenant role as soon as user is authenticated via invite link
   useEffect(() => {
     const setTenantRoleOnAuth = async () => {
-      if (userId) {
+      if (user) {
         log.info('🎯 User authenticated via invite link - setting role to tenant');
         try {
           await setUserRole('tenant');
@@ -109,9 +108,9 @@ const PropertyInviteAcceptScreen = () => {
         }
       }
     };
-    
+
     setTenantRoleOnAuth();
-  }, [userId]);
+  }, [user]);
 
   const fetchPropertyDetails = async () => {
     try {
@@ -139,16 +138,15 @@ const PropertyInviteAcceptScreen = () => {
   };
 
   const ensureProfileExists = async () => {
-    if (!user || !userId) {
+    if (!user || !apiClient) {
       throw new Error('User not authenticated');
     }
 
-    if (!apiClient || !user) throw new Error('User not authenticated');
     const existing = await apiClient.getUserProfile();
     if (!existing) {
-      const email = user.primaryEmailAddress?.emailAddress || '';
-      const name = user.fullName || user.username || '';
-      const avatarUrl = user.imageUrl || '';
+      const email = user.email;
+      const name = user.name;
+      const avatarUrl = user.avatar || '';
       await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
       log.info('👤 Tenant profile created during invite acceptance');
       await setUserRole('tenant');
@@ -157,15 +155,15 @@ const PropertyInviteAcceptScreen = () => {
   };
 
   const handleAcceptInvite = async () => {
-    log.info('🎯 Accept button clicked!', { hasProperty: !!property, hasUser: !!userId });
-    
+    log.info('🎯 Accept button clicked!', { hasProperty: !!property, hasUser: !!user });
+
     if (!property) {
       Alert.alert('Error', 'Property information is missing. Please try again.');
       return;
     }
 
     // If user is not authenticated, redirect to signup with invite context
-    if (!userId) {
+    if (!user) {
       log.info('🔄 Redirecting to signup - user not authenticated');
       navigation.navigate('SignUp');
       return;

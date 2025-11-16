@@ -39,7 +39,7 @@ Perfect for new developers joining the project:
 3. **[SUPABASE_SETUP_GUIDE.md](./SUPABASE_SETUP_GUIDE.md)**
    - Supabase project creation
    - Database schema setup
-   - Integration with Clerk authentication
+ 
 
 ### 💻 Development
 Essential for active development:
@@ -178,7 +178,7 @@ All documentation includes a "Project Learnings & Changelog" section managed by 
 
 **Authentication:**
 - Implementation: [API_DOCUMENTATION.md](./API_DOCUMENTATION.md#authentication-api)
-- Setup: [SETUP_GUIDE.md](./SETUP_GUIDE.md#step-2-clerk-authentication-setup)
+- Setup: [SUPABASE_SETUP_GUIDE.md](./SUPABASE_SETUP_GUIDE.md)
 - Security: [SECURITY.md](./SECURITY.md#authentication--authorization)
 
 **Database:**

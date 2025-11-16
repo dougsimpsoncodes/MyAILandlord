@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import Constants from 'expo-constants';
-import { useAuth } from '@clerk/clerk-expo';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
@@ -38,7 +38,7 @@ const getCategoryIcon = (category: string) => {
 
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn } = useAppAuth();
   const apiClient = useApiClient();
   const [issueDescription, setIssueDescription] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -79,23 +79,7 @@ const ReportIssueScreen = () => {
     try {
       console.log('=== LOADING TENANT PROPERTIES ===');
       
-      // Debug: Check Clerk token structure
-      if (isSignedIn) {
-        const token = await getToken();
-        if (token) {
-          console.log('=== CLERK TOKEN DEBUG ===');
-          // Decode JWT to check claims (for debugging only)
-          try {
-            const [header, payload, signature] = token.split('.');
-            const decodedPayload = JSON.parse(atob(payload));
-            console.log('JWT claims:', decodedPayload);
-            console.log('Has role claim?', 'role' in decodedPayload);
-            console.log('Role value:', decodedPayload.role);
-          } catch (e) {
-            console.log('Could not decode JWT:', e);
-          }
-        }
-      }
+      // Auth debug removed in Supabase migration
       
       const properties = await apiClient.getTenantProperties();
       console.log('API returned properties:', properties);

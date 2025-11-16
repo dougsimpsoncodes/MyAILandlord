@@ -106,7 +106,7 @@ function mapSupabaseUserToAppUser(user: User): AppUser {
   };
 }
 
-// Hook to use auth context (matches ClerkAuthContext interface)
+// Hook to use auth context
 export function useAppAuth() {
   const context = useContext(AuthContext);
   if (!context) {

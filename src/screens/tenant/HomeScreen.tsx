@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/ClerkAuthContext';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { UserProfile } from '../../components/shared/UserProfile';
 

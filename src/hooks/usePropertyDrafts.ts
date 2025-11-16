@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import log from '../lib/log';
 import { PropertySetupState } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
-import { useAppAuth } from '../context/ClerkAuthContext';
+import { useAppAuth } from '../context/SupabaseAuthContext';
 
 interface UsePropertyDraftsReturn {
   drafts: PropertySetupState[];

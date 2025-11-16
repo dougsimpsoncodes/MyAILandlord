@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/TenantStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -18,8 +18,7 @@ type PropertyCodeEntryNavigationProp = NativeStackNavigationProp<TenantStackPara
 
 const PropertyCodeEntryScreen = () => {
   const navigation = useNavigation<PropertyCodeEntryNavigationProp>();
-  const { userId, getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useAppAuth();
   const apiClient = useApiClient();
   const responsive = useResponsive();
   
@@ -28,14 +27,14 @@ const PropertyCodeEntryScreen = () => {
   const [error, setError] = useState('');
 
   const ensureProfileExists = async () => {
-    if (!user || !userId || !apiClient) {
+    if (!user || !apiClient) {
       throw new Error('User not authenticated');
     }
     const profile = await apiClient.getUserProfile();
     if (!profile) {
-      const email = user.primaryEmailAddress?.emailAddress || '';
-      const name = user.fullName || user.username || '';
-      const avatarUrl = user.imageUrl || '';
+      const email = user.email;
+      const name = user.name;
+      const avatarUrl = user.avatar || '';
       await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
       log.info('Profile created for tenant via code entry');
     }
@@ -47,7 +46,7 @@ const PropertyCodeEntryScreen = () => {
       return;
     }
 
-    if (!apiClient || !userId) {
+    if (!apiClient || !user) {
       Alert.alert('Error', 'Authentication required. Please sign in again.');
       return;
     }

@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import AuthStack from './navigation/AuthStack';
 import MainStack from './navigation/MainStack';
-import { useAppAuth } from './context/ClerkAuthContext';
+import { useAppAuth } from './context/SupabaseAuthContext';
 import { RoleContext } from './context/RoleContext';
 import { useProfileSync } from './hooks/useProfileSync';
 import { LoadingScreen } from './components/LoadingSpinner';
@@ -19,7 +19,7 @@ const AppNavigator = () => {
   // Debug logging (centralized)
   log.info('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
   
-  // Sync Clerk user with Supabase profile
+  // Sync user with Supabase profile
   useProfileSync();
 
   // Get initial URL for deep link handling

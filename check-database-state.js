@@ -63,7 +63,7 @@ async function checkDatabaseState() {
   console.log('\n3️⃣ Checking existing profiles...');
   const { data: profiles, error: profileError } = await supabase
     .from('profiles')
-    .select('id, name, role, clerk_user_id')
+    .select('id, name, role, email')
     .limit(5);
 
   if (profileError) {

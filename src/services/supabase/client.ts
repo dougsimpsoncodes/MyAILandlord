@@ -11,7 +11,7 @@ type Announcement = Database['public']['Tables']['announcements']['Row'];
 
 export class SupabaseClient {
   private client: SupabaseClientType<Database>;
-  private currentClerkUserId: string | null = null;
+  private currentUserId: string | null = null;
 
   constructor(client?: SupabaseClientType<Database>) {
     this.client = client || supabase;
@@ -23,24 +23,23 @@ export class SupabaseClient {
   }
 
   // Method to set the RLS context for the current user
-  private async setRLSContext(clerkUserId: string) {
-    if (this.currentClerkUserId !== clerkUserId) {
-      // NOTE: With native Clerk integration, JWT tokens are automatically sent via accessToken callback
-      // No need to manually set RLS context - auth.jwt() will be available in RLS policies
-      log.info('RLS context set for Clerk user:', { clerkUserId });
-      this.currentClerkUserId = clerkUserId;
+  private async setRLSContext(userId: string) {
+    if (this.currentUserId !== userId) {
+      // With Supabase Auth, JWT is attached automatically by client configuration
+      log.info('RLS context set for user:', { userId });
+      this.currentUserId = userId;
     }
   }
 
   // Profile methods
-  async getProfile(clerkUserId: string): Promise<Profile | null> {
+  async getProfile(userId: string): Promise<Profile | null> {
     // Set RLS context for this user
-    await this.setRLSContext(clerkUserId);
+    await this.setRLSContext(userId);
     
     const { data, error } = await this.client
       .from('profiles')
       .select('*')
-      .eq('clerk_user_id', clerkUserId)
+      .eq('id', userId)
       .single();
 
     if (error) {
@@ -54,7 +53,7 @@ export class SupabaseClient {
   }
 
   async createProfile(profileData: {
-    clerkUserId: string;
+    userId: string;
     email: string;
     name?: string;
     avatarUrl?: string;
@@ -63,7 +62,7 @@ export class SupabaseClient {
     const { data, error } = await this.client
       .from('profiles')
       .insert({
-        clerk_user_id: profileData.clerkUserId, // Explicitly set clerk_user_id
+        id: profileData.userId,
         email: profileData.email,
         name: profileData.name || null,
         avatar_url: profileData.avatarUrl || null,
@@ -79,7 +78,7 @@ export class SupabaseClient {
     return data;
   }
 
-  async updateProfile(clerkUserId: string, updates: {
+  async updateProfile(userId: string, updates: {
     name?: string;
     role?: 'tenant' | 'landlord';
     avatarUrl?: string;
@@ -92,7 +91,7 @@ export class SupabaseClient {
         ...(updates.avatarUrl !== undefined && { avatar_url: updates.avatarUrl }),
         updated_at: new Date().toISOString(),
       })
-      .eq('clerk_user_id', clerkUserId)
+      .eq('id', userId)
       .select()
       .single();
 
@@ -105,14 +104,14 @@ export class SupabaseClient {
 
   // Property methods
   async getUserProperties(
-    clerkUserId: string,
+    userId: string,
     opts?: { limit?: number; offset?: number }
   ): Promise<Property[]> {
     const limit = Math.max(1, Math.min(opts?.limit ?? 20, 200));
     const offset = Math.max(0, opts?.offset ?? 0);
     const to = offset + limit - 1;
     // First get the user's profile to determine their role
-    const profile = await this.getProfile(clerkUserId);
+    const profile = await this.getProfile(userId);
     if (!profile) {
       throw new Error('User profile not found');
     }
@@ -157,8 +156,8 @@ export class SupabaseClient {
   }
 
   // Maintenance request methods
-  async getMaintenanceRequests(clerkUserId: string): Promise<MaintenanceRequest[]> {
-    const profile = await this.getProfile(clerkUserId);
+  async getMaintenanceRequests(userId: string): Promise<MaintenanceRequest[]> {
+    const profile = await this.getProfile(userId);
     if (!profile) {
       throw new Error('User profile not found');
     }
@@ -182,7 +181,7 @@ export class SupabaseClient {
       query = query.eq('tenant_id', profile.id);
     } else if (profile.role === 'landlord') {
       // Get requests for landlord's properties
-      const properties = await this.getUserProperties(clerkUserId);
+      const properties = await this.getUserProperties(userId);
       const propertyIds = properties.map(p => p.id);
       
       if (propertyIds.length === 0) {
@@ -288,8 +287,8 @@ export class SupabaseClient {
   }
 
   // Message methods
-  async getMessages(clerkUserId: string, otherUserId?: string): Promise<Message[]> {
-    const profile = await this.getProfile(clerkUserId);
+  async getMessages(userId: string, otherUserId?: string): Promise<Message[]> {
+    const profile = await this.getProfile(userId);
     if (!profile) {
       throw new Error('User profile not found');
     }
@@ -332,15 +331,15 @@ export class SupabaseClient {
   }
 
   async sendMessage(messageData: {
-    senderClerkId: string;
-    recipientClerkId: string;
+    senderId: string;
+    recipientId: string;
     content: string;
     messageType?: 'text' | 'image' | 'file';
     attachmentUrl?: string;
     propertyId?: string;
   }): Promise<Message> {
-    const senderProfile = await this.getProfile(messageData.senderClerkId);
-    const recipientProfile = await this.getProfile(messageData.recipientClerkId);
+    const senderProfile = await this.getProfile(messageData.senderId);
+    const recipientProfile = await this.getProfile(messageData.recipientId);
 
     if (!senderProfile || !recipientProfile) {
       throw new Error('Sender or recipient profile not found');
@@ -368,7 +367,7 @@ export class SupabaseClient {
   }
 
   // Real-time subscriptions
-  subscribeToMaintenanceRequests(clerkUserId: string, callback: (payload: RealtimePostgresChangesPayload<MaintenanceRequest>) => void) {
+  subscribeToMaintenanceRequests(userId: string, callback: (payload: RealtimePostgresChangesPayload<MaintenanceRequest>) => void) {
     return this.client
       .channel('maintenance_requests')
       .on('postgres_changes',
@@ -382,7 +381,7 @@ export class SupabaseClient {
       .subscribe();
   }
 
-  subscribeToMessages(clerkUserId: string, callback: (payload: RealtimePostgresChangesPayload<Message>) => void) {
+  subscribeToMessages(userId: string, callback: (payload: RealtimePostgresChangesPayload<Message>) => void) {
     return this.client
       .channel('messages')
       .on('postgres_changes',

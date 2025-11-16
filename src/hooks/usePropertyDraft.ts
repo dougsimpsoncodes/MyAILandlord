@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import log from '../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, InventoryItem } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
-import { useAppAuth } from '../context/ClerkAuthContext';
+import { useAppAuth } from '../context/SupabaseAuthContext';
 
 interface UsePropertyDraftOptions {
   autoSaveDelay?: number; // Delay in milliseconds before auto-save triggers

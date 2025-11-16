@@ -175,13 +175,13 @@ describe('Profile Role Enforcement', () => {
     );
   });
 
-  test('User cannot UPDATE another user clerk_user_id (identity theft)', async () => {
+  test('User cannot UPDATE another user\'s profile fields (identity theft)', async () => {
     await assertCannotUpdate(
       tenant,
       'profiles',
       landlord.id,
-      { clerk_user_id: tenant.clerkId },
-      'RLS VIOLATION: User modified another user clerk_user_id'
+      { email: `hijack_${Date.now()}@test.com` },
+      'RLS VIOLATION: User modified another user\'s profile'
     );
   });
 });

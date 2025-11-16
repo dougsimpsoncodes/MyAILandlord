@@ -1,5 +1,4 @@
 import { SupabaseClient } from '../supabase/client';
-import { withUserContext } from '../supabase/auth-helper';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
 import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
@@ -45,7 +44,7 @@ const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL ||
 
 // Hook for use in components - all API logic is contained within this hook
 export function useApiClient(): UseApiClientReturn | null {
-  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1' || process.env.NODE_ENV === 'test';
   const { user } = useAppAuth();
   const { supabase: supabaseClient, getAccessToken } = useSupabaseWithAuth();
   const userId = user?.id;
@@ -259,7 +258,7 @@ export function useApiClient(): UseApiClientReturn | null {
 
       // Use the Supabase client directly (with proper JWT token transmission)
       log.info('=== DIRECT SUPABASE INSERT DEBUG ===');
-      log.info('Profile:', { id: profile.id, clerk_user_id: profile.clerk_user_id, role: profile.role });
+      log.info('Profile:', { id: profile.id, role: profile.role });
       log.info('Request data:', {
         tenant_id: profile.id,
         property_id: validatedData.propertyId,
@@ -580,7 +579,7 @@ export function useApiClient(): UseApiClientReturn | null {
       const client = getSupabaseClient();
       const { data, error } = await client.client.rpc('validate_property_code', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
-        tenant_clerk_id: userId
+        tenant_id: (await client.getProfile(userId))?.id
       });
 
       if (error) {
@@ -603,7 +602,7 @@ export function useApiClient(): UseApiClientReturn | null {
       const client = getSupabaseClient();
       const { data, error } = await client.client.rpc('link_tenant_to_property', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
-        tenant_clerk_id: userId,
+        tenant_id: (await client.getProfile(userId))?.id,
         unit_number: unitNumber ? sanitizeString(unitNumber) : null
       });
 

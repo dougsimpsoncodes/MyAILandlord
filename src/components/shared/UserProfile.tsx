@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/ClerkAuthContext';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 
 interface UserProfileProps {

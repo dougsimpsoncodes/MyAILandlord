@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useAppAuth } from '../context/ClerkAuthContext';
+import { useAppAuth } from '../context/SupabaseAuthContext';
 import { RoleContext } from '../context/RoleContext';
 import { log } from '../lib/log';
 

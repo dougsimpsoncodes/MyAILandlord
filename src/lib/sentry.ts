@@ -6,7 +6,7 @@
 
 import * as Sentry from '@sentry/react-native';
 import { useEffect } from 'react';
-import { useUser } from '@clerk/clerk-expo';
+import { useAppAuth } from '../context/SupabaseAuthContext';
 
 /**
  * Initialize Sentry with configuration
@@ -91,26 +91,16 @@ export function initSentry() {
 }
 
 /**
- * Hook to sync Clerk user context with Sentry
+ * Hook to sync user context with Sentry
  * Call this in your root component (App.tsx or navigation wrapper)
  */
 export function useSentryUser() {
-  const { user } = useUser();
+  const { user } = useAppAuth();
 
   useEffect(() => {
     if (user) {
-      Sentry.setUser({
-        id: user.id,
-        email: user.primaryEmailAddress?.emailAddress,
-        username: user.username || undefined,
-      });
-
-      // Add custom context
-      Sentry.setContext('user_metadata', {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        createdAt: user.createdAt,
-      });
+      Sentry.setUser({ id: user.id, email: user.email, username: user.name });
+      Sentry.setContext('user_metadata', { name: user.name });
     } else {
       Sentry.setUser(null);
     }

@@ -17,7 +17,7 @@ export interface ValidationResult {
 
 // Profile validation
 export const validateProfileData = (data: {
-  clerkUserId?: string;
+  userId?: string;
   email?: string;
   name?: string;
   role?: string;
@@ -25,9 +25,9 @@ export const validateProfileData = (data: {
 }): ValidationResult => {
   const errors: string[] = [];
 
-  if (data.clerkUserId !== undefined) {
-    if (!validateRequired(data.clerkUserId)) {
-      errors.push('Clerk User ID is required');
+  if (data.userId !== undefined) {
+    if (!validateRequired(data.userId)) {
+      errors.push('User ID is required');
     }
   }
 
@@ -179,8 +179,8 @@ export const validateMaintenanceRequestUpdate = (data: {
 
 // Message validation
 export const validateMessageData = (data: {
-  senderClerkId?: string;
-  recipientClerkId?: string;
+  senderId?: string;
+  recipientId?: string;
   content?: string;
   messageType?: string;
   attachmentUrl?: string;
@@ -188,11 +188,11 @@ export const validateMessageData = (data: {
 }): ValidationResult => {
   const errors: string[] = [];
 
-  if (!validateRequired(data.senderClerkId)) {
+  if (!validateRequired(data.senderId)) {
     errors.push('Sender ID is required');
   }
 
-  if (!validateRequired(data.recipientClerkId)) {
+  if (!validateRequired(data.recipientId)) {
     errors.push('Recipient ID is required');
   }
 
@@ -269,7 +269,7 @@ export const validateFileUpload = (data: {
 
 // Sanitize input data
 export const sanitizeProfileData = (data: {
-  clerkUserId?: string;
+  userId?: string;
   email?: string;
   name?: string;
   role?: string;
@@ -277,7 +277,7 @@ export const sanitizeProfileData = (data: {
 }) => {
   return {
     ...data,
-    clerkUserId: data.clerkUserId ? sanitizeString(data.clerkUserId) : data.clerkUserId,
+    userId: data.userId ? sanitizeString(data.userId) : data.userId,
     email: data.email ? sanitizeString(data.email) : data.email,
     name: data.name ? sanitizeString(data.name) : data.name,
     role: data.role ? sanitizeString(data.role) : data.role,
@@ -307,8 +307,8 @@ export const sanitizeMaintenanceRequestData = (data: {
 };
 
 export const sanitizeMessageData = (data: {
-  senderClerkId?: string;
-  recipientClerkId?: string;
+  senderId?: string;
+  recipientId?: string;
   content?: string;
   messageType?: string;
   attachmentUrl?: string;
@@ -316,8 +316,8 @@ export const sanitizeMessageData = (data: {
 }) => {
   return {
     ...data,
-    senderClerkId: data.senderClerkId ? sanitizeString(data.senderClerkId) : data.senderClerkId,
-    recipientClerkId: data.recipientClerkId ? sanitizeString(data.recipientClerkId) : data.recipientClerkId,
+    senderId: data.senderId ? sanitizeString(data.senderId) : data.senderId,
+    recipientId: data.recipientId ? sanitizeString(data.recipientId) : data.recipientId,
     content: data.content ? sanitizeString(data.content) : data.content,
     messageType: data.messageType ? sanitizeString(data.messageType) : data.messageType,
     attachmentUrl: data.attachmentUrl ? sanitizeString(data.attachmentUrl) : data.attachmentUrl,

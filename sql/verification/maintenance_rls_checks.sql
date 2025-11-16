@@ -13,13 +13,13 @@ WHERE tablename IN ('profiles','properties','tenant_property_links')
 ORDER BY tablename, policyname;
 
 -- 3) Validate profile mapping (replace value)
-SELECT id, clerk_user_id, role FROM public.profiles WHERE clerk_user_id = 'user_30ODEM6qBd8hMikaCUGP59IClEG';
+SELECT id, email, role FROM public.profiles WHERE id = 'user_30ODEM6qBd8hMikaCUGP59IClEG';
 
 -- 4) Validate active tenant link (replace ids)
 SELECT tpl.*
 FROM public.tenant_property_links tpl
 JOIN public.profiles p ON p.id = tpl.tenant_id
-WHERE p.clerk_user_id = 'user_...'
+WHERE p.id = 'user_...'
   AND tpl.property_id = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid
   AND tpl.is_active = true;
 
@@ -31,4 +31,3 @@ SELECT auth.jwt() ->> 'sub' as sub;
 SELECT 
   public.is_tenant_self('fc7ff5e0-db84-4164-a1e2-a60bff2ac278'::uuid) as is_self,
   public.tenant_has_active_link('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'::uuid) as has_link;
-
