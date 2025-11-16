@@ -47,9 +47,9 @@ const ReviewSubmitScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
-    clearDraft,
+    resetDraft,
   } = usePropertyDraft();
 
   // Auto-save and mark as final step
@@ -174,7 +174,7 @@ const ReviewSubmitScreen = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Clear draft after successful submission
-      await clearDraft();
+      await resetDraft();
       
       Alert.alert(
         'Property Submitted Successfully! 🎉',
@@ -424,7 +424,7 @@ const ReviewSubmitScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, responsive.spacing.safeAreaBottom || 0),
+      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
     },
     saveStatus: {
       flexDirection: 'row',
@@ -456,7 +456,7 @@ const ReviewSubmitScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 

@@ -21,7 +21,7 @@ try {
 }
 import * as ImagePicker from 'expo-image-picker';
 import { LandlordStackParamList } from '../../navigation/MainStack';
-import { PropertyData } from '../../types/property';
+import { PropertyData, DetectedAsset } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
@@ -29,16 +29,7 @@ import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 
 type AssetScanningNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'AssetScanning'>;
 
-interface DetectedAsset {
-  id: string;
-  name: string;
-  category: string;
-  brand?: string;
-  model?: string;
-  roomId: string;
-  confidence: number;
-  scannedData?: string;
-}
+// Using DetectedAsset from shared types
 
 const assetCategories = [
   { id: 'appliances', name: 'Appliances', icon: 'restaurant-outline', color: '#28A745' },
@@ -69,7 +60,7 @@ const AssetScanningScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
   } = usePropertyDraft();
 
@@ -131,7 +122,7 @@ const AssetScanningScreen = () => {
       
       Alert.alert(
         'Asset Detected!',
-        `Found: ${mockAsset.brand} ${mockAsset.model}\nConfidence: ${(mockAsset.confidence * 100).toFixed(0)}%`,
+        `Found: ${mockAsset.brand} ${mockAsset.model}\nConfidence: ${(((mockAsset.confidence ?? 0) * 100).toFixed(0))}%`,
         [
           { text: 'Add Another', onPress: () => setScannerActive(true) },
           { text: 'Continue', onPress: () => {} },
@@ -183,7 +174,7 @@ const AssetScanningScreen = () => {
           
           Alert.alert(
             'Asset Detected from Photo!',
-            `Found: ${mockAsset.brand} ${mockAsset.name}\nConfidence: ${(mockAsset.confidence * 100).toFixed(0)}%`
+            `Found: ${mockAsset.brand} ${mockAsset.name}\nConfidence: ${(((mockAsset.confidence ?? 0) * 100).toFixed(0))}%`
           );
         }, 2500);
       }
@@ -490,7 +481,7 @@ const AssetScanningScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, responsive.spacing.safeAreaBottom || 0),
+      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
     },
     saveStatus: {
       flexDirection: 'row',
@@ -545,7 +536,7 @@ const AssetScanningScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -696,7 +687,7 @@ const AssetScanningScreen = () => {
                         </Text>
                         <View style={styles.confidenceBadge}>
                           <Text style={styles.confidenceText}>
-                            {(asset.confidence * 100).toFixed(0)}% confidence
+                            {(((asset.confidence ?? 0) * 100).toFixed(0))}% confidence
                           </Text>
                         </View>
                       </View>

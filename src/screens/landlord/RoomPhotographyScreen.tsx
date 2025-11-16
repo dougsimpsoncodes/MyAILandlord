@@ -53,7 +53,7 @@ const RoomPhotographyScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
   } = usePropertyDraft();
 
@@ -73,7 +73,7 @@ const RoomPhotographyScreen = () => {
   // Load existing room photos from draft
   useEffect(() => {
     if (draftState?.propertyData?.roomPhotos) {
-      setRoomPhotos(draftState.propertyData.roomPhotos);
+      setRoomPhotos(draftState.propertyData.roomPhotos.map(rp => ({ ...rp, condition: null, notes: '' })));
     }
   }, [draftState]);
 
@@ -430,7 +430,7 @@ const RoomPhotographyScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, responsive.spacing.safeAreaBottom || 0),
+      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
     },
     saveStatus: {
       flexDirection: 'row',
@@ -498,7 +498,7 @@ const RoomPhotographyScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 

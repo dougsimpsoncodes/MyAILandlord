@@ -40,6 +40,7 @@ interface Property {
   image: string;
   tenants: number;
   activeRequests: number;
+  property_code?: string;
 }
 
 const PropertyManagementScreen = () => {
@@ -77,6 +78,7 @@ const PropertyManagementScreen = () => {
         type: prop.property_type || 'Unknown',
         image: '', // TODO: Add property image support
         tenants: 0, // TODO: Add tenant count
+        property_code: prop.property_code,
         activeRequests: 0, // TODO: Add maintenance request count
       }));
       
@@ -107,6 +109,7 @@ const PropertyManagementScreen = () => {
         type: prop.property_type || 'Unknown',
         image: '',
         tenants: 0,
+        property_code: prop.property_code,
         activeRequests: 0,
       }));
       setProperties(prev => [...prev, ...mapped]);
@@ -148,6 +151,7 @@ const PropertyManagementScreen = () => {
     navigation.navigate('InviteTenant', {
       propertyId: property.id,
       propertyName: property.name,
+      propertyCode: property.property_code || '',
     });
   };
 
@@ -429,7 +433,6 @@ const PropertyManagementScreen = () => {
                       <DeleteButton
                         onDelete={() => handleDeleteDraft(draft)}
                         itemName={`${draft.propertyData.name || 'Untitled Property'} draft`}
-                        experimentEnabled={true}
                         iconOnly={true}
                         style={styles.draftDeleteBtn}
                       />
@@ -1028,19 +1031,3 @@ const styles = StyleSheet.create({
 });
 
 export default PropertyManagementScreen;
-  const handleDeleteSelected = async () => {
-    if (!api) return;
-    try {
-      const ids = Array.from(selectedProperties);
-      for (const id of ids) {
-        await api.deleteProperty(id);
-      }
-      // Refresh list after delete
-      await loadProperties();
-      setSelectedProperties(new Set());
-      setIsDeleteMode(false);
-      setShowDeleteModal(false);
-    } catch (err) {
-      console.error('Error deleting properties:', err);
-    }
-  };

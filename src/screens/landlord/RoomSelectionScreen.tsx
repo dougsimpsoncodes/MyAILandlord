@@ -21,7 +21,7 @@ import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 
 type RoomSelectionNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'RoomSelection'>;
 
-interface Room {
+interface SelectionRoom {
   id: string;
   name: string;
   icon: string;
@@ -30,7 +30,7 @@ interface Room {
   custom?: boolean;
 }
 
-const defaultRooms: Room[] = [
+const defaultRooms: SelectionRoom[] = [
   { id: 'living-room', name: 'Living Room', icon: 'tv-outline', selected: true, required: true },
   { id: 'kitchen', name: 'Kitchen', icon: 'restaurant-outline', selected: true, required: true },
   { id: 'master-bedroom', name: 'Master Bedroom', icon: 'bed-outline', selected: true, required: false },
@@ -52,7 +52,7 @@ const PropertyRoomSelectionScreen = () => {
   const responsive = useResponsive();
   
   // Room state
-  const [rooms, setRooms] = useState<Room[]>(defaultRooms);
+  const [rooms, setRooms] = useState<SelectionRoom[]>(defaultRooms);
   const [customRoomName, setCustomRoomName] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   
@@ -61,24 +61,31 @@ const PropertyRoomSelectionScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
   } = usePropertyDraft();
 
   // Load existing room selection from draft
   useEffect(() => {
     if (draftState?.propertyData?.rooms) {
-      // Merge saved rooms with defaults
-      const savedRooms = draftState.propertyData.rooms;
-      const mergedRooms = rooms.map(room => {
-        const saved = savedRooms.find((r: Room) => r.id === room.id);
+      const savedRooms = draftState.propertyData.rooms as any[];
+      // Merge saved rooms with defaults; ensure icon exists
+      const mergedRooms: SelectionRoom[] = rooms.map(room => {
+        const saved = savedRooms.find((r: any) => r.id === room.id);
         return saved ? { ...room, selected: true } : room;
       });
 
-      // Add any custom rooms
-      const customRooms = savedRooms.filter((r: Room) =>
-        !defaultRooms.find(dr => dr.id === r.id)
-      );
+      // Add any custom rooms from saved draft, normalizing shape
+      const customRooms: SelectionRoom[] = savedRooms
+        .filter((r: any) => !defaultRooms.find(dr => dr.id === r.id))
+        .map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          icon: r.icon || 'home-outline',
+          selected: true,
+          required: !!r.required,
+          custom: true,
+        }));
 
       setRooms([...mergedRooms, ...customRooms]);
     }
@@ -124,7 +131,7 @@ const PropertyRoomSelectionScreen = () => {
       return;
     }
 
-    const customRoom: Room = {
+    const customRoom: SelectionRoom = {
       id: `custom-${Date.now()}`,
       name: customRoomName.trim(),
       icon: 'home-outline',
@@ -377,7 +384,7 @@ const PropertyRoomSelectionScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, responsive.spacing.safeAreaBottom || 0),
+      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
     },
     saveStatus: {
       flexDirection: 'row',
@@ -409,7 +416,7 @@ const PropertyRoomSelectionScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 

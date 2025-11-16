@@ -99,8 +99,8 @@ export async function checkRateLimit(
     if (count > config.limit) {
       // Calculate retry after based on oldest request in window
       const oldestRequest = await redis.zrange(key, 0, 0, { withScores: true });
-      const oldestTimestamp = oldestRequest[0]?.score || now;
-      const retryAfter = Math.ceil((oldestTimestamp + config.window * 1000 - now) / 1000);
+      const s = (oldestRequest[0] as any)?.score ?? now;
+      const retryAfter = Math.ceil((s + config.window * 1000 - now) / 1000);
 
       return {
         success: false,

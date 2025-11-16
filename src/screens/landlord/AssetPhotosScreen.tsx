@@ -47,7 +47,7 @@ const AssetPhotosScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
   } = usePropertyDraft();
 
@@ -232,7 +232,7 @@ const AssetPhotosScreen = () => {
     sectionPadding: responsive.spacing?.section?.[responsive.screenSize] || 16,
   };
 
-  const styles = {
+  const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: '#F8F9FA',
@@ -344,6 +344,9 @@ const AssetPhotosScreen = () => {
     },
     photoTypeTabTextActive: {
       color: '#28A745',
+    },
+    photoTypeTabActive: {
+      backgroundColor: '#E8F7EF',
     },
     photoSection: {
       backgroundColor: '#FFFFFF',
@@ -470,7 +473,7 @@ const AssetPhotosScreen = () => {
       justifyContent: 'center',
       alignItems: 'center',
     },
-  };
+  });
 
   if (!currentAsset) {
     return (
@@ -520,7 +523,7 @@ const AssetPhotosScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -656,7 +659,7 @@ const AssetPhotosScreen = () => {
                 
                 if (photo) {
                   return (
-                    <View key={index} style={[styles.photoCard, styles.photoCardFilled, { width: dynamicStyles.photoCardWidth }]}>
+                    <View key={index} style={[styles.photoCard, styles.photoCardFilled, { width: dynamicStyles.photoCardWidth } as any]}>
                       <Image source={{ uri: photo }} style={styles.photoImage} />
                       <View style={styles.photoOverlay}>
                         <TouchableOpacity
@@ -672,7 +675,7 @@ const AssetPhotosScreen = () => {
                   return (
                     <TouchableOpacity
                       key={index}
-                      style={[styles.photoCard, { width: dynamicStyles.photoCardWidth }]}
+                      style={[styles.photoCard, { width: dynamicStyles.photoCardWidth } as any]}
                       onPress={() => {
                         Alert.alert(
                           'Add Photo',
@@ -693,7 +696,7 @@ const AssetPhotosScreen = () => {
                     </TouchableOpacity>
                   );
                 } else {
-                  return <View key={index} style={[styles.photoCard, { width: dynamicStyles.photoCardWidth }]} />;
+                  return <View key={index} style={[styles.photoCard, { width: dynamicStyles.photoCardWidth } as any]} />;
                 }
               })}
             </View>

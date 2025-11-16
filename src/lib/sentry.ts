@@ -43,7 +43,7 @@ export function initSentry() {
     ],
 
     // Filter sensitive data
-    beforeSend(event) {
+    beforeSend(event: Sentry.Event) {
       // Remove sensitive query params from URLs
       if (event.request?.url) {
         event.request.url = event.request.url
@@ -54,7 +54,7 @@ export function initSentry() {
 
       // Remove sensitive data from breadcrumbs
       if (event.breadcrumbs) {
-        event.breadcrumbs = event.breadcrumbs.map((breadcrumb) => {
+        event.breadcrumbs = event.breadcrumbs.map((breadcrumb: Sentry.Breadcrumb) => {
           if (breadcrumb.data) {
             const sensitiveKeys = ['password', 'token', 'apiKey', 'secret', 'authorization'];
             sensitiveKeys.forEach((key) => {
@@ -153,7 +153,7 @@ export function captureError(
     extra?: Record<string, unknown>;
   }
 ) {
-  Sentry.withScope((scope) => {
+  Sentry.withScope((scope: Sentry.Scope) => {
     if (options?.level) {
       scope.setLevel(options.level);
     }

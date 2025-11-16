@@ -14,11 +14,11 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { PropertyArea, InventoryItem } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import PhotoPicker from '../../components/media/PhotoPicker';
-import { saveDraftWithoutEmbeddingPhotos } from '../../services/PropertyDraftService.patch';
 import { useResponsive } from '../../hooks/useResponsive';
 import Card from '../../components/shared/Card';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
@@ -316,11 +316,7 @@ const PropertyAssetsListScreen = () => {
       setSelectedAreas(updatedAreas);
       updateAreas(updatedAreas);
       
-      // Save draft without embedding photos for performance
-      saveDraftWithoutEmbeddingPhotos({
-        ...draftState,
-        areas: updatedAreas
-      }).catch(console.error);
+      // Background save is handled by auto-save; no extra action needed here
     }
   };
 

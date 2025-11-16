@@ -107,7 +107,7 @@ const PropertyBasicsScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     lastSaved,
     saveDraft,
   } = usePropertyDraft();
@@ -419,7 +419,7 @@ const PropertyBasicsScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, responsive.spacing.safeAreaBottom || 0),
+      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
     },
     saveStatus: {
       flexDirection: 'row',
@@ -501,7 +501,7 @@ const PropertyBasicsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         <KeyboardAvoidingView 
           style={{ flex: 1 }} 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

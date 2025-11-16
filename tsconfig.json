@@ -4,6 +4,10 @@
     "strict": true
   },
   "exclude": [
+    "e2e",
+    "node_modules",
+    "coverage",
+    "playwright-report",
     "supabase/functions/**/*"
   ]
 }

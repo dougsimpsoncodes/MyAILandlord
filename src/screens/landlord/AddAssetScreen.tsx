@@ -479,7 +479,6 @@ const AddAssetScreen = () => {
               value={purchasePrice}
               onChangeText={setPurchasePrice}
               keyboardType="decimal-pad"
-              autoComplete="transaction-amount"
               autoCorrect={false}
             />
           </View>
@@ -652,7 +651,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   dropdownBackdrop: {
-    position: 'fixed',
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
