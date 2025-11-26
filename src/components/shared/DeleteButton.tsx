@@ -38,7 +38,6 @@ export default function DeleteButton({
         style
       ]}
       activeOpacity={0.7}
-      title={Platform.OS === 'web' ? `Delete ${itemName}` : undefined}
     >
       {iconOnly ? (
         <Ionicons name="trash-outline" size={20} color="#E74C3C" />

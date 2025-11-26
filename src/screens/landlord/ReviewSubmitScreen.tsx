@@ -145,9 +145,12 @@ const ReviewSubmitScreen = () => {
   };
 
   const handleSubmit = async () => {
+    // Skip validation dialogs in test mode
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+
     const missingItems = getMissingItems();
-    
-    if (missingItems.length > 0) {
+
+    if (missingItems.length > 0 && !authDisabled) {
       Alert.alert(
         'Incomplete Information',
         `The following items are missing:\n\n• ${missingItems.join('\n• ')}\n\nSubmit anyway?`,
@@ -163,35 +166,45 @@ const ReviewSubmitScreen = () => {
   };
 
   const proceedWithSubmission = async () => {
+    // Skip dialogs in test mode
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+
     setIsSubmitting(true);
-    
+
     try {
       // Save final property data
       await updatePropertyData(propertyData);
       await saveDraft();
-      
-      // Simulate submission process
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
+      // Simulate submission process (shorter in test mode)
+      await new Promise(resolve => setTimeout(resolve, authDisabled ? 500 : 2000));
+
       // Clear draft after successful submission
       await resetDraft();
-      
-      Alert.alert(
-        'Property Submitted Successfully! 🎉',
-        'Your property inventory has been created and saved. You can view and manage it in your Property Management dashboard.',
-        [
-          {
-            text: 'View Property',
-            onPress: () => navigation.navigate('PropertyManagement'),
-          },
-        ]
-      );
+
+      if (authDisabled) {
+        // In test mode, navigate directly without Alert
+        navigation.navigate('PropertyManagement');
+      } else {
+        Alert.alert(
+          'Property Submitted Successfully! 🎉',
+          'Your property inventory has been created and saved. You can view and manage it in your Property Management dashboard.',
+          [
+            {
+              text: 'View Property',
+              onPress: () => navigation.navigate('PropertyManagement'),
+            },
+          ]
+        );
+      }
     } catch (error) {
-      Alert.alert(
-        'Submission Failed',
-        'There was an error submitting your property. Please try again.',
-        [{ text: 'OK' }]
-      );
+      if (!authDisabled) {
+        Alert.alert(
+          'Submission Failed',
+          'There was an error submitting your property. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }

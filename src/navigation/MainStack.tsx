@@ -89,10 +89,10 @@ export type LandlordStackParamList = {
   SendToVendor: { caseId: string };
   Communications: undefined;
   PropertyManagement: undefined;
-  PropertyDetails: { property: { id: string; name: string; address: string; type: string; tenants: number; activeRequests: number; } };
+  PropertyDetails: { propertyId: string };
   AddProperty: { draftId?: string } | undefined;
   PropertyBasics: { draftId?: string } | undefined;
-  PropertyPhotos: { propertyData: PropertyData };
+  PropertyPhotos: { draftId?: string; propertyData?: PropertyData } | undefined;
   RoomSelection: { propertyData: PropertyData };
   RoomPhotography: { propertyData: PropertyData };
   AssetScanning: { propertyData: PropertyData };

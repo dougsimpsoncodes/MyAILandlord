@@ -543,16 +543,11 @@ export type Database = {
         Returns: string
       }
       auth_uid_compat: { Args: never; Returns: string }
-      clerk_id_to_uuid: { Args: { clerk_id: string }; Returns: string }
       generate_property_code: { Args: never; Returns: string }
       get_auth_jwt_sub: { Args: never; Returns: string }
       get_current_user_profile: { Args: never; Returns: Json }
       link_tenant_to_property: {
-        Args: {
-          input_code: string
-          tenant_clerk_id: string
-          unit_number?: string
-        }
+        Args: { input_code: string; tenant_id: string; unit_number?: string }
         Returns: {
           error_message: string
           link_id: string
@@ -562,7 +557,7 @@ export type Database = {
       set_app_user_id: { Args: { user_id: string }; Returns: undefined }
       set_current_user_id: { Args: { user_id: string }; Returns: undefined }
       validate_property_code: {
-        Args: { input_code: string; tenant_clerk_id: string }
+        Args: { input_code: string; tenant_id: string }
         Returns: {
           error_message: string
           is_multi_unit: boolean

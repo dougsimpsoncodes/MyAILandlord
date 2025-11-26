@@ -1,0 +1,79 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e13]: 
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: Good morning, Dev!
+          - generic [ref=e18]: Welcome to MyAILandlord
+        - generic "Open profile menu" [ref=e19] [cursor=pointer]:
+          - generic [ref=e20]: 
+    - generic [ref=e21]:
+      - generic [ref=e22]: Quick Actions
+      - generic [ref=e23]:
+        - generic [ref=e24] [cursor=pointer]:
+          - generic [ref=e26]: 
+          - generic [ref=e27]:
+            - generic [ref=e28]: Maintenance Hub
+            - generic [ref=e29]: No active requests
+          - generic [ref=e30]: 
+        - generic [ref=e31] [cursor=pointer]:
+          - generic [ref=e33]: 
+          - generic [ref=e34]:
+            - generic [ref=e35]: Communication Hub
+            - generic [ref=e36]: No new messages
+          - generic [ref=e37]: 
+        - generic [ref=e38] [cursor=pointer]:
+          - generic [ref=e40]: 
+          - generic [ref=e41]:
+            - generic [ref=e42]: Property Management
+            - generic [ref=e43]: 3 properties
+          - generic [ref=e44]: 
+    - generic [ref=e45] [cursor=pointer]:
+      - generic [ref=e46]: 
+      - generic [ref=e47]:
+        - generic [ref=e48]: View Analytics & Reports
+        - generic [ref=e49]: Performance insights and portfolio metrics
+      - generic [ref=e50]: 
+  - dialog [ref=e52]:
+    - generic [ref=e54]:
+      - generic [ref=e55]:
+        - generic [ref=e56]: Profile
+        - generic [ref=e58] [cursor=pointer]: 
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e64]: D
+          - generic [ref=e65]:
+            - generic [ref=e66]: Dev
+            - generic [ref=e67]: dev@example.com
+            - generic [ref=e69]: 🏢 Landlord
+        - generic [ref=e70]:
+          - generic [ref=e71]: Account
+          - generic [ref=e72] [cursor=pointer]:
+            - generic [ref=e73]:
+              - generic [ref=e74]: 
+              - generic [ref=e75]: Switch Role
+            - generic [ref=e76]: 
+          - generic [ref=e77] [cursor=pointer]:
+            - generic [ref=e78]:
+              - generic [ref=e79]: 
+              - generic [ref=e80]: Settings
+            - generic [ref=e81]: 
+          - generic [ref=e82] [cursor=pointer]:
+            - generic [ref=e83]:
+              - generic [ref=e84]: 
+              - generic [ref=e85]: Help & Support
+            - generic [ref=e86]: 
+          - generic [ref=e87] [cursor=pointer]:
+            - generic [ref=e88]:
+              - generic [ref=e89]: 
+              - generic [ref=e90]: Privacy Policy
+            - generic [ref=e91]: 
+        - generic [active] [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]: 
+          - generic [ref=e95]: Sign Out
+        - generic [ref=e97]: My AI Landlord v1.0.0
+```

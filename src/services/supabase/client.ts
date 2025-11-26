@@ -226,7 +226,7 @@ export class SupabaseClient {
     
     // Test JWT context by querying auth functions
     try {
-      const jwtTest = await this.client.rpc('test_jwt_context');
+      const jwtTest = await (this.client as any).rpc('test_jwt_context');
       log.info('JWT context test result:', jwtTest);
     } catch (jwtError) {
       log.warn("JWT test failed (expected if function doesn't exist):", jwtError);

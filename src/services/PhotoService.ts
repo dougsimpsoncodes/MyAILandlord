@@ -73,7 +73,7 @@ export class PhotoService {
       const result = await ImagePicker.launchCameraAsync({
         ...defaultOptions,
         ...options,
-      });
+      } as any);
 
       if (result.canceled || !result.assets?.[0]) {
         return null;
@@ -123,7 +123,7 @@ export class PhotoService {
       };
       log.info('📸 PhotoService: Final options for ImagePicker:', finalOptions);
 
-      const result = await ImagePicker.launchImageLibraryAsync(finalOptions);
+      const result = await ImagePicker.launchImageLibraryAsync(finalOptions as any);
 
       if (result.canceled || !result.assets) {
         log.info('📸 PhotoService: Selection canceled or no assets');
@@ -174,7 +174,7 @@ export class PhotoService {
         }
       );
 
-      const fileInfo = await FileSystem.getInfoAsync(manipulatorResult.uri);
+      const fileInfo = await FileSystem.getInfoAsync(manipulatorResult.uri) as any;
       
       return {
         ...photo,
@@ -216,7 +216,7 @@ export class PhotoService {
     }
 
     // Check format
-    if (!PHOTO_CONFIG.SUPPORTED_FORMATS.includes(photo.mimeType)) {
+    if (!(PHOTO_CONFIG.SUPPORTED_FORMATS as any).includes(photo.mimeType)) {
       errors.push(`Unsupported format: ${photo.mimeType}. Use JPEG or PNG.`);
     }
 
@@ -276,7 +276,7 @@ export class PhotoService {
    * Process ImagePicker asset into Photo object
    */
   private static async processImageAsset(asset: ImagePicker.ImagePickerAsset): Promise<Photo> {
-    const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+    const fileInfo = await FileSystem.getInfoAsync(asset.uri) as any;
     
     return {
       id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

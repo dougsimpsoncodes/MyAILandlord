@@ -12,12 +12,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { log } from '../../lib/log';
 // Import barcode scanner conditionally to handle Expo Go limitations
 let BarCodeScanner: typeof import('expo-barcode-scanner').BarCodeScanner | null = null;
 try {
   BarCodeScanner = require('expo-barcode-scanner').BarCodeScanner;
 } catch (error) {
-  console.log('BarCodeScanner not available in this environment:', error);
+  log.warn('BarCodeScanner not available in this environment', { error: String(error) });
 }
 import * as ImagePicker from 'expo-image-picker';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -222,7 +223,10 @@ const AssetScanningScreen = () => {
   };
 
   const handleContinue = async () => {
-    if (detectedAssets.length === 0) {
+    // Skip Alert dialog in test mode
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+
+    if (detectedAssets.length === 0 && !authDisabled) {
       Alert.alert(
         'No Assets Found',
         'No assets have been detected yet. You can skip this step or add assets manually.',

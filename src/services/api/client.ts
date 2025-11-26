@@ -1,6 +1,5 @@
 import { SupabaseClient } from '../supabase/client';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
-import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { getMaintenanceRequests as getMaintenanceRequestsREST } from '../../lib/maintenanceClient';
@@ -35,7 +34,7 @@ import {
 import { validateImageFile, validateAudioFile, getErrorMessage, validateRequired, validateLength, sanitizeString } from '../../utils/helpers';
 import { FileValidation } from '../../types/api';
 import { ENV_CONFIG } from '../../utils/constants';
-import log from '../../lib/log';
+import { log } from '../../lib/log';
 import { captureException } from '../../lib/monitoring';
 import { createMockApiClient } from './mockClient';
 
@@ -358,7 +357,8 @@ export function useApiClient(): UseApiClientReturn | null {
           .eq('id', maintenanceRequest.id);
 
         if (updateError) {
-          console.error('Failed to update maintenance request with file URLs:', updateError);
+          const { log } = await import('../../lib/log');
+          log.error('Failed to update maintenance request with file URLs:', { error: String(updateError) });
           // Don't throw here - the request was created successfully
         }
       }
@@ -561,12 +561,12 @@ export function useApiClient(): UseApiClientReturn | null {
   // ========== REAL-TIME SUBSCRIPTIONS ==========
   const subscribeToMaintenanceRequests = async (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => {
     const client = getSupabaseClient();
-    return client.subscribeToMaintenanceRequests(userId, callback);
+    return client.subscribeToMaintenanceRequests(userId, callback as any);
   };
 
   const subscribeToMessages = async (callback: (payload: RealtimePayload<Message>) => void) => {
     const client = getSupabaseClient();
-    return client.subscribeToMessages(userId, callback);
+    return client.subscribeToMessages(userId, callback as any);
   };
 
   // ========== PROPERTY CODE METHODS ==========
@@ -577,9 +577,9 @@ export function useApiClient(): UseApiClientReturn | null {
       }
 
       const client = getSupabaseClient();
-      const { data, error } = await client.client.rpc('validate_property_code', {
+      const { data, error } = await (client as any).client.rpc('validate_property_code', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
-        tenant_id: (await client.getProfile(userId))?.id
+        tenant_id: (await client.getProfile(userId))?.id || ''
       });
 
       if (error) {
@@ -600,9 +600,9 @@ export function useApiClient(): UseApiClientReturn | null {
       }
 
       const client = getSupabaseClient();
-      const { data, error } = await client.client.rpc('link_tenant_to_property', {
+      const { data, error } = await (client as any).client.rpc('link_tenant_to_property', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
-        tenant_id: (await client.getProfile(userId))?.id,
+        tenant_id: (await client.getProfile(userId))?.id || '',
         unit_number: unitNumber ? sanitizeString(unitNumber) : null
       });
 
@@ -620,7 +620,7 @@ export function useApiClient(): UseApiClientReturn | null {
   const getTenantProperties = async () => {
     try {
       const client = getSupabaseClient();
-      const { data, error } = await client.client
+      const { data, error } = await (client as any).client
         .from('tenant_property_links')
         .select(`
           id,
@@ -636,7 +636,7 @@ export function useApiClient(): UseApiClientReturn | null {
             emergency_phone
           )
         `)
-        .eq('tenant_id', (await client.getProfile(userId))?.id)
+        .eq('tenant_id', (await client.getProfile(userId))?.id || '')
         .eq('is_active', true);
 
       if (error) {

@@ -48,7 +48,8 @@ const InviteTenantScreen = () => {
       await Clipboard.setString(inviteUrl);
       Alert.alert('Copied!', 'Invite link copied to clipboard');
     } catch (error) {
-      console.error('Error copying link:', error);
+      const { log } = await import('../../lib/log');
+      log.error('Error copying link:', { error: String(error) });
       Alert.alert('Error', 'Failed to copy link');
     }
   };
@@ -91,7 +92,8 @@ const InviteTenantScreen = () => {
         );
       }
     } catch (error) {
-      console.error('Error sending email:', error);
+      const { log } = await import('../../lib/log');
+      log.error('Error sending email:', { error: String(error) });
       Alert.alert('Error', 'Failed to open email or copy content. Please try the "Copy Link" button.');
     }
   };

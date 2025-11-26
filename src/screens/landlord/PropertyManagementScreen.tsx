@@ -27,6 +27,7 @@ import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { Property as DbProperty } from '../../types/api';
+import log from '../../lib/log';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -86,7 +87,7 @@ const PropertyManagementScreen = () => {
       setPage(1);
       setHasMore(dbProperties.length === pageSize);
     } catch (error) {
-      console.error('Error loading properties:', error);
+      log.error('Error loading properties', { error });
     } finally {
       setIsLoadingProperties(false);
     }
@@ -116,7 +117,7 @@ const PropertyManagementScreen = () => {
       setPage(prev => prev + 1);
       setHasMore(more.length === pageSize);
     } catch (e) {
-      console.error('Error loading more properties:', e);
+      log.error('Error loading more properties', { error: e });
     } finally {
       setIsLoadingMore(false);
     }
@@ -139,11 +140,15 @@ const PropertyManagementScreen = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const handleAddProperty = () => {
+    log.info('🏠 Add Property button clicked - navigating to AddProperty screen');
     navigation.navigate('AddProperty');
   };
 
   const handlePropertyPress = (property: Property) => {
-    navigation.navigate('PropertyDetails', { property });
+    // Pass only the property ID - PropertyDetailsScreen will fetch the full data
+    navigation.navigate('PropertyDetails', {
+      propertyId: property.id,
+    });
   };
 
   const handleInviteTenant = async (property: Property) => {
@@ -167,23 +172,35 @@ const PropertyManagementScreen = () => {
 
 
   const handleDraftPress = (draft: PropertySetupState) => {
-    // Navigate to the appropriate screen based on current step
-    if (draft.currentStep === 0 || draft.currentStep === 1) {
+    // Navigate to the appropriate screen based on current step (Detailed 8-step flow)
+    // Step 0: Property Basics
+    // Step 1: Property Photos
+    // Step 2: Room Selection
+    // Step 3: Room Photography
+    // Step 4: Asset Scanning
+    // Step 5: Asset Details
+    // Step 6: Asset Photos
+    // Step 7: Review & Submit
+
+    if (draft.currentStep === 0) {
       navigation.navigate('AddProperty', { draftId: draft.id });
+    } else if (draft.currentStep === 1) {
+      navigation.navigate('PropertyPhotos', { draftId: draft.id });
     } else if (draft.currentStep === 2) {
-      navigation.navigate('PropertyAreas', { 
-        propertyData: draft.propertyData, 
-        draftId: draft.id 
+      navigation.navigate('RoomSelection', {
+        propertyData: draft.propertyData
       });
     } else {
-      // For steps 3+, go to AddProperty for now
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      // For steps 3+, go to the last completed screen (RoomSelection for now)
+      navigation.navigate('RoomSelection', {
+        propertyData: draft.propertyData
+      });
     }
   };
 
   const handleDeleteDraft = async (draft: PropertySetupState) => {
     const startTime = Date.now();
-    console.log('Property draft delete executing:', {
+    log.info('Property draft delete executing', {
       draftId: draft.id,
       propertyName: draft.propertyData.name || 'Untitled',
       completionPercentage: draft.completionPercentage,
@@ -197,7 +214,7 @@ const PropertyManagementScreen = () => {
       await deleteDraft(draft.id);
       const duration = Date.now() - startTime;
       
-      console.log('Property draft delete successful:', {
+      log.info('Property draft delete successful', {
         draftId: draft.id,
         duration: `${duration}ms`,
         remainingDrafts: drafts.length - 1
@@ -206,7 +223,7 @@ const PropertyManagementScreen = () => {
     } catch (error) {
       const duration = Date.now() - startTime;
       
-      console.error('Property draft delete failed:', {
+      log.error('Property draft delete failed:', {
         draftId: draft.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         duration: `${duration}ms`,
@@ -254,14 +271,14 @@ const PropertyManagementScreen = () => {
           onPress: async () => {
             try {
               const stats = await DataClearer.getStorageStats();
-              console.log('Storage before clear:', stats);
+              log.info('Storage before clear', { totalKeys: stats.totalKeys });
               
               await DataClearer.clearAllData();
               await refreshDrafts(); // Refresh the drafts list
               
               Alert.alert('Success', 'All app data cleared successfully.');
             } catch (error) {
-              console.error('Failed to clear app data:', error);
+              log.error('Failed to clear app data:', { error: String(error) });
               Alert.alert('Error', 'Failed to clear app data. Please try again.');
             }
           }
@@ -326,27 +343,7 @@ const PropertyManagementScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#2C3E50" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Property Management</Text>
-        <View style={styles.headerActions}>
-          {properties.length > 0 && (
-            <TouchableOpacity 
-              onPress={() => {
-                setIsDeleteMode(!isDeleteMode);
-                setSelectedProperties(new Set());
-              }} 
-              activeOpacity={0.7} 
-              style={styles.deleteIconButton}
-            >
-              <Ionicons 
-                name={isDeleteMode ? "close" : "trash-outline"} 
-                size={22} 
-                color={isDeleteMode ? "#E74C3C" : "#7F8C8D"} 
-              />
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity onPress={handleAddProperty} activeOpacity={0.7} style={styles.addIconButton}>
-            <Ionicons name="add" size={24} color={DesignSystem.colors.primary} />
-          </TouchableOpacity>
-        </View>
+        <View style={styles.headerActions} />
       </View>
 
       {/* Delete Action Bar */}
@@ -510,16 +507,40 @@ const PropertyManagementScreen = () => {
               </View>
             </TouchableOpacity>
           ))}
-          
+        </View>
+
+        {/* Action Cards Row - Below Grid */}
+        <View style={styles.actionCardsRow}>
           {/* Add Property Card */}
           <TouchableOpacity
-            style={[styles.propertyCard, styles.addCard]}
+            style={styles.actionCard}
             onPress={handleAddProperty}
             activeOpacity={0.7}
           >
-            <View style={styles.addCardContent}>
+            <View style={styles.actionCardContent}>
               <Ionicons name="add-circle-outline" size={32} color="#3498DB" />
-              <Text style={styles.addCardText}>Add Property</Text>
+              <Text style={styles.actionCardText}>Add Property</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* Remove Property Card */}
+          <TouchableOpacity
+            style={[styles.actionCard, isDeleteMode && styles.actionCardActive]}
+            onPress={() => {
+              setIsDeleteMode(!isDeleteMode);
+              setSelectedProperties(new Set());
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={styles.actionCardContent}>
+              <Ionicons
+                name={isDeleteMode ? "close-circle-outline" : "trash-outline"}
+                size={32}
+                color={isDeleteMode ? "#E74C3C" : "#E74C3C"}
+              />
+              <Text style={[styles.actionCardText, { color: '#E74C3C' }]}>
+                {isDeleteMode ? "Cancel" : "Remove"}
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -602,7 +623,7 @@ const PropertyManagementScreen = () => {
                     // Show success with custom modal or simple alert
                     Alert.alert('Success', `${count} property(ies) deleted successfully.`);
                   } catch (error) {
-                    console.error('Delete failed:', error);
+                    log.error('Delete failed', { error });
                     Alert.alert('Error', 'Failed to delete properties. Please try again.');
                   }
                 }}
@@ -826,21 +847,39 @@ const styles = StyleSheet.create({
     color: '#E74C3C',
   },
   
-  // Add Card
-  addCard: {
+  // Action Cards Row - Below Grid (same width as ONE property card)
+  actionCardsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 20,
+    width: (screenWidth - 36) / 2 + 12, // Width of one property card
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#3498DB',
-    backgroundColor: '#F0F8FF',
+    paddingVertical: 24,
+    paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    height: 120,
   },
-  addCardContent: {
+  actionCardActive: {
+    borderColor: '#E74C3C',
+    backgroundColor: '#FFF5F5',
+  },
+  actionCardContent: {
     alignItems: 'center',
     gap: 8,
   },
-  addCardText: {
-    fontSize: 13,
-    fontWeight: '500',
+  actionCardText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#3498DB',
   },
   addPropertyButtonContent: {

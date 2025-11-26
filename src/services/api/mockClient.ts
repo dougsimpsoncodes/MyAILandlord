@@ -14,6 +14,7 @@ import {
   Profile,
   Property
 } from '../../types/api'
+import { PropertyAddress } from '../../types/property'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 // Simple persisted mock store (AsyncStorage) for dev-only mode
@@ -22,6 +23,7 @@ const now = () => new Date().toISOString()
 const STORAGE = {
   PROFILE: 'mock:profile',
   PROPERTIES: 'mock:properties',
+  PROPERTY_AREAS: 'mock:property_areas',
   MAINTENANCE: 'mock:maintenance',
   MESSAGES: 'mock:messages',
 }
@@ -29,6 +31,7 @@ const STORAGE = {
 let loaded = false
 let profile: Profile | null = null
 let properties: Property[] = []
+let propertyAreas: Array<{ id: string; property_id: string; name: string; area_type: string; photos?: string[] }> = []
 let maintenance: MaintenanceRequest[] = []
 let messages: Message[] = []
 
@@ -36,6 +39,7 @@ async function saveState() {
   await Promise.all([
     AsyncStorage.setItem(STORAGE.PROFILE, JSON.stringify(profile)),
     AsyncStorage.setItem(STORAGE.PROPERTIES, JSON.stringify(properties)),
+    AsyncStorage.setItem(STORAGE.PROPERTY_AREAS, JSON.stringify(propertyAreas)),
     AsyncStorage.setItem(STORAGE.MAINTENANCE, JSON.stringify(maintenance)),
     AsyncStorage.setItem(STORAGE.MESSAGES, JSON.stringify(messages)),
   ])
@@ -44,15 +48,17 @@ async function saveState() {
 async function loadState(userId: string) {
   if (loaded) return
 
-  const [pStr, propsStr, mStr, msgsStr] = await Promise.all([
+  const [pStr, propsStr, areasStr, mStr, msgsStr] = await Promise.all([
     AsyncStorage.getItem(STORAGE.PROFILE),
     AsyncStorage.getItem(STORAGE.PROPERTIES),
+    AsyncStorage.getItem(STORAGE.PROPERTY_AREAS),
     AsyncStorage.getItem(STORAGE.MAINTENANCE),
     AsyncStorage.getItem(STORAGE.MESSAGES),
   ])
 
   profile = pStr ? JSON.parse(pStr) : null
   properties = propsStr ? JSON.parse(propsStr) : []
+  propertyAreas = areasStr ? JSON.parse(areasStr) : []
   maintenance = mStr ? JSON.parse(mStr) : []
   messages = msgsStr ? JSON.parse(msgsStr) : []
 
@@ -256,6 +262,58 @@ export function createMockApiClient(userId: string): UseApiClientReturn {
       await loadState(userId)
       return properties
     },
+    async deleteProperty(_propertyId: string) {
+      await loadState(userId)
+      properties = properties.filter(p => p.id !== _propertyId)
+      await saveState()
+      return true
+    },
+    async createProperty(payload: {
+      name: string;
+      address_jsonb: PropertyAddress;
+      property_type: string;
+      unit?: string;
+      bedrooms?: number;
+      bathrooms?: number;
+    }) {
+      await loadState(userId)
+      const id = `uuid-prop-${Date.now()}`
+
+      // Generate property code (6 characters)
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+
+      // Convert PropertyAddress to simple string for storage
+      const addressString = `${payload.address_jsonb.line1}${payload.address_jsonb.line2 ? ', ' + payload.address_jsonb.line2 : ''}, ${payload.address_jsonb.city}, ${payload.address_jsonb.state} ${payload.address_jsonb.zipCode}`
+
+      const property: Property = {
+        id,
+        landlord_id: profile?.id || userId,
+        name: payload.name,
+        address: addressString,
+        property_type: payload.property_type,
+        bedrooms: payload.bedrooms,
+        bathrooms: payload.bathrooms,
+        property_code: code,
+        allow_tenant_signup: true,
+        code_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        created_at: now(),
+        updated_at: now(),
+      }
+
+      properties = [property, ...properties]
+      await saveState()
+      return property
+    },
+    async createPropertyAreas(areas: Array<{ property_id: string; name: string; area_type: string; photos?: string[] }>) {
+      await loadState(userId)
+      const newAreas = areas.map((area, idx) => ({
+        id: `uuid-area-${Date.now()}-${idx}`,
+        ...area,
+      }))
+      propertyAreas = [...propertyAreas, ...newAreas]
+      await saveState()
+      return true
+    },
 
     // Maintenance
     async getMaintenanceRequests() {
@@ -369,6 +427,20 @@ export function createMockApiClient(userId: string): UseApiClientReturn {
     },
     subscribeToMessages(_cb: (payload: RealtimePayload<Message>) => void) {
       return { unsubscribe: () => {} }
+    },
+
+    // Property code methods (dev stubs)
+    async validatePropertyCode(_propertyCode: string) {
+      return { success: true, is_multi_unit: false, property_name: 'Mock Property', property_address: '123 Main St' }
+    },
+    async linkTenantToProperty(_propertyCode: string, _unitNumber?: string) {
+      return { success: true }
+    },
+    async linkTenantToPropertyById(_propertyId: string, _unitNumber?: string) {
+      return true
+    },
+    async getTenantProperties() {
+      return []
     },
   }
 }

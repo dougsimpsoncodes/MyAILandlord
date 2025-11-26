@@ -15,7 +15,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test.use({
-  baseURL: 'http://localhost:8081',
+  baseURL: 'http://localhost:8082',
 });
 
 test.describe('TypeScript Fixes Validation', () => {

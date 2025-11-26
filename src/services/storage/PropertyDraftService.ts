@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import log from '../../lib/log';
+import { log } from '../../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, PropertyAsset } from '../../types/property';
 
 /**
@@ -299,28 +299,7 @@ export class PropertyDraftService {
     };
   }
 
-  /**
-   * Clear all drafts for a user (emergency storage cleanup)
-   */
-  static async clearAllUserDrafts(userId: string): Promise<void> {
-    try {
-      log.info('Clearing all drafts for user due to storage issues...');
-      const drafts = await this.getUserDrafts(userId);
-      
-      // Delete all drafts
-      for (const draft of drafts) {
-        await this.deleteDraft(userId, draft.id);
-      }
-      
-      // Clear the drafts list
-      const draftsListKey = this.getUserDraftsListKey(userId);
-      await AsyncStorage.removeItem(draftsListKey);
-      
-      log.info(`Cleared ${drafts.length} drafts for user`);
-    } catch (error) {
-      log.error('Failed to clear user drafts', { error: String(error) });
-    }
-  }
+  // (Removed duplicate clearAllUserDrafts)
 
   /**
    * Calculate storage usage for a user

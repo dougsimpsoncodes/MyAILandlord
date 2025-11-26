@@ -86,10 +86,11 @@ const PropertyReviewScreen = () => {
   };
 
   const handleSubmit = async () => {
-    console.log('🚨🚨🚨 handleSubmit called! State:', { isSubmitting, isDraftLoading });
+    const { log } = await import('../../lib/log');
+    log.info('handleSubmit called', { isSubmitting, isDraftLoading });
     
     if (isSubmitting || isDraftLoading) {
-      console.log('🚨 Exiting handleSubmit due to loading conditions:', { isSubmitting, isDraftLoading });
+      log.info('Exiting handleSubmit due to loading conditions', { isSubmitting, isDraftLoading });
       return;
     }
 
@@ -111,9 +112,9 @@ const PropertyReviewScreen = () => {
         bathrooms: propertyData.bathrooms || 0
       };
       
-      console.log('🏠 Submitting property with payload:', propertyPayload);
+      log.info('Submitting property', { hasAreas: !!areas?.length });
       const newProperty = await api.createProperty(propertyPayload);
-      console.log('🏠 Property created successfully:', newProperty);
+      log.info('Property created successfully');
       
       // Create area records
       if (areas && areas.length > 0) {
@@ -127,12 +128,12 @@ const PropertyReviewScreen = () => {
         try {
           await api.createPropertyAreas(areaRecords);
         } catch (areasError) {
-          console.error('Error creating areas:', areasError);
+          log.error('Error creating areas:', { error: String(areasError) });
           // Continue anyway - areas are not critical
         }
       }
       
-      console.log('🏠 Property submission complete');
+      log.info('Property submission complete');
       
       // Show success state
       setSubmissionSuccess(true);
@@ -144,7 +145,7 @@ const PropertyReviewScreen = () => {
           await deleteDraft();
         }
       } catch (error) {
-        console.error('🏠 Error cleaning up draft:', error);
+        log.error('Error cleaning up draft:', { error: String(error) });
       }
       
       // Navigate to PropertyManagement after 2 seconds
@@ -152,7 +153,7 @@ const PropertyReviewScreen = () => {
         navigation.navigate('PropertyManagement');
       }, 2000);
     } catch (error) {
-      console.error('🏠 PropertyReviewScreen: Submit error:', error);
+      log.error('PropertyReviewScreen: Submit error:', { error: String(error) });
       setIsSubmitting(false);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -246,9 +247,6 @@ const PropertyReviewScreen = () => {
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Progress Bar */}
@@ -398,7 +396,7 @@ const PropertyReviewScreen = () => {
         <Button
           title={isSaving ? 'Saving...' : 'Save Draft'}
           onPress={() => {
-            console.log('🚨 Save Draft button pressed');
+            log.info('Save Draft button pressed');
             saveDraft();
           }}
           type="secondary"

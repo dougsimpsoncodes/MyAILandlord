@@ -30,8 +30,17 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
   const { user } = useAppAuth();
+  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
 
   useEffect(() => {
+    // If auth is disabled (test mode), set default landlord role
+    if (authDisabled) {
+      setUserRoleState('landlord');
+      setIsLoading(false);
+      setHasInitialized(true);
+      return;
+    }
+
     if (user && user.id) {
       // Load existing role from local storage only
       // The actual role will be set by useProfileSync when it loads the profile
@@ -44,7 +53,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
       setUserRoleState(null);
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, authDisabled]);
 
   const loadStoredRole = async () => {
     try {

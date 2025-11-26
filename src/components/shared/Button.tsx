@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, Text, View, ActivityIndicator, Platform, Pressable, Animated, Easing, GestureResponderEvent } from 'react-native';
 import { DesignSystem } from '../../theme/DesignSystem';
+import { log } from '../../lib/log';
 
 export interface ButtonProps {
   title: string;
@@ -34,7 +35,7 @@ export default function Button({
   const [scaleAnim] = useState(new Animated.Value(1));
   
   const handlePress = (event: GestureResponderEvent) => {
-    console.log('🔘 Button pressed:', title, 'disabled:', disabled, 'loading:', loading);
+    log.info('🔘 Button pressed', { title, disabled, loading });
     if (!disabled && !loading && onPress) {
       onPress(event);
     }

@@ -69,7 +69,6 @@ export const SUCCESS_MESSAGES = {
 
 // Environment variables with defaults
 export const ENV_CONFIG = {
-  CLERK_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || '',
   SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
   SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
   SUPABASE_FUNCTIONS_URL: process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL || '',

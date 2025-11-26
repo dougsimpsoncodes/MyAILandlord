@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
+import { log } from '../../lib/log';
 
 interface UserProfileProps {
   userRole: 'tenant' | 'landlord';
@@ -29,7 +30,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
               await clearRole();
               await signOut();
             } catch (error) {
-              console.error('Error signing out:', error);
+              log.error('Error signing out:', { error: String(error) });
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },
@@ -53,7 +54,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
             try {
               await clearRole();
             } catch (error) {
-              console.error('Error switching role:', error);
+              log.error('Error switching role:', { error: String(error) });
               Alert.alert('Error', 'Failed to switch role. Please try again.');
             }
           },

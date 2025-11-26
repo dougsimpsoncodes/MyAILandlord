@@ -45,9 +45,9 @@ const AppNavigator = () => {
   }
 
   // Determine if we should force AuthStack for deep link invite
-  const isInviteLink = initialUrl && initialUrl.includes('/invite');
+  const isInviteLink = !!(initialUrl && initialUrl.includes('/invite'));
   // Show MainStack if user is fully authenticated, even if they came from invite
-  const shouldShowMainStack = authDisabled ? true : (isSignedIn && user && userRole);
+  const shouldShowMainStack = authDisabled || (isSignedIn && !!user && !!userRole);
   
   log.info('🧭 Navigation decision:', { 
     shouldShowMainStack, 
@@ -67,12 +67,12 @@ const AppNavigator = () => {
     async getInitialURL() {
       // Handle deep link URL manually
       const url = await Linking.getInitialURL();
-      console.log('🔗 getInitialURL called:', url);
+      log.info('🔗 getInitialURL called:', url);
       return url;
     },
     subscribe(listener: (url: string) => void) {
       const subscription = Linking.addEventListener('url', ({ url }) => {
-        console.log('🔗 URL event received:', url);
+        log.info('🔗 URL event received:', url);
         listener(url);
       });
       return () => subscription?.remove();
@@ -94,6 +94,24 @@ const AppNavigator = () => {
         Home: 'home',
         PropertyCodeEntry: 'link',
         PropertyManagement: 'properties',
+        PropertyDetails: {
+          path: 'PropertyDetails',
+          parse: {
+            propertyId: (propertyId: string) => propertyId,
+          }
+        },
+        AddProperty: {
+          path: 'AddProperty',
+          parse: {
+            draftId: (draftId: string) => draftId || undefined,
+          }
+        },
+        PropertyPhotos: {
+          path: 'PropertyPhotos',
+          parse: {
+            draftId: (draftId: string) => draftId || undefined,
+          }
+        },
         InviteTenant: 'invite-tenant',
         ReportIssue: 'report-issue',
         ReviewIssue: 'review-issue',
@@ -103,7 +121,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer linking={linking}>
-      {shouldShowMainStack ? (
+      {shouldShowMainStack && userRole ? (
         <MainStack userRole={userRole} />
       ) : (
         <AuthStack initialInvite={isInviteLink} />

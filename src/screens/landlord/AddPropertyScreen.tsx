@@ -21,6 +21,7 @@ import { validatePropertyData, sanitizePropertyData, validatePhotos } from '../.
 import { AddressForm } from '../../components/forms/AddressForm';
 import { validateAddress, migrateAddressData } from '../../utils/addressValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import { log } from '../../lib/log';
 
 type AddPropertyNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddPropertyRouteProp = RouteProp<LandlordStackParamList, 'AddProperty'>;
@@ -41,20 +42,24 @@ const AddPropertyScreen = () => {
     lastSaved,
     error: draftError,
     updatePropertyData,
+    updateCurrentStep,
     saveDraft,
-    deleteDraft,
     createNewDraft,
     clearError,
-  } = usePropertyDraft({ 
+  } = usePropertyDraft({
     draftId,
     enableAutoSave: true,
-    autoSaveDelay: 2000 
+    autoSaveDelay: 2000
   });
 
   const [currentStep, setCurrentStep] = useState(0);
   const [bedroomSliderValue] = useState(new Animated.Value(1));
   const [bathroomSliderValue] = useState(new Animated.Value(1));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Real-time validation state
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set());
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Use draft data if available, otherwise use default values
   let basePropertyData = draftState?.propertyData || {
@@ -93,14 +98,83 @@ const AddPropertyScreen = () => {
 
   // Create new draft when component mounts (if not loading existing draft)
   useEffect(() => {
+    log.info('🏗️ AddPropertyScreen mounted', { draftId, hasDraftState: !!draftState, isDraftLoading });
     if (!draftId && !draftState && !isDraftLoading) {
+      log.info('✨ Creating new property draft');
       createNewDraft();
     }
   }, [draftId, draftState, isDraftLoading, createNewDraft]);
 
-  // Handle property data changes with auto-save
+  // Update URL with draftId once created (for page refresh persistence)
+  useEffect(() => {
+    if (draftState?.id && !draftId) {
+      // Replace current route with draftId to enable page refresh
+      navigation.setParams({ draftId: draftState.id } as any);
+    }
+  }, [draftState?.id, draftId, navigation]);
+
+  // Validate individual field
+  const validateField = (fieldName: string, value: any): string | null => {
+    switch (fieldName) {
+      case 'name':
+        if (!value || value.trim() === '') return 'Property name is required';
+        if (value.length < 3) return 'Property name must be at least 3 characters';
+        return null;
+      case 'address.line1':
+        if (!value || value.trim() === '') return 'Street address is required';
+        return null;
+      case 'address.city':
+        if (!value || value.trim() === '') return 'City is required';
+        return null;
+      case 'address.state':
+        if (!value || value.trim() === '') return 'State is required';
+        return null;
+      case 'address.zipCode':
+        if (!value || value.trim() === '') return 'ZIP code is required';
+        if (!/^\d{5}(-\d{4})?$/.test(value)) return 'Invalid ZIP code format';
+        return null;
+      case 'type':
+        if (!value) return 'Please select a property type';
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  // Mark field as touched and validate
+  const handleFieldBlur = (fieldName: string) => {
+    setTouchedFields(prev => new Set(prev).add(fieldName));
+
+    // Validate the field
+    let value;
+    if (fieldName.startsWith('address.')) {
+      const addressKey = fieldName.split('.')[1];
+      value = propertyData.address[addressKey as keyof PropertyAddress];
+    } else {
+      value = propertyData[fieldName as keyof PropertyData];
+    }
+
+    const error = validateField(fieldName, value);
+    setFieldErrors(prev => ({
+      ...prev,
+      [fieldName]: error || ''
+    }));
+  };
+
+  // Handle property data changes with auto-save and real-time validation
   const handlePropertyDataChange = (changes: Partial<PropertyData>) => {
     updatePropertyData(changes);
+
+    // Validate changed fields if they've been touched
+    Object.keys(changes).forEach(key => {
+      if (touchedFields.has(key)) {
+        const error = validateField(key, changes[key as keyof PropertyData]);
+        setFieldErrors(prev => ({
+          ...prev,
+          [key]: error || ''
+        }));
+      }
+    });
   };
 
   // Handle draft error display
@@ -207,68 +281,54 @@ const AddPropertyScreen = () => {
         return;
       }
 
-      // Save current progress before navigating
+      // Update data and step before navigating
       if (draftState) {
-        try {
-          await saveDraft();
-        } catch (error) {
-          console.warn('Failed to save draft before navigation:', error);
-          // Continue anyway - user can manually save later
-        }
+        updatePropertyData(sanitizedData);
+        updateCurrentStep(1); // Move to step 1: Property Photos
+
+        // Try to save (async, may complete after navigation)
+        saveDraft().catch((error) => {
+          log.warn('Failed to save draft before navigation:', { error: String(error) });
+        });
       }
 
-      navigation.navigate('PropertyAreas', { 
+      // Navigate with both draftId and propertyData for immediate display
+      navigation.navigate('PropertyPhotos', {
+        draftId: draftState?.id,
         propertyData: sanitizedData,
-        draftId: draftState?.id 
-      });
+      } as any);
     } catch (error) {
-      console.error('Error validating property data:', error);
+      log.error('Error validating property data:', { error: String(error) });
       Alert.alert('Error', 'An error occurred while validating the property data. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSaveDraft = async () => {
-    try {
-      await saveDraft();
-      Alert.alert('Draft Saved', 'Your property draft has been saved successfully.');
-    } catch (error) {
-      console.error('Failed to save draft:', error);
-      Alert.alert('Save Error', 'Failed to save draft. Please try again.');
-    }
-  };
-
-  const handleDeleteDraft = async () => {
-    Alert.alert(
-      'Delete Draft',
-      'Are you sure you want to delete this draft? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDraft();
-              navigation.goBack();
-            } catch (error) {
-              console.error('Failed to delete draft:', error);
-              Alert.alert('Delete Error', 'Failed to delete draft. Please try again.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const isFormValid = () => {
-    return propertyData.name && 
-           propertyData.address.line1 && 
-           propertyData.address.city && 
-           propertyData.address.state && 
-           propertyData.address.zipCode && 
+    return propertyData.name &&
+           propertyData.address.line1 &&
+           propertyData.address.city &&
+           propertyData.address.state &&
+           propertyData.address.zipCode &&
            propertyData.type;
+  };
+
+  const getMissingFields = () => {
+    const missing: string[] = [];
+    if (!propertyData.name) missing.push('Property Name');
+    if (!propertyData.address.line1) missing.push('Street Address');
+    if (!propertyData.address.city) missing.push('City');
+    if (!propertyData.address.state) missing.push('State');
+    if (!propertyData.address.zipCode) missing.push('ZIP Code');
+    if (!propertyData.type) missing.push('Property Type');
+    return missing;
+  };
+
+  const getCompletionPercentage = () => {
+    const requiredFields = 6;
+    const completedFields = requiredFields - getMissingFields().length;
+    return Math.round((completedFields / requiredFields) * 100);
   };
 
   return (
@@ -304,29 +364,38 @@ const AddPropertyScreen = () => {
               </View>
             )}
           </View>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '20%' }]} />
+            <View style={[styles.progressFill, { width: '12.5%' }]} />
           </View>
-          <Text style={styles.progressText}>Step 1 of 5: Property Details</Text>
+          <Text style={styles.progressText}>Step 1 of 8: Property Basics</Text>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Property Name */}
           <View style={styles.section}>
-            <Text style={styles.label}>Property Name</Text>
+            <Text style={styles.label}>
+              Property Name <Text style={styles.required}>*</Text>
+            </Text>
             <TextInput
-              style={styles.input}
-              placeholder=""
+              style={[
+                styles.input,
+                touchedFields.has('name') && fieldErrors.name && styles.inputError
+              ]}
+              placeholder="e.g., Sunset Apartments"
               value={propertyData.name}
               onChangeText={(text) => handlePropertyDataChange({ name: text })}
+              onBlur={() => handleFieldBlur('name')}
             />
+            {touchedFields.has('name') && fieldErrors.name && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={14} color="#E74C3C" />
+                <Text style={styles.errorText}>{fieldErrors.name}</Text>
+              </View>
+            )}
           </View>
 
           {/* Address - Multi-field Form */}
@@ -339,8 +408,13 @@ const AddPropertyScreen = () => {
 
           {/* Property Type */}
           <View style={styles.section}>
-            <Text style={styles.label}>Property Type</Text>
-            <View style={styles.typeGrid}>
+            <Text style={styles.label}>
+              Property Type <Text style={styles.required}>*</Text>
+            </Text>
+            <View style={[
+              styles.typeGrid,
+              touchedFields.has('type') && fieldErrors.type && styles.typeGridError
+            ]}>
               {propertyTypes.map((type) => (
                 <TouchableOpacity
                   key={type.id}
@@ -348,7 +422,10 @@ const AddPropertyScreen = () => {
                     styles.typeCard,
                     propertyData.type === type.id && styles.typeCardSelected,
                   ]}
-                  onPress={() => handlePropertyDataChange({ type: type.id as PropertyData['type'] })}
+                  onPress={() => {
+                    handlePropertyDataChange({ type: type.id as PropertyData['type'] });
+                    handleFieldBlur('type');
+                  }}
                 >
                   <Ionicons
                     name={type.icon as keyof typeof Ionicons.glyphMap}
@@ -366,6 +443,12 @@ const AddPropertyScreen = () => {
                 </TouchableOpacity>
               ))}
             </View>
+            {touchedFields.has('type') && fieldErrors.type && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={14} color="#E74C3C" />
+                <Text style={styles.errorText}>{fieldErrors.type}</Text>
+              </View>
+            )}
           </View>
 
 
@@ -396,61 +479,39 @@ const AddPropertyScreen = () => {
             </View>
           </View>
 
-          {/* Next Steps Preview */}
-          <View style={styles.nextStepsCard}>
-            <View style={styles.nextStepsHeader}>
-              <Ionicons name="information-circle" size={20} color="#3498DB" />
-              <Text style={styles.nextStepsTitle}>What's Next?</Text>
+        </ScrollView>
+
+        {/* Validation Summary - Show if form is incomplete */}
+        {!isFormValid() && (
+          <View style={styles.validationSummary}>
+            <View style={styles.validationHeader}>
+              <Ionicons name="alert-circle" size={20} color="#F39C12" />
+              <Text style={styles.validationTitle}>
+                Complete {getMissingFields().length} required field{getMissingFields().length !== 1 ? 's' : ''} to continue
+              </Text>
             </View>
-            <View style={styles.nextStepsList}>
-              <View style={styles.nextStepItem}>
-                <Ionicons name="home" size={16} color="#2ECC71" />
-                <Text style={styles.nextStepText}>Select property areas and rooms</Text>
+            <View style={styles.missingFieldsList}>
+              {getMissingFields().map((field, index) => (
+                <View key={index} style={styles.missingFieldItem}>
+                  <View style={styles.missingFieldBullet} />
+                  <Text style={styles.missingFieldText}>{field}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={styles.progressIndicator}>
+              <View style={styles.progressBarSmall}>
+                <View style={[styles.progressFillSmall, { width: `${getCompletionPercentage()}%` }]} />
               </View>
-              <View style={styles.nextStepItem}>
-                <Ionicons name="camera" size={16} color="#2ECC71" />
-                <Text style={styles.nextStepText}>Add photos for each area</Text>
-              </View>
-              <View style={styles.nextStepItem}>
-                <Ionicons name="construct" size={16} color="#2ECC71" />
-                <Text style={styles.nextStepText}>Document appliances and assets</Text>
-              </View>
+              <Text style={styles.progressPercentage}>{getCompletionPercentage()}% Complete</Text>
             </View>
           </View>
-        </ScrollView>
+        )}
 
         {/* Bottom Actions */}
         <View style={styles.bottomActions}>
-          <TouchableOpacity 
-            style={styles.saveButton} 
-            onPress={handleSaveDraft}
-            disabled={isSaving || isDraftLoading}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name={isSaving ? "sync" : "bookmark-outline"} 
-              size={18} 
-              color={isSaving ? "#007AFF" : "#8E8E93"} 
-            />
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Saving...' : 'Save Draft'}
-            </Text>
-          </TouchableOpacity>
-          
-          {draftId && (
-            <TouchableOpacity 
-              style={styles.deleteButton} 
-              onPress={handleDeleteDraft}
-              disabled={isSaving || isDraftLoading}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-            </TouchableOpacity>
-          )}
-          
           <TouchableOpacity
             style={[
-              styles.nextButton, 
+              styles.nextButton,
               (!isFormValid() || isSubmitting || isDraftLoading) && styles.nextButtonDisabled
             ]}
             onPress={handleNext}
@@ -698,71 +759,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#95A5A6',
   },
-  nextStepsCard: {
-    backgroundColor: '#E8F4FD',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#D6EAF8',
-  },
-  nextStepsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  nextStepsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  nextStepsList: {
-    gap: 12,
-  },
-  nextStepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  nextStepText: {
-    fontSize: 14,
-    color: '#34495E',
-    flex: 1,
-  },
   bottomActions: {
-    flexDirection: 'row',
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E9ECEF',
-    gap: 12,
-  },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
-    gap: 6,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  deleteButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
-    minHeight: 44,
-    minWidth: 44,
   },
   nextButton: {
     flex: 1,
@@ -795,6 +797,99 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontStyle: 'italic',
     lineHeight: 16,
+  },
+  // Validation error styles
+  required: {
+    color: '#E74C3C',
+    fontSize: 16,
+  },
+  inputError: {
+    borderColor: '#E74C3C',
+    borderWidth: 1.5,
+    backgroundColor: '#FFF5F5',
+  },
+  typeGridError: {
+    borderWidth: 1.5,
+    borderColor: '#E74C3C',
+    borderRadius: 8,
+    padding: 4,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 6,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#E74C3C',
+    flex: 1,
+  },
+  // Validation summary styles
+  validationSummary: {
+    backgroundColor: '#FFF9E6',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#F39C12',
+  },
+  validationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  validationTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E67E22',
+    flex: 1,
+  },
+  missingFieldsList: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  missingFieldItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  missingFieldBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F39C12',
+  },
+  missingFieldText: {
+    fontSize: 14,
+    color: '#95A5A6',
+    flex: 1,
+  },
+  progressIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  progressBarSmall: {
+    flex: 1,
+    height: 6,
+    backgroundColor: '#FFF',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFillSmall: {
+    height: '100%',
+    backgroundColor: '#F39C12',
+    borderRadius: 3,
+  },
+  progressPercentage: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#E67E22',
+    minWidth: 70,
+    textAlign: 'right',
   },
 });
 

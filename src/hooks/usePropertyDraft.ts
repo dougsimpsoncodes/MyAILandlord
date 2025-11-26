@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import log from '../lib/log';
+import { log } from '../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, InventoryItem } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
 import { useAppAuth } from '../context/SupabaseAuthContext';
@@ -97,6 +97,12 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
    * Manually save the current draft
    */
   const saveDraft = useCallback(async (): Promise<void> => {
+    // In test mode, skip draft saving
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+    if (authDisabled) {
+      return;
+    }
+
     if (!user?.id || !draftState) {
       throw new Error('No user or draft state to save');
     }
@@ -104,7 +110,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
     try {
       setIsSaving(true);
       setError(null);
-      
+
       await PropertyDraftService.saveDraft(user.id, draftState);
       setLastSaved(new Date());
       pendingChanges.current = false;

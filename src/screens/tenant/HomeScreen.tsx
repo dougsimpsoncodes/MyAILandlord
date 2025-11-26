@@ -80,7 +80,7 @@ const HomeScreen = () => {
     },
   ];
 
-  const recentActivity = [];
+  const recentActivity: any[] = [];
 
   const handleQuickAction = (route: keyof TenantStackParamList) => {
     navigation.navigate(route as any);
@@ -110,7 +110,8 @@ const HomeScreen = () => {
               await clearRole();
               await signOut();
             } catch (error) {
-              console.error('Error signing out:', error);
+              const { log } = await import('../../lib/log');
+              log.error('Error signing out:', { error: String(error) });
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },

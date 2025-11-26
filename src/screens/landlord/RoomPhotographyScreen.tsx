@@ -200,20 +200,25 @@ const RoomPhotographyScreen = () => {
   };
 
   const handleContinue = async () => {
-    // Check if at least required rooms have photos
-    const requiredRooms = propertyData.rooms?.filter(r => r.required) || [];
-    const missingPhotos = requiredRooms.filter(room => {
-      const roomPhoto = roomPhotos.find(rp => rp.roomId === room.id);
-      return !roomPhoto || roomPhoto.photos.length === 0;
-    });
+    // Skip validation in test mode
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
 
-    if (missingPhotos.length > 0) {
-      Alert.alert(
-        'Missing Required Photos',
-        `Please add photos for: ${missingPhotos.map(r => r.name).join(', ')}`,
-        [{ text: 'OK' }]
-      );
-      return;
+    if (!authDisabled) {
+      // Check if at least required rooms have photos
+      const requiredRooms = propertyData.rooms?.filter(r => r.required) || [];
+      const missingPhotos = requiredRooms.filter(room => {
+        const roomPhoto = roomPhotos.find(rp => rp.roomId === room.id);
+        return !roomPhoto || roomPhoto.photos.length === 0;
+      });
+
+      if (missingPhotos.length > 0) {
+        Alert.alert(
+          'Missing Required Photos',
+          `Please add photos for: ${missingPhotos.map(r => r.name).join(', ')}`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
     }
 
     // Save and navigate
@@ -222,9 +227,9 @@ const RoomPhotographyScreen = () => {
       roomPhotos,
     });
     await saveDraft();
-    
-    navigation.navigate('AssetScanning', { 
-      propertyData: { ...propertyData, roomPhotos } 
+
+    navigation.navigate('AssetScanning', {
+      propertyData: { ...propertyData, roomPhotos }
     });
   };
 

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
+// Removed unused SecureStore import
 import { log } from '../lib/log';
 
 interface AppUser {

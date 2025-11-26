@@ -43,8 +43,9 @@ const LandlordHomeScreen = () => {
         if (!api) return;
         const properties = await api.getUserProperties();
         setTotalProperties(properties.length);
-      } catch (error) {
-        console.error('Error loading property count:', error);
+    } catch (error) {
+      const { log } = await import('../../lib/log');
+      log.error('Error loading property count:', { error: String(error) });
         setTotalProperties(0);
       }
     };
@@ -116,7 +117,8 @@ const LandlordHomeScreen = () => {
               await clearRole();
               await signOut();
             } catch (error) {
-              console.error('Error signing out:', error);
+              const { log } = await import('../../lib/log');
+              log.error('Error signing out:', { error: String(error) });
               Alert.alert('Error', 'Failed to sign out. Please try again.');
             }
           },

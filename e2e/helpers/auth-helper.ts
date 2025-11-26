@@ -1,347 +1,500 @@
-import { Page, expect } from '@playwright/test';
+import { Page, BrowserContext } from '@playwright/test';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Authentication helper for Playwright E2E tests
- * Provides utilities for real Clerk authentication testing
+ * Supabase Authentication Helper for Playwright E2E Tests
+ *
+ * This helper provides utilities for real Supabase authentication testing.
+ * Unlike the Clerk-based AuthHelper, this works with the actual Supabase Auth
+ * implementation used in the application.
+ *
+ * Usage:
+ *   const helper = new SupabaseAuthHelper(page);
+ *   await helper.signInWithPassword(email, password);
+ *   await helper.waitForAuthentication();
  */
 
-export class AuthHelper {
-  constructor(private page: Page) {}
+export interface AuthResult {
+  success: boolean;
+  error?: string;
+  userId?: string;
+  sessionToken?: string;
+}
 
-  /**
-   * Complete signup flow with email/password via Clerk
-   * @param email - User email address
-   * @param password - User password
-   * @param verificationCode - Optional verification code if already obtained
-   */
-  async signUpWithEmail(email: string, password: string): Promise<{ success: boolean; needsVerification: boolean }> {
-    try {
-      // Navigate to welcome screen
-      await this.page.goto('/');
-      await this.page.waitForLoadState('networkidle');
+export class SupabaseAuthHelper {
+  private supabase: SupabaseClient;
 
-      // Click "Get Started" or similar button to initiate signup
-      const getStartedButton = this.page.locator('text=/Get Started|Sign Up|Create Account/i').first();
-      await getStartedButton.click();
+  constructor(
+    private page: Page,
+    supabaseUrl?: string,
+    supabaseAnonKey?: string
+  ) {
+    // Use environment variables if not provided
+    const url = supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL!;
+    const key = supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-      // Wait for signup form
-      await this.page.waitForSelector('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
-
-      // Fill email
-      const emailInput = this.page.locator('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]').first();
-      await emailInput.fill(email);
-
-      // Fill password
-      const passwordInput = this.page.locator('input[name="password"], input[type="password"], input[placeholder*="password" i]').first();
-      await passwordInput.fill(password);
-
-      // Click sign up button
-      const signUpButton = this.page.locator('button:has-text("Create Account"), button:has-text("Sign Up")').first();
-      await signUpButton.click();
-
-      // Check if verification is needed
-      await this.page.waitForTimeout(2000);
-      const needsVerification = await this.page.locator('text=/verify|verification code|enter code/i').isVisible().catch(() => false);
-
-      return { success: true, needsVerification };
-    } catch (error) {
-      console.error('Signup failed:', error);
-      return { success: false, needsVerification: false };
+    if (!url || !key) {
+      throw new Error('Supabase URL and Anon Key must be provided or set in environment variables');
     }
+
+    this.supabase = createClient(url, key, {
+      global: {
+        fetch: (url, options = {}) => {
+          return fetch(url, {
+            ...options,
+            signal: AbortSignal.timeout(30000), // 30 second timeout instead of default 10s
+          });
+        },
+      },
+    });
   }
 
   /**
-   * Complete email verification
-   * @param code - 6-digit verification code
+   * Retry helper with exponential backoff
    */
-  async verifyEmail(code: string): Promise<boolean> {
-    try {
-      // Find verification code input
-      const codeInput = this.page.locator('input[name="code"], input[placeholder*="code" i], input[placeholder*="verification" i]').first();
-      await codeInput.fill(code);
+  private async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 1000
+  ): Promise<T> {
+    let lastError: any;
 
-      // Click verify button
-      const verifyButton = this.page.locator('button:has-text("Verify"), button:has-text("Continue")').first();
-      await verifyButton.click();
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
 
-      // Wait for successful verification
-      await this.page.waitForTimeout(2000);
-      return true;
-    } catch (error) {
-      console.error('Verification failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Login with email/password via Clerk
-   * @param email - User email
-   * @param password - User password
-   */
-  async loginWithEmail(email: string, password: string): Promise<boolean> {
-    try {
-      // Navigate to welcome or login screen
-      await this.page.goto('/');
-      await this.page.waitForLoadState('networkidle');
-
-      // Look for login button or link
-      const loginLink = this.page.locator('text=/Sign In|Log In|Login|Already have an account/i').first();
-      if (await loginLink.isVisible()) {
-        await loginLink.click();
-      }
-
-      // Wait for login form
-      await this.page.waitForSelector('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
-
-      // Fill email
-      const emailInput = this.page.locator('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]').first();
-      await emailInput.fill(email);
-
-      // Fill password
-      const passwordInput = this.page.locator('input[name="password"], input[type="password"], input[placeholder*="password" i]').first();
-      await passwordInput.fill(password);
-
-      // Click sign in button
-      const signInButton = this.page.locator('button:has-text("Sign In"), button:has-text("Log In")').first();
-      await signInButton.click();
-
-      // Wait for redirect after successful login
-      await this.page.waitForTimeout(3000);
-
-      // Check if we're logged in by looking for role selection or dashboard
-      const isLoggedIn = await this.page.locator('text=/Select your role|Dashboard|Welcome,/i').isVisible({ timeout: 5000 }).catch(() => false);
-
-      return isLoggedIn;
-    } catch (error) {
-      console.error('Login failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Logout current user
-   */
-  async logout(): Promise<boolean> {
-    try {
-      // Look for logout button/link (using proper selector syntax)
-      const logoutButton = this.page.locator('text=/Log Out|Sign Out|Logout/i').first();
-
-      if (await logoutButton.isVisible({ timeout: 5000 })) {
-        await logoutButton.click();
-        await this.page.waitForTimeout(2000);
-        return true;
-      }
-
-      // Also try button with aria-label
-      const logoutButtonAria = this.page.locator('button[aria-label*="logout" i]').first();
-      if (await logoutButtonAria.isVisible({ timeout: 2000 })) {
-        await logoutButtonAria.click();
-        await this.page.waitForTimeout(2000);
-        return true;
-      }
-
-      // Try settings/profile menu
-      const menuButton = this.page.locator('[aria-label*="menu" i], [aria-label*="profile" i]').first();
-      if (await menuButton.isVisible({ timeout: 3000 })) {
-        await menuButton.click();
-        await this.page.waitForTimeout(500);
-
-        const logoutInMenu = this.page.locator('text=/Log Out|Sign Out/i').first();
-        if (await logoutInMenu.isVisible()) {
-          await logoutInMenu.click();
-          await this.page.waitForTimeout(2000);
-          return true;
+        if (attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff: 1s, 2s, 4s
+          console.log(`[SupabaseAuthHelper] Retry attempt ${attempt}/${maxRetries} after ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
+    }
 
-      return false;
+    throw lastError;
+  }
+
+  /**
+   * Sign in with email and password using Supabase Auth
+   * Sets the session in the browser's localStorage for the app to pick up
+   */
+  async signInWithPassword(email: string, password: string): Promise<AuthResult> {
+    try {
+      console.log(`[SupabaseAuthHelper] Signing in: ${email}`);
+
+      // Sign in via Supabase API with retry logic
+      const result = await this.retryWithBackoff(async () => {
+        const { data, error } = await this.supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (!data.session) {
+          throw new Error('No session returned from sign in');
+        }
+
+        return { data, error };
+      });
+
+      const { data, error } = result;
+
+      if (error || !data.session) {
+        console.error('[SupabaseAuthHelper] Sign in error:', error?.message);
+        return {
+          success: false,
+          error: error?.message || 'No session returned',
+        };
+      }
+
+      console.log('[SupabaseAuthHelper] Sign in successful, user ID:', data.user.id);
+
+      // Inject the session into the browser's storage
+      await this.injectSession(data.session);
+
+      return {
+        success: true,
+        userId: data.user.id,
+        sessionToken: data.session.access_token,
+      };
     } catch (error) {
-      console.error('Logout failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[SupabaseAuthHelper] Sign in exception:', message);
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
+   * Sign up a new user with email and password
+   */
+  async signUp(email: string, password: string, options?: {
+    emailRedirectTo?: string;
+    data?: Record<string, any>;
+  }): Promise<AuthResult> {
+    try {
+      console.log(`[SupabaseAuthHelper] Signing up: ${email}`);
+
+      const result = await this.retryWithBackoff(async () => {
+        const { data, error } = await this.supabase.auth.signUp({
+          email,
+          password,
+          options,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        if (!data.user) {
+          throw new Error('No user returned from sign up');
+        }
+
+        return { data, error };
+      });
+
+      const { data, error } = result;
+
+      if (error || !data.user) {
+        console.error('[SupabaseAuthHelper] Sign up error:', error?.message);
+        return {
+          success: false,
+          error: error?.message || 'No user returned',
+        };
+      }
+
+      console.log('[SupabaseAuthHelper] Sign up successful, user ID:', data.user.id);
+
+      // If session exists, inject it into browser
+      if (data.session) {
+        await this.injectSession(data.session);
+      }
+
+      return {
+        success: true,
+        userId: data.user.id,
+        sessionToken: data.session?.access_token,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[SupabaseAuthHelper] Sign up exception:', message);
+      return {
+        success: false,
+        error: message,
+      };
+    }
+  }
+
+  /**
+   * Sign out the current user
+   */
+  async signOut(): Promise<boolean> {
+    try {
+      const { error } = await this.supabase.auth.signOut();
+
+      if (error) {
+        console.error('[SupabaseAuthHelper] Sign out error:', error.message);
+        return false;
+      }
+
+      // Clear browser storage
+      await this.clearAuthState();
+
+      return true;
+    } catch (error) {
+      console.error('[SupabaseAuthHelper] Sign out exception:', error);
       return false;
     }
   }
 
   /**
-   * Check if user is currently authenticated
+   * Inject a Supabase session into the browser's localStorage
+   * This allows the app to pick up the authenticated session
+   */
+  private async injectSession(session: any): Promise<void> {
+    const storageKey = `sb-${new URL(process.env.EXPO_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token`;
+
+    await this.page.evaluate(
+      ({ key, sessionData }) => {
+        localStorage.setItem(key, JSON.stringify(sessionData));
+      },
+      { key: storageKey, sessionData: session }
+    );
+
+    console.log('[SupabaseAuthHelper] Session injected into localStorage');
+  }
+
+  /**
+   * Wait for the app to recognize authentication
+   * Checks for common authenticated state indicators
+   */
+  async waitForAuthentication(timeout: number = 10000): Promise<boolean> {
+    try {
+      // Wait for app to load and show authenticated state
+      await this.page.waitForFunction(
+        () => {
+          // Check for auth indicators (adjust selectors based on your app)
+          const indicators = [
+            document.querySelector('[class*="dashboard"]'),
+            document.querySelector('[class*="properties"]'),
+            document.querySelector('text=/Welcome|Dashboard|Properties/i'),
+          ];
+          return indicators.some(el => el !== null);
+        },
+        { timeout }
+      );
+
+      console.log('[SupabaseAuthHelper] Authentication confirmed');
+      return true;
+    } catch (error) {
+      console.error('[SupabaseAuthHelper] Wait for authentication timeout');
+      return false;
+    }
+  }
+
+  /**
+   * Check if user is authenticated by checking localStorage
    */
   async isAuthenticated(): Promise<boolean> {
     try {
-      // Check for elements that indicate authentication
-      const authIndicators = [
-        'text=/Dashboard|Welcome|Select your role/i',
-        '[aria-label*="profile" i]',
-        '[aria-label*="menu" i]'
-      ];
+      const storageKey = `sb-${new URL(process.env.EXPO_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token`;
 
-      for (const selector of authIndicators) {
-        if (await this.page.locator(selector).isVisible({ timeout: 2000 }).catch(() => false)) {
-          return true;
+      const hasSession = await this.page.evaluate((key) => {
+        const data = localStorage.getItem(key);
+        if (!data) return false;
+
+        try {
+          const session = JSON.parse(data);
+          return !!session.access_token;
+        } catch {
+          return false;
         }
-      }
+      }, storageKey);
 
-      return false;
+      return hasSession;
     } catch (error) {
       return false;
     }
   }
 
   /**
-   * Get current session info from Clerk
+   * Get the current session token from browser storage
    */
-  async getSessionInfo(): Promise<{ userId?: string; email?: string } | null> {
+  async getSessionToken(): Promise<string | null> {
     try {
-      return await this.page.evaluate(() => {
-        // Try to get Clerk session from window object
-        const clerk = (window as any).__clerk_frontend_api;
-        if (clerk && clerk.session) {
-          return {
-            userId: clerk.session.user?.id,
-            email: clerk.session.user?.emailAddresses?.[0]?.emailAddress
-          };
+      const storageKey = `sb-${new URL(process.env.EXPO_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token`;
+
+      const token = await this.page.evaluate((key) => {
+        const data = localStorage.getItem(key);
+        if (!data) return null;
+
+        try {
+          const session = JSON.parse(data);
+          return session.access_token || null;
+        } catch {
+          return null;
         }
-        return null;
-      });
+      }, storageKey);
+
+      return token;
     } catch (error) {
       return null;
     }
   }
 
   /**
-   * Clear all authentication state (for test cleanup)
+   * Clear all authentication state from browser
    */
   async clearAuthState(): Promise<void> {
     try {
-      // First, ensure we're on a page where localStorage is accessible
-      const currentUrl = this.page.url();
-      if (!currentUrl || currentUrl === 'about:blank') {
-        await this.page.goto('/');
-        await this.page.waitForLoadState('domcontentloaded');
-      }
-
-      // Clear localStorage, sessionStorage, and cookies
       await this.page.evaluate(() => {
         try {
           localStorage.clear();
           sessionStorage.clear();
         } catch (e) {
-          // Storage might not be accessible, that's ok
+          // Storage might not be accessible
         }
       });
 
       await this.page.context().clearCookies();
+      console.log('[SupabaseAuthHelper] Auth state cleared');
     } catch (error) {
-      // Silently ignore - test cleanup should not fail tests
-      console.log('Failed to clear auth state:', error);
+      console.error('[SupabaseAuthHelper] Failed to clear auth state:', error);
     }
   }
 
   /**
-   * Wait for Clerk to be loaded and ready
+   * Navigate to the app and wait for it to load
    */
-  async waitForClerkLoaded(timeout = 10000): Promise<boolean> {
-    try {
-      return await this.page.waitForFunction(
-        () => {
-          return (window as any).__clerk_loaded === true ||
-                 (window as any).__clerk_frontend_api !== undefined;
-        },
-        { timeout }
-      ).then(() => true).catch(() => false);
-    } catch (error) {
-      return false;
-    }
+  async navigateToApp(path: string = '/'): Promise<void> {
+    await this.page.goto(path);
+    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForTimeout(1000); // Give React time to hydrate
   }
 
   /**
-   * Handle invalid credentials error
+   * Complete sign in flow: authenticate + navigate + wait
    */
-  async hasInvalidCredentialsError(): Promise<boolean> {
-    try {
-      const errorSelectors = [
-        'text=/invalid|incorrect|wrong/i',
-        '[role="alert"]',
-        '.error-message',
-        '[data-testid*="error"]'
-      ];
+  async authenticateAndNavigate(
+    email: string,
+    password: string,
+    navigateTo: string = '/'
+  ): Promise<AuthResult> {
+    // First navigate to the app
+    await this.navigateToApp('/');
 
-      for (const selector of errorSelectors) {
-        if (await this.page.locator(selector).isVisible({ timeout: 2000 }).catch(() => false)) {
-          return true;
-        }
-      }
+    // Sign in
+    const result = await this.signInWithPassword(email, password);
 
-      return false;
-    } catch (error) {
-      return false;
+    if (!result.success) {
+      return result;
     }
+
+    // Navigate to desired page
+    if (navigateTo !== '/') {
+      await this.navigateToApp(navigateTo);
+    } else {
+      // Reload current page to pick up auth state
+      await this.page.reload({ waitUntil: 'networkidle' });
+    }
+
+    // Wait for authentication to be recognized
+    const authenticated = await this.waitForAuthentication();
+
+    if (!authenticated) {
+      return {
+        success: false,
+        error: 'Authentication successful but app did not recognize auth state',
+      };
+    }
+
+    return result;
   }
 }
 
 /**
- * OAuth helper for testing OAuth flows
+ * Helper to create test users in Supabase (requires service role key)
+ * This should only be used in test setup, not in individual tests
  */
-export class OAuthHelper {
-  constructor(private page: Page) {}
+export class SupabaseTestUserManager {
+  private supabase: SupabaseClient;
+
+  constructor(supabaseUrl: string, serviceRoleKey: string) {
+    this.supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+  }
 
   /**
-   * Attempt to initiate OAuth flow (may be blocked without production credentials)
-   * @param provider - OAuth provider ('google' or 'apple')
+   * Create a test user (requires service role key)
    */
-  async initiateOAuth(provider: 'google' | 'apple'): Promise<{ initiated: boolean; blocked: boolean; reason?: string }> {
+  async createTestUser(email: string, password: string, metadata?: Record<string, any>): Promise<{
+    success: boolean;
+    userId?: string;
+    error?: string;
+  }> {
     try {
-      // Look for OAuth button
-      const oauthButton = this.page.locator(`button:has-text("${provider}"), button[aria-label*="${provider}" i]`).first();
+      const { data, error } = await this.supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm email for test users
+        user_metadata: metadata || {},
+      });
 
-      if (!await oauthButton.isVisible({ timeout: 5000 })) {
-        return { initiated: false, blocked: true, reason: `${provider} OAuth button not found` };
+      if (error) {
+        return {
+          success: false,
+          error: error.message,
+        };
       }
 
-      // Click OAuth button
-      await oauthButton.click();
-
-      // Wait for redirect or popup
-      await this.page.waitForTimeout(2000);
-
-      // Check if we got redirected to OAuth provider
-      const currentUrl = this.page.url();
-      if (currentUrl.includes('accounts.google.com') || currentUrl.includes('appleid.apple.com')) {
-        return { initiated: true, blocked: false };
-      }
-
-      // Check for error messages
-      const hasError = await this.page.locator('text=/error|failed|unavailable/i').isVisible({ timeout: 2000 }).catch(() => false);
-      if (hasError) {
-        return { initiated: false, blocked: true, reason: 'OAuth error displayed' };
-      }
-
-      return { initiated: false, blocked: true, reason: 'OAuth redirect did not occur' };
+      return {
+        success: true,
+        userId: data.user.id,
+      };
     } catch (error) {
-      return { initiated: false, blocked: true, reason: String(error) };
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        error: message,
+      };
     }
   }
 
   /**
-   * Check if OAuth is configured
+   * Delete a test user
    */
-  async isOAuthAvailable(provider: 'google' | 'apple'): Promise<boolean> {
+  async deleteTestUser(userId: string): Promise<boolean> {
     try {
-      const oauthButton = this.page.locator(`button:has-text("${provider}"), button[aria-label*="${provider}" i]`).first();
-      return await oauthButton.isVisible({ timeout: 3000 }).catch(() => false);
+      const { error } = await this.supabase.auth.admin.deleteUser(userId);
+      return !error;
     } catch (error) {
       return false;
     }
   }
+
+  /**
+   * List all users (for cleanup)
+   */
+  async listUsers(): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase.auth.admin.listUsers();
+      return error ? [] : data.users;
+    } catch (error) {
+      return [];
+    }
+  }
+}
+
+// ==============================================================================
+// Backward Compatibility Exports
+// ==============================================================================
+
+/**
+ * AuthHelper - Backward compatible alias for SupabaseAuthHelper
+ * This maintains compatibility with existing tests that use the old Clerk-based AuthHelper name.
+ *
+ * New code should use SupabaseAuthHelper directly for clarity.
+ */
+export class AuthHelper extends SupabaseAuthHelper {
+  /**
+   * loginWithEmail - Backward compatible method name (alias for signInWithPassword)
+   */
+  async loginWithEmail(email: string, password: string): Promise<AuthResult> {
+    return this.authenticateAndNavigate(email, password);
+  }
+
+  /**
+   * signUpWithEmail - Backward compatible method name (alias for signUp)
+   */
+  async signUpWithEmail(email: string, password: string): Promise<AuthResult> {
+    return this.signUp(email, password);
+  }
+
+  /**
+   * logout - Backward compatible method name (alias for signOut)
+   */
+  async logout(): Promise<boolean> {
+    return this.signOut();
+  }
 }
 
 /**
- * Test data generators for authentication tests
+ * AuthTestData - Backward compatible class for generating test data
  */
 export class AuthTestData {
   private static counter = 0;
 
-  /**
-   * Generate unique test email
-   */
   static generateTestEmail(): string {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(7);
@@ -349,24 +502,40 @@ export class AuthTestData {
     return `test-user-${timestamp}-${random}-${this.counter}@example.com`;
   }
 
-  /**
-   * Generate secure test password
-   */
   static generateTestPassword(): string {
     return `TestPassword123!${Math.random().toString(36).substring(7)}`;
   }
 
-  /**
-   * Get pre-configured test user credentials (if available)
-   */
   static getTestUserCredentials(): { email: string; password: string } | null {
-    const email = process.env.TEST_USER_EMAIL;
-    const password = process.env.TEST_USER_PASSWORD;
+    const email = process.env.LANDLORD_EMAIL || process.env.TEST_USER_EMAIL;
+    const password = process.env.LANDLORD_PASSWORD || process.env.TEST_USER_PASSWORD;
 
     if (email && password) {
       return { email, password };
     }
 
     return null;
+  }
+}
+
+/**
+ * OAuthHelper - Stub for backward compatibility
+ * OAuth functionality is not currently implemented with Supabase Auth in E2E tests.
+ * This stub prevents import errors in existing tests.
+ */
+export class OAuthHelper {
+  constructor(private page: Page) {}
+
+  async initiateOAuth(provider: 'google' | 'apple'): Promise<{ initiated: boolean; blocked: boolean; reason?: string }> {
+    console.warn('[OAuthHelper] OAuth testing not yet implemented with Supabase Auth');
+    return {
+      initiated: false,
+      blocked: true,
+      reason: 'OAuth testing not implemented - use Supabase signInWithOAuth in application code',
+    };
+  }
+
+  async isOAuthAvailable(provider: 'google' | 'apple'): Promise<boolean> {
+    return false;
   }
 }

@@ -135,7 +135,8 @@ export const AddressForm: React.FC<AddressFormProps> = ({
               }
             }
           }}
-          autoComplete="address-level2"
+          // RN TextInput does not support HTML 'address-level2'; omit to satisfy types
+          // autoComplete intentionally omitted for city field
           textContentType="addressCity"
           autoCapitalize="words"
           returnKeyType="next"
@@ -156,7 +157,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({
           {/* Hidden input for autofill */}
           <TextInput
             style={{ position: 'absolute', left: -9999, opacity: 0, height: 0 }}
-            autoComplete="address-level1"
+            // autoComplete intentionally omitted for RN compatibility
             textContentType="addressState"
             value={value.state}
             onChangeText={(text) => {

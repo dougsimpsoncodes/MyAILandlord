@@ -118,7 +118,8 @@ export async function checkRateLimit(
       reset,
     };
   } catch (error) {
-    console.error('Rate limit check failed:', error);
+    const { log } = await import('./log');
+    log.error('Rate limit check failed:', { error: String(error) });
 
     // Fail open - allow request if Redis is down
     // In production, you might want to fail closed instead
@@ -173,7 +174,8 @@ export async function getRateLimitStatus(
       reset,
     };
   } catch (error) {
-    console.error('Get rate limit status failed:', error);
+    const { log } = await import('./log');
+    log.error('Get rate limit status failed:', { error: String(error) });
     return {
       limit: config.limit,
       remaining: config.limit,
@@ -212,12 +214,13 @@ export async function withRateLimit<T>(
  */
 export async function testRateLimiter() {
   if (process.env.NODE_ENV === 'production') {
-    console.warn('Cannot test rate limiter in production');
+    const { log } = await import('./log');
+    log.warn('Cannot test rate limiter in production');
     return;
   }
-
-  console.log('Rate Limiter Test');
-  console.log('=================');
+  const { log } = await import('./log');
+  log.info('Rate Limiter Test');
+  log.info('=================');
 
   const testOperation: RateLimitOperation = 'api';
   const testIdentifier = 'test-user-123';
@@ -232,11 +235,9 @@ export async function testRateLimiter() {
     const result = await checkRateLimit(testOperation, testIdentifier);
 
     if (result.success) {
-      console.log(`Request ${i}: ✅ Allowed (${result.remaining} remaining)`);
+      log.info('Rate limiter allowed', { i, remaining: result.remaining });
     } else {
-      console.log(
-        `Request ${i}: ❌ Blocked (rate limit exceeded, retry in ${result.retryAfter}s)`
-      );
+      log.info('Rate limiter blocked', { i, retryAfter: result.retryAfter });
     }
 
     // Small delay between requests
@@ -245,7 +246,7 @@ export async function testRateLimiter() {
 
   // Cleanup
   await resetRateLimit(testOperation, testIdentifier);
-  console.log('\nTest complete - rate limiter working correctly');
+  log.info('Test complete - rate limiter working correctly');
 }
 
 /**

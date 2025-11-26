@@ -21,7 +21,7 @@ interface CaseFile {
   description: string;
   location: string;
   urgency: 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority';
-  status: 'new' | 'in_progress' | 'resolved';
+  status: 'new' | 'in_progress' | 'resolved' | 'pending' | 'completed' | 'cancelled';
   submittedAt: string;
   mediaCount: number;
   estimatedCost?: string;
@@ -63,21 +63,30 @@ const DashboardScreen = () => {
         return;
       }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
-      
+
       // Transform API data to match the expected interface
-      const transformedCases = maintenanceRequests.map((request: MaintenanceRequestResponse) => ({
-        id: request.id,
-        tenantName: request.profiles?.name || 'Tenant User',
-        tenantUnit: 'N/A', // TODO: Get from tenant_property_links
-        issueType: capitalizeFirst(request.issue_type),
-        description: request.description,
-        location: request.area,
-        urgency: mapPriorityToUrgency(request.priority),
-        status: request.status,
-        submittedAt: formatDate(request.created_at),
-        mediaCount: request.images?.length || 0,
-        estimatedCost: request.estimated_cost ? `$${request.estimated_cost}` : 'TBD'
-      }));
+      const transformedCases = maintenanceRequests.map((request: any) => {
+        const statusMap: Record<string, CaseFile['status']> = {
+          pending: 'new',
+          in_progress: 'in_progress',
+          completed: 'resolved',
+          cancelled: 'resolved',
+        };
+        const mappedStatus: CaseFile['status'] = statusMap[request.status] || 'new';
+        return {
+          id: request.id,
+          tenantName: request.profiles?.name || 'Tenant User',
+          tenantUnit: 'N/A', // TODO: Get from tenant_property_links
+          issueType: capitalizeFirst(request.issue_type || request.issueType || 'Unknown'),
+          description: request.description,
+          location: request.area,
+          urgency: mapPriorityToUrgency(request.priority),
+          status: mappedStatus,
+          submittedAt: formatDate(request.created_at),
+          mediaCount: request.images?.length || 0,
+          estimatedCost: request.estimated_cost ? `$${request.estimated_cost}` : 'TBD'
+        } as CaseFile;
+      });
       
       setCases(transformedCases);
     } catch (error) {

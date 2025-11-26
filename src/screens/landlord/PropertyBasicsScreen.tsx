@@ -210,10 +210,11 @@ const PropertyBasicsScreen = () => {
       };
       
       await updatePropertyData(propertyData);
+      updateCurrentStep(1); // Move to step 1: Property Photos
       await saveDraft();
-      
+
       // Navigate to next step
-      navigation.navigate('PropertyPhotos', { propertyData });
+      navigation.navigate('PropertyPhotos', { draftId: draftState?.id });
     } else {
       Alert.alert(
         'Please Complete Required Fields',

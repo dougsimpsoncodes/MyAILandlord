@@ -38,9 +38,9 @@ export function useProfileSync() {
         if (isTestMode) {
           try {
             const ping = await supabase.from('profiles').select('id').limit(1);
-            console.log('🔍 DEBUG: profiles ping:', ping.error ? { code: (ping.error as any).code, message: ping.error.message } : { count: ping.data?.length || 0 });
+            log.info('🔍 DEBUG: profiles ping:', ping.error ? { code: (ping.error as any).code, message: ping.error.message } : { count: ping.data?.length || 0 });
           } catch (e) {
-            console.log('🔍 DEBUG: profiles ping threw:', (e as any)?.message || e);
+            log.info('🔍 DEBUG: profiles ping threw:', (e as any)?.message || e);
           }
         }
 

@@ -14,8 +14,9 @@ interface UsePhotoCaptureReturn {
   photos: Photo[];
   isCapturing: boolean;
   isSelecting: boolean;
+  isProcessing: boolean;
   error: string | null;
-  
+
   // Photo management
   addPhoto: (photo: Photo) => void;
   addPhotos: (photos: Photo[]) => void;
@@ -23,11 +24,11 @@ interface UsePhotoCaptureReturn {
   replacePhoto: (index: number, newPhoto: Photo) => void;
   reorderPhotos: (fromIndex: number, toIndex: number) => void;
   clearPhotos: () => void;
-  
+
   // Capture methods
   capturePhoto: () => Promise<void>;
   selectFromGallery: () => Promise<void>;
-  
+
   // Utility methods
   canAddMore: boolean;
   totalStorageUsed: number;
@@ -45,6 +46,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalStorageUsed, setTotalStorageUsed] = useState(0);
 
@@ -80,46 +82,50 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     setError(null);
   }, [canAddMore, maxPhotos]);
 
-  const addPhotos = useCallback((newPhotos: Photo[]) => {
-    console.log('📸 usePhotoCapture: addPhotos called with:', newPhotos.length, 'photos');
-    console.log('📸 usePhotoCapture: Current photos count:', photos.length);
-    const remainingSlots = maxPhotos - photos.length;
-    const photosToAdd = newPhotos.slice(0, remainingSlots);
-    console.log('📸 usePhotoCapture: Photos to add after limiting:', photosToAdd.length);
-    
-    if (newPhotos.length > remainingSlots) {
-      Alert.alert(
-        'Photos Limit',
-        `Only ${remainingSlots} photos can be added. ${newPhotos.length - remainingSlots} photos were not added.`
-      );
-    }
+  const addPhotos = useCallback(async (newPhotos: Photo[]) => {
+    setIsProcessing(true);
+    try {
+      log.info('📸 usePhotoCapture: addPhotos', { addCount: newPhotos.length, current: photos.length });
+      const remainingSlots = maxPhotos - photos.length;
+      const photosToAdd = newPhotos.slice(0, remainingSlots);
+      log.info('📸 usePhotoCapture: after limiting', { addCount: photosToAdd.length });
 
-    // Validate all photos
-    const validPhotos: Photo[] = [];
-    const errors: string[] = [];
-
-    for (const photo of photosToAdd) {
-      const validation = PhotoService.validatePhoto(photo);
-      if (validation.isValid) {
-        validPhotos.push(photo);
-      } else {
-        errors.push(`Photo validation failed: ${validation.errors.join(', ')}`);
+      if (newPhotos.length > remainingSlots) {
+        Alert.alert(
+          'Photos Limit',
+          `Only ${remainingSlots} photos can be added. ${newPhotos.length - remainingSlots} photos were not added.`
+        );
       }
-    }
 
-    if (errors.length > 0) {
-      setError(errors.join('\n'));
-    } else {
-      setError(null);
-    }
+      // Validate all photos
+      const validPhotos: Photo[] = [];
+      const errors: string[] = [];
 
-    if (validPhotos.length > 0) {
-      console.log('📸 usePhotoCapture: Adding valid photos to state:', validPhotos.length);
-      setPhotos(prev => {
-        const newPhotos = [...prev, ...validPhotos];
-        console.log('📸 usePhotoCapture: New photos state will have:', newPhotos.length, 'photos');
-        return newPhotos;
-      });
+      for (const photo of photosToAdd) {
+        const validation = PhotoService.validatePhoto(photo);
+        if (validation.isValid) {
+          validPhotos.push(photo);
+        } else {
+          errors.push(`Photo validation failed: ${validation.errors.join(', ')}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        setError(errors.join('\n'));
+      } else {
+        setError(null);
+      }
+
+      if (validPhotos.length > 0) {
+        log.info('📸 usePhotoCapture: adding valid photos', { count: validPhotos.length });
+        setPhotos(prev => {
+          const newPhotos = [...prev, ...validPhotos];
+          log.info('📸 usePhotoCapture: new state count', { count: newPhotos.length });
+          return newPhotos;
+        });
+      }
+    } finally {
+      setIsProcessing(false);
     }
   }, [photos.length, maxPhotos]);
 
@@ -130,7 +136,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     
     // Delete from device storage if it's a local file
     PhotoService.deletePhoto(photoToDelete.uri).catch(error => {
-      console.warn('Failed to delete photo from storage:', error);
+      log.warn('Failed to delete photo from storage:', { error: String(error) });
     });
 
     setPhotos(prev => prev.filter((_, i) => i !== index));
@@ -150,7 +156,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     
     // Delete old photo from storage
     PhotoService.deletePhoto(oldPhoto.uri).catch(error => {
-      console.warn('Failed to delete old photo from storage:', error);
+      log.warn('Failed to delete old photo from storage:', { error: String(error) });
     });
 
     setPhotos(prev => prev.map((photo, i) => i === index ? newPhoto : photo));
@@ -174,7 +180,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     // Delete all photos from storage
     photos.forEach(photo => {
       PhotoService.deletePhoto(photo.uri).catch(error => {
-        console.warn('Failed to delete photo from storage:', error);
+        log.warn('Failed to delete photo from storage:', { error: String(error) });
       });
     });
 
@@ -204,7 +210,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
         addPhoto(photo);
       }
     } catch (error: unknown) {
-      console.error('Photo capture error:', error);
+      log.error('Photo capture error:', { error: String(error) });
       setError('Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -265,8 +271,9 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     photos,
     isCapturing,
     isSelecting,
+    isProcessing,
     error,
-    
+
     // Photo management
     addPhoto,
     addPhotos,
@@ -274,11 +281,11 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     replacePhoto,
     reorderPhotos,
     clearPhotos,
-    
+
     // Capture methods
     capturePhoto,
     selectFromGallery,
-    
+
     // Utility
     canAddMore,
     totalStorageUsed,

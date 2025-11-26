@@ -43,23 +43,37 @@ const MaintenanceStatusScreen = () => {
   const loadRequests = async () => {
     try {
       if (!apiClient) {
-        console.error('API client not available');
+        const { log } = await import('../../lib/log');
+        log.error('API client not available');
         return;
       }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       // Transform the response data to match our interface
-      const transformedRequests = maintenanceRequests.map((request: MaintenanceRequestResponse) => ({
-        id: request.id,
-        title: request.title,
-        status: request.status,
-        priority: request.priority,
-        createdAt: new Date(request.created_at),
-        location: request.area || 'Not specified',
-        description: request.description
-      }));
+      const transformedRequests = maintenanceRequests.map((request: any) => {
+        const statusMap: Record<string, MaintenanceRequest['status']> = {
+          pending: 'new',
+          in_progress: 'in_progress',
+          completed: 'resolved',
+          cancelled: 'closed',
+          pending_vendor: 'pending_vendor',
+          new: 'new',
+          resolved: 'resolved',
+          closed: 'closed',
+        };
+        return {
+          id: request.id,
+          title: request.title,
+          status: statusMap[request.status] || 'new',
+          priority: (request.priority === 'urgent' ? 'emergency' : request.priority) || 'medium',
+          createdAt: new Date(request.created_at),
+          location: request.area || 'Not specified',
+          description: request.description
+        } as MaintenanceRequest;
+      });
       setRequests(transformedRequests);
     } catch (error) {
-      console.error('Error loading maintenance hub:', error);
+      const { log } = await import('../../lib/log');
+      log.error('Error loading maintenance hub:', { error: String(error) });
       // For now, use mock data if API fails
       setRequests(getMockRequests());
     } finally {
@@ -160,6 +174,11 @@ const MaintenanceStatusScreen = () => {
       </SafeAreaView>
     );
   }
+
+  // Simple paging placeholders to satisfy types
+  const hasMore = false;
+  const isLoadingMore = false;
+  const loadMore = () => {};
 
   return (
     <SafeAreaView style={styles.container}>

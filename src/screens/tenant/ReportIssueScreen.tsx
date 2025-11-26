@@ -14,6 +14,7 @@ import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
 import { AreaType } from '../../models/Property';
+import { log } from '../../lib/log';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
 
@@ -362,7 +363,7 @@ const ReportIssueScreen = () => {
         setMediaItems(prev => [...prev, newMedia]);
       }
     } catch (error) {
-      console.error('Camera error:', error);
+      log.error('Camera error:', { error: String(error) });
       Alert.alert(
         'Camera Error',
         'There was an issue accessing the camera. Please try again or use "Choose from Library".',
@@ -379,42 +380,40 @@ const ReportIssueScreen = () => {
   };
 
   const handleSubmit = async () => {
-    console.log('=== handleSubmit called at', new Date().toISOString(), '===');
-    console.log('Button was clicked!');
-    console.log('selectedProperty:', selectedProperty);
-    console.log('navigation object:', navigation);
-    console.log('navigation state:', navigation.getState());
+    log.info('handleSubmit called', { ts: new Date().toISOString() });
+    log.info('Submit state', { hasSelectedProperty: !!selectedProperty });
     
     // Check if function is even executing
-    window.LAST_HANDLE_SUBMIT = new Date().toISOString();
+    (window as any).LAST_HANDLE_SUBMIT = new Date().toISOString();
     
     if (!selectedProperty) {
-      console.log('No property selected - showing alert');
+      log.warn('No property selected - showing alert');
       Alert.alert('Missing Information', 'Please select a property first.');
       return;
     }
     
-    console.log('Checking required fields...');
-    console.log('selectedArea:', selectedArea);
-    console.log('selectedAsset:', selectedAsset);
-    console.log('selectedIssueType:', selectedIssueType);
-    console.log('selectedPriority:', selectedPriority);
-    console.log('selectedDuration:', selectedDuration);
-    console.log('selectedTiming:', selectedTiming);
+    log.info('Checking required fields', {
+      selectedArea,
+      selectedAsset,
+      selectedIssueType,
+      selectedPriority,
+      selectedDuration,
+      selectedTiming,
+    });
     
     if (!selectedArea || !selectedAsset || !selectedIssueType || !selectedPriority || !selectedDuration || !selectedTiming) {
-      console.log('Missing required fields - showing alert');
+      log.warn('Missing required fields - showing alert');
       Alert.alert('Missing Information', 'Please complete all required fields (Steps 1-6) to continue.');
       return;
     }
     
     if (selectedIssueType === 'other' && !otherIssueDescription.trim()) {
-      console.log('Other issue selected but no description - showing alert');
+      log.warn('Other issue selected but no description - showing alert');
       Alert.alert('Missing Information', 'Please describe the issue since you selected "Other".');
       return;
     }
 
-    console.log('All validations passed, creating reviewData...');
+    log.info('Validations passed, creating reviewData');
     
     // Navigate to review screen with all collected data
     const reviewData = {
@@ -432,15 +431,16 @@ const ReportIssueScreen = () => {
       title: title.trim()
     };
     
-    console.log('reviewData created:', JSON.stringify(reviewData, null, 2));
+    log.info('reviewData created');
     
     try {
-      console.log('Attempting navigation to ReviewIssue...');
+      log.info('Navigating to ReviewIssue');
       navigation.navigate('ReviewIssue', { reviewData });
-      console.log('Navigation.navigate() called successfully');
+      log.info('Navigation.navigate() ok');
     } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('Navigation Error', `Failed to navigate: ${error.message}`);
+      log.error('Navigation error:', { error: String(error) });
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Navigation Error', `Failed to navigate: ${msg}`);
     }
   };
 
@@ -477,7 +477,7 @@ const ReportIssueScreen = () => {
               value={selectedProperty?.properties?.id || selectedProperty?.id || ''}
               onSelect={(value) => {
                 const property = tenantProperties.find(p => p.properties?.id === value || p.id === value);
-                console.log('Property selected:', property);
+                log.info('Property selected', { hasProperty: !!property });
                 setSelectedProperty(property);
               }}
             />
@@ -754,8 +754,10 @@ const ReportIssueScreen = () => {
                 console.log('handleSubmit called successfully');
               } catch (error) {
                 console.error('Error calling handleSubmit:', error);
-                console.error('Stack trace:', error.stack);
-                Alert.alert('Error', 'Failed to process request: ' + error.message);
+                const msg = error instanceof Error ? error.message : 'Unknown error';
+                const stack = error instanceof Error ? error.stack : undefined;
+                if (stack) console.error('Stack trace:', stack);
+                Alert.alert('Error', 'Failed to process request: ' + msg);
               }
             }}
             activeOpacity={0.8}

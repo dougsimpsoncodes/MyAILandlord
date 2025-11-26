@@ -71,7 +71,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'npx expo start --web --port 8082',
+    command: 'EXPO_PUBLIC_AUTH_DISABLED=1 npx expo start --web --port 8082',
     url: 'http://localhost:8082',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000, // 2 minutes for Expo to start

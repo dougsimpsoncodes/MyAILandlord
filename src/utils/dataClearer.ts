@@ -113,7 +113,7 @@ export class DataClearer {
     draftKeys: number;
     cacheKeys: number;
     otherKeys: number;
-    allKeys: string[];
+    allKeys: readonly string[];
   }> {
     try {
       const allKeys = await AsyncStorage.getAllKeys();

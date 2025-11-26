@@ -5,6 +5,7 @@
  */
 
 import * as Sentry from '@sentry/react-native';
+import { log } from './log';
 import { useEffect } from 'react';
 import { useAppAuth } from '../context/SupabaseAuthContext';
 
@@ -14,7 +15,7 @@ import { useAppAuth } from '../context/SupabaseAuthContext';
  */
 export function initSentry() {
   if (!process.env.EXPO_PUBLIC_SENTRY_DSN) {
-    console.warn('Sentry DSN not configured - error tracking disabled');
+    log.warn('Sentry DSN not configured - error tracking disabled');
     return;
   }
 
@@ -214,7 +215,7 @@ export function testSentryIntegration() {
     transaction.finish();
   }, 1000);
 
-  console.log('Sentry test events sent - check dashboard');
+  log.info('Sentry test events sent - check dashboard');
 }
 
 export default {

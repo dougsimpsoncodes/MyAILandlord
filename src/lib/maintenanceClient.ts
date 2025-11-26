@@ -1,5 +1,5 @@
 import { restGet, TokenProvider } from './rest'
-import log from './log'
+import { log } from './log'
 
 export type MaintenanceRequest = {
   id: string

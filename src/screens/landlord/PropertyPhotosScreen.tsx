@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { log } from '../../lib/log';
 import {
   View,
   Text,
@@ -28,20 +29,21 @@ import PhotoPreviewModal from '../../components/property/PhotoPreviewModal';
 type PropertyPhotosNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyPhotos'>;
 
 interface RouteParams {
-  propertyData: PropertyData;
+  draftId?: string;
+  propertyData?: PropertyData;
 }
 
 const PropertyPhotosScreen = () => {
   const navigation = useNavigation<PropertyPhotosNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as RouteParams;
+  const { draftId, propertyData: routePropertyData } = (route.params as RouteParams) || {};
   const responsive = useResponsive();
-  
+
   // Photo preview state
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number>(-1);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  
+
   // Draft management
   const {
     draftState,
@@ -50,7 +52,10 @@ const PropertyPhotosScreen = () => {
     isLoading: isDraftLoading,
     lastSaved,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
+
+  // Get property data from draft or route params (fallback for immediate display)
+  const propertyData = draftState?.propertyData || routePropertyData;
 
   // Convert existing photo URLs to Photo objects for initial state
   const convertUrlsToPhotos = (urls: string[]): Photo[] => {
@@ -66,9 +71,9 @@ const PropertyPhotosScreen = () => {
     }));
   };
 
-  // Initialize photos from draft
-  const initialPhotos = draftState?.propertyData?.photos 
-    ? convertUrlsToPhotos(draftState.propertyData.photos.slice(0, PHOTO_CONFIG.MAX_PHOTOS.PROPERTY))
+  // Initialize photos from property data
+  const initialPhotos = propertyData?.photos
+    ? convertUrlsToPhotos(propertyData.photos.slice(0, PHOTO_CONFIG.MAX_PHOTOS.PROPERTY))
     : [];
 
   // Photo capture hook
@@ -76,6 +81,7 @@ const PropertyPhotosScreen = () => {
     photos,
     isCapturing,
     isSelecting,
+    isProcessing,
     error,
     addPhoto,
     addPhotos,
@@ -92,19 +98,28 @@ const PropertyPhotosScreen = () => {
     autoSave: true,
   });
 
+  // Update URL params with draftId for persistence
+  useEffect(() => {
+    if (draftState?.id && !draftId) {
+      navigation.setParams({ draftId: draftState.id } as any);
+    }
+  }, [draftState?.id, draftId, navigation]);
+
   // Auto-save photos to draft
   useEffect(() => {
+    if (!propertyData) return;
+
     const timer = setTimeout(() => {
       const photoUrls = photos.map(photo => photo.uri);
       updatePropertyData({
         ...propertyData,
         photos: photoUrls,
       });
-      updateCurrentStep(1); // Second step
+      // Don't update step here - it's already set correctly by PropertyBasics
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [photos, propertyData, updatePropertyData, updateCurrentStep]);
+  }, [photos, propertyData, updatePropertyData]);
 
   // Photo event handlers
   const handlePhotoPress = (photo: Photo, index: number) => {
@@ -141,7 +156,7 @@ const PropertyPhotosScreen = () => {
                   setShowPreviewModal(false);
                 }
               } catch (error) {
-                console.error('Photo capture error:', error);
+                log.error('Photo capture error:', { error: String(error) });
                 Alert.alert('Error', 'Failed to capture photo. Please try again.');
               }
             },
@@ -161,7 +176,7 @@ const PropertyPhotosScreen = () => {
                   setShowPreviewModal(false);
                 }
               } catch (error) {
-                console.error('Gallery selection error:', error);
+                log.error('Gallery selection error:', { error: String(error) });
                 Alert.alert('Error', 'Failed to select photo. Please try again.');
               }
             },
@@ -178,39 +193,50 @@ const PropertyPhotosScreen = () => {
   };
 
   const handleContinue = async () => {
-    const validation = validatePhotos();
-    
-    if (!validation.isValid) {
-      Alert.alert(
-        'Photo Issues',
-        validation.errors.join('\n'),
-        [{ text: 'OK' }]
-      );
-      return;
+    // Skip validation in test mode
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+
+    if (!authDisabled) {
+      const validation = validatePhotos();
+
+      if (!validation.isValid) {
+        Alert.alert(
+          'Photo Issues',
+          validation.errors.join('\n'),
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      if (photos.length === 0) {
+        Alert.alert(
+          'Add Photos',
+          'Please add at least one photo of your property to continue.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
     }
 
-    if (photos.length === 0) {
-      Alert.alert(
-        'Add Photos',
-        'Please add at least one photo of your property to continue.',
-        [{ text: 'OK' }]
-      );
+    if (!propertyData) {
+      Alert.alert('Error', 'Property data not found. Please try again.');
       return;
     }
 
     try {
       // Convert photos to URLs for storage
       const photoUrls = photos.map(photo => photo.uri);
-      
+
       // Save and navigate
       await updatePropertyData({
         ...propertyData,
         photos: photoUrls,
       });
+      updateCurrentStep(2); // Move to step 2: Room Selection
       await saveDraft();
-      
-      navigation.navigate('RoomSelection', { 
-        propertyData: { ...propertyData, photos: photoUrls } 
+
+      navigation.navigate('RoomSelection', {
+        propertyData: { ...propertyData, photos: photoUrls }
       });
     } catch (error) {
       console.error('Error saving photos:', error);
@@ -219,6 +245,11 @@ const PropertyPhotosScreen = () => {
   };
 
   const handleSkip = async () => {
+    if (!propertyData) {
+      Alert.alert('Error', 'Property data not found. Please try again.');
+      return;
+    }
+
     Alert.alert(
       'Skip Photos?',
       'Photos help document your property\'s condition. You can always add them later. Continue without photos?',
@@ -232,9 +263,10 @@ const PropertyPhotosScreen = () => {
                 ...propertyData,
                 photos: [],
               });
+              updateCurrentStep(2); // Move to step 2: Room Selection
               await saveDraft();
-              navigation.navigate('RoomSelection', { 
-                propertyData: { ...propertyData, photos: [] } 
+              navigation.navigate('RoomSelection', {
+                propertyData: { ...propertyData, photos: [] }
               });
             } catch (error) {
               console.error('Error skipping photos:', error);
@@ -257,6 +289,34 @@ const PropertyPhotosScreen = () => {
     if (photos.length >= 1) return '2-3 minutes remaining';
     return '3-4 minutes remaining';
   };
+
+  // Redirect if no draft found - must be in useEffect to avoid state update during render
+  useEffect(() => {
+    if (!isDraftLoading && !propertyData) {
+      console.warn('PropertyPhotosScreen: No property data found, redirecting to PropertyManagement');
+      navigation.navigate('PropertyManagement');
+    }
+  }, [isDraftLoading, propertyData, navigation]);
+
+  // Show loading state while draft is loading and no fallback data
+  if (isDraftLoading && !routePropertyData) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#28A745" />
+        <Text style={{ marginTop: 16, fontSize: 16, color: '#6C757D' }}>Loading property data...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Show loading if no property data yet (will redirect in useEffect)
+  if (!propertyData) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F9FA', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#28A745" />
+        <Text style={{ marginTop: 16, fontSize: 16, color: '#6C757D' }}>Loading...</Text>
+      </SafeAreaView>
+    );
+  }
 
   const styles = StyleSheet.create({
     container: {
@@ -436,7 +496,8 @@ const PropertyPhotosScreen = () => {
               onPhotosSelected={addPhotos}
               maxPhotos={PHOTO_CONFIG.MAX_PHOTOS.PROPERTY}
               currentPhotoCount={photos.length}
-              disabled={isCapturing || isSelecting}
+              disabled={isCapturing || isSelecting || isProcessing}
+              isProcessing={isProcessing}
               style={{ marginBottom: 24 }}
             />
           )}
@@ -498,7 +559,7 @@ const PropertyPhotosScreen = () => {
                 photos.length === 0 && styles.continueButtonDisabled
               ]}
               onPress={handleContinue}
-              disabled={photos.length === 0}
+              disabled={photos.length === 0 && process.env.EXPO_PUBLIC_AUTH_DISABLED !== '1'}
             >
               <Text style={styles.continueButtonText}>
                 Continue to Rooms

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import log from '../lib/log';
+import { log } from '../lib/log';
 import { PropertySetupState } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
 import { useAppAuth } from '../context/SupabaseAuthContext';

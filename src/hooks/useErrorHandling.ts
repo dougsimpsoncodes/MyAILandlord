@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { getErrorMessage, isNetworkError } from '../utils/helpers';
+import { log } from '../lib/log';
 import { ERROR_MESSAGES } from '../utils/constants';
 
 export interface ErrorState {
@@ -65,12 +66,12 @@ export const useErrorHandling = () => {
 
     // Log error if enabled
     if (logError) {
-      console.error(`Error in ${context}:`, error);
+      log.error(`Error in ${context}:`, { error: error instanceof Error ? { message: error.message, stack: error.stack } : String(error) });
       
       // In production, send to crash reporting service
       if (!__DEV__) {
         // TODO: Send to crash reporting service
-        console.error('Production error:', {
+        log.error('Production error:', {
           context,
           error: errorMessage,
           stack: error instanceof Error ? error.stack : undefined,

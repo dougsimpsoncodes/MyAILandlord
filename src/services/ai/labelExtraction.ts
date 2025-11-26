@@ -108,7 +108,7 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
     };
     
   } catch (error) {
-    console.error('Label extraction error:', error);
+    console.log('Label extraction error:', error);
     return {
       success: false,
       error: 'Failed to process image. Please try again.'
@@ -163,7 +163,7 @@ export function validateAndEnhanceData(data: ExtractedAssetData): ExtractedAsset
   if (data.model && patterns.modelPatterns) {
     const isValidModel = patterns.modelPatterns.some(pattern => pattern.test(data.model!));
     if (!isValidModel) {
-      console.warn(`Model validation failed for brand pattern`);
+      console.log(`Model validation failed for brand pattern`);
     }
   }
   
@@ -171,7 +171,7 @@ export function validateAndEnhanceData(data: ExtractedAssetData): ExtractedAsset
   if (data.serialNumber && patterns.serialPatterns) {
     const isValidSerial = patterns.serialPatterns.some(pattern => pattern.test(data.serialNumber!));
     if (!isValidSerial) {
-      console.warn(`Serial number validation failed for brand pattern`);
+      console.log(`Serial number validation failed for brand pattern`);
     }
   }
   

@@ -59,7 +59,7 @@ const AssetDetailsScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isSaving,
     saveDraft,
   } = usePropertyDraft();
 
@@ -163,10 +163,13 @@ const AssetDetailsScreen = () => {
   };
 
   const handleContinue = async () => {
+    // Skip Alert dialog in test mode
+    const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
+
     // Validate all required fields
     const incompleteAssets = assetDetails.filter(asset => !asset.name.trim());
-    
-    if (incompleteAssets.length > 0) {
+
+    if (incompleteAssets.length > 0 && !authDisabled) {
       Alert.alert(
         'Incomplete Assets',
         `${incompleteAssets.length} assets are missing names. Continue anyway?`,
@@ -377,7 +380,7 @@ const AssetDetailsScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, responsive.spacing.safeAreaBottom || 0),
+      paddingBottom: 16,
     },
     saveStatus: {
       flexDirection: 'row',
@@ -445,7 +448,7 @@ const AssetDetailsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
@@ -644,12 +647,12 @@ const AssetDetailsScreen = () => {
           {/* Save Status */}
           <View style={styles.saveStatus}>
             <Ionicons 
-              name={isDraftLoading ? 'sync' : 'checkmark-circle'} 
+              name={isSaving ? 'sync' : 'checkmark-circle'} 
               size={16} 
-              color={isDraftLoading ? '#6C757D' : '#28A745'} 
+              color={isSaving ? '#6C757D' : '#28A745'} 
             />
             <Text style={styles.saveStatusText}>
-              {isDraftLoading ? 'Saving...' : 'All changes saved'}
+              {isSaving ? 'Saving...' : 'All changes saved'}
             </Text>
           </View>
 

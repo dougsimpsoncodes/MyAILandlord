@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Photo, CameraOptions, ImagePickerOptions } from '../../types/photo';
 import { PhotoService } from '../../services/PhotoService';
+import { log } from '../../lib/log';
 
 interface PhotoCaptureProps {
   onPhotoTaken: (photo: Photo) => void;
@@ -22,6 +23,7 @@ interface PhotoCaptureProps {
   aspectRatio?: [number, number];
   quality?: number;
   disabled?: boolean;
+  isProcessing?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -33,6 +35,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
   aspectRatio = [4, 3],
   quality = 0.8,
   disabled = false,
+  isProcessing = false,
   style,
 }) => {
   const [isCapturing, setIsCapturing] = useState(false);
@@ -56,7 +59,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
         onPhotoTaken(photo);
       }
     } catch (error) {
-      console.error('Camera capture error:', error);
+      log.error('Camera capture error:', { error: String(error) });
       Alert.alert('Error', 'Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -77,15 +80,15 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
       };
 
       const photos = await PhotoService.selectFromGallery(galleryOptions);
-      console.log('📸 PhotoCapture: Selected photos from gallery:', photos.length);
+      log.info('📸 PhotoCapture: Selected photos from gallery:', { count: photos.length });
       if (photos.length > 0) {
         // Limit to available slots
         const photosToAdd = photos.slice(0, remainingSlots);
-        console.log('📸 PhotoCapture: Photos to add after limiting:', photosToAdd.length);
+        log.info('📸 PhotoCapture: Photos to add after limiting:', { count: photosToAdd.length });
         onPhotosSelected(photosToAdd);
       }
     } catch (error) {
-      console.error('Gallery selection error:', error);
+      log.error('Gallery selection error:', { error: String(error) });
       Alert.alert('Error', 'Failed to select photos. Please try again.');
     } finally {
       setIsSelecting(false);
@@ -133,24 +136,24 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
         style,
       ]}
       onPress={showCaptureOptions}
-      disabled={disabled || isCapturing || isSelecting}
+      disabled={disabled || isCapturing || isSelecting || isProcessing}
       activeOpacity={0.7}
     >
-      {isCapturing || isSelecting ? (
+      {isCapturing || isSelecting || isProcessing ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#28A745" />
           <Text style={styles.loadingText}>
-            {isCapturing ? 'Opening Camera...' : 'Loading Photos...'}
+            {isCapturing ? 'Opening Camera...' : isSelecting ? 'Loading Photos...' : 'Processing Photos...'}
           </Text>
         </View>
       ) : (
         <View style={styles.contentContainer}>
           <View style={styles.iconContainer}>
             <Ionicons name="camera" size={32} color="#28A745" />
-            <Ionicons 
-              name="add-circle" 
-              size={20} 
-              color="#28A745" 
+            <Ionicons
+              name="add-circle"
+              size={20}
+              color="#28A745"
               style={styles.addIcon}
             />
           </View>

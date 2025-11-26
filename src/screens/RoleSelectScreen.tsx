@@ -7,7 +7,7 @@ import { AuthStackParamList } from '../navigation/AuthStack';
 import { useAppAuth } from '../context/SupabaseAuthContext';
 import { RoleContext } from '../context/RoleContext';
 
-type RoleSelectScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'RoleSelect'>;
+type RoleSelectScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
 
 const { width } = Dimensions.get('window');
 
@@ -22,7 +22,7 @@ const RoleSelectScreen = () => {
       await setUserRole(role);
     } else {
       // User needs to authenticate
-      navigation.navigate('Login', { role });
+      navigation.navigate('Login');
     }
   };
 

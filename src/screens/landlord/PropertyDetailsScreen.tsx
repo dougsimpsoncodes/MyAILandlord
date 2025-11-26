@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -15,14 +16,73 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
+import { getPropertyAreasParams, getPropertyAssetsParams } from '../../utils/navigationHelpers';
+import { useApiClient } from '../../services/api/client';
+import { log } from '../../lib/log';
 
 type PropertyDetailsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyDetails'>;
 type PropertyDetailsRouteProp = RouteProp<LandlordStackParamList, 'PropertyDetails'>;
 
+interface Property {
+  id: string;
+  name: string;
+  address: string;
+  type: string;
+  tenants: number;
+  activeRequests: number;
+  propertyCode?: string;
+}
+
 const PropertyDetailsScreen = () => {
   const navigation = useNavigation<PropertyDetailsNavigationProp>();
   const route = useRoute<PropertyDetailsRouteProp>();
-  const { property } = route.params;
+  const { propertyId } = route.params as any;
+  const api = useApiClient();
+
+  const [property, setProperty] = useState<Property | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadProperty();
+  }, [propertyId]);
+
+  const loadProperty = async () => {
+    try {
+      if (!api) {
+        setError('API not available');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      const properties = await api.getUserProperties();
+      const foundProperty = properties.find((p: any) => p.id === propertyId);
+
+      if (foundProperty) {
+        setProperty({
+          id: foundProperty.id,
+          name: foundProperty.name || 'Unnamed Property',
+          address: typeof foundProperty.address === 'string'
+            ? foundProperty.address
+            : JSON.stringify(foundProperty.address),
+          type: foundProperty.property_type || 'Unknown',
+          tenants: 0, // TODO: Add tenant count
+          activeRequests: 0, // TODO: Add maintenance request count
+          propertyCode: foundProperty.property_code,
+        });
+      } else {
+        setError('Property not found');
+      }
+    } catch (err) {
+      log.error('Error loading property', { error: err, propertyId });
+      setError('Failed to load property');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEditProperty = () => {
     // Navigate to edit property flow
@@ -30,24 +90,73 @@ const PropertyDetailsScreen = () => {
   };
 
   const handleViewAreas = () => {
-    // Navigate to areas management
-    Alert.alert('Property Areas', 'Area management will be available soon.');
+    // Navigate to PropertyAreas screen using helper
+    if (!property) return;
+    navigation.navigate('PropertyAreas', getPropertyAreasParams(property) as any);
   };
 
   const handleViewAssets = () => {
-    // Navigate to assets management
-    Alert.alert('Property Assets', 'Asset management will be available soon.');
+    // Navigate to PropertyAssets screen using helper
+    if (!property) return;
+    navigation.navigate('PropertyAssets', getPropertyAssetsParams(property) as any);
   };
 
   const handleAddTenant = () => {
-    // Navigate to tenant management
-    Alert.alert('Add Tenant', 'Tenant management will be available soon.');
+    // Navigate to InviteTenant screen (assumes property has a code)
+    if (property?.id) {
+      navigation.navigate('InviteTenant', {
+        propertyId: property!.id,
+        propertyName: property!.name,
+        propertyCode: property!.propertyCode || 'GENERATE', // Will generate if not exists
+      });
+    } else {
+      Alert.alert('Error', 'Property information is incomplete.');
+    }
   };
 
   const handleMaintenanceRequests = () => {
-    // Navigate to maintenance requests
-    Alert.alert('Maintenance Requests', 'Maintenance request management will be available soon.');
+    // Navigate to Dashboard (maintenance hub)
+    navigation.navigate('Dashboard');
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Property Details</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={styles.loadingText}>Loading property...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error || !property) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Property Details</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle" size={64} color="#E74C3C" />
+          <Text style={styles.errorText}>{error || 'Property not found'}</Text>
+          <Button title="Try Again" onPress={loadProperty} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -202,6 +311,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: DesignSystem.colors.surfaceSecondary,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  errorText: {
+    marginTop: 16,
+    marginBottom: 24,
+    fontSize: 16,
+    color: '#E74C3C',
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',

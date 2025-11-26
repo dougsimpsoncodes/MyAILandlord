@@ -16,6 +16,7 @@ import CustomButton from '../../components/shared/CustomButton';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useRole } from '../../context/RoleContext';
 import * as Linking from 'expo-linking';
+import { CommonActions } from '@react-navigation/native';
 
 // Union type to handle both AuthStack and TenantStack navigation
 type PropertyInviteAcceptNavigationProp = 
@@ -27,7 +28,7 @@ interface RouteParams {
 }
 
 const PropertyInviteAcceptScreen = () => {
-  const navigation = useNavigation<PropertyInviteAcceptNavigationProp>();
+  const navigation = useNavigation<any>();
   const route = useRoute();
   const { user } = useAppAuth();
   const { supabase } = useSupabaseWithAuth();
@@ -183,6 +184,7 @@ const PropertyInviteAcceptScreen = () => {
       // Get the user's profile ID
       // Link tenant to property via unified API
       try {
+        if (!apiClient) throw new Error('API client not available');
         await apiClient.linkTenantToPropertyById(propertyId!, property?.unit || undefined);
         log.info('✅ Tenant property link created successfully');
       } catch (linkError: unknown) {
@@ -202,16 +204,24 @@ const PropertyInviteAcceptScreen = () => {
         throw linkError;
       }
 
-      // Success! Property connected - navigate to home to trigger AppNavigator
+      // Success! Property connected
       log.info('🎉 Success! Tenant connected to property');
-      
+
       // Clear any error state
       setError('');
-      
-      // Navigate to home URL to trigger AppNavigator to show tenant dashboard
-      log.info('🚀 Navigating to home to show tenant dashboard');
-      window.location.href = window.location.origin;
-      log.info('✅ Navigation to tenant dashboard initiated');
+
+      // Navigate to tenant home using navigation (works on native + web)
+      // AppNavigator will switch to MainStack after role is set
+      log.info('🚀 Navigating to tenant home');
+      try {
+        // Reset to Home to avoid back to invite screen
+        navigation.dispatch(
+          CommonActions.reset({ index: 0, routes: [{ name: 'Home' as never }] })
+        );
+      } catch (_e) {
+        // Fallback deep link
+        await Linking.openURL('myailandlord://home');
+      }
     } catch (error) {
       log.error('Error accepting invite:', error as any);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

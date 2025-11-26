@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { storageService } from './supabase/storage';
-import log from '../lib/log';
+import { log } from '../lib/log';
 
 type PickedAsset = {
   uri: string;

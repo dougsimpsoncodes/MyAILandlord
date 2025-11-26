@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import log from '../../lib/log';
+import { log } from '../../lib/log';
 import { decode } from 'base64-arraybuffer';
 
 // Storage client must be set by authenticated context

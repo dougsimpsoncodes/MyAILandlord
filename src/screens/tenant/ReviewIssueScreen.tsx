@@ -270,18 +270,18 @@ Vendor Instructions: ${vendorComment}` : ''}`;
       }
       
       const maintenanceRequestData = {
-        propertyId: reviewData.propertyId,
+        propertyId: reviewData.propertyId || '',
         title: reviewData.title || reviewData.issueType,
         description: structuredDescription,
-        priority: reviewData.priority,
+        priority: (reviewData.priority as unknown as 'low' | 'medium' | 'high' | 'urgent'),
         area: reviewData.area,
         asset: reviewData.asset,
         issueType: reviewData.issueType,
         images: reviewData.mediaItems || []
       };
       
-      console.log('=== SUBMITTING MAINTENANCE REQUEST ===');
-      console.log('Request data:', JSON.stringify(maintenanceRequestData, null, 2));
+      const { log } = await import('../../lib/log');
+      log.info('Submitting maintenance request');
       
       const response = await apiClient.createMaintenanceRequest(maintenanceRequestData);
       

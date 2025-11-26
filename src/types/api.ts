@@ -5,6 +5,9 @@ export type UserRole = 'tenant' | 'landlord';
 export type MessageType = 'text' | 'image' | 'file';
 export type StorageBucket = 'maintenance-images' | 'voice-notes' | 'property-images' | 'documents';
 
+// Property-related imports
+import { PropertyAddress } from './property';
+
 // Profile interfaces
 export interface CreateProfileData {
   userId: string; // Supabase auth.users.id
@@ -170,22 +173,38 @@ export interface RealtimePayload<T> {
 // Hook interfaces
 export interface UseApiClientReturn {
   // User methods
-  getUserProfile: () => Promise<Profile | null>;
-  createUserProfile: (profileData: Omit<CreateProfileData, 'userId'>) => Promise<Profile>;
-  updateUserProfile: (updates: UpdateProfileData) => Promise<Profile>;
-  setUserRole: (role: UserRole) => Promise<Profile>;
+  getUserProfile: () => Promise<any>;
+  createUserProfile: (profileData: Omit<CreateProfileData, 'userId'>) => Promise<any>;
+  updateUserProfile: (updates: UpdateProfileData) => Promise<any>;
+  setUserRole: (role: UserRole) => Promise<any>;
 
   // Property methods
-  getUserProperties: () => Promise<Property[]>;
+  getUserProperties: (opts?: { limit?: number; offset?: number }) => Promise<any[]>;
+  createProperty: (payload: {
+    name: string;
+    address_jsonb: PropertyAddress;
+    property_type: string;
+    unit?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+  }) => Promise<any>;
+  createPropertyAreas: (areas: Array<{ property_id: string; name: string; area_type: string; photos?: string[] }>) => Promise<boolean>;
+  deleteProperty: (propertyId: string) => Promise<boolean>;
+
+  // Property code methods
+  validatePropertyCode: (propertyCode: string) => Promise<{ success: boolean; error_message?: string; is_multi_unit?: boolean; property_name?: string; property_address?: string; wifi_network?: string; wifi_password?: string }>;
+  linkTenantToProperty: (propertyCode: string, unitNumber?: string) => Promise<{ success: boolean; error_message?: string }>;
+  linkTenantToPropertyById: (propertyId: string, unitNumber?: string) => Promise<boolean>;
+  getTenantProperties: () => Promise<any[]>;
 
   // Maintenance request methods
-  getMaintenanceRequests: () => Promise<MaintenanceRequest[]>;
-  createMaintenanceRequest: (data: CreateMaintenanceRequestData) => Promise<MaintenanceRequest>;
-  updateMaintenanceRequest: (id: string, updates: UpdateMaintenanceRequestData) => Promise<MaintenanceRequest>;
+  getMaintenanceRequests: () => Promise<any[]>;
+  createMaintenanceRequest: (data: CreateMaintenanceRequestData) => Promise<any>;
+  updateMaintenanceRequest: (id: string, updates: UpdateMaintenanceRequestData) => Promise<any>;
 
   // Messaging methods
-  getMessages: (otherUserId?: string) => Promise<Message[]>;
-  sendMessage: (data: Omit<CreateMessageData, 'senderId'>) => Promise<Message>;
+  getMessages: (otherUserId?: string) => Promise<any[]>;
+  sendMessage: (data: Omit<CreateMessageData, 'senderId'>) => Promise<any>;
 
   // AI methods
   analyzeMaintenanceRequest: (description: string, images?: string[]) => Promise<{
@@ -197,13 +216,13 @@ export interface UseApiClientReturn {
   }>;
 
   // Storage methods
-  uploadFile: (bucket: StorageBucket, file: File | Blob | string, fileName: string, folder?: string) => Promise<StorageFile>;
+  uploadFile: (bucket: StorageBucket, file: File | Blob | string, fileName: string, folder?: string) => Promise<any>;
   getSignedUrl: (bucket: StorageBucket, path: string) => Promise<string>;
   deleteFile: (bucket: StorageBucket, path: string) => Promise<void>;
 
   // Subscriptions
-  subscribeToMaintenanceRequests: (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => { unsubscribe: () => void };
-  subscribeToMessages: (callback: (payload: RealtimePayload<Message>) => void) => { unsubscribe: () => void };
+  subscribeToMaintenanceRequests: (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => any;
+  subscribeToMessages: (callback: (payload: RealtimePayload<Message>) => void) => any;
 }
 
 // Error types

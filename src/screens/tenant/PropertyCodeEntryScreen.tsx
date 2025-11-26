@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { TenantStackParamList } from '../../navigation/TenantStack';
+import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
@@ -71,8 +71,8 @@ const PropertyCodeEntryScreen = () => {
         // Navigate to unit selection
         navigation.navigate('UnitSelection', {
           propertyCode: propertyCode.trim(),
-          propertyName: validation.property_name,
-          propertyAddress: validation.property_address,
+          propertyName: validation.property_name || '',
+          propertyAddress: validation.property_address || '',
         });
       } else {
         // Link tenant directly to property
@@ -86,10 +86,10 @@ const PropertyCodeEntryScreen = () => {
               {
                 text: 'Continue',
                 onPress: () => navigation.navigate('PropertyWelcome', {
-                  propertyName: validation.property_name,
-                  propertyAddress: validation.property_address,
-                  wifiNetwork: validation.wifi_network,
-                  wifiPassword: validation.wifi_password,
+                  propertyName: validation.property_name || '',
+                  propertyAddress: validation.property_address || '',
+                  wifiNetwork: validation.wifi_network || undefined,
+                  wifiPassword: validation.wifi_password || undefined,
                 })
               }
             ]

@@ -1,0 +1,99 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e9]:
+  - generic [ref=e10]:
+    - generic [ref=e12] [cursor=pointer]: 
+    - generic [ref=e13]:
+      - generic [ref=e14]: Edit Property Draft
+      - generic [ref=e15]:
+        - generic [ref=e16]: 
+        - generic [ref=e17]: Saved 11:45:38 AM
+  - generic [ref=e21]: "Step 1 of 8: Property Basics"
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: Property Name *
+      - textbox "e.g., Sunset Apartments" [ref=e26]
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - text: Street Address *
+        - textbox "Street Address *" [ref=e30]:
+          - /placeholder: ""
+      - generic [ref=e31]:
+        - text: Unit, Apt, Suite (Optional)
+        - textbox "Unit, Apt, Suite (Optional)" [ref=e32]:
+          - /placeholder: ""
+      - generic [ref=e33]:
+        - generic [ref=e35]:
+          - text: City *
+          - textbox "City *" [ref=e36]:
+            - /placeholder: ""
+        - generic [ref=e38]:
+          - text: State *
+          - textbox "State *" [ref=e39]:
+            - /placeholder: ""
+      - generic [ref=e40]:
+        - generic [ref=e42]:
+          - text: ZIP Code *
+          - textbox "ZIP Code *" [ref=e43]:
+            - /placeholder: ""
+        - generic [ref=e45]:
+          - text: Country *
+          - textbox "Country *" [ref=e46]:
+            - /placeholder: ""
+            - text: US
+    - generic [ref=e47]:
+      - generic [ref=e48]: Property Type *
+      - generic [ref=e49]:
+        - generic [ref=e50] [cursor=pointer]:
+          - generic [ref=e51]: 
+          - generic [ref=e52]: Apartment
+        - generic [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]: 
+          - generic [ref=e55]: House
+        - generic [ref=e56] [cursor=pointer]:
+          - generic [ref=e57]: 
+          - generic [ref=e58]: Condo
+        - generic [ref=e59] [cursor=pointer]:
+          - generic [ref=e60]: 
+          - generic [ref=e61]: Townhouse
+    - generic [ref=e62]:
+      - generic [ref=e63]: Property Details
+      - generic [ref=e64]: Use the controls below to set the number of bedrooms and bathrooms
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]: 
+            - generic [ref=e69]: Bedrooms
+          - generic [ref=e70]:
+            - generic [ref=e72] [cursor=pointer]: 
+            - generic [ref=e73]:
+              - generic [ref=e74]: "1"
+              - generic [ref=e75]: bedrooms
+            - generic [ref=e77] [cursor=pointer]: 
+          - generic [ref=e81]: 0 - 10
+        - generic [ref=e82]:
+          - generic [ref=e83]:
+            - generic [ref=e84]: 
+            - generic [ref=e85]: Bathrooms
+          - generic [ref=e86]:
+            - generic [ref=e88] [cursor=pointer]: 
+            - generic [ref=e89]:
+              - generic [ref=e90]: "1"
+              - generic [ref=e91]: bathrooms
+            - generic [ref=e93] [cursor=pointer]: 
+          - generic [ref=e97]: 0.5 - 10
+  - generic [ref=e98]:
+    - generic [ref=e99]:
+      - generic [ref=e100]: 
+      - generic [ref=e101]: Complete 6 required fields to continue
+    - generic [ref=e102]:
+      - generic [ref=e105]: Property Name
+      - generic [ref=e108]: Street Address
+      - generic [ref=e111]: City
+      - generic [ref=e114]: State
+      - generic [ref=e117]: ZIP Code
+      - generic [ref=e120]: Property Type
+    - generic [ref=e123]: 0% Complete
+  - generic [ref=e125]: Continue
+```

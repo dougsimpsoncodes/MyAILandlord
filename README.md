@@ -74,7 +74,7 @@ Before first run, ensure you have:
 - DashboardScreen → MaintenanceManagement → TenantCommunication
 
 ### State Management
-- **ClerkAuthContext**: Secure authentication with token caching
+- **SupabaseAuthContext**: Secure authentication with token caching
 - **RoleContext**: Role-based UI with profile synchronization
 - **Error Boundaries**: Comprehensive error handling and recovery
 
@@ -129,7 +129,7 @@ src/
 ├── services/
 │   ├── api/
 │   │   ├── client.ts       # Main API client export
-│   │   └── supabase-only-client.ts # Supabase API implementation
+│   │   └── supabase/                # Supabase API implementation
 │   └── supabase/
 │       ├── config.ts       # Supabase configuration
 │       ├── client.ts       # Database client

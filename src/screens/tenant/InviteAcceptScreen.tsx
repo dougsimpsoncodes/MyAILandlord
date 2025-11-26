@@ -48,7 +48,8 @@ const InviteAcceptScreen = () => {
         Alert.alert('Invalid Invite', result.error_message || 'This invite link is not valid or has expired.');
       }
     } catch (error) {
-      console.error('Error validating invite code:', error);
+      const { log } = await import('../../lib/log');
+      log.error('Error validating invite code:', { error: String(error) });
       Alert.alert('Error', 'Failed to validate invite. Please try again.');
     } finally {
       setLoading(false);
@@ -93,7 +94,8 @@ const InviteAcceptScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Error accepting invite:', error);
+      const { log } = await import('../../lib/log');
+      log.error('Error accepting invite:', { error: String(error) });
       Alert.alert('Error', 'Failed to accept invite. Please try again.');
     } finally {
       setLinking(false);

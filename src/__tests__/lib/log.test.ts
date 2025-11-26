@@ -82,13 +82,6 @@ describe('Log Sanitization', () => {
     });
   });
 
-  test('hashes clerk user IDs', () => {
-    log.info('Profile', { clerkUserId: 'user_123abc' });
-
-    const result = logOutput[1] as { clerkUserId: string };
-    expect(result.clerkUserId).toMatch(/^hash_[a-f0-9]{16}$/);
-  });
-
   test('masks address fields', () => {
     log.info('Property', { address: '123 Main Street, New York, NY 10001' });
 

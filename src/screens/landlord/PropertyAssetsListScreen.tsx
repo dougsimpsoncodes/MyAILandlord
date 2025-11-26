@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { log } from '../../lib/log';
 import {
   View,
   Text,
@@ -226,12 +227,12 @@ const PropertyAssetsListScreen = () => {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   
   // Debug: Areas are being received correctly
-  console.log('Areas count:', selectedAreas.length);
+  log.info('Areas count', { count: selectedAreas.length });
   
   // Use draft areas if available and route areas are empty
   useEffect(() => {
     if ((!areas || areas.length === 0) && draftState?.areas && draftState.areas.length > 0) {
-      console.log('Using draft areas instead of route params');
+      log.info('Using draft areas instead of route params');
       setSelectedAreas(draftState.areas);
     }
   }, [areas, draftState?.areas]);
@@ -297,7 +298,7 @@ const PropertyAssetsListScreen = () => {
   };
 
   const handlePhotosUploaded = (areaId: string) => (photos: { path: string; url: string }[]) => {
-    console.log('📸 PropertyAssetsListScreen: Photos uploaded:', photos.length);
+    log.info('📸 PropertyAssetsListScreen: Photos uploaded', { count: photos.length });
     
     if (photos.length > 0) {
       const photoUrls = photos.map(p => p.url);
@@ -312,7 +313,7 @@ const PropertyAssetsListScreen = () => {
         return area;
       });
 
-      console.log('📸 PropertyAssetsListScreen: Updating state with', photoUrls.length, 'photos');
+      log.info('📸 PropertyAssetsListScreen: updating state', { count: photoUrls.length });
       setSelectedAreas(updatedAreas);
       updateAreas(updatedAreas);
       
@@ -415,9 +416,6 @@ const PropertyAssetsListScreen = () => {
               </View>
             )}
           </View>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Areas List */}

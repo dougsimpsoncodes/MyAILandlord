@@ -152,9 +152,24 @@ const styles = StyleSheet.create({
     
     elevation: 2,
   },
+  shadowDefault: {
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+  },
   inputContainerFocused: {
     borderColor: '#3498DB',
-    
+    shadowColor: '#3498DB',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  shadowFocused: {
+    shadowColor: '#3498DB',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   inputContainerError: {
     borderColor: '#E74C3C',

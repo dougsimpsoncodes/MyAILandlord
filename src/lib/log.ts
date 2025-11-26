@@ -33,8 +33,6 @@ const SENSITIVE_FIELD_PATTERNS = [
 // Field names that should be hashed (not fully redacted)
 const HASH_FIELD_PATTERNS = [
   /email/i,
-  /clerk[_-]?user[_-]?id/i,
-  /clerk[_-]?id/i,
 ];
 
 // Field names that should be partially masked

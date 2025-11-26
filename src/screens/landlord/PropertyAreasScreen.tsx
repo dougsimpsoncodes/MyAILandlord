@@ -26,6 +26,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import Input from '../../components/shared/Input';
 import { DesignSystem } from '../../theme/DesignSystem';
+import { log } from '../../lib/log';
 
 type PropertyAreasNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAreasRouteProp = RouteProp<LandlordStackParamList, 'PropertyAreas'>;
@@ -255,7 +256,7 @@ const PropertyAreasScreen = () => {
           updatePropertyData({ photos: updatedPhotos });
         }
       } catch (error) {
-        console.error('Error picking images:', error);
+        log.error('Error picking images:', { error: String(error) });
         Alert.alert('Error', 'Failed to pick images. Please try again.');
       }
     };
@@ -287,7 +288,7 @@ const PropertyAreasScreen = () => {
           updatePropertyData({ photos: updatedPhotos });
         }
       } catch (error) {
-        console.error('Error taking photo:', error);
+        log.error('Error taking photo:', { error: String(error) });
         Alert.alert('Error', 'Failed to take photo. Please try again.');
       }
     };
@@ -486,7 +487,7 @@ const PropertyAreasScreen = () => {
         ]
       );
     } catch (error) {
-      console.error('Error adding photo:', error);
+      log.error('Error adding photo:', { error: String(error) });
       Alert.alert('Error', 'Failed to add photo. Please try again.');
       setUploadingPhoto(null);
     }
@@ -512,7 +513,7 @@ const PropertyAreasScreen = () => {
         setUploadingPhoto(null);
       }
     } catch (error) {
-      console.error('Error taking photo:', error);
+      log.error('Error taking photo:', { error: String(error) });
       Alert.alert('Error', 'Failed to take photo. Please try again.');
       setUploadingPhoto(null);
     }
@@ -539,7 +540,7 @@ const PropertyAreasScreen = () => {
         setUploadingPhoto(null);
       }
     } catch (error) {
-      console.error('Error picking photo:', error);
+      log.error('Error picking photo:', { error: String(error) });
       Alert.alert('Error', 'Failed to pick photo. Please try again.');
       setUploadingPhoto(null);
     }
@@ -547,14 +548,14 @@ const PropertyAreasScreen = () => {
 
   const processAreaPhoto = async (areaId: string, imageUri: string) => {
     try {
-      console.log('Processing area photo:', { areaId, imageUri });
+      log.info('Processing area photo', { areaId, hasImage: !!imageUri });
       
       // Validate the image
       const validation = await validateImageFile(imageUri);
-      console.log('Image validation result:', validation);
+      log.info('Image validation result', validation as any);
       
       if (!validation.isValid) {
-        console.error('Image validation failed:', validation.error);
+        log.error('Image validation failed:', { error: validation.error });
         Alert.alert('Invalid Image', validation.error || 'Please select a valid image.');
         setUploadingPhoto(null);
         return;
@@ -566,13 +567,13 @@ const PropertyAreasScreen = () => {
           : area
       );
       
-      console.log('Updated areas:', updatedAreas.find(a => a.id === areaId)?.photos);
+      log.info('Updated areas', { count: updatedAreas.find(a => a.id === areaId)?.photos?.length || 0 });
       setAreas(updatedAreas);
       
       // Update draft with new photo
       const selectedAreaData = updatedAreas.filter(area => selectedAreas.includes(area.id));
       updateAreas(selectedAreaData);
-      console.log('Photo successfully added to area:', areaId);
+      log.info('Photo successfully added to area', { areaId });
       
       // Show visual success feedback
       setRecentlyAddedPhoto(areaId);
@@ -580,7 +581,7 @@ const PropertyAreasScreen = () => {
         setRecentlyAddedPhoto(null);
       }, 2000); // Clear the success indicator after 2 seconds
     } catch (error) {
-      console.error('Error processing photo:', error);
+      log.error('Error processing photo:', { error: String(error) });
       Alert.alert('Error', 'Failed to process photo. Please try again.');
     } finally {
       setUploadingPhoto(null);
@@ -596,9 +597,7 @@ const PropertyAreasScreen = () => {
       const selectedAreaData = areas.filter(area => selectedAreas.includes(area.id));
       
       // Debug logging
-      console.log('PropertyAreasScreen - areas:', areas);
-      console.log('PropertyAreasScreen - selectedAreas:', selectedAreas);
-      console.log('PropertyAreasScreen - selectedAreaData:', selectedAreaData);
+      log.info('PropertyAreasScreen state', { areasCount: areas.length, selectedCount: selectedAreas.length });
       
       if (selectedAreaData.length === 0) {
         Alert.alert('No Areas Selected', 'Please select at least one area to continue.');
@@ -610,7 +609,7 @@ const PropertyAreasScreen = () => {
         try {
           await saveDraft();
         } catch (error) {
-          console.warn('Failed to save draft before navigation:', error);
+          log.warn('Failed to save draft before navigation:', { error: String(error) });
           // Continue anyway - user can manually save later
         }
       }
@@ -628,7 +627,7 @@ const PropertyAreasScreen = () => {
         draftId: draftState?.id,
       });
     } catch (error) {
-      console.error('Error proceeding to next step:', error);
+      log.error('Error proceeding to next step:', { error: String(error) });
       Alert.alert('Error', 'Failed to proceed. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -640,7 +639,7 @@ const PropertyAreasScreen = () => {
       await saveDraft();
       Alert.alert('Draft Saved', 'Your property draft has been saved successfully.');
     } catch (error) {
-      console.error('Failed to save draft:', error);
+      log.error('Failed to save draft:', { error: String(error) });
       Alert.alert('Save Error', 'Failed to save draft. Please try again.');
     }
   };
@@ -677,9 +676,6 @@ const PropertyAreasScreen = () => {
             </View>
           )}
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')} activeOpacity={0.7}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

@@ -238,9 +238,6 @@ const AddAssetScreen = () => {
           <Text style={styles.headerTitle}>Add Asset</Text>
           <Text style={styles.headerSubtitle}>{areaName}</Text>
         </View>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
