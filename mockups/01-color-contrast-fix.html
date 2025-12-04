@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Contrast Enhancement - MyAILandlord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        /* Comment boxes for explanation */
+        .comment {
+            background: #fffbcc;
+            border-left: 4px solid #f0c000;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .comment strong {
+            color: #856404;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .bad {
+            color: #e74c3c;
+            border-bottom-color: #e74c3c;
+        }
+        .good {
+            color: #27ae60;
+            border-bottom-color: #27ae60;
+        }
+
+        /* Current (Bad) Colors */
+        .text-current-secondary {
+            color: #7F8C8D; /* 4.2:1 - FAILS WCAG AA */
+        }
+        .text-current-subtle {
+            color: #8E8E93; /* 3.6:1 - FAILS WCAG AA */
+        }
+        .text-current-hint {
+            color: #A0A0A0; /* 2.9:1 - FAILS WCAG AA */
+        }
+
+        /* Fixed (Good) Colors */
+        .text-fixed-secondary {
+            color: #6B757A; /* 4.6:1 - PASSES WCAG AA */
+        }
+        .text-fixed-subtle {
+            color: #6B7280; /* 4.5:1 - PASSES WCAG AA */
+        }
+        .text-fixed-hint {
+            color: #6B7280; /* 4.5:1 - PASSES WCAG AA */
+        }
+
+        .sample-card {
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .sample-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .sample-subtitle {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .sample-meta {
+            font-size: 12px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .ratio-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .ratio-fail {
+            background: #fde8e8;
+            color: #c53030;
+        }
+        .ratio-pass {
+            background: #e6ffed;
+            color: #22863a;
+        }
+
+        .color-swatch {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        .swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .swatch-info {
+            flex: 1;
+        }
+        .swatch-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1a1a1a;
+        }
+        .swatch-hex {
+            font-size: 12px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhancement #1: Color Contrast Fix</h1>
+        <p class="subtitle">WCAG 2.1 AA Compliance for Accessibility</p>
+
+        <!-- EXPLANATION COMMENT -->
+        <div class="comment">
+            <strong>WHY THIS MATTERS:</strong> The current text colors don't meet WCAG 2.1 AA standards
+            (minimum 4.5:1 contrast ratio for normal text). This affects users with visual impairments
+            and can be a legal liability. The fix darkens secondary/subtle text colors to ensure readability.
+        </div>
+
+        <div class="comparison">
+            <!-- CURRENT (BAD) -->
+            <div class="card">
+                <div class="card-title bad">Current Colors (Problematic)</div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #7F8C8D;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">textSecondary</div>
+                        <div class="swatch-hex text-current-secondary">#7F8C8D <span class="ratio-badge ratio-fail">4.2:1 FAIL</span></div>
+                    </div>
+                </div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #8E8E93;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">textSubtle</div>
+                        <div class="swatch-hex text-current-subtle">#8E8E93 <span class="ratio-badge ratio-fail">3.6:1 FAIL</span></div>
+                    </div>
+                </div>
+
+                <div class="sample-card">
+                    <div class="sample-title">Kitchen Faucet Leak</div>
+                    <div class="sample-subtitle text-current-secondary">Reported by John Smith</div>
+                    <div class="sample-meta text-current-subtle">
+                        <span>2 days ago</span>
+                        <span>Unit 4B</span>
+                    </div>
+                </div>
+
+                <p style="font-size: 13px; color: #8E8E93; line-height: 1.6;">
+                    This hint text is hard to read for many users, especially in bright lighting
+                    conditions or for those with visual impairments.
+                </p>
+            </div>
+
+            <!-- FIXED (GOOD) -->
+            <div class="card">
+                <div class="card-title good">Fixed Colors (Accessible)</div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #6B757A;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">textSecondary</div>
+                        <div class="swatch-hex text-fixed-secondary">#6B757A <span class="ratio-badge ratio-pass">4.6:1 PASS</span></div>
+                    </div>
+                </div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #6B7280;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">textSubtle</div>
+                        <div class="swatch-hex text-fixed-subtle">#6B7280 <span class="ratio-badge ratio-pass">4.5:1 PASS</span></div>
+                    </div>
+                </div>
+
+                <div class="sample-card">
+                    <div class="sample-title">Kitchen Faucet Leak</div>
+                    <div class="sample-subtitle text-fixed-secondary">Reported by John Smith</div>
+                    <div class="sample-meta text-fixed-subtle">
+                        <span>2 days ago</span>
+                        <span>Unit 4B</span>
+                    </div>
+                </div>
+
+                <p style="font-size: 13px; color: #6B7280; line-height: 1.6;">
+                    This hint text is now readable by all users while still appearing
+                    as secondary information in the visual hierarchy.
+                </p>
+            </div>
+        </div>
+
+        <!-- IMPLEMENTATION COMMENT -->
+        <div class="comment">
+            <strong>IMPLEMENTATION:</strong> Update <code>src/theme/DesignSystem.ts</code><br><br>
+            <code style="display: block; background: #f4f4f4; padding: 10px; border-radius: 4px; margin-top: 8px;">
+                colors: {<br>
+                &nbsp;&nbsp;// Before: textSecondary: '#7F8C8D'<br>
+                &nbsp;&nbsp;textSecondary: '#6B757A', // 4.6:1 contrast<br>
+                &nbsp;&nbsp;// Before: textSubtle: '#8E8E93'<br>
+                &nbsp;&nbsp;textSubtle: '#6B7280', // 4.5:1 contrast<br>
+                }
+            </code>
+        </div>
+    </div>
+</body>
+</html>

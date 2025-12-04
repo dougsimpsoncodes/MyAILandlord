@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0F172A">
+    <title>MyAILandlord Premium Redesign</title>
+    <style>
+        :root {
+            --primary-accent: #818CF8;
+            --primary-glow: #667eea;
+            --secondary-glow: #764ba2;
+            --bg-dark: #0F172A;
+            --surface-1: #1E293B;
+            --surface-2: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --text-tertiary: #64748B;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --success: #34D399;
+            --warning: #FBBF24;
+            --error: #F87171;
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding-top: var(--safe-area-top);
+            padding-bottom: var(--safe-area-bottom);
+            overscroll-behavior: none;
+        }
+
+        /* Animated Background - GPU optimized */
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+        }
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.25;
+            animation: float 25s ease-in-out infinite;
+            will-change: transform;
+        }
+        .orb-1 {
+            width: min(400px, 80vw);
+            height: min(400px, 80vw);
+            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+            top: -100px;
+            right: -100px;
+        }
+        .orb-2 {
+            width: min(300px, 60vw);
+            height: min(300px, 60vw);
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            bottom: 20%;
+            left: -80px;
+            animation-delay: -10s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            33% { transform: translate3d(20px, -20px, 0) scale(1.03); }
+            66% { transform: translate3d(-15px, 15px, 0) scale(0.97); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 100%;
+            padding: clamp(20px, 5vw, 60px);
+            padding-bottom: calc(clamp(20px, 5vw, 60px) + var(--safe-area-bottom));
+        }
+
+        /* Header - Mobile First */
+        header {
+            text-align: center;
+            margin-bottom: clamp(40px, 8vw, 80px);
+        }
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: clamp(16px, 4vw, 24px);
+        }
+        .logo-icon {
+            width: clamp(44px, 10vw, 60px);
+            height: clamp(44px, 10vw, 60px);
+            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+            border-radius: clamp(12px, 3vw, 18px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(20px, 5vw, 28px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.35);
+        }
+        .logo-text {
+            font-size: clamp(18px, 4vw, 24px);
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h1 {
+            font-size: clamp(32px, 8vw, 56px);
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: clamp(12px, 3vw, 20px);
+            background: linear-gradient(135deg, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tagline {
+            font-size: clamp(14px, 3.5vw, 18px);
+            color: var(--text-tertiary);
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.6;
+            padding: 0 10px;
+        }
+
+        /* Cards Grid - Responsive */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: clamp(16px, 4vw, 24px);
+        }
+
+        @media (min-width: 600px) {
+            .cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .cards-grid .card:last-child {
+                grid-column: span 2;
+            }
+        }
+
+        @media (min-width: 900px) {
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: clamp(16px, 4vw, 24px);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            text-decoration: none;
+            display: block;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            /* Touch feedback */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .card:active {
+            transform: scale(0.98);
+        }
+        @media (hover: hover) {
+            .card:hover {
+                transform: translateY(-6px);
+                box-shadow: 0 20px 40px rgba(102, 126, 234, 0.25);
+            }
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        }
+
+        .card-preview {
+            height: clamp(140px, 30vw, 180px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-1 { background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow)); }
+        .preview-2 { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .preview-3 { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .preview-4 { background: linear-gradient(135deg, #fa709a, #fee140); }
+        .preview-5 { background: linear-gradient(135deg, #f093fb, #f5576c); }
+
+        .preview-icon {
+            font-size: clamp(48px, 12vw, 72px);
+            opacity: 0.5;
+        }
+        .preview-badge {
+            position: absolute;
+            top: clamp(10px, 2vw, 16px);
+            right: clamp(10px, 2vw, 16px);
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .card-content {
+            padding: clamp(16px, 4vw, 24px);
+        }
+        .card-number {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--primary-accent);
+            margin-bottom: 6px;
+        }
+        .card-title {
+            font-size: clamp(18px, 4vw, 22px);
+            font-weight: 700;
+            color: white;
+            margin-bottom: 6px;
+        }
+        .card-desc {
+            font-size: clamp(13px, 3vw, 14px);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Feature Grid */
+        .features {
+            margin-top: clamp(40px, 10vw, 80px);
+            text-align: center;
+        }
+        .features-title {
+            font-size: clamp(20px, 5vw, 28px);
+            font-weight: 700;
+            margin-bottom: clamp(24px, 6vw, 40px);
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: clamp(12px, 3vw, 20px);
+        }
+        @media (min-width: 600px) {
+            .features-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        .feature-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: clamp(12px, 3vw, 16px);
+            padding: clamp(16px, 4vw, 24px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .feature-icon {
+            width: clamp(40px, 10vw, 56px);
+            height: clamp(40px, 10vw, 56px);
+            margin: 0 auto clamp(10px, 2vw, 16px);
+            border-radius: clamp(10px, 2.5vw, 16px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(18px, 4vw, 24px);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+        }
+        .feature-label {
+            font-size: clamp(12px, 2.5vw, 14px);
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* Mobile-First Design Callout */
+        .mobile-callout {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: clamp(12px, 3vw, 16px);
+            padding: clamp(16px, 4vw, 24px);
+            margin-top: clamp(24px, 6vw, 40px);
+            text-align: center;
+        }
+        .mobile-callout-title {
+            font-size: clamp(14px, 3vw, 16px);
+            font-weight: 600;
+            color: var(--primary-accent);
+            margin-bottom: 8px;
+        }
+        .mobile-callout-text {
+            font-size: clamp(12px, 2.5vw, 14px);
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: clamp(40px, 10vw, 80px);
+            text-align: center;
+            padding: clamp(24px, 6vw, 40px) 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        footer p {
+            color: var(--text-tertiary);
+            font-size: clamp(12px, 2.5vw, 14px);
+        }
+
+        /* Reduce motion for accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            .glow-orb {
+                animation: none;
+            }
+            .card {
+                transition: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-glow">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">🏠</div>
+                <span class="logo-text">MyAILandlord</span>
+            </div>
+            <h1>Premium Visual<br>Redesign</h1>
+            <p class="tagline">
+                Mobile-first design system optimized for iPhone and Android. Tap any card to explore.
+            </p>
+        </header>
+
+        <div class="cards-grid">
+            <a href="01-design-system.html" class="card">
+                <div class="card-preview preview-1">
+                    <span class="preview-icon">🎨</span>
+                    <span class="preview-badge">Foundation</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">01</div>
+                    <div class="card-title">Design System</div>
+                    <div class="card-desc">Colors, typography, buttons, and core components.</div>
+                </div>
+            </a>
+
+            <a href="02-tenant-home.html" class="card">
+                <div class="card-preview preview-2">
+                    <span class="preview-icon">🏠</span>
+                    <span class="preview-badge">Screen</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">02</div>
+                    <div class="card-title">Tenant Home</div>
+                    <div class="card-desc">Mobile-optimized tenant dashboard with bottom nav.</div>
+                </div>
+            </a>
+
+            <a href="03-landlord-dashboard.html" class="card">
+                <div class="card-preview preview-3">
+                    <span class="preview-icon">📊</span>
+                    <span class="preview-badge">Screen</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">03</div>
+                    <div class="card-title">Landlord Dashboard</div>
+                    <div class="card-desc">Stats, cases, and property overview for landlords.</div>
+                </div>
+            </a>
+
+            <a href="04-property-cards.html" class="card">
+                <div class="card-preview preview-4">
+                    <span class="preview-icon">🏢</span>
+                    <span class="preview-badge">Component</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">04</div>
+                    <div class="card-title">Property Cards</div>
+                    <div class="card-desc">Touch-friendly property cards with rich data.</div>
+                </div>
+            </a>
+
+            <a href="05-components.html" class="card">
+                <div class="card-preview preview-5" style="height: clamp(100px, 20vw, 140px);">
+                    <span class="preview-icon">🧩</span>
+                    <span class="preview-badge">Library</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">05</div>
+                    <div class="card-title">Component Library</div>
+                    <div class="card-desc">Alerts, modals, toggles, progress bars, and empty states.</div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Mobile-First Callout -->
+        <div class="mobile-callout">
+            <div class="mobile-callout-title">📱 Mobile-First Design</div>
+            <div class="mobile-callout-text">
+                All mockups feature responsive layouts, safe area handling for iPhone notch/Dynamic Island,
+                touch-optimized 44pt tap targets, and reduced motion support for accessibility.
+            </div>
+        </div>
+
+        <!-- Design Features -->
+        <div class="features">
+            <h2 class="features-title">Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-label">Mobile-First</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">👆</div>
+                    <div class="feature-label">44pt Targets</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <div class="feature-label">Safe Areas</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">♿</div>
+                    <div class="feature-label">Accessible</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🌈</div>
+                    <div class="feature-label">Gradients</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">✨</div>
+                    <div class="feature-label">Glassmorphism</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🌙</div>
+                    <div class="feature-label">Dark Mode</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-label">GPU Optimized</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>MyAILandlord Premium Redesign</p>
+            <p style="margin-top: 6px; opacity: 0.7;">Tap any card to explore the mockups</p>
+        </footer>
+    </div>
+</body>
+</html>

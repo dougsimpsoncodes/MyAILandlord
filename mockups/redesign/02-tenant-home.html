@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0F172A">
+    <title>02 - Tenant Home</title>
+    <style>
+        :root {
+            --primary-accent: #818CF8;
+            --primary-glow: #667eea;
+            --secondary-glow: #764ba2;
+            --bg-dark: #0F172A;
+            --surface-1: #1E293B;
+            --surface-2: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #CBD5E1;
+            --text-tertiary: #94A3B8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --surface-glass: rgba(30, 41, 59, 0.6);
+            --success: #34D399;
+            --warning: #FBBF24;
+            --error: #F87171;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+            --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            overscroll-behavior: none;
+            /* Account for bottom nav */
+            padding-bottom: calc(80px + var(--safe-bottom));
+        }
+
+        /* Scrollable container */
+        .screen-container {
+            padding: calc(var(--safe-top) + 16px) calc(var(--safe-left) + 20px) 24px calc(var(--safe-right) + 20px);
+            max-width: 100%;
+        }
+
+        /* Back Link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 0;
+            margin-bottom: 16px;
+            min-height: 44px;
+            transition: color 0.2s;
+        }
+        .back-link:active { color: var(--text-primary); }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .header-greeting .subtitle {
+            font-size: 14px;
+            color: var(--text-tertiary);
+        }
+        .header-greeting .title {
+            font-size: clamp(24px, 6vw, 28px);
+            font-weight: 700;
+        }
+        .avatar {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+            border: 2px solid white;
+            position: relative;
+            /* Touch target */
+            min-width: 44px;
+            min-height: 44px;
+        }
+        .avatar .status {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--success);
+            border: 3px solid var(--bg-dark);
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+        }
+
+        /* Property Hero Card */
+        .property-hero {
+            padding: clamp(20px, 5vw, 24px);
+            border-radius: 20px;
+            background: var(--surface-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .property-hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 100px;
+            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+            opacity: 0.5;
+            filter: blur(40px);
+            z-index: -1;
+        }
+        .property-hero-address {
+            font-size: clamp(18px, 4.5vw, 20px);
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .rent-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .rent-amount {
+            font-size: clamp(26px, 6vw, 30px);
+            font-weight: 700;
+        }
+        .rent-amount span {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-tertiary);
+        }
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-badge.paid {
+            background: rgba(52, 211, 153, 0.15);
+            color: var(--success);
+        }
+        .status-badge.due {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--warning);
+        }
+
+        /* Hero Actions - Touch Optimized */
+        .hero-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .btn {
+            font-size: 15px;
+            font-weight: 600;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            /* Touch target minimum */
+            min-height: 48px;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .btn:active {
+            transform: scale(0.96);
+            opacity: 0.9;
+        }
+        .btn-primary {
+            background: var(--primary-accent);
+            color: white;
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+        }
+
+        /* Quick Actions Grid */
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+        .quick-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 8px;
+            border-radius: 16px;
+            background: var(--surface-glass);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            text-decoration: none;
+            /* Touch target */
+            min-height: 80px;
+            transition: transform 0.15s ease;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .quick-action:active {
+            transform: scale(0.95);
+        }
+        .quick-action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .quick-action-icon.report { background: linear-gradient(135deg, #ff6b6b, #ee5a6f); }
+        .quick-action-icon.pay { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+        .quick-action-icon.message { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        .quick-action-icon.docs { background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow)); }
+        .quick-action-label {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* Activity Feed */
+        .activity-feed {
+            margin-bottom: 24px;
+        }
+        .activity-feed ul {
+            list-style: none;
+        }
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+            /* Touch target */
+            min-height: 64px;
+        }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        .activity-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-1);
+            flex-shrink: 0;
+        }
+        .activity-icon svg {
+            width: 22px;
+            height: 22px;
+            color: var(--text-tertiary);
+        }
+        .activity-text {
+            flex: 1;
+            min-width: 0;
+        }
+        .activity-text .description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+        }
+        .activity-text .timestamp {
+            font-size: 12px;
+            color: var(--text-tertiary);
+        }
+
+        /* Bottom Navigation - iOS/Android Style */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding: 8px 8px calc(8px + var(--safe-bottom));
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 12px;
+            /* Touch target */
+            min-width: 64px;
+            min-height: 44px;
+            transition: color 0.2s;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        .nav-item:active {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+        }
+        .nav-item .label {
+            font-size: 10px;
+            font-weight: 500;
+        }
+        .nav-item.active {
+            color: var(--primary-accent);
+        }
+
+        /* Reduce motion */
+        @media (prefers-reduced-motion: reduce) {
+            .btn, .quick-action, .nav-item {
+                transition: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="screen-container">
+        <a href="index.html" class="back-link">← Back to Overview</a>
+
+        <header class="header">
+            <div class="header-greeting">
+                <div class="subtitle">Good morning</div>
+                <div class="title">Jane Doe</div>
+            </div>
+            <div class="avatar">
+                <div class="status"></div>
+            </div>
+        </header>
+
+        <!-- Property Hero -->
+        <div class="property-hero">
+            <div class="property-hero-address">123 Serenity Lane, Apt 4B</div>
+            <div class="rent-status">
+                <div class="rent-amount">$1,850<span> /mo</span></div>
+                <div class="status-badge paid">PAID</div>
+            </div>
+            <div class="hero-actions">
+                <a href="#" class="btn btn-primary">Pay Rent</a>
+                <a href="#" class="btn btn-secondary">Report Issue</a>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <h2 class="section-title">Quick Actions</h2>
+        <div class="quick-actions">
+            <a href="#" class="quick-action">
+                <div class="quick-action-icon report">🔧</div>
+                <span class="quick-action-label">Repair</span>
+            </a>
+            <a href="#" class="quick-action">
+                <div class="quick-action-icon pay">💳</div>
+                <span class="quick-action-label">Pay</span>
+            </a>
+            <a href="#" class="quick-action">
+                <div class="quick-action-icon message">💬</div>
+                <span class="quick-action-label">Message</span>
+            </a>
+            <a href="#" class="quick-action">
+                <div class="quick-action-icon docs">📄</div>
+                <span class="quick-action-label">Docs</span>
+            </a>
+        </div>
+
+        <!-- Recent Activity -->
+        <section class="activity-feed">
+            <h2 class="section-title">Recent Activity</h2>
+            <ul>
+                <li class="activity-item">
+                    <div class="activity-icon">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                    </div>
+                    <div class="activity-text">
+                        <p class="description">November rent payment received</p>
+                        <p class="timestamp">2 days ago</p>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" /></svg>
+                    </div>
+                    <div class="activity-text">
+                        <p class="description">New message from your landlord</p>
+                        <p class="timestamp">4 days ago</p>
+                    </div>
+                </li>
+                <li class="activity-item">
+                    <div class="activity-icon">
+                        <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" /></svg>
+                    </div>
+                    <div class="activity-text">
+                        <p class="description">Maintenance request completed</p>
+                        <p class="timestamp">1 week ago</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="#" class="nav-item active">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+            <span class="label">Home</span>
+        </a>
+        <a href="#" class="nav-item">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" /></svg>
+            <span class="label">Maintenance</span>
+        </a>
+        <a href="#" class="nav-item">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" /></svg>
+            <span class="label">Messages</span>
+        </a>
+        <a href="#" class="nav-item">
+            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg>
+            <span class="label">Profile</span>
+        </a>
+    </nav>
+
+</body>
+</html>

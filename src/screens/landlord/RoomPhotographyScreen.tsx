@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -20,6 +21,8 @@ import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+
+const isWeb = Platform.OS === 'web';
 
 type RoomPhotographyNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'RoomPhotography'>;
 
@@ -40,22 +43,29 @@ const conditionOptions = [
 const RoomPhotographyScreen = () => {
   const navigation = useNavigation<RoomPhotographyNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as { propertyData: PropertyData };
+  const { propertyData, draftId } = route.params as { propertyData: PropertyData; draftId?: string };
   const responsive = useResponsive();
+
+  console.log('📸 RoomPhotographyScreen: Loaded with propertyData', {
+    hasRooms: !!propertyData?.rooms,
+    roomCount: propertyData?.rooms?.length,
+    rooms: propertyData?.rooms?.map(r => ({ id: r.id, name: r.name, icon: r.icon })),
+    draftId,
+  });
   
   // State
   const [currentRoomIndex, setCurrentRoomIndex] = useState(0);
   const [roomPhotos, setRoomPhotos] = useState<RoomPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Draft management
+  // Draft management - use draftId to load/save the correct draft
   const {
     draftState,
     updatePropertyData,
     updateCurrentStep,
     isLoading: isDraftLoading,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
 
   // Initialize room photos from property rooms
   useEffect(() => {
@@ -95,12 +105,68 @@ const RoomPhotographyScreen = () => {
   const currentRoom = propertyData.rooms?.[currentRoomIndex];
   const currentRoomPhoto = roomPhotos.find(rp => rp.roomId === currentRoom?.id);
 
+  // Fallback icon if room doesn't have one
+  const getRoomIcon = (room: typeof currentRoom) => room?.icon || 'home-outline';
+
+  // Web file picker using native HTML input
+  const openWebFilePicker = useCallback(() => {
+    if (!isWeb || !currentRoom) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = false; // One photo at a time for room photos
+    input.style.display = 'none';
+
+    input.onchange = async (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      const file = target.files?.[0];
+
+      if (file) {
+        console.log('📸 RoomPhotography: File selected', { name: file.name, size: file.size });
+        setIsUploading(true);
+
+        try {
+          // Create blob URL for the image
+          const blobUrl = URL.createObjectURL(file);
+          console.log('📸 RoomPhotography: Created blob URL', blobUrl);
+
+          // Add photo to current room
+          setRoomPhotos(prev =>
+            prev.map(rp =>
+              rp.roomId === currentRoom.id
+                ? { ...rp, photos: [...rp.photos, blobUrl].slice(0, 3) }
+                : rp
+            )
+          );
+        } catch (error) {
+          console.error('📸 RoomPhotography: Error processing file', error);
+          Alert.alert('Error', 'Failed to process image. Please try again.');
+        } finally {
+          setIsUploading(false);
+        }
+      }
+
+      // Clean up
+      document.body.removeChild(input);
+    };
+
+    document.body.appendChild(input);
+    input.click();
+  }, [currentRoom]);
+
   const pickImage = async (source: 'camera' | 'library') => {
+    // On web, use native file picker directly
+    if (isWeb) {
+      openWebFilePicker();
+      return;
+    }
+
     setIsUploading(true);
-    
+
     try {
       let result;
-      
+
       if (source === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -108,7 +174,7 @@ const RoomPhotographyScreen = () => {
           setIsUploading(false);
           return;
         }
-        
+
         result = await ImagePicker.launchCameraAsync({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
@@ -123,11 +189,11 @@ const RoomPhotographyScreen = () => {
           quality: 0.8,
         });
       }
-      
+
       if (!result.canceled && result.assets[0] && currentRoom) {
-        setRoomPhotos(prev => 
-          prev.map(rp => 
-            rp.roomId === currentRoom.id 
+        setRoomPhotos(prev =>
+          prev.map(rp =>
+            rp.roomId === currentRoom.id
               ? { ...rp, photos: [...rp.photos, result.assets[0].uri].slice(0, 3) }
               : rp
           )
@@ -229,16 +295,19 @@ const RoomPhotographyScreen = () => {
     await saveDraft();
 
     navigation.navigate('AssetScanning', {
-      propertyData: { ...propertyData, roomPhotos }
+      propertyData: { ...propertyData, roomPhotos },
+      draftId,
     });
   };
 
   const getProgressPercentage = () => {
+    // Step 4 of 8: base progress is 3 completed steps (~37%)
+    // Add up to 12.5% more based on room photo completion
     const totalRooms = propertyData.rooms?.length || 1;
     const completedRooms = roomPhotos.filter(rp => rp.photos.length > 0).length;
-    const baseProgress = 300; // Previous steps complete
-    const roomProgress = Math.round((completedRooms / totalRooms) * 100);
-    return Math.round(((baseProgress + roomProgress) / 8) * 100);
+    const baseProgress = 37; // Steps 1-3 complete
+    const roomBonus = Math.round((completedRooms / totalRooms) * 12);
+    return Math.min(baseProgress + roomBonus, 50); // Cap at ~50% for step 4
   };
 
   const getCompletedRoomsCount = () => {
@@ -539,10 +608,10 @@ const RoomPhotographyScreen = () => {
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Current Room Header */}
           <View style={styles.roomHeader}>
-            <Ionicons 
-              name={currentRoom.icon as any} 
-              size={48} 
-              color="#28A745" 
+            <Ionicons
+              name={getRoomIcon(currentRoom) as any}
+              size={48}
+              color="#28A745"
               style={styles.roomIcon}
             />
             <Text style={styles.roomName}>{currentRoom.name}</Text>
@@ -602,15 +671,20 @@ const RoomPhotographyScreen = () => {
                       key={index}
                       style={styles.photoCard}
                       onPress={() => {
-                        Alert.alert(
-                          'Add Photo',
-                          'Choose photo source',
-                          [
-                            { text: 'Camera', onPress: () => pickImage('camera') },
-                            { text: 'Photo Library', onPress: () => pickImage('library') },
-                            { text: 'Cancel', style: 'cancel' },
-                          ]
-                        );
+                        // On web, directly open file picker
+                        if (isWeb) {
+                          openWebFilePicker();
+                        } else {
+                          Alert.alert(
+                            'Add Photo',
+                            'Choose photo source',
+                            [
+                              { text: 'Camera', onPress: () => pickImage('camera') },
+                              { text: 'Photo Library', onPress: () => pickImage('library') },
+                              { text: 'Cancel', style: 'cancel' },
+                            ]
+                          );
+                        }
                       }}
                       disabled={isUploading}
                     >

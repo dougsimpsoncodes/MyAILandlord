@@ -231,20 +231,23 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
 
   /**
    * Update current step and trigger auto-save
+   * 8-step flow: PropertyBasics, PropertyPhotos, RoomSelection, RoomPhotography,
+   *              AssetScanning, AssetDetails, AssetPhotos, ReviewSubmit
    */
   const updateCurrentStep = useCallback((step: number) => {
     setDraftState(prev => {
       if (!prev) return null;
-      
-      // Recalculate completion percentage
-      const totalSteps = 5;
-      const completionPercentage = Math.round((step / totalSteps) * 100);
-      
+
+      // Recalculate completion percentage based on 8-step flow
+      const totalSteps = 8;
+      // Step 0 = 0%, Step 1 = 12.5%, Step 2 = 25%, etc.
+      const completionPercentage = Math.round(((step + 1) / totalSteps) * 100);
+
       return {
         ...prev,
         currentStep: step,
-        completionPercentage,
-        status: completionPercentage >= 100 ? 'completed' : step > 0 ? 'in_progress' : 'draft',
+        completionPercentage: Math.min(completionPercentage, 100),
+        status: step >= totalSteps - 1 ? 'completed' : step > 0 ? 'in_progress' : 'draft',
         lastModified: new Date(),
       };
     });

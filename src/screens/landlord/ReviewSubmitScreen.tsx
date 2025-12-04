@@ -30,7 +30,7 @@ interface CompletionStats {
 const ReviewSubmitScreen = () => {
   const navigation = useNavigation<ReviewSubmitNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as { propertyData: PropertyData };
+  const { propertyData, draftId } = route.params as { propertyData: PropertyData; draftId?: string };
   const responsive = useResponsive();
   
   // State
@@ -42,7 +42,7 @@ const ReviewSubmitScreen = () => {
     assets: false,
   });
   
-  // Draft management
+  // Draft management - use draftId to load/save the correct draft
   const {
     draftState,
     updatePropertyData,
@@ -50,7 +50,7 @@ const ReviewSubmitScreen = () => {
     isLoading: isDraftLoading,
     saveDraft,
     resetDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
 
   // Auto-save and mark as final step
   useEffect(() => {
@@ -130,16 +130,16 @@ const ReviewSubmitScreen = () => {
   const handleEditSection = (section: string) => {
     switch (section) {
       case 'property':
-        navigation.navigate('PropertyBasics');
+        navigation.navigate('PropertyBasics', { draftId });
         break;
       case 'photos':
-        navigation.navigate('PropertyPhotos', { propertyData });
+        navigation.navigate('PropertyPhotos', { propertyData, draftId });
         break;
       case 'rooms':
-        navigation.navigate('RoomSelection', { propertyData });
+        navigation.navigate('RoomSelection', { propertyData, draftId });
         break;
       case 'assets':
-        navigation.navigate('AssetScanning', { propertyData });
+        navigation.navigate('AssetScanning', { propertyData, draftId });
         break;
     }
   };

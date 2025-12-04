@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SupabaseAuthProvider } from './src/context/SupabaseAuthContext';
 import { RoleProvider } from './src/context/RoleContext';
+import { OnboardingProvider } from './src/context/OnboardingContext';
 import AppNavigator from './src/AppNavigator';
 import { initMonitoring } from './src/lib/monitoring';
 
@@ -17,8 +18,10 @@ export default function App() {
     <SafeAreaProvider>
       <SupabaseAuthProvider>
         <RoleProvider>
-          <AppNavigator />
-          <StatusBar style="auto" />
+          <OnboardingProvider>
+            <AppNavigator />
+            <StatusBar style="auto" />
+          </OnboardingProvider>
         </RoleProvider>
       </SupabaseAuthProvider>
     </SafeAreaProvider>

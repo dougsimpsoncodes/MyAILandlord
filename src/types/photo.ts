@@ -47,7 +47,7 @@ export const PHOTO_CONFIG = {
   },
   ASPECT_RATIO: [4, 3] as [number, number],
   QUALITY: 0.8,
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_FILE_SIZE: 15 * 1024 * 1024, // 15MB - increased to accommodate high-res photos
   COMPRESSION_QUALITY: 0.7,
-  SUPPORTED_FORMATS: ['image/jpeg', 'image/png'],
+  SUPPORTED_FORMATS: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'],
 } as const;

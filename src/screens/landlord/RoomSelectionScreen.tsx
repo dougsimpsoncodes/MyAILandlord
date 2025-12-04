@@ -48,7 +48,7 @@ const defaultRooms: SelectionRoom[] = [
 const PropertyRoomSelectionScreen = () => {
   const navigation = useNavigation<RoomSelectionNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as { propertyData: PropertyData };
+  const { propertyData, draftId } = route.params as { propertyData: PropertyData; draftId?: string };
   const responsive = useResponsive();
   
   // Room state
@@ -56,14 +56,14 @@ const PropertyRoomSelectionScreen = () => {
   const [customRoomName, setCustomRoomName] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
   
-  // Draft management
+  // Draft management - use draftId to load/save the correct draft
   const {
     draftState,
     updatePropertyData,
     updateCurrentStep,
     isLoading: isDraftLoading,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
 
   // Load existing room selection from draft
   useEffect(() => {
@@ -164,7 +164,8 @@ const PropertyRoomSelectionScreen = () => {
 
   const handleContinue = async () => {
     const selectedRooms = rooms.filter(r => r.selected);
-    
+    console.log('📸 RoomSelection: handleContinue called', { selectedCount: selectedRooms.length });
+
     if (selectedRooms.length === 0) {
       Alert.alert(
         'Select Rooms',
@@ -173,23 +174,45 @@ const PropertyRoomSelectionScreen = () => {
       return;
     }
 
-    // Save and navigate
-    await updatePropertyData({
+    // Build updated property data with rooms
+    const updatedPropertyData = {
       ...propertyData,
-      rooms: selectedRooms,
-    });
-    await saveDraft();
-    
-    navigation.navigate('RoomPhotography', { 
-      propertyData: { ...propertyData, rooms: selectedRooms } 
+      rooms: selectedRooms.map(r => ({
+        id: r.id,
+        name: r.name,
+        icon: r.icon,
+        required: r.required,
+        selected: r.selected,
+        custom: r.custom,
+      })),
+    };
+
+    console.log('📸 RoomSelection: Saving with rooms:', updatedPropertyData.rooms);
+
+    // Save draft (non-blocking - navigate regardless)
+    try {
+      updatePropertyData(updatedPropertyData);
+      await saveDraft();
+      console.log('📸 RoomSelection: Draft saved successfully');
+    } catch (error) {
+      console.warn('📸 RoomSelection: Draft save failed (continuing anyway):', error);
+    }
+
+    // Navigate to next screen with draftId for persistence
+    console.log('📸 RoomSelection: Navigating to RoomPhotography with draftId:', draftId);
+    navigation.navigate('RoomPhotography', {
+      propertyData: updatedPropertyData,
+      draftId,
     });
   };
 
   const getProgressPercentage = () => {
+    // Step 3 of 8: base progress is 2 completed steps (25%)
+    // Add up to 12.5% more based on room selection (filling step 3)
     const selectedCount = rooms.filter(r => r.selected).length;
-    const baseProgress = 200; // Previous steps complete
-    const selectionProgress = Math.min(selectedCount * 10, 100);
-    return Math.round(((baseProgress + selectionProgress) / 8) * 100);
+    const baseProgress = 25; // Steps 1-2 complete
+    const selectionBonus = selectedCount > 0 ? Math.min(selectedCount, 10) : 0;
+    return Math.min(baseProgress + selectionBonus, 37); // Cap at ~37% for step 3
   };
 
   const getSelectedCount = () => rooms.filter(r => r.selected).length;

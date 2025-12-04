@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Mode Enhancement - MyAILandlord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .comment {
+            background: #fffbcc;
+            border-left: 4px solid #f0c000;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .comment strong {
+            color: #856404;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            text-align: center;
+            color: #666;
+        }
+
+        /* Phone Frame */
+        .phone-frame {
+            background: #1a1a1a;
+            border-radius: 40px;
+            padding: 12px;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+        .phone-screen {
+            border-radius: 32px;
+            overflow: hidden;
+            min-height: 550px;
+        }
+        .phone-notch {
+            width: 120px;
+            height: 24px;
+            margin: 0 auto;
+            border-radius: 0 0 16px 16px;
+        }
+
+        /* Light Mode */
+        .light .phone-screen {
+            background: #f8f9fa;
+        }
+        .light .phone-notch {
+            background: #1a1a1a;
+        }
+        .light .app-header {
+            background: #3498DB;
+            color: white;
+        }
+        .light .content {
+            background: #f8f9fa;
+        }
+        .light .stat-card {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .light .stat-value {
+            color: #1a1a1a;
+        }
+        .light .stat-label {
+            color: #6b7280;
+        }
+        .light .request-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+        }
+        .light .request-title {
+            color: #1a1a1a;
+        }
+        .light .request-meta {
+            color: #6b7280;
+        }
+
+        /* Dark Mode */
+        .dark .phone-screen {
+            background: #111111;
+        }
+        .dark .phone-notch {
+            background: #000;
+        }
+        .dark .app-header {
+            background: #1e3a5f;
+            color: white;
+        }
+        .dark .content {
+            background: #111111;
+        }
+        .dark .stat-card {
+            background: #1f1f1f;
+            border: 1px solid #2d2d2d;
+        }
+        .dark .stat-value {
+            color: #ffffff;
+        }
+        .dark .stat-label {
+            color: #9ca3af;
+        }
+        .dark .request-card {
+            background: #1f1f1f;
+            border: 1px solid #2d2d2d;
+        }
+        .dark .request-title {
+            color: #ffffff;
+        }
+        .dark .request-meta {
+            color: #9ca3af;
+        }
+
+        /* Common styles */
+        .app-header {
+            padding: 16px 20px;
+            padding-top: 40px;
+        }
+        .app-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 16px;
+        }
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .stat-label {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .request-card {
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .request-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .request-meta {
+            font-size: 13px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .badge.urgent {
+            background: #fde8e8;
+            color: #c53030;
+        }
+        .badge.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .dark .badge.urgent {
+            background: #7f1d1d;
+            color: #fca5a5;
+        }
+        .dark .badge.pending {
+            background: #78350f;
+            color: #fcd34d;
+        }
+
+        /* Color palette display */
+        .palette {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .color-chip {
+            text-align: center;
+        }
+        .chip-swatch {
+            width: 100%;
+            height: 40px;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .chip-name {
+            font-size: 11px;
+            color: #666;
+        }
+        .chip-hex {
+            font-size: 10px;
+            font-family: monospace;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhancement #7: Dark Mode Support</h1>
+        <p class="subtitle">Reduce Eye Strain & Battery Usage</p>
+
+        <div class="comment">
+            <strong>WHY THIS MATTERS:</strong> Dark mode is expected by modern app users. It reduces
+            eye strain in low-light environments, saves battery on OLED screens, and is often preferred
+            by users who spend significant time in apps. iOS and Android both support system-wide dark
+            mode that apps should respect.
+        </div>
+
+        <div class="comparison">
+            <!-- LIGHT MODE -->
+            <div class="light">
+                <div class="card-title">Light Mode</div>
+                <div class="phone-frame">
+                    <div class="phone-screen">
+                        <div class="phone-notch"></div>
+                        <div class="app-header">
+                            <h2>Dashboard</h2>
+                        </div>
+                        <div class="content">
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-value">12</div>
+                                    <div class="stat-label">Properties</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">5</div>
+                                    <div class="stat-label">Open Requests</div>
+                                </div>
+                            </div>
+
+                            <div class="request-card">
+                                <div class="request-title">Kitchen Faucet Leak</div>
+                                <div class="request-meta">123 Main St • Unit 4B</div>
+                                <span class="badge urgent">Urgent</span>
+                            </div>
+
+                            <div class="request-card">
+                                <div class="request-title">HVAC Maintenance</div>
+                                <div class="request-meta">456 Oak Ave • Unit 2A</div>
+                                <span class="badge pending">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DARK MODE -->
+            <div class="dark">
+                <div class="card-title">Dark Mode</div>
+                <div class="phone-frame">
+                    <div class="phone-screen">
+                        <div class="phone-notch"></div>
+                        <div class="app-header">
+                            <h2>Dashboard</h2>
+                        </div>
+                        <div class="content">
+                            <div class="stats-row">
+                                <div class="stat-card">
+                                    <div class="stat-value">12</div>
+                                    <div class="stat-label">Properties</div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="stat-value">5</div>
+                                    <div class="stat-label">Open Requests</div>
+                                </div>
+                            </div>
+
+                            <div class="request-card">
+                                <div class="request-title">Kitchen Faucet Leak</div>
+                                <div class="request-meta">123 Main St • Unit 4B</div>
+                                <span class="badge urgent">Urgent</span>
+                            </div>
+
+                            <div class="request-card">
+                                <div class="request-title">HVAC Maintenance</div>
+                                <div class="request-meta">456 Oak Ave • Unit 2A</div>
+                                <span class="badge pending">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comment">
+            <strong>DARK MODE COLOR PALETTE:</strong>
+        </div>
+
+        <div class="palette">
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #111111;"></div>
+                <div class="chip-name">Background</div>
+                <div class="chip-hex">#111111</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #1f1f1f;"></div>
+                <div class="chip-name">Surface</div>
+                <div class="chip-hex">#1F1F1F</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #2d2d2d;"></div>
+                <div class="chip-name">Border</div>
+                <div class="chip-hex">#2D2D2D</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #4A9EFF;"></div>
+                <div class="chip-name">Primary</div>
+                <div class="chip-hex">#4A9EFF</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #FFFFFF; border: 1px solid #ddd;"></div>
+                <div class="chip-name">Text</div>
+                <div class="chip-hex">#FFFFFF</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #9CA3AF;"></div>
+                <div class="chip-name">Text Secondary</div>
+                <div class="chip-hex">#9CA3AF</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #4ADE80;"></div>
+                <div class="chip-name">Success</div>
+                <div class="chip-hex">#4ADE80</div>
+            </div>
+            <div class="color-chip">
+                <div class="chip-swatch" style="background: #F87171;"></div>
+                <div class="chip-name">Error</div>
+                <div class="chip-hex">#F87171</div>
+            </div>
+        </div>
+
+        <div class="comment" style="margin-top: 30px;">
+            <strong>IMPLEMENTATION APPROACH:</strong>
+            <ul style="margin-top: 8px; padding-left: 20px;">
+                <li><strong>useColorScheme hook:</strong> Detect system preference with React Native's built-in hook</li>
+                <li><strong>ThemeContext:</strong> Create a context to provide colors throughout the app</li>
+                <li><strong>Semantic colors:</strong> Use names like "background" not "white" so they adapt</li>
+                <li><strong>Manual toggle:</strong> Allow users to override system preference in settings</li>
+                <li><strong>Persist preference:</strong> Save user's choice in AsyncStorage</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

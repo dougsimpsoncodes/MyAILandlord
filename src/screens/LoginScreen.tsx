@@ -1,11 +1,20 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
+import { log } from '../lib/log';
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
 
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -19,6 +28,7 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     try {
+      log.info('🔑 Attempting login for:', emailAddress);
       setLoading(true);
 
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -27,15 +37,18 @@ const LoginScreen = () => {
       });
 
       if (error) {
-        Alert.alert('Login Error', error.message);
+        log.error('🔑 Login error:', { message: error.message });
+        showAlert('Login Error', error.message);
         return;
       }
 
+      log.info('🔑 Login successful:', { userId: data.user?.id });
       // Session is automatically set by Supabase
       // Role will be set automatically by useProfileSync hook
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to sign in. Please try again.';
-      Alert.alert('Login Error', errorMessage);
+      log.error('🔑 Login exception:', { message: errorMessage });
+      showAlert('Login Error', errorMessage);
     } finally {
       setLoading(false);
     }

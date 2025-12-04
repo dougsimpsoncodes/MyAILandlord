@@ -46,22 +46,22 @@ const conditionOptions = [
 const AssetDetailsScreen = () => {
   const navigation = useNavigation<AssetDetailsNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as { propertyData: PropertyData };
+  const { propertyData, draftId } = route.params as { propertyData: PropertyData; draftId?: string };
   const responsive = useResponsive();
-  
+
   // State
   const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
   const [assetDetails, setAssetDetails] = useState<AssetDetail[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
-  // Draft management
+
+  // Draft management - use draftId to load/save the correct draft
   const {
     draftState,
     updatePropertyData,
     updateCurrentStep,
     isSaving,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
 
   // Initialize asset details from detected assets
   useEffect(() => {
@@ -191,17 +191,20 @@ const AssetDetailsScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetPhotos', { 
-      propertyData: { ...propertyData, assetDetails } 
+    navigation.navigate('AssetPhotos', {
+      propertyData: { ...propertyData, assetDetails },
+      draftId,
     });
   };
 
   const getProgressPercentage = () => {
+    // Step 6 of 8: base progress is 5 completed steps (~62%)
+    // Add up to 12.5% more based on asset details completion
     const completedAssets = assetDetails.filter(asset => asset.name.trim()).length;
     const totalAssets = assetDetails.length || 1;
-    const baseProgress = 500; // Previous steps complete
-    const detailProgress = Math.round((completedAssets / totalAssets) * 100);
-    return Math.round(((baseProgress + detailProgress) / 8) * 100);
+    const baseProgress = 62; // Steps 1-5 complete
+    const detailBonus = Math.round((completedAssets / totalAssets) * 12);
+    return Math.min(baseProgress + detailBonus, 75); // Cap at ~75% for step 6
   };
 
   const getRoomName = (roomId: string) => {
@@ -437,7 +440,7 @@ const AssetDetailsScreen = () => {
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('AssetPhotos', { propertyData })}
+            onPress={() => navigation.navigate('AssetPhotos', { propertyData, draftId })}
           >
             <Text style={styles.continueButtonText}>Continue to Photos</Text>
           </TouchableOpacity>

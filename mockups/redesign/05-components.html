@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>05 - Component Library</title>
+    <style>
+        :root {
+            --primary-accent: #818CF8;
+            --bg-dark: #0F172A;
+            --surface-1: #1E293B;
+            --surface-2: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --text-tertiary: #64748B;
+            --border-color: #334155;
+            --success: #34D399;
+            --warning: #FBBF24;
+            --error: #F87171;
+            --info: #60A5FA;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            /* Safe area insets for iPhone notch/Dynamic Island */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font-sans); background: var(--bg-dark); color: var(--text-primary); }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: calc(20px + var(--safe-top)) calc(16px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(16px + var(--safe-left));
+        }
+        @media (min-width: 768px) { .container { padding: 60px 20px; } }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; color: var(--text-tertiary); text-decoration: none; margin-bottom: 24px; transition: color 0.3s; min-height: 44px; -webkit-tap-highlight-color: transparent; }
+        @media (min-width: 768px) { .back-link { margin-bottom: 40px; } }
+        .back-link:hover { color: var(--text-primary); }
+        header { text-align: center; margin-bottom: 40px; }
+        @media (min-width: 768px) { header { margin-bottom: 80px; } }
+        h1 { font-size: clamp(32px, 8vw, 56px); font-weight: 800; background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .section { margin-bottom: 40px; }
+        @media (min-width: 768px) { .section { margin-bottom: 60px; } }
+        .section-title { font-size: clamp(20px, 4vw, 24px); font-weight: 700; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; }
+        @media (min-width: 768px) { .section-title { margin-bottom: 24px; } }
+        .component-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 768px) { .component-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; } }
+        .component-group { background: var(--surface-1); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; }
+        
+        /* Alerts */
+        .alert { display: flex; align-items: start; gap: 12px; padding: 16px; border-radius: 12px; border: 1px solid; }
+        .alert svg { width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px; }
+        .alert-content .title { font-weight: 600; }
+        .alert-content .desc { font-size: 14px; color: var(--text-secondary); }
+        .alert-info { background: rgba(96, 165, 250, 0.1); border-color: var(--info); color: var(--info); }
+        .alert-success { background: rgba(52, 211, 153, 0.1); border-color: var(--success); color: var(--success); }
+        .alert-warning { background: rgba(251, 191, 36, 0.1); border-color: var(--warning); color: var(--warning); }
+        .alert-error { background: rgba(248, 113, 113, 0.1); border-color: var(--error); color: var(--error); }
+        .alert + .alert { margin-top: 16px; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border-color); margin-bottom: 24px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .tab-item {
+            padding: 14px 20px;
+            min-height: 48px; /* Touch target minimum */
+            border-bottom: 2px solid transparent;
+            color: var(--text-secondary);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .tab-item:hover { color: var(--text-primary); }
+        .tab-item.active { color: var(--primary-accent); border-bottom-color: var(--primary-accent); }
+
+        /* Badges & Avatars */
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .badge-pro { background: var(--primary-accent); color: white; }
+        .badge-new { background: var(--success); color: var(--bg-dark); }
+        .badge-default { background: var(--surface-2); color: var(--text-secondary); }
+        .avatar-group { display: flex; align-items: center; gap: 16px; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--surface-2); border: 2px solid white; }
+        .avatar.sm { width: 32px; height: 32px; }
+        .avatar.lg { width: 64px; height: 64px; }
+
+        /* Toggles */
+        .toggle-switch {
+            width: 52px;
+            height: 32px;
+            min-width: 44px; /* Touch target minimum */
+            min-height: 44px; /* Touch target minimum - using padding for hit area */
+            background: var(--surface-2);
+            border-radius: 16px;
+            padding: 4px;
+            cursor: pointer;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .toggle-switch .handle { width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; transition: transform 0.2s ease; }
+        .toggle-switch.on { background: var(--primary-accent); }
+        .toggle-switch.on .handle { transform: translateX(20px); }
+
+        /* Progress & Loaders */
+        .progress-bar { width: 100%; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--primary-accent); border-radius: 4px; }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--surface-2); border-top-color: var(--primary-accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 40px; }
+        .empty-state-icon { width: 80px; height: 80px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface-1); }
+        .empty-state-icon svg { width: 40px; height: 40px; color: var(--primary-accent); }
+        .empty-state .title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+        .empty-state .desc { color: var(--text-secondary); margin-bottom: 24px; }
+        .btn {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 14px 24px;
+            min-height: 48px; /* Touch target minimum */
+            border-radius: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .btn-primary { background: var(--primary-accent); color: white; }
+
+        /* Modal */
+        .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-dialog {
+            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 450px;
+            width: 100%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+            max-height: calc(100vh - 32px - var(--safe-top) - var(--safe-bottom));
+            overflow-y: auto;
+        }
+        @media (min-width: 768px) { .modal-dialog { padding: 32px; } }
+        .modal-dialog .title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+        .modal-dialog .desc { color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6; }
+        .modal-actions { display: flex; flex-direction: column; gap: 12px; }
+        @media (min-width: 480px) { .modal-actions { flex-direction: row; justify-content: flex-end; } }
+        .btn-secondary { background: var(--surface-2); color: var(--text-secondary); }
+        .btn-danger { background: var(--error); color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Overview</a>
+        <header>
+            <h1>Component Library</h1>
+        </header>
+
+        <section class="section">
+            <h2 class="section-title">Alerts & Toasts</h2>
+            <div class="component-group">
+                <div class="alert alert-info">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="alert-content"><div class="title">Informational</div><div class="desc">This is for general notices or tips.</div></div>
+                </div>
+                <div class="alert alert-success">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="alert-content"><div class="title">Success</div><div class="desc">The action was completed successfully.</div></div>
+                </div>
+                <div class="alert alert-warning">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    <div class="alert-content"><div class="title">Warning</div><div class="desc">Something needs your attention.</div></div>
+                </div>
+                <div class="alert alert-error">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div class="alert-content"><div class="title">Error</div><div class="desc">There was a problem with your request.</div></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2 class="section-title">Navigation & Interaction</h2>
+            <div class="component-grid">
+                <div class="component-group">
+                    <p class="section-title" style="font-size: 16px; border: none; margin-bottom: 16px;">Tabs</p>
+                    <div class="tabs">
+                        <div class="tab-item active">Overview</div>
+                        <div class="tab-item">Details</div>
+                        <div class="tab-item">Settings</div>
+                    </div>
+                    <p style="color: var(--text-secondary); font-size: 14px;">Tab content would appear here.</p>
+                </div>
+                <div class="component-group">
+                    <p class="section-title" style="font-size: 16px; border: none; margin-bottom: 16px;">Badges & Avatars</p>
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                        <span class="badge badge-pro">Pro</span>
+                        <span class="badge badge-new">New</span>
+                        <span class="badge badge-default">Default</span>
+                    </div>
+                    <div class="avatar-group">
+                        <div class="avatar sm"></div>
+                        <div class="avatar"></div>
+                        <div class="avatar lg"></div>
+                    </div>
+                </div>
+                <div class="component-group">
+                     <p class="section-title" style="font-size: 16px; border: none; margin-bottom: 16px;">Toggles</p>
+                     <div style="display: flex; gap: 16px; align-items: center;">
+                        <div class="toggle-switch"><div class="handle"></div></div>
+                        <div class="toggle-switch on"><div class="handle"></div></div>
+                     </div>
+                </div>
+                <div class="component-group">
+                     <p class="section-title" style="font-size: 16px; border: none; margin-bottom: 16px;">Progress & Loaders</p>
+                     <div class="progress-bar" style="margin-bottom: 24px;"><div class="progress-bar-fill" style="width: 60%;"></div></div>
+                     <div class="spinner"></div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="section">
+             <h2 class="section-title">Modals & Empty States</h2>
+             <div class="component-grid">
+                <div class="component-group">
+                    <p class="section-title" style="font-size: 16px; border: none; margin-bottom: 16px;">Empty State</p>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6h1.5m-1.5 3h1.5m-1.5 3h1.5M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
+                        </div>
+                        <p class="title">No Properties Found</p>
+                        <p class="desc">Get started by adding your first property.</p>
+                        <a href="#" class="btn btn-primary">Add Property</a>
+                    </div>
+                </div>
+                 <div class="component-group">
+                    <p class="section-title" style="font-size: 16px; border: none; margin-bottom: 16px;">Modal Dialog</p>
+                     <div class="modal-dialog" style="position: relative;">
+                         <p class="title">Delete Property</p>
+                         <p class="desc">Are you sure you want to delete this property? This action is permanent and cannot be undone.</p>
+                         <div class="modal-actions">
+                             <a href="#" class="btn btn-secondary">Cancel</a>
+                             <a href="#" class="btn btn-danger">Delete</a>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+        </section>
+
+    </div>
+</body>
+</html>

@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bottom Sheet Enhancement - MyAILandlord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .comment {
+            background: #fffbcc;
+            border-left: 4px solid #f0c000;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .comment strong {
+            color: #856404;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .bad { color: #e74c3c; }
+        .good { color: #27ae60; }
+
+        /* Phone Frame */
+        .phone-frame {
+            background: #1a1a1a;
+            border-radius: 40px;
+            padding: 12px;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+        .phone-screen {
+            background: #f8f9fa;
+            border-radius: 32px;
+            overflow: hidden;
+            min-height: 580px;
+            position: relative;
+        }
+        .phone-notch {
+            background: #1a1a1a;
+            width: 120px;
+            height: 24px;
+            margin: 0 auto;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .app-header {
+            background: #3498DB;
+            color: white;
+            padding: 16px 20px;
+            padding-top: 40px;
+        }
+        .app-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .content {
+            padding: 16px;
+        }
+
+        /* Form Elements */
+        .form-field {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .field-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .field-value {
+            font-size: 16px;
+            color: #1a1a1a;
+        }
+        .field-arrow {
+            color: #999;
+            font-size: 18px;
+        }
+
+        /* Full Screen Modal (Bad) */
+        .full-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            z-index: 10;
+        }
+        .modal-header {
+            background: #f8f9fa;
+            padding: 16px;
+            padding-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .modal-cancel {
+            color: #3498DB;
+            font-size: 16px;
+        }
+        .modal-title {
+            font-size: 17px;
+            font-weight: 600;
+        }
+        .modal-done {
+            color: #3498DB;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .modal-search {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+        }
+        .modal-options {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .modal-option {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-option:hover {
+            background: #f8f9fa;
+        }
+        .option-check {
+            color: #3498DB;
+            font-size: 18px;
+        }
+
+        /* Bottom Sheet (Good) */
+        .bottom-sheet-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+        .bottom-sheet {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 20px 20px 0 0;
+            max-height: 60%;
+            z-index: 11;
+        }
+        .sheet-handle {
+            width: 36px;
+            height: 5px;
+            background: #d0d0d0;
+            border-radius: 3px;
+            margin: 10px auto;
+        }
+        .sheet-header {
+            padding: 10px 20px 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .sheet-title {
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+        .sheet-options {
+            max-height: 280px;
+            overflow-y: auto;
+        }
+        .sheet-option {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 17px;
+        }
+        .sheet-option.selected {
+            color: #3498DB;
+        }
+
+        /* Form visible behind sheet */
+        .form-behind {
+            filter: brightness(0.6);
+        }
+
+        /* Benefit badges */
+        .benefits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            justify-content: center;
+        }
+        .benefit-badge {
+            background: #e8f4fd;
+            color: #3498DB;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhancement #4: Bottom Sheet for Dropdowns</h1>
+        <p class="subtitle">Native Mobile Pattern for Better UX</p>
+
+        <div class="comment">
+            <strong>WHY THIS MATTERS:</strong> Full-screen modals for simple selections feel heavy and
+            disorienting on mobile. Bottom sheets are the iOS/Android standard for secondary selections -
+            they keep context visible, feel lighter, and can be dismissed with a swipe. Users can see
+            where they came from and maintain their mental model of the form.
+        </div>
+
+        <div class="comparison">
+            <!-- CURRENT (BAD) -->
+            <div>
+                <div class="card-title bad">Current: Full-Screen Modal</div>
+                <div class="phone-frame">
+                    <div class="phone-screen">
+                        <!-- Full screen modal covers everything -->
+                        <div class="full-modal">
+                            <div class="modal-header">
+                                <span class="modal-cancel">Cancel</span>
+                                <span class="modal-title">Select Property</span>
+                                <span class="modal-done">Done</span>
+                            </div>
+                            <div class="modal-search">
+                                <input type="text" class="search-input" placeholder="Search properties...">
+                            </div>
+                            <div class="modal-options">
+                                <div class="modal-option">
+                                    <span>123 Main Street</span>
+                                    <span class="option-check">&#10004;</span>
+                                </div>
+                                <div class="modal-option">
+                                    <span>456 Oak Avenue</span>
+                                </div>
+                                <div class="modal-option">
+                                    <span>789 Pine Road</span>
+                                </div>
+                                <div class="modal-option">
+                                    <span>321 Elm Court</span>
+                                </div>
+                                <div class="modal-option">
+                                    <span>654 Maple Lane</span>
+                                </div>
+                                <div class="modal-option">
+                                    <span>987 Cedar Drive</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="benefits">
+                    <span class="benefit-badge" style="background: #fde8e8; color: #c53030;">Context Lost</span>
+                    <span class="benefit-badge" style="background: #fde8e8; color: #c53030;">Heavy Feel</span>
+                    <span class="benefit-badge" style="background: #fde8e8; color: #c53030;">Disorienting</span>
+                </div>
+            </div>
+
+            <!-- FIXED (GOOD) -->
+            <div>
+                <div class="card-title good">Enhanced: Bottom Sheet</div>
+                <div class="phone-frame">
+                    <div class="phone-screen">
+                        <div class="phone-notch"></div>
+                        <div class="app-header form-behind">
+                            <h2>Report Issue</h2>
+                        </div>
+                        <div class="content form-behind">
+                            <div class="form-field">
+                                <div>
+                                    <div class="field-label">Property</div>
+                                    <div class="field-value">Select property...</div>
+                                </div>
+                                <span class="field-arrow">&#9662;</span>
+                            </div>
+                            <div class="form-field">
+                                <div>
+                                    <div class="field-label">Area</div>
+                                    <div class="field-value">Select area...</div>
+                                </div>
+                                <span class="field-arrow">&#9662;</span>
+                            </div>
+                        </div>
+
+                        <!-- Bottom sheet overlay -->
+                        <div class="bottom-sheet-overlay"></div>
+
+                        <!-- Bottom sheet -->
+                        <div class="bottom-sheet">
+                            <div class="sheet-handle"></div>
+                            <div class="sheet-header">
+                                <div class="sheet-title">Select Property</div>
+                            </div>
+                            <div class="sheet-options">
+                                <div class="sheet-option selected">
+                                    123 Main Street
+                                    <span>&#10004;</span>
+                                </div>
+                                <div class="sheet-option">456 Oak Avenue</div>
+                                <div class="sheet-option">789 Pine Road</div>
+                                <div class="sheet-option">321 Elm Court</div>
+                                <div class="sheet-option">654 Maple Lane</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="benefits">
+                    <span class="benefit-badge">Context Visible</span>
+                    <span class="benefit-badge">Swipe to Dismiss</span>
+                    <span class="benefit-badge">Native Feel</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="comment">
+            <strong>KEY FEATURES:</strong>
+            <ul style="margin-top: 8px; padding-left: 20px;">
+                <li><strong>Drag handle:</strong> Visual affordance showing the sheet can be swiped</li>
+                <li><strong>Partial overlay:</strong> Form remains visible behind, maintaining context</li>
+                <li><strong>Tap outside:</strong> Dismisses the sheet (intuitive cancellation)</li>
+                <li><strong>Swipe gesture:</strong> Swipe down to close (native mobile pattern)</li>
+                <li><strong>Height limit:</strong> Sheet doesn't cover entire screen</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

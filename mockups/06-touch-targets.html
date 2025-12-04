@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Touch Target Enhancement - MyAILandlord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .comment {
+            background: #fffbcc;
+            border-left: 4px solid #f0c000;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .comment strong {
+            color: #856404;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid;
+        }
+        .bad {
+            color: #e74c3c;
+            border-bottom-color: #e74c3c;
+        }
+        .good {
+            color: #27ae60;
+            border-bottom-color: #27ae60;
+        }
+
+        /* Header Example */
+        .header-bar {
+            background: #3498DB;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .header-title {
+            color: white;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        /* Small icons (bad) */
+        .icon-small {
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        /* Proper touch targets (good) */
+        .icon-touch-target {
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 12px;
+            margin: -12px;
+            border-radius: 22px;
+            transition: background 0.2s;
+        }
+        .icon-touch-target:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Touch target indicator */
+        .touch-indicator {
+            position: relative;
+            display: inline-block;
+        }
+        .touch-indicator::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 44px;
+            height: 44px;
+            border: 2px dashed #e74c3c;
+            border-radius: 50%;
+            opacity: 0.6;
+        }
+        .touch-indicator.good::before {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        /* Button Row */
+        .button-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            background: #3498DB;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .btn-proper {
+            padding: 14px 20px;
+            background: #3498DB;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            min-height: 44px;
+        }
+
+        /* List Items */
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .list-item-proper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #f0f0f0;
+            min-height: 56px;
+        }
+
+        .delete-btn-small {
+            color: #e74c3c;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px;
+        }
+        .delete-btn-proper {
+            color: #e74c3c;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 13px;
+            margin: -13px;
+            border-radius: 22px;
+        }
+        .delete-btn-proper:hover {
+            background: rgba(231, 76, 60, 0.1);
+        }
+
+        /* Measurement overlay */
+        .measurement {
+            position: relative;
+        }
+        .measure-box {
+            position: absolute;
+            border: 1px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            pointer-events: none;
+        }
+        .measure-bad {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: rgba(231,76,60,0.1);
+        }
+        .measure-good {
+            border-color: #27ae60;
+            color: #27ae60;
+            background: rgba(39,174,96,0.1);
+        }
+
+        /* Visual guide */
+        .size-guide {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .size-example {
+            text-align: center;
+        }
+        .size-box {
+            width: 44px;
+            height: 44px;
+            margin: 0 auto 8px;
+            border: 2px dashed;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .size-box.minimum {
+            border-color: #27ae60;
+            background: rgba(39,174,96,0.1);
+        }
+        .size-box.recommended {
+            width: 48px;
+            height: 48px;
+            border-color: #3498DB;
+            background: rgba(52,152,219,0.1);
+        }
+        .size-label {
+            font-size: 12px;
+            color: #666;
+        }
+        .size-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhancement #6: Touch Target Sizes</h1>
+        <p class="subtitle">44pt Minimum for Accessibility Compliance</p>
+
+        <div class="comment">
+            <strong>WHY THIS MATTERS:</strong> Apple's Human Interface Guidelines and WCAG 2.1 require
+            a minimum touch target of 44x44 points. Small targets frustrate all users and make the app
+            unusable for those with motor impairments, large fingers, or shaky hands. The fix is simple:
+            increase padding around interactive elements without changing their visual appearance.
+        </div>
+
+        <div class="comparison">
+            <!-- CURRENT (BAD) -->
+            <div class="card">
+                <div class="card-title bad">Current: Small Touch Targets</div>
+
+                <!-- Header with small icons -->
+                <div class="header-bar">
+                    <span class="touch-indicator">
+                        <span class="icon-small">←</span>
+                    </span>
+                    <span class="header-title">Properties</span>
+                    <span class="touch-indicator">
+                        <span class="icon-small">⋮</span>
+                    </span>
+                </div>
+
+                <!-- Small buttons -->
+                <div class="button-row">
+                    <button class="btn-small">Edit</button>
+                    <button class="btn-small">Delete</button>
+                    <button class="btn-small">Share</button>
+                </div>
+
+                <!-- List with small delete -->
+                <div class="list-item">
+                    <span>123 Main Street</span>
+                    <span class="touch-indicator">
+                        <span class="delete-btn-small">🗑</span>
+                    </span>
+                </div>
+                <div class="list-item">
+                    <span>456 Oak Avenue</span>
+                    <span class="touch-indicator">
+                        <span class="delete-btn-small">🗑</span>
+                    </span>
+                </div>
+
+                <p style="margin-top: 20px; font-size: 12px; color: #e74c3c; text-align: center;">
+                    ⚠️ Red dashed circles show 44pt minimum - icons don't fill it
+                </p>
+            </div>
+
+            <!-- FIXED (GOOD) -->
+            <div class="card">
+                <div class="card-title good">Enhanced: Proper Touch Targets</div>
+
+                <!-- Header with proper touch targets -->
+                <div class="header-bar">
+                    <span class="touch-indicator good">
+                        <span class="icon-touch-target">←</span>
+                    </span>
+                    <span class="header-title">Properties</span>
+                    <span class="touch-indicator good">
+                        <span class="icon-touch-target">⋮</span>
+                    </span>
+                </div>
+
+                <!-- Proper sized buttons -->
+                <div class="button-row">
+                    <button class="btn-proper">Edit</button>
+                    <button class="btn-proper">Delete</button>
+                    <button class="btn-proper">Share</button>
+                </div>
+
+                <!-- List with proper delete targets -->
+                <div class="list-item-proper">
+                    <span>123 Main Street</span>
+                    <span class="touch-indicator good">
+                        <span class="delete-btn-proper">🗑</span>
+                    </span>
+                </div>
+                <div class="list-item-proper">
+                    <span>456 Oak Avenue</span>
+                    <span class="touch-indicator good">
+                        <span class="delete-btn-proper">🗑</span>
+                    </span>
+                </div>
+
+                <p style="margin-top: 20px; font-size: 12px; color: #27ae60; text-align: center;">
+                    ✓ Green circles show touch areas now meet 44pt minimum
+                </p>
+            </div>
+        </div>
+
+        <div class="size-guide">
+            <div class="size-example">
+                <div class="size-box minimum">44</div>
+                <div class="size-label">Minimum</div>
+                <div class="size-value">44 x 44 pt</div>
+            </div>
+            <div class="size-example">
+                <div class="size-box recommended">48</div>
+                <div class="size-label">Recommended</div>
+                <div class="size-value">48 x 48 pt</div>
+            </div>
+        </div>
+
+        <div class="comment" style="margin-top: 20px;">
+            <strong>IMPLEMENTATION TIP:</strong> You don't need to make the visual icon bigger.
+            Instead, add padding to the touchable area:
+            <pre style="background: #f4f4f4; padding: 12px; border-radius: 6px; margin-top: 10px; overflow-x: auto;">
+&lt;TouchableOpacity
+  style={{
+    padding: 12,      // Creates 44pt target with 20pt icon
+    margin: -12,      // Negative margin keeps visual position
+    minWidth: 44,
+    minHeight: 44
+  }}
+&gt;
+  &lt;Icon size={20} /&gt;
+&lt;/TouchableOpacity&gt;</pre>
+        </div>
+    </div>
+</body>
+</html>

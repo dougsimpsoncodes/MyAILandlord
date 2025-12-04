@@ -33,23 +33,23 @@ interface AssetPhoto {
 const AssetPhotosScreen = () => {
   const navigation = useNavigation<AssetPhotosNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as { propertyData: PropertyData };
+  const { propertyData, draftId } = route.params as { propertyData: PropertyData; draftId?: string };
   const responsive = useResponsive();
-  
+
   // State
   const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
   const [assetPhotos, setAssetPhotos] = useState<AssetPhoto[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [photoType, setPhotoType] = useState<'general' | 'condition' | 'serial'>('general');
-  
-  // Draft management
+
+  // Draft management - use draftId to load/save the correct draft
   const {
     draftState,
     updatePropertyData,
     updateCurrentStep,
     isLoading: isDraftLoading,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
 
   // Initialize asset photos from asset details
   useEffect(() => {
@@ -204,17 +204,20 @@ const AssetPhotosScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('ReviewSubmit', { 
-      propertyData: { ...propertyData, assetPhotos } 
+    navigation.navigate('ReviewSubmit', {
+      propertyData: { ...propertyData, assetPhotos },
+      draftId,
     });
   };
 
   const getProgressPercentage = () => {
+    // Step 7 of 8: base progress is 6 completed steps (~75%)
+    // Add up to 12.5% more based on asset photo completion
     const totalAssets = propertyData.assetDetails?.length || 1;
     const assetsWithPhotos = assetPhotos.filter(ap => ap.photos.length > 0).length;
-    const baseProgress = 600; // Previous steps complete
-    const photoProgress = Math.round((assetsWithPhotos / totalAssets) * 100);
-    return Math.round(((baseProgress + photoProgress) / 8) * 100);
+    const baseProgress = 75; // Steps 1-6 complete
+    const photoBonus = Math.round((assetsWithPhotos / totalAssets) * 12);
+    return Math.min(baseProgress + photoBonus, 87); // Cap at ~87% for step 7
   };
 
   const getCompletedCount = () => {
@@ -485,7 +488,7 @@ const AssetPhotosScreen = () => {
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('ReviewSubmit', { propertyData })}
+            onPress={() => navigation.navigate('ReviewSubmit', { propertyData, draftId })}
           >
             <Text style={styles.continueButtonText}>Continue to Review</Text>
           </TouchableOpacity>

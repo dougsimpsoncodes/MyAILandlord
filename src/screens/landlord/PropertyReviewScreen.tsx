@@ -22,6 +22,7 @@ import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { log } from '../../lib/log';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;

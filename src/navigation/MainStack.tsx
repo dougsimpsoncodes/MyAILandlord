@@ -93,12 +93,12 @@ export type LandlordStackParamList = {
   AddProperty: { draftId?: string } | undefined;
   PropertyBasics: { draftId?: string } | undefined;
   PropertyPhotos: { draftId?: string; propertyData?: PropertyData } | undefined;
-  RoomSelection: { propertyData: PropertyData };
-  RoomPhotography: { propertyData: PropertyData };
-  AssetScanning: { propertyData: PropertyData };
-  AssetDetails: { propertyData: PropertyData };
-  AssetPhotos: { propertyData: PropertyData };
-  ReviewSubmit: { propertyData: PropertyData };
+  RoomSelection: { propertyData: PropertyData; draftId?: string };
+  RoomPhotography: { propertyData: PropertyData; draftId?: string };
+  AssetScanning: { propertyData: PropertyData; draftId?: string };
+  AssetDetails: { propertyData: PropertyData; draftId?: string };
+  AssetPhotos: { propertyData: PropertyData; draftId?: string };
+  ReviewSubmit: { propertyData: PropertyData; draftId?: string };
   PropertyAreas: PropertyAreasParams & { draftId?: string };
   PropertyAssets: PropertyAssetsParams & { draftId?: string; newAsset?: InventoryItem };
   PropertyReview: PropertyReviewParams;

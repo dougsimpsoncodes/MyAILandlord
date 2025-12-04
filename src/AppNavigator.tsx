@@ -1,10 +1,12 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useContext, useEffect, useState, useRef } from 'react';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import AuthStack from './navigation/AuthStack';
 import MainStack from './navigation/MainStack';
+import OnboardingStack from './navigation/OnboardingStack';
 import { useAppAuth } from './context/SupabaseAuthContext';
 import { RoleContext } from './context/RoleContext';
+import { OnboardingContext } from './context/OnboardingContext';
 import { useProfileSync } from './hooks/useProfileSync';
 import { LoadingScreen } from './components/LoadingSpinner';
 import { log } from './lib/log';
@@ -13,14 +15,22 @@ const AppNavigator = () => {
   const { user, isSignedIn, isLoading } = useAppAuth();
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1';
   const { userRole, isLoading: roleLoading } = useContext(RoleContext);
+  const { onboardingCompleted, isLoading: onboardingLoading, pendingNavigation, clearPendingNavigation } = useContext(OnboardingContext);
   const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
-  
+  const navigationRef = useRef<NavigationContainerRef<any>>(null);
+  const hasHandledPendingNav = useRef(false);
+
   // Debug logging (centralized)
-  log.info('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
-  
+  log.info('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, onboardingCompleted, hasUser: !!user });
+
   // Sync user with Supabase profile
   useProfileSync();
+
+  // Determine computed values first (before hooks that depend on them)
+  const isInviteLink = !!(initialUrl && initialUrl.includes('/invite'));
+  const needsOnboarding = isSignedIn && !!user && !onboardingCompleted && !authDisabled;
+  const shouldShowMainStack = authDisabled || (isSignedIn && !!user && !!userRole && onboardingCompleted);
 
   // Get initial URL for deep link handling
   useEffect(() => {
@@ -39,22 +49,35 @@ const AppNavigator = () => {
     getInitialURL();
   }, []);
 
-  // Show loading while checking both auth and initial URL
-  if (isLoading || roleLoading || !isReady) {
+  // Handle pending navigation from onboarding (must be before early return)
+  useEffect(() => {
+    if (pendingNavigation && shouldShowMainStack && !hasHandledPendingNav.current) {
+      hasHandledPendingNav.current = true;
+      log.info('🧭 Handling pending navigation:', pendingNavigation);
+      // Wait for navigation to be ready
+      setTimeout(() => {
+        if (navigationRef.current?.isReady()) {
+          navigationRef.current.navigate(pendingNavigation as never);
+          clearPendingNavigation();
+        }
+      }, 200);
+    }
+  }, [pendingNavigation, shouldShowMainStack, clearPendingNavigation]);
+
+  // Show loading while checking auth, onboarding, and initial URL
+  if (isLoading || roleLoading || onboardingLoading || !isReady) {
     return <LoadingScreen message="Checking authentication..." />;
   }
 
-  // Determine if we should force AuthStack for deep link invite
-  const isInviteLink = !!(initialUrl && initialUrl.includes('/invite'));
-  // Show MainStack if user is fully authenticated, even if they came from invite
-  const shouldShowMainStack = authDisabled || (isSignedIn && !!user && !!userRole);
-  
-  log.info('🧭 Navigation decision:', { 
-    shouldShowMainStack, 
-    isInviteLink, 
-    isSignedIn, 
+  log.info('🧭 Navigation decision:', {
+    shouldShowMainStack,
+    needsOnboarding,
+    isInviteLink,
+    isSignedIn,
     hasRole: !!userRole,
-    initialUrl 
+    onboardingCompleted,
+    pendingNavigation,
+    initialUrl
   });
 
   // Configure deep linking
@@ -62,7 +85,8 @@ const AppNavigator = () => {
     prefixes: [
       'myailandlord://',
       'https://myailandlord.app',
-      'https://www.myailandlord.app'
+      'https://www.myailandlord.app',
+      'http://localhost:8081',
     ],
     async getInitialURL() {
       // Handle deep link URL manually
@@ -120,9 +144,11 @@ const AppNavigator = () => {
   };
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       {shouldShowMainStack && userRole ? (
         <MainStack userRole={userRole} />
+      ) : needsOnboarding ? (
+        <OnboardingStack />
       ) : (
         <AuthStack initialInvite={isInviteLink} />
       )}

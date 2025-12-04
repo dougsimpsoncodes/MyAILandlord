@@ -44,8 +44,9 @@ test.describe('Tenant RLS - Two-Browser-Context Workflow', () => {
     const propertyId = page.url().split('/').pop()!;
     
     // Now, get the property code by querying the API as the landlord
-    const tokenData = await page.evaluate(() => window.localStorage.getItem('supabase.auth.token'));
-    const token = JSON.parse(tokenData!).access_token;
+    const auth = new AuthHelper(page);
+    const token = await auth.getSessionToken();
+    if (!token) throw new Error('No auth token found for landlord');
     const apiRequest = page.request;
     const response = await apiRequest.get(`/api/properties/${propertyId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -63,7 +64,9 @@ test.describe('Tenant RLS - Two-Browser-Context Workflow', () => {
         test.skip(true, "LANDLORD_EMAIL and LANDLORD_PASSWORD env vars must be set");
         return;
     }
-    await landlordAuth.loginWithEmail(landlordCreds.email, landlordCreds.password);
+    const loginResult = await landlordAuth.loginWithEmail(landlordCreds.email, landlordCreds.password);
+    console.log('Landlord login result:', loginResult);
+    if (!loginResult.success) throw new Error(`Landlord login failed: ${loginResult.error}`);
 
     const prop1 = await createProperty(landlordPage, `RLS Test Property 1 ${uuidv4()}`);
     propertyId1 = prop1.id;
@@ -92,7 +95,9 @@ test.describe('Tenant RLS - Two-Browser-Context Workflow', () => {
     await expect(tenantPage.locator('text=You have been invited to join')).toBeVisible();
 
     const tenantAuth = new AuthHelper(tenantPage);
-    await tenantAuth.signUpWithEmail(tenantEmail, 'StrongPassword123!');
+    const signupResult = await tenantAuth.signUpWithEmail(tenantEmail, 'StrongPassword123!');
+    console.log('Tenant signup result:', signupResult);
+    if (!signupResult.success) throw new Error(`Tenant signup failed: ${signupResult.error}`);
 
     await expect(tenantPage.locator(`text=Welcome`)).toBeVisible({ timeout: 15000 });
     await expect(tenantPage.locator(`text=${propertyId1}`)).toBeVisible();
@@ -100,8 +105,9 @@ test.describe('Tenant RLS - Two-Browser-Context Workflow', () => {
   });
 
   test('4. Tenant CANNOT access Property 2 data via API', async () => {
-    const tokenData = await tenantPage.evaluate(() => window.localStorage.getItem('supabase.auth.token'));
-    const token = JSON.parse(tokenData!).access_token;
+    const tenantAuth = new AuthHelper(tenantPage);
+    const token = await tenantAuth.getSessionToken();
+    if (!token) throw new Error('No auth token found for tenant');
     const apiRequest = tenantPage.request;
 
     // Attempt to fetch the other property directly

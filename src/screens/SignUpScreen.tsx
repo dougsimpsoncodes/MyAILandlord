@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,6 +7,15 @@ import { AuthStackParamList } from '../navigation/AuthStack';
 import { supabase } from '../lib/supabaseClient';
 import { RoleContext } from '../context/RoleContext';
 import { Ionicons } from '@expo/vector-icons';
+import { log } from '../lib/log';
+
+const showAlert = (title: string, message: string) => {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
 
 type SignUpScreenRouteProp = RouteProp<AuthStackParamList, 'SignUp'>;
 type SignUpScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'SignUp'>;
@@ -20,6 +29,7 @@ const SignUpScreen = () => {
 
   const handleSignUp = async () => {
     try {
+      log.info('📝 Attempting sign up for:', emailAddress);
       setLoading(true);
 
       const { data, error } = await supabase.auth.signUp({
@@ -28,20 +38,25 @@ const SignUpScreen = () => {
       });
 
       if (error) {
-        Alert.alert('Sign Up Error', error.message);
+        log.error('📝 Sign up error:', { message: error.message });
+        showAlert('Sign Up Error', error.message);
         return;
       }
 
-      // Supabase handles email verification automatically
-      // Session will be set automatically after verification
-      // Role will be set automatically by useProfileSync hook (defaults to landlord)
-      Alert.alert(
-        'Check Your Email',
-        'We sent you a verification link. Please check your email to complete sign up.'
-      );
+      log.info('📝 Sign up successful:', { userId: data.user?.id, confirmed: data.user?.confirmed_at });
+
+      // Check if email confirmation is required
+      if (data.user && !data.user.confirmed_at) {
+        showAlert(
+          'Check Your Email',
+          'We sent you a verification link. Please check your email to complete sign up.'
+        );
+      }
+      // If auto-confirmed, session will be set automatically
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create account. Please try again.';
-      Alert.alert('Sign Up Error', errorMessage);
+      log.error('📝 Sign up exception:', { message: errorMessage });
+      showAlert('Sign Up Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -56,14 +71,14 @@ const SignUpScreen = () => {
       });
 
       if (error) {
-        Alert.alert('OAuth Error', error.message);
+        showAlert('OAuth Error', error.message);
         return;
       }
 
       // OAuth flow will redirect - session will be set automatically
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : `Failed to sign up with ${provider}. Please try again.`;
-      Alert.alert('OAuth Error', errorMessage);
+      showAlert('OAuth Error', errorMessage);
     } finally {
       setLoading(false);
     }

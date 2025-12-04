@@ -92,6 +92,17 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 **When Used:** Proactively for running tests and ensuring coverage
 
+### 🎭 playwright-e2e-expert
+**Purpose:** Expert Playwright E2E testing for React Native Expo web apps
+- Page Object Model architecture with best practices
+- Smart locator strategies for React Native Web
+- Test fixture patterns for authenticated flows
+- CI/CD integration and parallel test execution
+- Visual regression and snapshot testing
+- Network mocking and file upload testing
+
+**When Used:** For writing, debugging, running, and maintaining end-to-end tests
+
 ### 🔐 git-security-guardian
 **Purpose:** Git security and secrets prevention
 - Pre-commit secret scanning
@@ -114,6 +125,7 @@ This directory contains specialized AI sub agents designed to enhance developmen
 > Get the supabase-specialist to review my RLS policies
 > Use the typescript-enforcer to fix these type errors
 > Have the test-automation-specialist add tests for this feature
+> Use the playwright-e2e-expert to write E2E tests for this flow
 > Get the git-security-guardian to scan before committing
 ```
 
@@ -128,6 +140,7 @@ Sub agents are automatically invoked based on context:
 - Database operations → supabase-specialist ensures security
 - Type errors → typescript-enforcer fixes issues
 - Missing tests → test-automation-specialist adds coverage
+- E2E testing → playwright-e2e-expert writes and maintains end-to-end tests
 - Git commits → git-security-guardian scans for secrets
 
 ## Development Workflow

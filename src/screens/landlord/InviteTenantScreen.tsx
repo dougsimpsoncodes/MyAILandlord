@@ -34,11 +34,21 @@ const InviteTenantScreen = () => {
 
   const generateInviteUrl = () => {
     // Create invite URL with property ID that works with deep linking
-    // Use Expo development URL for development, https for production
+    // Use appropriate URL based on platform and environment
     const isDevelopment = __DEV__;
-    const url = isDevelopment 
-      ? `exp://192.168.0.14:8081/--/invite?property=${propertyId}`
-      : `https://myailandlord.app/invite?property=${propertyId}`;
+    let url: string;
+
+    if (!isDevelopment) {
+      // Production: always use https
+      url = `https://myailandlord.app/invite?property=${propertyId}`;
+    } else if (Platform.OS === 'web') {
+      // Web development: use http localhost
+      url = `http://localhost:8081/invite?property=${propertyId}`;
+    } else {
+      // Native development: use exp:// scheme
+      url = `exp://192.168.0.14:8081/--/invite?property=${propertyId}`;
+    }
+
     setInviteUrl(url);
   };
 

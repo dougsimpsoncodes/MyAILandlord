@@ -236,7 +236,8 @@ const PropertyPhotosScreen = () => {
       await saveDraft();
 
       navigation.navigate('RoomSelection', {
-        propertyData: { ...propertyData, photos: photoUrls }
+        propertyData: { ...propertyData, photos: photoUrls },
+        draftId,
       });
     } catch (error) {
       console.error('Error saving photos:', error);
@@ -266,7 +267,8 @@ const PropertyPhotosScreen = () => {
               updateCurrentStep(2); // Move to step 2: Room Selection
               await saveDraft();
               navigation.navigate('RoomSelection', {
-                propertyData: { ...propertyData, photos: [] }
+                propertyData: { ...propertyData, photos: [] },
+                draftId,
               });
             } catch (error) {
               console.error('Error skipping photos:', error);
@@ -360,10 +362,15 @@ const PropertyPhotosScreen = () => {
       color: '#6C757D',
       textAlign: 'center',
     },
-    content: {
+    scrollView: {
       flex: 1,
+      overflow: 'scroll' as any, // Enable scrolling on web
+    },
+    content: {
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingTop: responsive.spacing.section[responsive.screenSize],
+      paddingBottom: 24,
+      flexGrow: 1,
     },
     tipBox: {
       backgroundColor: '#E7F5FF',
@@ -488,7 +495,11 @@ const PropertyPhotosScreen = () => {
         </View>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={true}
+        >
           {/* Photo Capture Section */}
           {canAddMore && (
             <PhotoCapture

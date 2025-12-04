@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inline Form Validation - MyAILandlord</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #1a1a1a;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .comment {
+            background: #fffbcc;
+            border-left: 4px solid #f0c000;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .comment strong {
+            color: #856404;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid;
+        }
+        .bad {
+            color: #e74c3c;
+            border-bottom-color: #e74c3c;
+        }
+        .good {
+            color: #27ae60;
+            border-bottom-color: #27ae60;
+        }
+
+        /* Form Styles */
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3498DB;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        /* Error States */
+        .form-input.error {
+            border-color: #e74c3c;
+            background: #fef2f2;
+        }
+        .form-input.success {
+            border-color: #27ae60;
+            background: #f0fdf4;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+        .input-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+        }
+        .input-icon.error { color: #e74c3c; }
+        .input-icon.success { color: #27ae60; }
+
+        .error-message {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 13px;
+            color: #e74c3c;
+        }
+        .success-message {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 13px;
+            color: #27ae60;
+        }
+        .hint-message {
+            margin-top: 6px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        /* Alert Box (Current Bad UX) */
+        .alert-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+        }
+        .alert-box {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            width: 260px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .alert-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .alert-message {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+        .alert-button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: #3498DB;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .submit-btn:hover {
+            background: #2980b9;
+        }
+
+        /* Password strength indicator */
+        .strength-bar {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+        .strength-segment {
+            flex: 1;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
+        .strength-segment.active.weak { background: #e74c3c; }
+        .strength-segment.active.medium { background: #f39c12; }
+        .strength-segment.active.strong { background: #27ae60; }
+
+        .strength-text {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .strength-text.weak { color: #e74c3c; }
+        .strength-text.medium { color: #f39c12; }
+        .strength-text.strong { color: #27ae60; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Enhancement #3: Inline Form Validation</h1>
+        <p class="subtitle">Real-time Feedback Instead of Blocking Alerts</p>
+
+        <div class="comment">
+            <strong>WHY THIS MATTERS:</strong> System alerts interrupt the user's flow and force them to
+            dismiss a dialog before they can fix errors. They also don't show which fields are problematic.
+            Inline validation provides immediate, contextual feedback as users type, reducing frustration
+            and form abandonment.
+        </div>
+
+        <div class="comparison">
+            <!-- CURRENT (BAD) -->
+            <div class="card" style="position: relative;">
+                <div class="card-title bad">Current: Alert-Based Errors</div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" class="form-input" value="john.smith@">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" class="form-input" value="555-123">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" value="pass">
+                </div>
+
+                <button class="submit-btn">Submit</button>
+
+                <!-- Alert Overlay -->
+                <div class="alert-overlay">
+                    <div class="alert-box">
+                        <div class="alert-title">Validation Error</div>
+                        <div class="alert-message">
+                            Please check the following:<br>
+                            - Invalid email format<br>
+                            - Phone number too short<br>
+                            - Password must be 8+ chars
+                        </div>
+                        <button class="alert-button">OK</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIXED (GOOD) -->
+            <div class="card">
+                <div class="card-title good">Enhanced: Inline Validation</div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <div class="input-wrapper">
+                        <input type="email" class="form-input error" value="john.smith@">
+                        <span class="input-icon error">&#10006;</span>
+                    </div>
+                    <div class="error-message">
+                        <span>&#9888;</span> Please enter a valid email address
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <div class="input-wrapper">
+                        <input type="tel" class="form-input error" value="555-123">
+                        <span class="input-icon error">&#10006;</span>
+                    </div>
+                    <div class="error-message">
+                        <span>&#9888;</span> Phone number must be 10 digits
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="form-input" value="MySecure">
+                    </div>
+                    <div class="strength-bar">
+                        <div class="strength-segment active medium"></div>
+                        <div class="strength-segment active medium"></div>
+                        <div class="strength-segment"></div>
+                        <div class="strength-segment"></div>
+                    </div>
+                    <div class="strength-text medium">Medium - add numbers for stronger password</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" class="form-input success" value="MySecure123!">
+                        <span class="input-icon success">&#10004;</span>
+                    </div>
+                    <div class="success-message">
+                        <span>&#10004;</span> Passwords match
+                    </div>
+                </div>
+
+                <button class="submit-btn">Submit</button>
+            </div>
+        </div>
+
+        <div class="comment">
+            <strong>KEY IMPROVEMENTS:</strong>
+            <ul style="margin-top: 8px; padding-left: 20px;">
+                <li><strong>Visual indicators:</strong> Red/green borders and icons show status at a glance</li>
+                <li><strong>Contextual messages:</strong> Error appears right below the problematic field</li>
+                <li><strong>Positive feedback:</strong> Green checkmarks confirm valid entries</li>
+                <li><strong>Progressive hints:</strong> Password strength meter guides users</li>
+                <li><strong>No interruption:</strong> Users can continue fixing errors without dismissing dialogs</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

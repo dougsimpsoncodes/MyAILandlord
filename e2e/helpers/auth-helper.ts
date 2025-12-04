@@ -47,6 +47,7 @@ export class SupabaseAuthHelper {
         },
       },
     });
+    console.log(`[SupabaseAuthHelper] Initialized with URL: ${url}`);
   }
 
   /**
@@ -219,16 +220,24 @@ export class SupabaseAuthHelper {
    * This allows the app to pick up the authenticated session
    */
   private async injectSession(session: any): Promise<void> {
+    // Ensure we are on a valid origin before accessing localStorage
+    const url = this.page.url();
+    if (url === 'about:blank' || url.startsWith('data:')) {
+      console.log('[SupabaseAuthHelper] Page on invalid origin, navigating to app before injecting session');
+      await this.navigateToApp('/');
+    }
+
     const storageKey = `sb-${new URL(process.env.EXPO_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]}-auth-token`;
 
     await this.page.evaluate(
       ({ key, sessionData }) => {
+        console.log('Injecting session into localStorage key:', key);
         localStorage.setItem(key, JSON.stringify(sessionData));
       },
       { key: storageKey, sessionData: session }
     );
 
-    console.log('[SupabaseAuthHelper] Session injected into localStorage');
+    console.log('[SupabaseAuthHelper] Session injected into localStorage with key:', storageKey);
   }
 
   /**

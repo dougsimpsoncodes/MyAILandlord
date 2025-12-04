@@ -1,9 +1,22 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { log } from '../../lib/log';
+
+const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+  if (Platform.OS === 'web') {
+    if (window.confirm(`${title}\n\n${message}`)) {
+      onConfirm();
+    }
+  } else {
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Confirm', style: 'destructive', onPress: onConfirm },
+    ]);
+  }
+};
 
 interface UserProfileProps {
   userRole: 'tenant' | 'landlord';
@@ -14,53 +27,38 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
   const { clearRole } = useContext(RoleContext);
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearRole();
-              await signOut();
-            } catch (error) {
-              log.error('Error signing out:', { error: String(error) });
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    showConfirm('Sign Out', 'Are you sure you want to sign out?', async () => {
+      try {
+        log.info('🚪 Starting sign out process...');
+        await clearRole();
+        log.info('🚪 Role cleared, now signing out from Supabase...');
+        await signOut();
+        log.info('🚪 Sign out complete');
+      } catch (error) {
+        log.error('Error signing out:', { error: String(error) });
+        if (Platform.OS === 'web') {
+          window.alert('Failed to sign out. Please try again.');
+        } else {
+          Alert.alert('Error', 'Failed to sign out. Please try again.');
+        }
+      }
+    });
   };
 
   const handleSwitchRole = () => {
-    Alert.alert(
-      'Switch Role',
-      `You are currently signed in as a ${userRole}. Would you like to switch to ${userRole === 'tenant' ? 'landlord' : 'tenant'}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Switch Role',
-          onPress: async () => {
-            try {
-              await clearRole();
-            } catch (error) {
-              log.error('Error switching role:', { error: String(error) });
-              Alert.alert('Error', 'Failed to switch role. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    const message = `You are currently signed in as a ${userRole}. Would you like to switch to ${userRole === 'tenant' ? 'landlord' : 'tenant'}?`;
+    showConfirm('Switch Role', message, async () => {
+      try {
+        await clearRole();
+      } catch (error) {
+        log.error('Error switching role:', { error: String(error) });
+        if (Platform.OS === 'web') {
+          window.alert('Failed to switch role. Please try again.');
+        } else {
+          Alert.alert('Error', 'Failed to switch role. Please try again.');
+        }
+      }
+    });
   };
 
   return (

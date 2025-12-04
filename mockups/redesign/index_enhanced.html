@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyAILandlord Premium Redesign (Enhanced)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        /* Animated Background */
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.3;
+            animation: float 30s ease-in-out infinite; /* Slower animation */
+        }
+        .orb-1 {
+            width: 600px;
+            height: 600px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            top: -200px;
+            right: -200px;
+        }
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            bottom: -100px;
+            left: -100px;
+            animation-delay: -10s;
+        }
+        .orb-3 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            top: 50%;
+            left: 50%;
+            animation-delay: -20s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.05); }
+            66% { transform: translate(-20px, 20px) scale(0.95); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .logo-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .logo-icon svg {
+            width: 32px;
+            height: 32px;
+            fill: white;
+        }
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        h1 {
+            font-size: 56px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tagline {
+            font-size: 20px;
+            color: #94A3B8; /* Increased contrast from #64748B */
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 36px;
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: block;
+            position: relative; /* Needed for pseudo-elements and arrow */
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(89, 96, 230, 0.25);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
+            opacity: 0.5;
+        }
+
+        .card-preview {
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .preview-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .preview-2 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .preview-3 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .preview-4 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .preview-5 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+
+        .preview-icon {
+            opacity: 0.8;
+        }
+        .preview-icon svg {
+             width: 80px;
+             height: 80px;
+             stroke: rgba(255,255,255,0.8);
+             fill: transparent;
+             stroke-width: 1.5;
+        }
+
+        .preview-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .card-content {
+            padding: 24px;
+            position: relative;
+        }
+        .card-number {
+            font-size: 12px;
+            font-weight: 600;
+            color: #818CF8; /* Increased contrast from #667eea */
+            margin-bottom: 8px;
+        }
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #F1F5F9; /* Brighter white */
+            margin-bottom: 8px;
+        }
+        .card-desc {
+            font-size: 14px;
+            color: #CBD5E1; /* Increased contrast from #94A3B8 */
+            line-height: 1.6;
+        }
+        .card-arrow {
+            position: absolute;
+            right: 24px;
+            bottom: 24px;
+            font-size: 24px;
+            font-weight: 300;
+            opacity: 0;
+            transform: translateX(-10px);
+            transition: all 0.3s ease;
+            color: #CBD5E1;
+        }
+        .card:hover .card-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        /* Feature List */
+        .features {
+            margin-top: 80px;
+            text-align: center;
+        }
+        .features-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 40px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+        @media (max-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        .feature-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.3s ease;
+        }
+        .feature-item:hover {
+            background: rgba(255, 255, 255, 0.07);
+            transform: scale(1.05);
+        }
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+        }
+        .feature-icon svg {
+            width: 28px;
+            height: 28px;
+            stroke: #A5B4FC;
+        }
+        .feature-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #CBD5E1; /* Increased contrast */
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 80px;
+            text-align: center;
+            padding: 40px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        footer p {
+            color: #64748B; /* Darker for footer */
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated Background -->
+    <div class="bg-glow">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+        <div class="glow-orb orb-3"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+                        <path d="M11.47 3.84a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.06l-8.689-8.69a2.25 2.25 0 0 0-3.182 0L2.47 11.47a.75.75 0 1 0 1.06 1.06l8.94-8.69Z" />
+                        <path d="m21.75 12-8.94-8.69L3.53 12.53a.75.75 0 0 0-1.06 1.06l8.69 8.69a.75.75 0 0 0 1.06 0l8.69-8.69a.75.75 0 0 0-1.06-1.06Z" />
+                    </svg>                      
+                </div>
+                <span class="logo-text">MyAILandlord</span>
+            </div>
+            <h1>Premium Visual<br>Redesign (Enhanced)</h1>
+            <p class="tagline">
+                A complete aesthetic overhaul transforming the app from basic to premium.
+                Explore the before/after mockups to see the transformation.
+            </p>
+        </header>
+
+        <div class="cards-grid">
+            <a href="01-design-system.html" class="card">
+                <div class="card-preview preview-1">
+                    <span class="preview-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.53 16.122a3 3 0 0 0-5.78 1.128 2.25 2.25 0 0 1-2.475 2.475c-.363 0-.72-.062-1.074-.182a3 3 0 0 0-3.675 3.675c.617.28 1.285.435 1.986.435h15.75a3 3 0 0 0 2.25-5.25c-.618-.28-1.285-.435-1.986-.435a2.25 2.25 0 0 1-2.475-2.475 3 3 0 0 0-5.78-1.128Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a2.25 2.25 0 0 1-2.25-2.25c0-.894.39-1.708 1.022-2.278a3 3 0 0 0 .47-4.125a.75.75 0 0 1 1.026-1.026a3 3 0 0 0 4.125-.47c.632-.57 1.484-1.022 2.278-1.022a2.25 2.25 0 0 1 2.25 2.25c0 .894-.39 1.708-1.022 2.278a3 3 0 0 0-.47 4.125a.75.75 0 0 1-1.026 1.026a3 3 0 0 0-4.125.47c-.632.57-1.484 1.022-2.278 1.022Z" />
+                        </svg>
+                    </span>
+                    <span class="preview-badge">Foundation</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">01</div>
+                    <h3 class="card-title">Design System</h3>
+                    <div class="card-desc">
+                        Complete color palette, typography, buttons, cards, shadows, and badges.
+                        The foundation for the entire redesign.
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+            </a>
+
+            <a href="02-tenant-home.html" class="card">
+                    <span class="preview-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                    </span>
+                    <span class="preview-badge">Screen</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">02</div>
+                    <h3 class="card-title">Tenant Home</h3>
+                    <div class="card-desc">
+                        Redesigned tenant home screen with glassmorphism, gradient icons,
+                        activity feed, and premium property hero card.
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+            </a>
+
+            <a href="03-landlord-dashboard.html" class="card">
+                    <span class="preview-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                        </svg>
+                    </span>
+                    <span class="preview-badge">Screen</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">03</div>
+                    <h3 class="card-title">Landlord Dashboard</h3>
+                    <div class="card-desc">
+                        Premium dashboard with gradient stat cards, priority-coded case cards,
+                        tenant avatars, and sophisticated filter chips.
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+            </a>
+
+            <a href="04-property-cards.html" class="card">
+                <div class="card-preview preview-4">
+                    <span class="preview-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18h16.5M5.25 6v12m13.5-12v12m-1.5 0h-10.5m-1.5 0h-1.5m13.5 0h1.5m-16.5 0h1.5m9-13.5v3.375c0 .621.504 1.125 1.125 1.125h3.375" />
+                        </svg>
+                    </span>
+                    <span class="preview-badge">Component</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">04</div>
+                    <h3 class="card-title">Property Cards</h3>
+                    <div class="card-desc">
+                        Rich property cards with occupancy bars, quick stats,
+                        action buttons, and hover elevation effects.
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+            </a>
+
+            <a href="05-components.html" class="card" style="grid-column: span 2;">
+                <div class="card-preview preview-5" style="height: 160px;">
+                    <span class="preview-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5A2.25 2.25 0 0 0 0 5.25v11.25A2.25 2.25 0 0 0 2.25 18.75h15.5A2.25 2.25 0 0 0 20 16.5v-1.5" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 3.75V16.5m0 0h1.125c.621 0 1.125-.504 1.125-1.125V5.25c0-.621-.504-1.125-1.125-1.125H16.5m0 0h-1.5m1.5 0v-1.5m0 1.5v1.5m0 0v1.5m0-1.5h1.5m-1.5 0h-1.5m0 0h-1.5m0 0h-1.5m-1.5 0h-1.5m-1.5 0H6" />
+                        </svg>
+                    </span>
+                    <span class="preview-badge">Library</span>
+                </div>
+                <div class="card-content">
+                    <div class="card-number">05</div>
+                    <h3 class="card-title">Component Library</h3>
+                    <div class="card-desc">
+                        Full set of reusable UI components: navigation, forms, toggles, avatars, progress bars,
+                        toasts, chips, list items, FABs, and empty states.
+                    </div>
+                    <span class="card-arrow">→</span>
+                </div>
+            </a>
+        </div>
+
+        <!-- Design Features -->
+        <div class="features">
+            <h2 class="features-title">Key Design Features</h2>
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Gradient -->
+                         <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="16" cy="16" r="14" stroke="url(#grad1)" stroke-width="2"/>
+                            <defs> <linearGradient id="grad1" x1="0" y1="0" x2="1" y2="1"> <stop offset="0%" stop-color="#A5B4FC"/> <stop offset="100%" stop-color="#764ba2"/> </linearGradient> </defs>
+                        </svg>
+                    </div>
+                    <div class="feature-label">Gradient System</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Glass -->
+                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 16L16 4L28 16L16 28L4 16Z" stroke="#A5B4FC" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.5"></path><path d="M10 22L22 10" stroke="#A5B4FC" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.5"></path></svg>
+                    </div>
+                    <div class="feature-label">Glassmorphism</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Dark Mode -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </div>
+                    <div class="feature-label">Dark Mode Ready</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Accessibility -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 17a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0Zm9.5-5.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm-2-2.5a5 5 0 0 0-9.25 2.1l-3.5 7.4a.5.5 0 0 0 .8.6l3.5-2 2.1 2.1a.5.5 0 0 0 .7-.7l-2.1-2.1 2-3.5a5 5 0 0 0 6.6-4.5Z"/></svg>
+                    </div>
+                    <div class="feature-label">WCAG Compliant</div>
+                </div>
+                 <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Colored Shadows -->
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="6" width="12" height="12" rx="3" fill="#A5B4FC" fill-opacity="0.3"></rect><rect x="6" y="6" width="12" height="12" rx="3" stroke="#A5B4FC" stroke-width="2"></rect></svg>
+                    </div>
+                    <div class="feature-label">Colored Shadows</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for 8px Grid -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    </div>
+                    <div class="feature-label">8px Grid System</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Typography -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+                    </div>
+                    <div class="feature-label">SF Pro Typography</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">
+                        <!-- SVG for Animation -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    </div>
+                    <div class="feature-label">Smooth Animations</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>MyAILandlord Premium Redesign (Enhanced) • Click any card to explore</p>
+        </footer>
+    </div>
+</body>
+</html>

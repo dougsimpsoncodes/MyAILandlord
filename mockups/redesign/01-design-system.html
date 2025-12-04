@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>01 - Design System</title>
+    <style>
+        :root {
+            --primary-glow: #667eea;
+            --secondary-glow: #764ba2;
+            --accent-glow: #43e97b;
+            --bg-dark-start: #0F172A;
+            --bg-dark-mid: #1E1B4B;
+            --text-primary: #F1F5F9;
+            --text-secondary: #CBD5E1;
+            --text-tertiary: #94A3B8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --surface-color: rgba(255, 255, 255, 0.05);
+            --primary-accent: #818CF8;
+            --success: #34D399;
+            --warning: #FBBF24;
+            --error: #F87171;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            /* Safe area insets for iPhone notch/Dynamic Island */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: linear-gradient(135deg, var(--bg-dark-start) 0%, var(--bg-dark-mid) 50%, var(--bg-dark-start) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: calc(20px + var(--safe-top)) calc(16px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(16px + var(--safe-left));
+        }
+        @media (min-width: 768px) {
+            .container { padding: 60px 20px; }
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            margin-bottom: 40px;
+            transition: color 0.3s;
+        }
+        .back-link:hover { color: var(--text-primary); }
+        header { text-align: center; margin-bottom: 40px; }
+        @media (min-width: 768px) { header { margin-bottom: 80px; } }
+        h1 {
+            font-size: clamp(32px, 8vw, 56px);
+            font-weight: 800;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section { margin-bottom: 48px; }
+        @media (min-width: 768px) { .section { margin-bottom: 80px; } }
+        .section-title {
+            font-size: clamp(24px, 5vw, 32px);
+            font-weight: 700;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+        @media (min-width: 768px) { .section-title { margin-bottom: 32px; } }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        @media (min-width: 768px) { .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; } }
+        
+        /* Color Palette */
+        .color-swatch {
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+        .color-preview { height: 120px; }
+        .color-info {
+            padding: 16px;
+            background: var(--surface-color);
+        }
+        .color-info .name { font-weight: 600; font-size: 16px; }
+        .color-info .hex { font-family: monospace; color: var(--text-tertiary); }
+        
+        /* Typography */
+        .type-showcase { margin-bottom: 24px; }
+        .type-showcase .label {
+            font-size: 14px;
+            color: var(--text-tertiary);
+            margin-bottom: 8px;
+        }
+        .type-showcase h1, .type-showcase h2, .type-showcase h3, .type-showcase h4, .type-showcase h5, .type-showcase h6, .type-showcase p {
+            background: none;
+            -webkit-background-clip: unset;
+            -webkit-text-fill-color: unset;
+            color: var(--text-primary);
+        }
+        .type-showcase h1 { font-size: 48px; font-weight: 800; margin-bottom: 8px;}
+        .type-showcase h2 { font-size: 36px; font-weight: 700; margin-bottom: 8px;}
+        .type-showcase h3 { font-size: 28px; font-weight: 700; margin-bottom: 8px;}
+        .type-showcase h4 { font-size: 22px; font-weight: 600; margin-bottom: 8px;}
+        .type-showcase h5 { font-size: 18px; font-weight: 600; margin-bottom: 8px;}
+        .type-showcase p { font-size: 16px; line-height: 1.6; color: var(--text-secondary); }
+
+        /* Buttons */
+        .btn-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        @media (min-width: 768px) { .btn-grid { gap: 16px; } }
+        .btn {
+            font-size: 16px;
+            font-weight: 600;
+            padding: 14px 24px;
+            min-height: 48px; /* Touch target minimum */
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .btn-primary { background: var(--primary-accent); color: white; }
+        .btn-primary:hover { background: #6366F1; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2); transform: translateY(-2px); }
+        .btn-primary:disabled { background: #4F46E5; color: #A5B4FC; cursor: not-allowed; }
+        .btn-secondary { background: transparent; color: var(--text-secondary); border-color: var(--border-color); }
+        .btn-secondary:hover { background: var(--surface-color); color: var(--text-primary); border-color: #4F46E5; }
+        .btn-secondary:disabled { border-color: #3730A3; color: #4F46E5; cursor: not-allowed; }
+        .btn-tertiary { background: transparent; color: var(--text-secondary); }
+        .btn-tertiary:hover { color: var(--text-primary); }
+        .btn-tertiary:disabled { color: #4F46E5; cursor: not-allowed; }
+
+        /* Form Controls */
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+        @media (min-width: 768px) { .form-grid { grid-template-columns: 1fr 1fr; gap: 40px; } }
+        .form-group { display: flex; flex-direction: column; }
+        .form-label { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }
+        .form-input {
+            width: 100%;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            font-size: 16px; /* Prevents iOS zoom on focus */
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            min-height: 48px; /* Touch target minimum */
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-accent);
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.3);
+        }
+        .form-input.is-invalid {
+            border-color: var(--error);
+        }
+        .form-input.is-invalid:focus {
+            box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.3);
+        }
+        .error-message { color: var(--error); font-size: 14px; margin-top: 8px; }
+
+        /* Shadows & Elevation */
+        .elevation-swatch {
+            border-radius: 16px;
+            padding: 24px;
+            background: rgba(30, 27, 75, 0.8);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        .elevation-swatch:hover { transform: translateY(-4px); }
+        .elevation-1 { box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .elevation-2 { box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .elevation-3 { box-shadow: 0 20px 50px rgba(0,0,0,0.4); }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Overview</a>
+        <header>
+            <h1>Design System</h1>
+        </header>
+
+        <!-- Color Palette -->
+        <section class="section">
+            <h2 class="section-title">Color Palette</h2>
+            <div class="grid">
+                <!-- Primary -->
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--primary-accent);"></div>
+                    <div class="color-info"><div class="name">Primary</div><div class="hex">#818CF8</div></div>
+                </div>
+                <!-- Gradients -->
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));"></div>
+                    <div class="color-info"><div class="name">Primary Gradient</div><div class="hex">#667eea → #764ba2</div></div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+                    <div class="color-info"><div class="name">Secondary Gradient</div><div class="hex">#4facfe → #00f2fe</div></div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: linear-gradient(135deg, var(--accent-glow), #38f9d7);"></div>
+                    <div class="color-info"><div class="name">Accent Gradient</div><div class="hex">#43e97b → #38f9d7</div></div>
+                </div>
+                <!-- Status -->
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--success);"></div>
+                    <div class="color-info"><div class="name">Success</div><div class="hex">#34D399</div></div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--warning);"></div>
+                    <div class="color-info"><div class="name">Warning</div><div class="hex">#FBBF24</div></div>
+                </div>
+                 <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--error);"></div>
+                    <div class="color-info"><div class="name">Error</div><div class="hex">#F87171</div></div>
+                </div>
+                <!-- Neutrals -->
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--text-primary);"></div>
+                    <div class="color-info"><div class="name">Text Primary</div><div class="hex">#F1F5F9</div></div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--text-secondary);"></div>
+                    <div class="color-info"><div class="name">Text Secondary</div><div class="hex">#CBD5E1</div></div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--text-tertiary);"></div>
+                    <div class="color-info"><div class="name">Text Tertiary</div><div class="hex">#94A3B8</div></div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--surface-color); backdrop-filter: blur(10px);"></div>
+                    <div class="color-info"><div class="name">Surface</div><div class="hex">rgba(255,255,255,0.05)</div></div>
+                </div>
+                 <div class="color-swatch">
+                    <div class="color-preview" style="background: var(--bg-dark-start);"></div>
+                    <div class="color-info"><div class="name">Background</div><div class="hex">#0F172A</div></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Typography -->
+        <section class="section">
+            <h2 class="section-title">Typography</h2>
+            <div class="type-showcase">
+                <p class="label">Heading 1</p>
+                <h1>The quick brown fox</h1>
+            </div>
+            <div class="type-showcase">
+                <p class="label">Heading 2</p>
+                <h2>The quick brown fox</h2>
+            </div>
+            <div class="type-showcase">
+                <p class="label">Heading 3</p>
+                <h3>The quick brown fox</h3>
+            </div>
+             <div class="type-showcase">
+                <p class="label">Heading 4</p>
+                <h4>The quick brown fox</h4>
+            </div>
+            <div class="type-showcase">
+                <p class="label">Body Text</p>
+                <p>The quick brown fox jumps over the lazy dog. This is the default body text style, designed for maximum readability on dark backgrounds. It uses the system's sans-serif font for a native feel.</p>
+            </div>
+        </section>
+
+        <!-- Buttons -->
+        <section class="section">
+            <h2 class="section-title">Buttons</h2>
+            <p style="max-width: 60ch; color: var(--text-secondary); margin-bottom: 32px;">Buttons are the primary interactive elements. Styles are provided for primary, secondary, and tertiary actions, each with distinct states.</p>
+            
+            <div class="btn-grid" style="margin-bottom: 24px;">
+                <a href="#" class="btn btn-primary">Primary</a>
+                <a href="#" class="btn btn-secondary">Secondary</a>
+                <a href="#" class="btn btn-tertiary">Tertiary</a>
+            </div>
+             <div class="btn-grid" style="margin-bottom: 24px;">
+                <a href="#" class="btn btn-primary" style="background: #6366F1;">Hovered</a>
+                <a href="#" class="btn btn-secondary" style="background: var(--surface-color); border-color: #4F46E5;">Hovered</a>
+                <a href="#" class="btn btn-tertiary" style="color: var(--text-primary);">Hovered</a>
+            </div>
+            <div class="btn-grid">
+                <a href="#" class="btn btn-primary" disabled>Disabled</a>
+                <a href="#" class="btn btn-secondary" disabled>Disabled</a>
+                <a href="#" class="btn btn-tertiary" disabled>Disabled</a>
+            </div>
+        </section>
+        
+        <!-- Form Controls -->
+        <section class="section">
+            <h2 class="section-title">Form Controls</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" id="name" class="form-input" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address (Focused)</label>
+                    <input type="email" id="email" class="form-input" placeholder="you@example.com" value="Active input field">
+                </div>
+                <div class="form-group">
+                    <label for="password" class="form-label">Password (Error)</label>
+                    <input type="password" id="password" class="form-input is-invalid" value="1234">
+                    <p class="error-message">Password must be at least 8 characters.</p>
+                </div>
+                 <div class="form-group">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea id="notes" class="form-input" rows="4" placeholder="Add any notes..."></textarea>
+                </div>
+            </div>
+        </section>
+
+        <!-- Shadows & Elevation -->
+        <section class="section">
+            <h2 class="section-title">Shadows & Elevation</h2>
+            <div class="grid">
+                <div class="elevation-swatch elevation-1">
+                    <h4 style="margin-bottom: 8px;">Level 1</h4>
+                    <p style="color: var(--text-tertiary); font-size: 14px;">For base cards and elements.</p>
+                </div>
+                 <div class="elevation-swatch elevation-2">
+                    <h4 style="margin-bottom: 8px;">Level 2</h4>
+                    <p style="color: var(--text-tertiary); font-size: 14px;">For hovered elements and pop-ups.</p>
+                </div>
+                 <div class="elevation-swatch elevation-3">
+                    <h4 style="margin-bottom: 8px;">Level 3</h4>
+                    <p style="color: var(--text-tertiary); font-size: 14px;">For modals and critical dialogs.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</body>
+</html>

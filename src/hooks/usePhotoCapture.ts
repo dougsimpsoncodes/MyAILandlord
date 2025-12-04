@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { Photo, PHOTO_CONFIG } from '../types/photo';
 import { PhotoService } from '../services/PhotoService';
+import { log } from '../lib/log';
 
 interface UsePhotoCaptureOptions {
   maxPhotos?: number;
@@ -102,7 +103,18 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
       const errors: string[] = [];
 
       for (const photo of photosToAdd) {
+        log.info('📸 usePhotoCapture: validating photo', {
+          mimeType: photo.mimeType,
+          fileSize: photo.fileSize,
+          width: photo.width,
+          height: photo.height
+        });
         const validation = PhotoService.validatePhoto(photo);
+        log.info('📸 usePhotoCapture: validation result', {
+          isValid: validation.isValid,
+          errors: validation.errors,
+          warnings: validation.warnings
+        });
         if (validation.isValid) {
           validPhotos.push(photo);
         } else {

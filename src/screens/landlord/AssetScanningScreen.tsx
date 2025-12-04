@@ -46,24 +46,24 @@ const assetCategories = [
 const AssetScanningScreen = () => {
   const navigation = useNavigation<AssetScanningNavigationProp>();
   const route = useRoute();
-  const { propertyData } = route.params as { propertyData: PropertyData };
+  const { propertyData, draftId } = route.params as { propertyData: PropertyData; draftId?: string };
   const responsive = useResponsive();
-  
+
   // State
   const [detectedAssets, setDetectedAssets] = useState<DetectedAsset[]>([]);
   const [scannerActive, setScannerActive] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  
-  // Draft management
+
+  // Draft management - use draftId to load/save the correct draft
   const {
     draftState,
     updatePropertyData,
     updateCurrentStep,
     isLoading: isDraftLoading,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({ draftId });
 
   // Request camera permissions
   useEffect(() => {
@@ -248,15 +248,18 @@ const AssetScanningScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetDetails', { 
-      propertyData: { ...propertyData, detectedAssets } 
+    navigation.navigate('AssetDetails', {
+      propertyData: { ...propertyData, detectedAssets },
+      draftId,
     });
   };
 
   const getProgressPercentage = () => {
-    const baseProgress = 400; // Previous steps complete
-    const assetProgress = Math.min(detectedAssets.length * 10, 100);
-    return Math.round(((baseProgress + assetProgress) / 8) * 100);
+    // Step 5 of 8: base progress is 4 completed steps (~50%)
+    // Add up to 12.5% more based on assets detected
+    const baseProgress = 50; // Steps 1-4 complete
+    const assetBonus = Math.min(detectedAssets.length, 10);
+    return Math.min(baseProgress + assetBonus, 62); // Cap at ~62% for step 5
   };
 
   const getRoomName = (roomId: string) => {

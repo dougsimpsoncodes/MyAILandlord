@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   FlatList,
   ViewStyle,
   StyleProp,
+  Platform,
+  LayoutChangeEvent,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Photo } from '../../types/photo';
@@ -27,8 +29,9 @@ interface PhotoGridProps {
 }
 
 const { width: screenWidth } = Dimensions.get('window');
-const GRID_PADDING = 16;
-const GRID_GAP = 8;
+const GRID_GAP = 12;
+// Limit max width on web for better layout
+const MAX_GRID_WIDTH = Platform.OS === 'web' ? 600 : screenWidth;
 
 export const PhotoGrid: React.FC<PhotoGridProps> = ({
   photos,
@@ -41,7 +44,14 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   numColumns = 2,
   style,
 }) => {
-  const itemWidth = (screenWidth - GRID_PADDING * 2 - GRID_GAP * (numColumns - 1)) / numColumns;
+  const [containerWidth, setContainerWidth] = useState(Math.min(screenWidth, MAX_GRID_WIDTH));
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    setContainerWidth(Math.min(width, MAX_GRID_WIDTH));
+  };
+
+  const itemWidth = (containerWidth - GRID_GAP * (numColumns + 1)) / numColumns;
   const itemHeight = itemWidth * 0.75; // 4:3 aspect ratio
 
   const handleDeletePress = (index: number) => {
@@ -70,7 +80,8 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
         {
           width: itemWidth,
           height: itemHeight,
-          marginRight: (index + 1) % numColumns === 0 ? 0 : GRID_GAP,
+          marginLeft: index % numColumns === 0 ? GRID_GAP : GRID_GAP / 2,
+          marginRight: (index + 1) % numColumns === 0 ? GRID_GAP : GRID_GAP / 2,
           marginBottom: GRID_GAP,
         },
       ]}
@@ -141,9 +152,9 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   );
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} onLayout={handleLayout}>
       {renderPhotosCount()}
-      
+
       {photos.length === 0 ? (
         renderEmptyState()
       ) : (
@@ -174,6 +185,7 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    maxWidth: Platform.OS === 'web' ? MAX_GRID_WIDTH : undefined,
   },
   photosCountContainer: {
     flexDirection: 'row',
@@ -206,10 +218,15 @@ const styles = StyleSheet.create({
   },
   photoContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    borderRadius: 12,
     overflow: 'hidden',
     elevation: 2,
-    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
   },
   photoImage: {
     width: '100%',

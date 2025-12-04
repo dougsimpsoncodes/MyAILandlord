@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>04 - Property Cards</title>
+    <style>
+        :root {
+            --primary-accent: #818CF8;
+            --bg-dark: #0F172A;
+            --surface-1: #1E293B;
+            --surface-2: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --text-tertiary: #64748B;
+            --border-color: #334155;
+            --success: #34D399;
+            --warning: #FBBF24;
+            --error: #F87171;
+            --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            /* Safe area insets for iPhone notch/Dynamic Island */
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: calc(20px + var(--safe-top)) calc(16px + var(--safe-right)) calc(20px + var(--safe-bottom)) calc(16px + var(--safe-left));
+        }
+        @media (min-width: 768px) { .container { padding: 60px 20px; } }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-tertiary);
+            text-decoration: none;
+            margin-bottom: 40px;
+            transition: color 0.3s;
+        }
+        .back-link:hover { color: var(--text-primary); }
+        header { text-align: center; margin-bottom: 24px; }
+        @media (min-width: 768px) { header { margin-bottom: 40px; } }
+        h1 { font-size: clamp(32px, 8vw, 56px); font-weight: 800; background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .intro { font-size: 16px; color: var(--text-secondary); max-width: 60ch; margin: 16px auto 40px; text-align: center; line-height: 1.6; padding: 0 8px; }
+        @media (min-width: 768px) { .intro { font-size: 18px; margin: 16px auto 80px; } }
+        .showcase-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+        @media (min-width: 768px) {
+            .showcase-grid { grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 32px; }
+        }
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            grid-column: 1 / -1;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        /* Property Card */
+        .property-card {
+            background: var(--surface-1);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .property-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border-color: var(--primary-accent);
+        }
+        .card-image {
+            height: 200px;
+            background: linear-gradient(135deg, #334155, #475569);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-size: 20px;
+        }
+        .card-image img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .card-content { padding: 24px; }
+        .card-address { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+        
+        .card-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .stat .value { font-size: 20px; font-weight: 600; }
+        .stat .label { font-size: 12px; color: var(--text-tertiary); text-transform: uppercase; }
+        .stat .value.has-issue { color: var(--warning); }
+        
+        .card-occupancy { margin-bottom: 24px; }
+        .occupancy-header { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+        .occupancy-header .label { color: var(--text-secondary); font-weight: 500; }
+        .occupancy-header .value { color: var(--text-primary); font-weight: 600; }
+        .occupancy-bar { width: 100%; height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
+        .occupancy-bar-fill { height: 100%; background: var(--success); border-radius: 4px; }
+
+        .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .btn {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 14px 12px;
+            min-height: 48px; /* Touch target minimum */
+            border-radius: 10px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        .btn-primary { background: var(--primary-accent); color: white; }
+        .btn-primary:hover { background: #6366F1; }
+        .btn-secondary { background: var(--surface-2); color: var(--text-secondary); }
+        .btn-secondary:hover { background: var(--border-color); color: var(--text-primary); }
+
+        /* Add New Card */
+        .add-new-card {
+            background: transparent;
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        @media (min-width: 768px) { .add-new-card { min-height: 475px; } }
+        .add-new-card:hover {
+            border-color: var(--primary-accent);
+            color: var(--primary-accent);
+            background: rgba(129, 140, 248, 0.05);
+        }
+        .add-new-card .plus-icon {
+            font-size: 48px;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+        .add-new-card .label { font-size: 18px; font-weight: 600; }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to Overview</a>
+        <header>
+            <h1>Property Cards</h1>
+            <p class="intro">Property cards are a core component for landlords. Here are several variations demonstrating their flexibility for different scenarios, from fully occupied to properties with vacancies or issues.</p>
+        </header>
+
+        <div class="showcase-grid">
+            <h2 class="section-title">Standard Cards</h2>
+            <!-- Standard Card -->
+            <div class="property-card">
+                <div class="card-image"><span>Property Image</span></div>
+                <div class="card-content">
+                    <h3 class="card-address">123 Serenity Lane</h3>
+                    <div class="card-stats">
+                        <div class="stat"><div class="value">12</div><div class="label">Tenants</div></div>
+                        <div class="stat"><div class="value">0</div><div class="label">Issues</div></div>
+                        <div class="stat"><div class="value">$18k</div><div class="label">Revenue</div></div>
+                    </div>
+                    <div class="card-occupancy">
+                        <div class="occupancy-header"><span class="label">Occupancy</span><span class="value">12 / 12</span></div>
+                        <div class="occupancy-bar"><div class="occupancy-bar-fill" style="width: 100%; background: var(--success);"></div></div>
+                    </div>
+                    <div class="card-actions">
+                        <a href="#" class="btn btn-secondary">View Details</a>
+                        <a href="#" class="btn btn-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card with Issues -->
+            <div class="property-card">
+                <div class="card-image"><span>Property Image</span></div>
+                <div class="card-content">
+                    <h3 class="card-address">456 Harmony Avenue</h3>
+                    <div class="card-stats">
+                        <div class="stat"><div class="value">8</div><div class="label">Tenants</div></div>
+                        <div class="stat"><div class="value has-issue">2</div><div class="label">Issues</div></div>
+                        <div class="stat"><div class="value">$10k</div><div class="label">Revenue</div></div>
+                    </div>
+                    <div class="card-occupancy">
+                        <div class="occupancy-header"><span class="label">Occupancy</span><span class="value">8 / 8</span></div>
+                        <div class="occupancy-bar"><div class="occupancy-bar-fill" style="width: 100%; background: var(--success);"></div></div>
+                    </div>
+                    <div class="card-actions">
+                        <a href="#" class="btn btn-secondary">View Details</a>
+                        <a href="#" class="btn btn-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card with Vacancy -->
+            <div class="property-card">
+                <div class="card-image"><span>Property Image</span></div>
+                <div class="card-content">
+                    <h3 class="card-address">789 Peace Boulevard</h3>
+                    <div class="card-stats">
+                        <div class="stat"><div class="value">5</div><div class="label">Tenants</div></div>
+                        <div class="stat"><div class="value">0</div><div class="label">Issues</div></div>
+                        <div class="stat"><div class="value">$7.5k</div><div class="label">Revenue</div></div>
+                    </div>
+                    <div class="card-occupancy">
+                        <div class="occupancy-header"><span class="label">Occupancy</span><span class="value">5 / 6</span></div>
+                        <div class="occupancy-bar"><div class="occupancy-bar-fill" style="width: 83.3%; background: var(--warning);"></div></div>
+                    </div>
+                    <div class="card-actions">
+                        <a href="#" class="btn btn-secondary">View Details</a>
+                        <a href="#" class="btn btn-primary" style="background: var(--warning); color: var(--bg-dark);">List Vacancy</a>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="section-title" style="margin-top: 40px;">Special Cards</h2>
+            <!-- Add New Card -->
+            <div class="add-new-card">
+                <div class="plus-icon">+</div>
+                <div class="label">Add New Property</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

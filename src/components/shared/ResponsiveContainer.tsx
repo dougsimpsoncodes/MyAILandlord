@@ -20,6 +20,7 @@ const ResponsiveContainer: React.FC<ResponsiveContainerProps> = ({
   const responsive = useResponsive();
 
   const containerStyle = {
+    flex: 1,
     width: '100%',
     ...(responsive.isWeb && !fullWidth ? responsive.maxWidth(maxWidth) : {}),
     ...(padding ? { paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize] as number } : {}),

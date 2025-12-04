@@ -182,19 +182,28 @@ const PropertyManagementScreen = () => {
     // Step 6: Asset Photos
     // Step 7: Review & Submit
 
+    const draftId = draft.id;
+    const propertyData = draft.propertyData;
+
     if (draft.currentStep === 0) {
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      navigation.navigate('AddProperty', { draftId });
     } else if (draft.currentStep === 1) {
-      navigation.navigate('PropertyPhotos', { draftId: draft.id });
+      navigation.navigate('PropertyPhotos', { draftId, propertyData });
     } else if (draft.currentStep === 2) {
-      navigation.navigate('RoomSelection', {
-        propertyData: draft.propertyData
-      });
+      navigation.navigate('RoomSelection', { propertyData, draftId });
+    } else if (draft.currentStep === 3) {
+      navigation.navigate('RoomPhotography', { propertyData, draftId });
+    } else if (draft.currentStep === 4) {
+      navigation.navigate('AssetScanning', { propertyData, draftId });
+    } else if (draft.currentStep === 5) {
+      navigation.navigate('AssetDetails', { propertyData, draftId });
+    } else if (draft.currentStep === 6) {
+      navigation.navigate('AssetPhotos', { propertyData, draftId });
+    } else if (draft.currentStep >= 7) {
+      navigation.navigate('ReviewSubmit', { propertyData, draftId });
     } else {
-      // For steps 3+, go to the last completed screen (RoomSelection for now)
-      navigation.navigate('RoomSelection', {
-        propertyData: draft.propertyData
-      });
+      // Fallback: go to RoomSelection
+      navigation.navigate('RoomSelection', { propertyData, draftId });
     }
   };
 
