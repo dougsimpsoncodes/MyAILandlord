@@ -6,12 +6,12 @@ import { WelcomeScreenPO, LoginScreenPO, SignUpScreenPO } from '../helpers/page-
  * E2E Tests for OAuth Flows (Google and Apple)
  * Tests OAuth button visibility, initiation, and error handling
  *
- * NOTE: Full OAuth testing requires production credentials.
- * These tests verify the OAuth buttons exist and can be clicked,
- * and document any blockers for full flow testing.
+ * NOTE: OAuth is not implemented with Supabase Auth - we use email/password authentication.
+ * These tests are skipped as OAuth buttons do not exist in the current implementation.
  */
 
-test.describe('OAuth Flows - Google and Apple', () => {
+// Skip all OAuth tests since we use Supabase Auth (email/password), not OAuth
+test.describe.skip('OAuth Flows - Google and Apple', () => {
   let oauthHelper: OAuthHelper;
   let authHelper: AuthHelper;
   let welcomeScreen: WelcomeScreenPO;
@@ -283,7 +283,8 @@ test.describe('OAuth Flows - Google and Apple', () => {
   });
 });
 
-test.describe('OAuth Error Handling', () => {
+// Skip OAuth error handling tests since OAuth is not implemented
+test.describe.skip('OAuth Error Handling', () => {
   let oauthHelper: OAuthHelper;
   let authHelper: AuthHelper;
 
