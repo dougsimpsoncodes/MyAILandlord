@@ -2,17 +2,16 @@ import { Page, expect } from '@playwright/test';
 
 /**
  * Authentication helper for Playwright E2E tests
- * Provides utilities for real Clerk authentication testing
+ * Provides utilities for Supabase authentication testing
  */
 
 export class AuthHelper {
   constructor(private page: Page) {}
 
   /**
-   * Complete signup flow with email/password via Clerk
+   * Complete signup flow with email/password via Supabase Auth
    * @param email - User email address
    * @param password - User password
-   * @param verificationCode - Optional verification code if already obtained
    */
   async signUpWithEmail(email: string, password: string): Promise<{ success: boolean; needsVerification: boolean }> {
     try {
@@ -25,14 +24,14 @@ export class AuthHelper {
       await getStartedButton.click();
 
       // Wait for signup form
-      await this.page.waitForSelector('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
+      await this.page.waitForSelector('input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
 
       // Fill email
-      const emailInput = this.page.locator('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]').first();
+      const emailInput = this.page.locator('input[type="email"], input[placeholder*="email" i]').first();
       await emailInput.fill(email);
 
       // Fill password
-      const passwordInput = this.page.locator('input[name="password"], input[type="password"], input[placeholder*="password" i]').first();
+      const passwordInput = this.page.locator('input[type="password"], input[placeholder*="password" i]').first();
       await passwordInput.fill(password);
 
       // Click sign up button
@@ -41,7 +40,7 @@ export class AuthHelper {
 
       // Check if verification is needed
       await this.page.waitForTimeout(2000);
-      const needsVerification = await this.page.locator('text=/verify|verification code|enter code/i').isVisible().catch(() => false);
+      const needsVerification = await this.page.locator('text=/verify|verification|confirm your email/i').isVisible().catch(() => false);
 
       return { success: true, needsVerification };
     } catch (error) {
@@ -52,7 +51,7 @@ export class AuthHelper {
 
   /**
    * Complete email verification
-   * @param code - 6-digit verification code
+   * @param code - Verification code or link token
    */
   async verifyEmail(code: string): Promise<boolean> {
     try {
@@ -74,7 +73,7 @@ export class AuthHelper {
   }
 
   /**
-   * Login with email/password via Clerk
+   * Login with email/password via Supabase Auth
    * @param email - User email
    * @param password - User password
    */
@@ -91,14 +90,14 @@ export class AuthHelper {
       }
 
       // Wait for login form
-      await this.page.waitForSelector('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
+      await this.page.waitForSelector('input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
 
       // Fill email
-      const emailInput = this.page.locator('input[name="emailAddress"], input[type="email"], input[placeholder*="email" i]').first();
+      const emailInput = this.page.locator('input[type="email"], input[placeholder*="email" i]').first();
       await emailInput.fill(email);
 
       // Fill password
-      const passwordInput = this.page.locator('input[name="password"], input[type="password"], input[placeholder*="password" i]').first();
+      const passwordInput = this.page.locator('input[type="password"], input[placeholder*="password" i]').first();
       await passwordInput.fill(password);
 
       // Click sign in button
@@ -123,7 +122,7 @@ export class AuthHelper {
    */
   async logout(): Promise<boolean> {
     try {
-      // Look for logout button/link (using proper selector syntax)
+      // Look for logout button/link
       const logoutButton = this.page.locator('text=/Log Out|Sign Out|Logout/i').first();
 
       if (await logoutButton.isVisible({ timeout: 5000 })) {
@@ -186,19 +185,30 @@ export class AuthHelper {
   }
 
   /**
-   * Get current session info from Clerk
+   * Get current session info from Supabase
    */
   async getSessionInfo(): Promise<{ userId?: string; email?: string } | null> {
     try {
       return await this.page.evaluate(() => {
-        // Try to get Clerk session from window object
-        const clerk = (window as any).__clerk_frontend_api;
-        if (clerk && clerk.session) {
-          return {
-            userId: clerk.session.user?.id,
-            email: clerk.session.user?.emailAddresses?.[0]?.emailAddress
-          };
+        // Try to get Supabase session from localStorage
+        const supabaseKeys = Object.keys(localStorage).filter(key =>
+          key.includes('supabase') && key.includes('auth')
+        );
+
+        for (const key of supabaseKeys) {
+          try {
+            const data = JSON.parse(localStorage.getItem(key) || '{}');
+            if (data.user) {
+              return {
+                userId: data.user.id,
+                email: data.user.email
+              };
+            }
+          } catch {
+            continue;
+          }
         }
+
         return null;
       });
     } catch (error) {
@@ -236,17 +246,14 @@ export class AuthHelper {
   }
 
   /**
-   * Wait for Clerk to be loaded and ready
+   * Wait for Supabase Auth to be loaded and ready
    */
-  async waitForClerkLoaded(timeout = 10000): Promise<boolean> {
+  async waitForAuthLoaded(timeout = 10000): Promise<boolean> {
     try {
-      return await this.page.waitForFunction(
-        () => {
-          return (window as any).__clerk_loaded === true ||
-                 (window as any).__clerk_frontend_api !== undefined;
-        },
-        { timeout }
-      ).then(() => true).catch(() => false);
+      // Wait for the app to finish loading auth state
+      await this.page.waitForLoadState('networkidle');
+      await this.page.waitForTimeout(1000); // Give auth a moment to initialize
+      return true;
     } catch (error) {
       return false;
     }
@@ -284,7 +291,7 @@ export class OAuthHelper {
   constructor(private page: Page) {}
 
   /**
-   * Attempt to initiate OAuth flow (may be blocked without production credentials)
+   * Attempt to initiate OAuth flow
    * @param provider - OAuth provider ('google' or 'apple')
    */
   async initiateOAuth(provider: 'google' | 'apple'): Promise<{ initiated: boolean; blocked: boolean; reason?: string }> {
@@ -358,6 +365,7 @@ export class AuthTestData {
 
   /**
    * Get pre-configured test user credentials (if available)
+   * Requires TEST_USER_EMAIL and TEST_USER_PASSWORD environment variables
    */
   static getTestUserCredentials(): { email: string; password: string } | null {
     const email = process.env.TEST_USER_EMAIL;
