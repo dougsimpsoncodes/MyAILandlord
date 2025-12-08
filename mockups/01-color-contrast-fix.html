@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Contrast Fix - WCAG AA Compliant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F7FAFC;
+            line-height: 1.5;
+        }
+
+        .demo-container {
+            display: flex;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        .side-panel {
+            width: 300px;
+            background: #1a1a2e;
+            color: #fff;
+            padding: 24px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .side-panel h2 {
+            font-size: 18px;
+            margin-bottom: 24px;
+            color: #667eea;
+        }
+
+        .color-comparison {
+            margin-bottom: 32px;
+        }
+
+        .comparison-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #a0aec0;
+            margin-bottom: 12px;
+        }
+
+        .color-swatch {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .swatch {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .swatch-info {
+            flex: 1;
+        }
+
+        .swatch-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .swatch-hex {
+            font-size: 11px;
+            color: #a0aec0;
+            font-family: monospace;
+        }
+
+        .contrast-ratio {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .contrast-fail {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .contrast-pass {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .app-container {
+            flex: 1;
+            max-width: 414px;
+            background: #F7FAFC;
+            border-left: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1A202C;
+        }
+
+        .profile-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Content */
+        .content {
+            padding: 20px;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            /* OLD: color: #95A5A6 - fails WCAG AA (3.0:1) */
+            /* NEW: color: #5A6778 - passes WCAG AA (5.2:1) */
+            color: #5A6778;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1A202C;
+        }
+
+        .stat-trend {
+            font-size: 12px;
+            /* OLD: color: #7F8C8D - fails WCAG AA (3.8:1) */
+            /* NEW: color: #4A5568 - passes WCAG AA (7.0:1) */
+            color: #4A5568;
+            margin-top: 4px;
+        }
+
+        .trend-up {
+            color: #059669;
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1A202C;
+            margin-bottom: 16px;
+        }
+
+        /* Property Card */
+        .property-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .property-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1A202C;
+            margin-bottom: 4px;
+        }
+
+        .property-address {
+            font-size: 14px;
+            /* OLD: color: #95A5A6 - fails WCAG AA */
+            /* NEW: color: #5A6778 - passes WCAG AA */
+            color: #5A6778;
+            margin-bottom: 12px;
+        }
+
+        .property-meta {
+            display: flex;
+            gap: 16px;
+        }
+
+        .meta-item {
+            font-size: 13px;
+            /* OLD: color: #7F8C8D - fails WCAG AA */
+            /* NEW: color: #4A5568 - passes WCAG AA */
+            color: #4A5568;
+        }
+
+        .meta-value {
+            font-weight: 600;
+            color: #1A202C;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            /* OLD: background: #FFF3CD; color: #856404 - passes but barely */
+            /* NEW: improved contrast */
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .status-active {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        .status-urgent {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        /* Helper Text */
+        .helper-text {
+            font-size: 13px;
+            /* OLD: color: #95A5A6 - fails WCAG AA */
+            /* NEW: color: #5A6778 - passes WCAG AA */
+            color: #5A6778;
+            margin-top: 8px;
+        }
+
+        /* Form Labels */
+        .form-label {
+            font-size: 14px;
+            font-weight: 500;
+            /* OLD: color: #7F8C8D - fails WCAG AA */
+            /* NEW: color: #374151 - passes WCAG AA */
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-input::placeholder {
+            /* OLD: color: #95A5A6 - fails WCAG AA */
+            /* NEW: color: #6B7280 - passes WCAG AA (4.5:1) */
+            color: #6B7280;
+        }
+
+        /* Timestamp */
+        .timestamp {
+            font-size: 12px;
+            /* OLD: color: #95A5A6 - fails WCAG AA */
+            /* NEW: color: #5A6778 - passes WCAG AA */
+            color: #5A6778;
+        }
+
+        /* Annotations Panel */
+        .annotations {
+            flex: 1;
+            padding: 24px;
+            background: #f8fafc;
+        }
+
+        .annotation-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1A202C;
+            margin-bottom: 24px;
+        }
+
+        .annotation-item {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-left: 4px solid #667eea;
+        }
+
+        .annotation-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .annotation-text {
+            font-size: 14px;
+            color: #4A5568;
+            line-height: 1.6;
+        }
+
+        .code-snippet {
+            background: #1a1a2e;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 12px;
+            overflow-x: auto;
+        }
+
+        .old-value {
+            color: #ef4444;
+            text-decoration: line-through;
+        }
+
+        .new-value {
+            color: #10b981;
+        }
+
+        @media (max-width: 1024px) {
+            .demo-container {
+                flex-direction: column;
+            }
+
+            .side-panel {
+                width: 100%;
+                height: auto;
+                position: static;
+            }
+
+            .annotations {
+                order: 3;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Color Palette Panel -->
+        <div class="side-panel">
+            <h2>Color Contrast Fixes</h2>
+
+            <div class="color-comparison">
+                <div class="comparison-title">Secondary Text</div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #95A5A6;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">Old Secondary</div>
+                        <div class="swatch-hex">#95A5A6</div>
+                    </div>
+                    <span class="contrast-ratio contrast-fail">3.0:1</span>
+                </div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #5A6778;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">New Secondary</div>
+                        <div class="swatch-hex">#5A6778</div>
+                    </div>
+                    <span class="contrast-ratio contrast-pass">5.2:1</span>
+                </div>
+            </div>
+
+            <div class="color-comparison">
+                <div class="comparison-title">Tertiary Text</div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #7F8C8D;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">Old Tertiary</div>
+                        <div class="swatch-hex">#7F8C8D</div>
+                    </div>
+                    <span class="contrast-ratio contrast-fail">3.8:1</span>
+                </div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #4A5568;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">New Tertiary</div>
+                        <div class="swatch-hex">#4A5568</div>
+                    </div>
+                    <span class="contrast-ratio contrast-pass">7.0:1</span>
+                </div>
+            </div>
+
+            <div class="color-comparison">
+                <div class="comparison-title">Placeholder Text</div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #95A5A6;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">Old Placeholder</div>
+                        <div class="swatch-hex">#95A5A6</div>
+                    </div>
+                    <span class="contrast-ratio contrast-fail">3.0:1</span>
+                </div>
+
+                <div class="color-swatch">
+                    <div class="swatch" style="background: #6B7280;"></div>
+                    <div class="swatch-info">
+                        <div class="swatch-name">New Placeholder</div>
+                        <div class="swatch-hex">#6B7280</div>
+                    </div>
+                    <span class="contrast-ratio contrast-pass">4.5:1</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 32px; padding: 16px; background: rgba(16, 185, 129, 0.1); border-radius: 12px;">
+                <div style="font-size: 14px; font-weight: 600; color: #10b981; margin-bottom: 8px;">WCAG AA Requirements</div>
+                <div style="font-size: 13px; color: #a0aec0; line-height: 1.6;">
+                    Normal text: 4.5:1 minimum<br>
+                    Large text (18px+): 3.0:1 minimum<br>
+                    UI components: 3.0:1 minimum
+                </div>
+            </div>
+        </div>
+
+        <!-- Phone Mockup -->
+        <div class="app-container">
+            <header class="header">
+                <h1 class="header-title">Dashboard</h1>
+                <div class="profile-btn">JS</div>
+            </header>
+
+            <main class="content">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Properties</div>
+                        <div class="stat-value">4</div>
+                        <div class="stat-trend trend-up">+1 this month</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active Tenants</div>
+                        <div class="stat-value">7</div>
+                        <div class="stat-trend">2 pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Open Requests</div>
+                        <div class="stat-value">3</div>
+                        <div class="stat-trend">1 urgent</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Messages</div>
+                        <div class="stat-value">12</div>
+                        <div class="stat-trend">5 unread</div>
+                    </div>
+                </div>
+
+                <h2 class="section-title">Recent Properties</h2>
+
+                <div class="property-card">
+                    <div class="property-name">Downtown Loft</div>
+                    <div class="property-address">789 Market St, San Francisco, CA 94102</div>
+                    <div class="property-meta">
+                        <span class="meta-item"><span class="meta-value">2</span> tenants</span>
+                        <span class="meta-item"><span class="meta-value">0</span> requests</span>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <span class="status-badge status-active">Active</span>
+                    </div>
+                    <div class="timestamp" style="margin-top: 8px;">Last updated 2 hours ago</div>
+                </div>
+
+                <div class="property-card">
+                    <div class="property-name">Garden Townhouse</div>
+                    <div class="property-address">321 Garden Ave, Oakland, CA 94612</div>
+                    <div class="property-meta">
+                        <span class="meta-item"><span class="meta-value">1</span> tenant</span>
+                        <span class="meta-item"><span class="meta-value">2</span> requests</span>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <span class="status-badge status-urgent">1 Urgent</span>
+                    </div>
+                    <div class="timestamp" style="margin-top: 8px;">Last updated 30 minutes ago</div>
+                </div>
+
+                <h2 class="section-title" style="margin-top: 24px;">Quick Add</h2>
+
+                <label class="form-label">Property Name</label>
+                <input type="text" class="form-input" placeholder="Enter property name...">
+
+                <p class="helper-text">This name will be visible to your tenants</p>
+            </main>
+        </div>
+
+        <!-- Annotations Panel -->
+        <div class="annotations">
+            <h2 class="annotation-title">Implementation Notes</h2>
+
+            <div class="annotation-item">
+                <div class="annotation-label">Theme Colors Update</div>
+                <div class="annotation-text">
+                    Update the theme configuration to use the new accessible color palette. All secondary and tertiary text colors should use the new values.
+                </div>
+                <div class="code-snippet">
+// theme/colors.ts<br>
+export const colors = {<br>
+&nbsp;&nbsp;text: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;primary: '#1A202C',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;secondary: <span class="old-value">'#95A5A6'</span> <span class="new-value">'#5A6778'</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;tertiary: <span class="old-value">'#7F8C8D'</span> <span class="new-value">'#4A5568'</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;placeholder: <span class="old-value">'#95A5A6'</span> <span class="new-value">'#6B7280'</span>,<br>
+&nbsp;&nbsp;}<br>
+}
+                </div>
+            </div>
+
+            <div class="annotation-item">
+                <div class="annotation-label">Component Updates</div>
+                <div class="annotation-text">
+                    Components that need color updates:
+                    <ul style="margin-top: 8px; margin-left: 20px;">
+                        <li>PropertyCard - address, meta text</li>
+                        <li>StatCard - label, trend text</li>
+                        <li>Form inputs - placeholder text</li>
+                        <li>Timestamps throughout app</li>
+                        <li>Helper/hint text</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="annotation-item">
+                <div class="annotation-label">Testing Checklist</div>
+                <div class="annotation-text">
+                    Use browser dev tools or axe-core to verify:
+                    <ul style="margin-top: 8px; margin-left: 20px;">
+                        <li>All text meets 4.5:1 contrast</li>
+                        <li>Large text (18px+) meets 3.0:1</li>
+                        <li>Interactive elements have focus states</li>
+                        <li>Colors work in both light/dark modes</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

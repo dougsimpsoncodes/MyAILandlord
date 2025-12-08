@@ -364,8 +364,9 @@ export class AuthTestData {
   }
 
   /**
-   * Get pre-configured test user credentials (if available)
-   * Requires TEST_USER_EMAIL and TEST_USER_PASSWORD environment variables
+   * Get pre-configured test user credentials
+   * Checks TEST_USER_EMAIL/TEST_USER_PASSWORD env vars first,
+   * then falls back to known test users
    */
   static getTestUserCredentials(): { email: string; password: string } | null {
     const email = process.env.TEST_USER_EMAIL;
@@ -375,6 +376,129 @@ export class AuthTestData {
       return { email, password };
     }
 
+    // Fall back to known test landlord user
+    return {
+      email: 'test-landlord@myailandlord.com',
+      password: 'MyAI2025!Landlord#Test',
+    };
+  }
+
+  /**
+   * Get tenant test credentials
+   */
+  static getTenantTestCredentials(): { email: string; password: string } {
+    return {
+      email: 'test-tenant@myailandlord.com',
+      password: 'MyAI2025!Tenant#Test',
+    };
+  }
+}
+
+/**
+ * Supabase API authentication helper with rate limit retry
+ * This is for API-based tests (not UI tests)
+ */
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+// Cache for authenticated clients to reduce auth calls
+const clientCache: Map<string, { client: SupabaseClient; userId: string; profileId: string; timestamp: number }> = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export interface AuthenticatedClient {
+  client: SupabaseClient;
+  userId: string;
+  profileId: string;
+}
+
+/**
+ * Sleep helper for rate limit backoff
+ */
+async function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Authenticate user with exponential backoff retry for rate limits
+ * @param email - User email
+ * @param password - User password
+ * @param maxRetries - Maximum number of retries (default: 5)
+ */
+export async function authenticateWithRetry(
+  email: string,
+  password: string,
+  maxRetries: number = 5
+): Promise<AuthenticatedClient | null> {
+  const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+  const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('Supabase not configured');
     return null;
   }
+
+  // Check cache first
+  const cacheKey = `${email}:${SUPABASE_URL}`;
+  const cached = clientCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return { client: cached.client, userId: cached.userId, profileId: cached.profileId };
+  }
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const { data: authData, error: authError } = await client.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) {
+        // Check if it's a rate limit error
+        if (authError.message.includes('rate limit') || authError.status === 429) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt), 30000); // Max 30s
+          console.log(`Rate limited for ${email}, attempt ${attempt + 1}/${maxRetries}, waiting ${backoffMs}ms...`);
+          await sleep(backoffMs);
+          continue;
+        }
+
+        // Other auth errors - don't retry
+        console.error(`Auth failed for ${email}:`, authError.message);
+        return null;
+      }
+
+      if (!authData.user) {
+        console.error(`No user returned for ${email}`);
+        return null;
+      }
+
+      const result = {
+        client,
+        userId: authData.user.id,
+        profileId: authData.user.id,
+        timestamp: Date.now(),
+      };
+
+      // Cache the result
+      clientCache.set(cacheKey, result);
+
+      return { client: result.client, userId: result.userId, profileId: result.profileId };
+    } catch (error) {
+      lastError = error as Error;
+      const backoffMs = Math.min(1000 * Math.pow(2, attempt), 30000);
+      console.log(`Auth error for ${email}, attempt ${attempt + 1}/${maxRetries}, waiting ${backoffMs}ms...`);
+      await sleep(backoffMs);
+    }
+  }
+
+  console.error(`All ${maxRetries} auth attempts failed for ${email}:`, lastError?.message);
+  return null;
+}
+
+/**
+ * Clear the authentication cache (useful between test files)
+ */
+export function clearAuthCache(): void {
+  clientCache.clear();
 }

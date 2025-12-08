@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skeleton Loading States</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F7FAFC;
+            line-height: 1.5;
+        }
+
+        .demo-container {
+            display: flex;
+            max-width: 1000px;
+            margin: 0 auto;
+            min-height: 100vh;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .phone-frame {
+            width: 375px;
+            min-width: 375px;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            overflow: hidden;
+            border: 12px solid #1a1a2e;
+        }
+
+        .phone-notch {
+            width: 150px;
+            height: 30px;
+            background: #1a1a2e;
+            margin: 0 auto;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .screen {
+            background: #F7FAFC;
+            min-height: 700px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1A202C;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        /* Skeleton Animation */
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .skeleton {
+            background: linear-gradient(
+                90deg,
+                #E2E8F0 0%,
+                #F1F5F9 50%,
+                #E2E8F0 100%
+            );
+            background-size: 200% 100%;
+            animation: shimmer 1.5s ease-in-out infinite;
+            border-radius: 8px;
+        }
+
+        /* Skeleton Cards */
+        .skeleton-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .skeleton-header {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .skeleton-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+        }
+
+        .skeleton-text-group {
+            flex: 1;
+        }
+
+        .skeleton-title {
+            height: 16px;
+            width: 70%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-subtitle {
+            height: 12px;
+            width: 50%;
+        }
+
+        .skeleton-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .skeleton-stat {
+            flex: 1;
+            background: #F8FAFC;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .skeleton-stat-value {
+            height: 24px;
+            width: 40px;
+            margin: 0 auto 8px;
+        }
+
+        .skeleton-stat-label {
+            height: 10px;
+            width: 60%;
+            margin: 0 auto;
+        }
+
+        /* Stats Grid Skeleton */
+        .skeleton-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .skeleton-stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .skeleton-stat-card .skeleton-label {
+            height: 12px;
+            width: 60%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-stat-card .skeleton-value {
+            height: 28px;
+            width: 40%;
+            margin-bottom: 8px;
+        }
+
+        .skeleton-stat-card .skeleton-trend {
+            height: 10px;
+            width: 50%;
+        }
+
+        /* Section Title Skeleton */
+        .skeleton-section-title {
+            height: 20px;
+            width: 120px;
+            margin-bottom: 16px;
+        }
+
+        /* List Item Skeleton */
+        .skeleton-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .skeleton-list-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+        }
+
+        .skeleton-list-content {
+            flex: 1;
+        }
+
+        .skeleton-list-title {
+            height: 14px;
+            width: 60%;
+            margin-bottom: 6px;
+        }
+
+        .skeleton-list-meta {
+            height: 10px;
+            width: 40%;
+        }
+
+        .skeleton-list-action {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+        }
+
+        /* Toggle Button */
+        .toggle-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        .toggle-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.5);
+        }
+
+        /* Loaded State */
+        .loaded .skeleton {
+            animation: none;
+            background: none;
+        }
+
+        .loaded .skeleton-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .loaded .skeleton-title {
+            background: #1A202C;
+            height: auto;
+            width: auto;
+        }
+
+        .loaded .skeleton-title::after {
+            content: 'Downtown Loft';
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            display: block;
+            padding: 2px 0;
+        }
+
+        /* Info Panel */
+        .info-panel {
+            flex: 1;
+            padding: 24px;
+        }
+
+        .info-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1A202C;
+            margin-bottom: 16px;
+        }
+
+        .info-description {
+            font-size: 14px;
+            color: #5A6778;
+            line-height: 1.8;
+            margin-bottom: 24px;
+        }
+
+        .code-block {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            color: #e2e8f0;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        .code-comment {
+            color: #6B7280;
+        }
+
+        .code-keyword {
+            color: #c792ea;
+        }
+
+        .code-string {
+            color: #c3e88d;
+        }
+
+        .code-function {
+            color: #82aaff;
+        }
+
+        .benefits-list {
+            margin-top: 24px;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .benefit-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .benefit-text {
+            font-size: 14px;
+            color: #4A5568;
+        }
+
+        .benefit-text strong {
+            color: #1A202C;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Phone Mockup -->
+        <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="screen" id="screen">
+                <header class="header">
+                    <h1 class="header-title">Dashboard</h1>
+                    <div style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">JS</div>
+                </header>
+
+                <main class="content">
+                    <!-- Stats Grid Skeleton -->
+                    <div class="skeleton-stats-grid">
+                        <div class="skeleton-stat-card">
+                            <div class="skeleton skeleton-label"></div>
+                            <div class="skeleton skeleton-value"></div>
+                            <div class="skeleton skeleton-trend"></div>
+                        </div>
+                        <div class="skeleton-stat-card">
+                            <div class="skeleton skeleton-label"></div>
+                            <div class="skeleton skeleton-value"></div>
+                            <div class="skeleton skeleton-trend"></div>
+                        </div>
+                        <div class="skeleton-stat-card">
+                            <div class="skeleton skeleton-label"></div>
+                            <div class="skeleton skeleton-value"></div>
+                            <div class="skeleton skeleton-trend"></div>
+                        </div>
+                        <div class="skeleton-stat-card">
+                            <div class="skeleton skeleton-label"></div>
+                            <div class="skeleton skeleton-value"></div>
+                            <div class="skeleton skeleton-trend"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section Title -->
+                    <div class="skeleton skeleton-section-title"></div>
+
+                    <!-- Property Card Skeleton 1 -->
+                    <div class="skeleton-card">
+                        <div class="skeleton-header">
+                            <div class="skeleton skeleton-avatar"></div>
+                            <div class="skeleton-text-group">
+                                <div class="skeleton skeleton-title"></div>
+                                <div class="skeleton skeleton-subtitle"></div>
+                            </div>
+                        </div>
+                        <div class="skeleton-stats">
+                            <div class="skeleton-stat">
+                                <div class="skeleton skeleton-stat-value"></div>
+                                <div class="skeleton skeleton-stat-label"></div>
+                            </div>
+                            <div class="skeleton-stat">
+                                <div class="skeleton skeleton-stat-value"></div>
+                                <div class="skeleton skeleton-stat-label"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Property Card Skeleton 2 -->
+                    <div class="skeleton-card">
+                        <div class="skeleton-header">
+                            <div class="skeleton skeleton-avatar"></div>
+                            <div class="skeleton-text-group">
+                                <div class="skeleton skeleton-title"></div>
+                                <div class="skeleton skeleton-subtitle"></div>
+                            </div>
+                        </div>
+                        <div class="skeleton-stats">
+                            <div class="skeleton-stat">
+                                <div class="skeleton skeleton-stat-value"></div>
+                                <div class="skeleton skeleton-stat-label"></div>
+                            </div>
+                            <div class="skeleton-stat">
+                                <div class="skeleton skeleton-stat-value"></div>
+                                <div class="skeleton skeleton-stat-label"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- List Items Skeleton -->
+                    <div class="skeleton skeleton-section-title" style="margin-top: 24px;"></div>
+
+                    <div class="skeleton-list-item">
+                        <div class="skeleton skeleton-list-icon"></div>
+                        <div class="skeleton-list-content">
+                            <div class="skeleton skeleton-list-title"></div>
+                            <div class="skeleton skeleton-list-meta"></div>
+                        </div>
+                        <div class="skeleton skeleton-list-action"></div>
+                    </div>
+
+                    <div class="skeleton-list-item">
+                        <div class="skeleton skeleton-list-icon"></div>
+                        <div class="skeleton-list-content">
+                            <div class="skeleton skeleton-list-title"></div>
+                            <div class="skeleton skeleton-list-meta"></div>
+                        </div>
+                        <div class="skeleton skeleton-list-action"></div>
+                    </div>
+
+                    <div class="skeleton-list-item" style="border-bottom: none;">
+                        <div class="skeleton skeleton-list-icon"></div>
+                        <div class="skeleton-list-content">
+                            <div class="skeleton skeleton-list-title"></div>
+                            <div class="skeleton skeleton-list-meta"></div>
+                        </div>
+                        <div class="skeleton skeleton-list-action"></div>
+                    </div>
+                </main>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel">
+            <h2 class="info-title">Skeleton Loading States</h2>
+            <p class="info-description">
+                Skeleton screens show a placeholder preview of the content while data loads.
+                This reduces perceived loading time by up to 50% compared to spinners, and
+                prevents jarring layout shifts when content appears.
+            </p>
+
+            <div class="code-block">
+                <pre><span class="code-comment">// components/SkeletonCard.tsx</span>
+<span class="code-keyword">const</span> <span class="code-function">SkeletonCard</span> = () => (
+  &lt;View style={styles.card}&gt;
+    &lt;View style={styles.header}&gt;
+      &lt;<span class="code-function">Skeleton</span>
+        width={48}
+        height={48}
+        borderRadius={12}
+      /&gt;
+      &lt;View style={styles.textGroup}&gt;
+        &lt;<span class="code-function">Skeleton</span>
+          width={<span class="code-string">"70%"</span>}
+          height={16}
+        /&gt;
+        &lt;<span class="code-function">Skeleton</span>
+          width={<span class="code-string">"50%"</span>}
+          height={12}
+        /&gt;
+      &lt;/View&gt;
+    &lt;/View&gt;
+  &lt;/View&gt;
+);
+
+<span class="code-comment">// Usage with loading state</span>
+{isLoading ? (
+  &lt;<span class="code-function">SkeletonCard</span> /&gt;
+) : (
+  &lt;<span class="code-function">PropertyCard</span> data={property} /&gt;
+)}</pre>
+            </div>
+
+            <div class="benefits-list">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #1A202C;">Benefits</h3>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">1</div>
+                    <div class="benefit-text">
+                        <strong>Reduced Perceived Wait Time</strong> - Users feel content loads faster when they see structure immediately
+                    </div>
+                </div>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">2</div>
+                    <div class="benefit-text">
+                        <strong>No Layout Shift</strong> - Content appears in the exact position the skeleton occupied
+                    </div>
+                </div>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">3</div>
+                    <div class="benefit-text">
+                        <strong>Better UX on Slow Networks</strong> - 3G users see meaningful content preview instead of blank screen
+                    </div>
+                </div>
+
+                <div class="benefit-item">
+                    <div class="benefit-icon">4</div>
+                    <div class="benefit-text">
+                        <strong>Accessible</strong> - Works with screen readers via aria-busy and aria-live attributes
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toggle-container">
+        <button class="toggle-btn" onclick="toggleLoading()">Toggle Loading State</button>
+    </div>
+
+    <script>
+        let isLoading = true;
+
+        function toggleLoading() {
+            isLoading = !isLoading;
+            const screen = document.getElementById('screen');
+
+            if (isLoading) {
+                screen.classList.remove('loaded');
+            } else {
+                screen.classList.add('loaded');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -75,7 +75,8 @@
     "extra": {
       "eas": {
         "projectId": "e0bbde0b-8807-4eca-ab59-987973d4967c"
-      }
+      },
+      "geminiApiKey": "${EXPO_PUBLIC_GEMINI_API_KEY}"
     }
   }
 }

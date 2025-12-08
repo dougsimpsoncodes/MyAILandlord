@@ -57,14 +57,13 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      global: { headers: { Authorization: authHeader } }
-    })
+    // Create a service client for database operations (bypasses RLS)
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Verify JWT corresponds to an existing user
-    const userRes = await supabase.auth.getUser()
+    const userRes = await supabase.auth.getUser(token)
     if (userRes.error || !userRes.data?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -80,49 +79,98 @@ serve(async (req) => {
       throw new Error('User not found')
     }
 
-    // Prepare the prompt for OpenAI
-    const systemPrompt = `You are an AI assistant helping analyze maintenance requests for rental properties. 
-    Based on the description (and images if provided), determine:
-    1. Severity level (low, medium, high, urgent)
-    2. Category of the issue
-    3. Suggested actions for resolution
-    4. Estimated cost range (if applicable)
-    
-    Return your analysis in JSON format.`
+    // Prepare the prompt for Gemini
+    const prompt = `You are an AI assistant helping analyze maintenance requests for rental properties.
 
-    const userPrompt = `Maintenance Request Description: ${description}
-    ${images?.length ? `\nNumber of images provided: ${images.length}` : ''}`
+Based on this maintenance request, provide your analysis:
 
-    // Call OpenAI API
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo-preview',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.3,
-        response_format: { type: 'json_object' }
-      }),
-    })
+Description: ${description}
+${images?.length ? `Number of images provided: ${images.length}` : 'No images provided'}
 
-    if (!openaiResponse.ok) {
-      throw new Error(`OpenAI API error: ${openaiResponse.statusText}`)
+Analyze and determine:
+1. Severity level (must be one of: low, medium, high, urgent)
+2. Category of the issue (e.g., plumbing, electrical, HVAC, appliance, structural, pest, general)
+3. Suggested actions for resolution (list 2-4 specific steps)
+4. Estimated cost range (provide min and max in USD, or null if unknown)
+
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "severity": "low|medium|high|urgent",
+  "category": "string",
+  "suggestedActions": ["action1", "action2"],
+  "estimatedCost": { "min": number, "max": number } or null
+}`
+
+    // Call Google Gemini API (free tier: gemini-2.0-flash)
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.3,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
+          },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          ]
+        }),
+      }
+    )
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text()
+      console.error('Gemini API error:', errorText)
+      throw new Error(`Gemini API error: ${geminiResponse.statusText}`)
     }
 
-    const openaiData = await openaiResponse.json()
-    const analysis = JSON.parse(openaiData.choices[0].message.content)
+    const geminiData = await geminiResponse.json()
 
-    // Format the response
+    // Extract text from Gemini response
+    const responseText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+
+    // Parse JSON from response (handle markdown code blocks if present)
+    let jsonStr = responseText
+    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1]
+    }
+
+    let analysis
+    try {
+      analysis = JSON.parse(jsonStr.trim())
+    } catch {
+      console.error('Failed to parse Gemini response:', responseText)
+      // Provide fallback response
+      analysis = {
+        severity: 'medium',
+        category: 'General Maintenance',
+        suggestedActions: ['Inspect the issue', 'Contact appropriate vendor'],
+        estimatedCost: null
+      }
+    }
+
+    // Format and validate the response
+    const validSeverities = ['low', 'medium', 'high', 'urgent']
     const formattedAnalysis = {
-      severity: analysis.severity || 'medium',
+      severity: validSeverities.includes(analysis.severity?.toLowerCase())
+        ? analysis.severity.toLowerCase()
+        : 'medium',
       category: analysis.category || 'General Maintenance',
-      suggestedActions: analysis.suggestedActions || ['Inspect the issue', 'Contact appropriate vendor'],
+      suggestedActions: Array.isArray(analysis.suggestedActions)
+        ? analysis.suggestedActions
+        : ['Inspect the issue', 'Contact appropriate vendor'],
       estimatedCost: analysis.estimatedCost || null,
     }
 
@@ -131,7 +179,8 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
-    console.error('Error in analyze-maintenance-request:', error)
-    return new Response(JSON.stringify({ error: 'Bad Request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('Error in analyze-maintenance-request:', errorMessage)
+    return new Response(JSON.stringify({ error: errorMessage || 'Bad Request' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })

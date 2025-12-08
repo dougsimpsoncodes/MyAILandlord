@@ -643,3 +643,19 @@ Guidance Applied:
 Quality Score: 6
 ---
 Context reset for branch: main
+Context reset for branch: main
+[2025-12-08T04:44:07Z] Commit e32efecc81e5e73d41556eeaadab42a65f1306f6 successful
+Message: security: enable RLS on properties/tenant_property_links + add E2E test user setup
+
+- Fix critical security issue: RLS was disabled on properties and tenant_property_links tables despite having policies
+- Add migration to enable RLS on affected tables
+- Update auth-helper.ts for Supabase Auth (replaces Clerk references)
+- Add create-test-user.js script for E2E test setup
+- Add TEST_USER_EMAIL/PASSWORD env vars for authenticated E2E tests
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

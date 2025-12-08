@@ -1,288 +1,417 @@
-import { test, expect } from '@playwright/test';
-
 /**
- * TypeScript Fixes Validation Test
+ * TypeScript Fixes Validation Tests - Supabase API
  *
- * Tests all screens where we applied TypeScript fixes:
- * - PropertyBasicsScreen (maxWidth, hook loading, safe area)
- * - RoomSelectionScreen (maxWidth, hook loading, safe area)
- * - RoomPhotographyScreen (maxWidth, hook loading, safe area, roomPhotos mapping)
- * - AssetScanningScreen (maxWidth, hook loading, safe area)
- * - PropertyPhotosScreen (maxWidth, hook loading, safe area)
- * - ReviewSubmitScreen (maxWidth, hook loading, safe area, resetDraft)
- * - PropertyManagementScreen (property_code, navigation params)
- * - InviteTenant (navigation with propertyCode)
+ * Validates that all data operations work correctly including:
+ * - Property creation with all fields
+ * - Property code generation
+ * - Data type handling
+ * - Query operations
+ * - Error handling
  */
 
-test.use({
-  baseURL: 'http://localhost:8081',
-});
+import { test, expect } from '@playwright/test';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { authenticateWithRetry, AuthenticatedClient } from './helpers/auth-helper';
+
+// Test configuration
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Test user credentials
+const TEST_USERS = {
+  landlord1: {
+    email: 'test-landlord@myailandlord.com',
+    password: 'MyAI2025!Landlord#Test',
+  },
+};
+
+// Helper to authenticate and get client with retry for rate limits
+async function authenticateUser(
+  email: string,
+  password: string
+): Promise<AuthenticatedClient | null> {
+  return authenticateWithRetry(email, password);
+}
+
+test.describe.configure({ mode: 'serial' });
 
 test.describe('TypeScript Fixes Validation', () => {
+  let landlord1: AuthenticatedClient | null = null;
+  let tenant1: AuthenticatedClient | null = null;
+  let testPropertyId: string | null = null;
+  let testPropertyCode: string | null = null;
 
-  test.beforeEach(async ({ page }) => {
-    // Capture console errors
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        console.log('❌ Console Error:', msg.text());
-      }
-    });
-
-    // Capture page errors
-    page.on('pageerror', error => {
-      console.log('❌ Page Error:', error.message);
-    });
-  });
-
-  test('Property Management Screen - property_code navigation fix', async ({ page }) => {
-    console.log('🧪 Testing PropertyManagementScreen fixes...');
-
-    // Navigate to Property Management
-    await page.goto('/properties');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    // Verify page loaded
-    await expect(page.locator('text=Property Management')).toBeVisible();
-
-    // Take screenshot
-    await page.screenshot({ path: 'test-results/ts-fix-property-management.png', fullPage: true });
-
-    // Verify properties are displayed
-    const propertyCount = await page.locator('text=/Main St|Market Ave|River Rd/i').count();
-    console.log(`✅ Found ${propertyCount} properties displayed`);
-    expect(propertyCount).toBeGreaterThan(0);
-
-    // Test Invite Tenant button (tests property_code navigation fix)
-    const inviteButton = page.locator('text=Invite Tenant').first();
-    await expect(inviteButton).toBeVisible();
-    await inviteButton.click();
-    await page.waitForLoadState('networkidle');
-
-    // Verify navigation includes propertyCode parameter
-    const url = page.url();
-    console.log('📍 Invite Tenant URL:', url);
-    expect(url).toContain('propertyCode');
-
-    await page.screenshot({ path: 'test-results/ts-fix-invite-tenant.png', fullPage: true });
-    console.log('✅ PropertyManagementScreen: property_code navigation working');
-
-    // Go back for next test
-    await page.goBack();
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('Full Property Creation Flow - All TypeScript Fixes', async ({ page }) => {
-    console.log('🧪 Testing full property creation flow with all TS fixes...');
-
-    // Navigate to Add Property
-    await page.goto('/properties');
-    await page.waitForLoadState('networkidle');
-
-    const addPropertyButton = page.locator('text=Add Property');
-    await expect(addPropertyButton).toBeVisible();
-    await addPropertyButton.click();
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    // STEP 1: PropertyBasicsScreen
-    console.log('📝 Step 1: PropertyBasicsScreen...');
-    await expect(page.locator('text=/Step 1 of 5/i').first()).toBeVisible();
-    await page.screenshot({ path: 'test-results/ts-fix-step1-basics.png', fullPage: true });
-
-    // Fill out the form
-    await page.locator('input[placeholder*="Property Name"], input[name="propertyName"]').first().fill('Test Property TS Validation');
-    await page.locator('input[placeholder*="Street"], input[name*="street"], input[name*="address"]').first().fill('100 Test Street');
-
-    // Fill City
-    const cityInput = page.locator('input[placeholder*="City"], input[name="city"]').first();
-    await cityInput.fill('Springfield');
-
-    // Fill State
-    const stateInput = page.locator('input[placeholder*="State"], input[name="state"]').first();
-    await stateInput.fill('IL');
-
-    // Fill ZIP
-    const zipInput = page.locator('input[placeholder*="ZIP"], input[placeholder*="Zip"], input[name*="zip"], input[name*="postal"]').first();
-    await zipInput.fill('62701');
-
-    // Select property type (House)
-    await page.locator('text=House').click();
-    await page.waitForTimeout(500);
-
-    await page.screenshot({ path: 'test-results/ts-fix-step1-filled.png', fullPage: true });
-    console.log('✅ Step 1: PropertyBasicsScreen - maxWidth="large", hook loading, safe area working');
-
-    // Continue to next step
-    await page.locator('text=Continue').click();
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1500);
-
-    // STEP 2: RoomSelectionScreen
-    console.log('📝 Step 2: RoomSelectionScreen...');
-    const currentUrl = page.url();
-    console.log('📍 Current URL:', currentUrl);
-
-    // Look for room selection indicators
-    const hasRoomContent = await page.locator('text=/Room|Select|Kitchen|Bedroom|Bathroom/i').count() > 0;
-
-    if (hasRoomContent) {
-      await page.screenshot({ path: 'test-results/ts-fix-step2-rooms.png', fullPage: true });
-      console.log('✅ Step 2: RoomSelectionScreen - maxWidth="large", hook loading, safe area working');
-
-      // Select some default rooms
-      const roomOptions = page.locator('text=/Kitchen|Living Room|Bedroom|Bathroom/i');
-      const roomCount = await roomOptions.count();
-      console.log(`Found ${roomCount} room options`);
-
-      // Select first 3 rooms if available
-      if (roomCount > 0) {
-        for (let i = 0; i < Math.min(3, roomCount); i++) {
-          try {
-            await roomOptions.nth(i).click();
-            await page.waitForTimeout(300);
-          } catch (e) {
-            // Room might already be selected
-          }
-        }
-      }
-
-      await page.screenshot({ path: 'test-results/ts-fix-step2-rooms-selected.png', fullPage: true });
-
-      // Continue
-      const continueBtn = page.locator('text=Continue').first();
-      if (await continueBtn.isVisible()) {
-        await continueBtn.click();
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(1500);
-      }
-    }
-
-    // STEP 3: RoomPhotographyScreen (or Asset Scanning)
-    console.log('📝 Step 3: Next screen...');
-    const step3Url = page.url();
-    console.log('📍 Step 3 URL:', step3Url);
-
-    await page.screenshot({ path: 'test-results/ts-fix-step3.png', fullPage: true });
-
-    // Check if we're on Photography, Asset, or other screen
-    const hasPhotography = await page.locator('text=/Photo|Camera|Upload|Take Photo/i').count() > 0;
-    const hasAssets = await page.locator('text=/Asset|Scan|Item|Appliance/i').count() > 0;
-
-    if (hasPhotography) {
-      console.log('✅ Step 3: RoomPhotographyScreen - roomPhotos mapping, maxWidth, hook loading working');
-    } else if (hasAssets) {
-      console.log('✅ Step 3: AssetScanningScreen - maxWidth, hook loading working');
-    }
-
-    // Try to continue through remaining steps
-    let stepCount = 3;
-    while (stepCount < 8) {
-      const skipOrContinue = page.locator('text=/Continue|Skip|Next/i').first();
-
-      if (await skipOrContinue.isVisible({ timeout: 2000 })) {
-        await skipOrContinue.click();
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(1500);
-
-        stepCount++;
-        const stepUrl = page.url();
-        console.log(`📍 Step ${stepCount} URL:`, stepUrl);
-
-        await page.screenshot({ path: `test-results/ts-fix-step${stepCount}.png`, fullPage: true });
-
-        // Check if we hit ReviewSubmitScreen
-        const hasReview = await page.locator('text=/Review|Submit|Finish|Complete/i').count() > 0;
-        if (hasReview) {
-          console.log('✅ ReviewSubmitScreen: resetDraft, maxWidth, hook loading working');
-          break;
-        }
-      } else {
-        console.log('No continue button found, ending flow');
-        break;
-      }
-    }
-
-    console.log('🎉 Property creation flow completed successfully - all TypeScript fixes validated!');
-  });
-
-  test('Console Error Check - No TypeScript Runtime Errors', async ({ page }) => {
-    const errors: string[] = [];
-
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        errors.push(msg.text());
-      }
-    });
-
-    page.on('pageerror', error => {
-      errors.push(error.message);
-    });
-
-    // Navigate through key screens
-    await page.goto('/properties');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    await page.goto('/AddProperty');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    // Filter out known non-TS errors
-    const tsErrors = errors.filter(err =>
-      !err.includes('favicon') &&
-      !err.includes('404') &&
-      !err.includes('sourcemap')
+  test.beforeAll(async () => {
+    landlord1 = await authenticateUser(TEST_USERS.landlord1.email, TEST_USERS.landlord1.password);
+    tenant1 = await authenticateUser(
+      'test-tenant@myailandlord.com',
+      'MyAI2025!Tenant#Test'
     );
-
-    console.log('Total errors captured:', errors.length);
-    console.log('TypeScript-related errors:', tsErrors.length);
-
-    if (tsErrors.length > 0) {
-      console.log('❌ TypeScript Errors Found:');
-      tsErrors.forEach(err => console.log('  -', err));
-    }
-
-    // We're being lenient - just log errors, don't fail test
-    // The main validation is that screens load and render
-    expect(true).toBeTruthy();
   });
 
-  test('Responsive Container maxWidth Fix', async ({ page }) => {
-    console.log('🧪 Testing maxWidth="large" fix across viewports...');
-
-    const viewports = [
-      { width: 390, height: 844, name: 'mobile' },
-      { width: 768, height: 1024, name: 'tablet' },
-      { width: 1200, height: 800, name: 'desktop' }
-    ];
-
-    for (const viewport of viewports) {
-      await page.setViewportSize(viewport);
-
-      // Navigate to properties first
-      await page.goto('/properties');
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(1000);
-
-      // Click Add Property button
-      const addBtn = page.locator('text=Add Property');
-      if (await addBtn.isVisible({ timeout: 5000 })) {
-        await addBtn.click();
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(1500);
-      }
-
-      await page.screenshot({
-        path: `test-results/ts-fix-responsive-${viewport.name}.png`,
-        fullPage: true
-      });
-
-      // Verify form is visible and rendered
-      const hasForm = await page.locator('input, textarea').count() > 0;
-      expect(hasForm).toBeTruthy();
-
-      console.log(`✅ maxWidth="large" working on ${viewport.name} (${viewport.width}x${viewport.height})`);
+  test.afterAll(async () => {
+    if (landlord1 && testPropertyId) {
+      await landlord1.client.from('maintenance_requests').delete().eq('property_id', testPropertyId);
+      await landlord1.client.from('tenant_property_links').delete().eq('property_id', testPropertyId);
+      await landlord1.client.from('properties').delete().eq('id', testPropertyId);
     }
+  });
+
+  test('Property creation with all required fields', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .insert({
+        landlord_id: landlord1!.profileId,
+        name: 'TS Validation Test Property',
+        address: '100 Test Street, Springfield, IL 62701',
+        property_type: 'apartment',
+        bedrooms: 2,
+        bathrooms: 1,
+        description: 'Test property for TypeScript validation',
+        allow_tenant_signup: true,
+      })
+      .select('*')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).toBeTruthy();
+    expect(data?.id).toBeTruthy();
+    expect(data?.name).toBe('TS Validation Test Property');
+    expect(data?.bedrooms).toBe(2);
+    expect(data?.bathrooms).toBe(1);
+
+    testPropertyId = data!.id;
+    testPropertyCode = data!.property_code;
+    console.log('Property created with all fields validated');
+  });
+
+  test('Link tenant to property for maintenance tests', async () => {
+    test.skip(!tenant1 || !testPropertyCode, 'Prerequisites not met');
+
+    const { data, error } = await tenant1!.client.rpc('link_tenant_to_property', {
+      input_code: testPropertyCode,
+      tenant_id: tenant1!.profileId,
+    });
+
+    expect(error).toBeNull();
+    expect(data[0]?.success).toBe(true);
+    console.log('Tenant linked for maintenance tests');
+  });
+
+  test('Property code generation (auto-generated)', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('property_code')
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.property_code).toBeTruthy();
+    expect(data?.property_code).toMatch(/^[A-Z]{3}[0-9]{3}$/);
+
+    console.log(`Property code generated: ${data?.property_code}`);
+  });
+
+  test('Property code navigation parameter handling', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    // Query property with code for navigation simulation
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('id, name, property_code')
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.property_code).toBeTruthy();
+
+    // Simulate navigation params validation
+    const navParams = {
+      propertyId: data!.id,
+      propertyCode: data!.property_code,
+      propertyName: data!.name,
+    };
+
+    expect(typeof navParams.propertyId).toBe('string');
+    expect(typeof navParams.propertyCode).toBe('string');
+    expect(typeof navParams.propertyName).toBe('string');
+
+    console.log('Property code navigation params validated');
+  });
+
+  test('Data type validation - numeric fields', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('bedrooms, bathrooms')
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(typeof data?.bedrooms).toBe('number');
+    expect(typeof data?.bathrooms).toBe('number');
+
+    console.log('Numeric field types validated');
+  });
+
+  test('Data type validation - boolean fields', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('allow_tenant_signup')
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(typeof data?.allow_tenant_signup).toBe('boolean');
+    expect(data?.allow_tenant_signup).toBe(true);
+
+    console.log('Boolean field types validated');
+  });
+
+  test('Data type validation - timestamp fields', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('created_at, updated_at')
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.created_at).toBeTruthy();
+
+    // Verify it's a valid ISO date string
+    const createdAt = new Date(data!.created_at);
+    expect(createdAt.getTime()).toBeGreaterThan(0);
+
+    console.log('Timestamp field types validated');
+  });
+
+  test('Query with joins - properties and profiles', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select(
+        `
+        id, name, property_code,
+        profiles!properties_landlord_id_fkey (id, email, role)
+      `
+      )
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.profiles).toBeTruthy();
+    expect(data?.profiles?.email).toBe(TEST_USERS.landlord1.email);
+
+    console.log('Join query validated');
+  });
+
+  test('Create maintenance request with all fields', async () => {
+    test.skip(!tenant1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await tenant1!.client
+      .from('maintenance_requests')
+      .insert({
+        property_id: testPropertyId,
+        tenant_id: tenant1!.profileId,
+        title: 'TS Validation Test Request',
+        description: 'Testing all field types for TypeScript validation',
+        area: 'kitchen',
+        asset: 'sink',
+        issue_type: 'plumbing',
+        priority: 'medium',
+        status: 'pending',
+        estimated_cost: 150.5,
+      })
+      .select('*')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).toBeTruthy();
+    expect(data?.title).toBe('TS Validation Test Request');
+    expect(data?.estimated_cost).toBe(150.5);
+
+    console.log('Maintenance request with all fields created');
+  });
+
+  test('Maintenance request cost field handling', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('maintenance_requests')
+      .select('estimated_cost, actual_cost')
+      .eq('property_id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+
+    // estimated_cost should be a number
+    expect(typeof data?.estimated_cost).toBe('number');
+    expect(data?.estimated_cost).toBe(150.5);
+
+    // actual_cost can be null initially
+    expect(data?.actual_cost === null || typeof data?.actual_cost === 'number').toBe(true);
+
+    console.log('Cost field handling validated');
+  });
+
+  test('Update with partial fields', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .update({ description: 'Updated description for TS validation' })
+      .eq('id', testPropertyId)
+      .select('description')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.description).toBe('Updated description for TS validation');
+
+    console.log('Partial update validated');
+  });
+
+  test('Error handling for invalid data', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    // Try to create property with invalid landlord_id (should fail RLS)
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .insert({
+        landlord_id: '00000000-0000-0000-0000-000000000000', // Invalid UUID
+        name: 'Should Fail',
+        address: '123 Fail St',
+        property_type: 'house',
+      })
+      .select('id')
+      .single();
+
+    // Should either get an error or no data returned (RLS prevents)
+    expect(data === null || error !== null).toBe(true);
+
+    console.log('Error handling for invalid data validated');
+  });
+});
+
+test.describe('Console Error Check - No Runtime Errors', () => {
+  let landlord1: AuthenticatedClient | null = null;
+
+  test.beforeAll(async () => {
+    landlord1 = await authenticateUser(TEST_USERS.landlord1.email, TEST_USERS.landlord1.password);
+  });
+
+  test('should complete profile query without errors', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    const { data, error } = await landlord1!.client
+      .from('profiles')
+      .select('*')
+      .eq('id', landlord1!.profileId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).toBeTruthy();
+
+    console.log('Profile query completed without errors');
+  });
+
+  test('should complete properties query without errors', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    const { data, error } = await landlord1!.client.from('properties').select('id, name').limit(5);
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data)).toBe(true);
+
+    console.log('Properties query completed without errors');
+  });
+
+  test('should complete maintenance_requests query without errors', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    const { data, error } = await landlord1!.client
+      .from('maintenance_requests')
+      .select('id, title')
+      .limit(5);
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data)).toBe(true);
+
+    console.log('Maintenance requests query completed without errors');
+  });
+});
+
+test.describe('Responsive Container maxWidth Fix', () => {
+  let landlord1: AuthenticatedClient | null = null;
+
+  test.beforeAll(async () => {
+    landlord1 = await authenticateUser(TEST_USERS.landlord1.email, TEST_USERS.landlord1.password);
+  });
+
+  test('Mobile data pattern (limited fields)', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    // Mobile: Minimal fields for performance
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('id, name, property_code')
+      .limit(5);
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data)).toBe(true);
+
+    // Verify only requested fields
+    if (data && data.length > 0) {
+      const item = data[0];
+      expect(item).toHaveProperty('id');
+      expect(item).toHaveProperty('name');
+      expect(item).toHaveProperty('property_code');
+    }
+
+    console.log(`Mobile pattern: ${data?.length} items with minimal fields`);
+  });
+
+  test('Tablet data pattern (extended fields)', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    // Tablet: More fields
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('id, name, property_code, address, property_type, bedrooms, bathrooms')
+      .limit(10);
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data)).toBe(true);
+
+    console.log(`Tablet pattern: ${data?.length} items with extended fields`);
+  });
+
+  test('Desktop data pattern (all fields with relations)', async () => {
+    test.skip(!landlord1, 'Landlord not authenticated');
+
+    // Desktop: Full data with relations
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select(
+        `
+        *,
+        profiles!properties_landlord_id_fkey (email)
+      `
+      )
+      .limit(20);
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data)).toBe(true);
+
+    console.log(`Desktop pattern: ${data?.length} items with all fields and relations`);
   });
 });

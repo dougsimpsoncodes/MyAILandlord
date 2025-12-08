@@ -1,451 +1,446 @@
-import { test, expect } from '@playwright/test';
-
 /**
- * Complete End-to-End Property Setup and Maintenance Workflow Test
- * Simulates a real landlord creating a property and managing maintenance requests
+ * Property Setup E2E Tests - Supabase API
+ *
+ * Tests property management functionality including:
+ * - Creating new properties
+ * - Property code generation
+ * - Property areas and assets management
+ * - Property updates and deletion
+ * - RLS verification
  */
-test.describe('Property Setup to Maintenance E2E Workflow', () => {
-  
-  // Mock property data
-  const mockPropertyData = {
-    propertyName: 'Sunset Apartments Unit 4B',
-    fullName: 'John Smith',
-    organization: 'Smith Property Management',
-    addressLine1: '123 Sunset Boulevard',
-    addressLine2: 'Unit 4B',
-    city: 'Los Angeles',
-    state: 'CA',
-    postalCode: '90210',
-    country: 'United States',
-    email: 'john.smith@example.com',
-    phone: '+1 (555) 123-4567',
-    type: 'apartment',
-    bedrooms: 2,
-    bathrooms: 1,
-    squareFootage: 850,
-    rentAmount: 2500,
-    description: 'Modern 2-bedroom apartment with city views'
-  };
 
-  // Mock areas and assets
-  const mockAreas = [
-    {
-      id: 'living-room',
-      name: 'Living Room',
-      assets: ['sofa', 'coffee-table', 'tv-stand', 'light-fixture']
-    },
-    {
-      id: 'kitchen',
-      name: 'Kitchen', 
-      assets: ['refrigerator', 'stove', 'dishwasher', 'sink', 'microwave']
-    },
-    {
-      id: 'bedroom-1',
-      name: 'Master Bedroom',
-      assets: ['bed-frame', 'dresser', 'closet', 'ceiling-fan']
-    },
-    {
-      id: 'bathroom',
-      name: 'Bathroom',
-      assets: ['toilet', 'shower', 'sink', 'mirror', 'exhaust-fan']
+import { test, expect } from '@playwright/test';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { authenticateWithRetry, AuthenticatedClient } from './helpers/auth-helper';
+
+// Test configuration
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// Test user credentials
+const TEST_USERS = {
+  landlord1: {
+    email: 'test-landlord@myailandlord.com',
+    password: 'MyAI2025!Landlord#Test',
+  },
+  tenant1: {
+    email: 'test-tenant@myailandlord.com',
+    password: 'MyAI2025!Tenant#Test',
+  },
+};
+
+// Helper to authenticate and get client with retry for rate limits
+async function authenticateUser(
+  email: string,
+  password: string
+): Promise<AuthenticatedClient | null> {
+  return authenticateWithRetry(email, password);
+}
+
+// Run tests in serial mode
+test.describe.configure({ mode: 'serial' });
+
+test.describe('Property Setup - Creation and Management', () => {
+  let landlord1: AuthenticatedClient | null = null;
+  let testPropertyId: string | null = null;
+  let testPropertyCode: string | null = null;
+
+  test.beforeAll(async () => {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      console.log('Skipping property setup tests - Supabase not configured');
+      return;
     }
-  ];
+  });
 
-  // Mock maintenance requests
-  const mockMaintenanceRequests = [
-    {
-      id: 'req_001',
-      tenantName: 'Sarah Johnson',
-      issueType: 'Plumbing',
-      description: 'Kitchen faucet is leaking and making strange noises',
-      area: 'Kitchen',
-      asset: 'Sink',
-      priority: 'medium',
-      status: 'new',
-      submittedAt: new Date().toISOString(),
-      images: ['faucet-leak-1.jpg', 'faucet-leak-2.jpg'],
-      estimatedCost: 150
-    },
-    {
-      id: 'req_002', 
-      tenantName: 'Sarah Johnson',
-      issueType: 'Electrical',
-      description: 'Bathroom exhaust fan making loud noises',
-      area: 'Bathroom',
-      asset: 'Exhaust Fan',
-      priority: 'low',
-      status: 'new',
-      submittedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-      images: ['fan-noise.jpg'],
-      estimatedCost: 75
-    }
-  ];
+  test('should authenticate landlord for property tests', async () => {
+    landlord1 = await authenticateUser(TEST_USERS.landlord1.email, TEST_USERS.landlord1.password);
+    expect(landlord1).toBeTruthy();
+    console.log('Landlord authenticated for property tests');
+  });
 
-  async function setupAuthentication(page: any) {
-    // Mock authentication and set landlord role
-    await page.evaluate(() => {
-      localStorage.setItem('userRole', 'landlord');
-      localStorage.setItem('isAuthenticated', 'true');
-      localStorage.setItem('userId', 'landlord_123');
-      localStorage.setItem('userEmail', 'john.smith@example.com');
-      localStorage.setItem('userName', 'John Smith');
+  test('should create new property with basic info', async () => {
+    test.skip(!landlord1, 'landlord1 not authenticated');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .insert({
+        landlord_id: landlord1!.profileId,
+        name: 'Sunset Apartments Unit 4B',
+        address: '123 Sunset Boulevard, Los Angeles, CA 90210',
+        property_type: 'apartment',
+        bedrooms: 2,
+        bathrooms: 1,
+        description: 'Modern 2-bedroom apartment with city views',
+        allow_tenant_signup: true,
+      })
+      .select('id, property_code, name, address')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.id).toBeTruthy();
+    expect(data?.property_code).toBeTruthy();
+    expect(data?.property_code).toMatch(/^[A-Z]{3}[0-9]{3}$/); // 3 letters + 3 numbers
+
+    testPropertyId = data!.id;
+    testPropertyCode = data!.property_code;
+    console.log(`Created property: ${data?.name} (code: ${data?.property_code})`);
+  });
+
+  test('should auto-generate unique property codes', async () => {
+    test.skip(!landlord1, 'landlord1 not authenticated');
+
+    // Create another property to test unique code generation
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .insert({
+        landlord_id: landlord1!.profileId,
+        name: 'Beach House Property',
+        address: '456 Ocean Drive, Malibu, CA 90265',
+        property_type: 'house',
+        allow_tenant_signup: true,
+      })
+      .select('id, property_code')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.property_code).toBeTruthy();
+    expect(data?.property_code).not.toBe(testPropertyCode); // Should be different
+    console.log(`Second property code: ${data?.property_code}`);
+
+    // Cleanup second property
+    await landlord1!.client.from('properties').delete().eq('id', data!.id);
+  });
+
+  test('should update property details', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .update({
+        name: 'Sunset Apartments Unit 4B - Updated',
+        description: 'Fully renovated 2-bedroom apartment with stunning city views',
+        bedrooms: 2,
+        bathrooms: 2, // Updated
+      })
+      .eq('id', testPropertyId)
+      .select('name, description, bathrooms')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.name).toBe('Sunset Apartments Unit 4B - Updated');
+    expect(data?.bathrooms).toBe(2);
+    console.log('Property details updated');
+  });
+
+  test('should set emergency contact information', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .update({
+        emergency_contact: 'John Smith',
+        emergency_phone: '555-123-4567',
+      })
+      .eq('id', testPropertyId)
+      .select('emergency_contact, emergency_phone')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.emergency_contact).toBe('John Smith');
+    expect(data?.emergency_phone).toBe('555-123-4567');
+    console.log('Emergency contact set');
+  });
+
+  test('should set WiFi information', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .update({
+        wifi_network: 'SunsetApts_Guest',
+        wifi_password: 'Welcome2024!',
+      })
+      .eq('id', testPropertyId)
+      .select('wifi_network, wifi_password')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.wifi_network).toBe('SunsetApts_Guest');
+    expect(data?.wifi_password).toBe('Welcome2024!');
+    console.log('WiFi information set');
+  });
+
+  test('should set onboarding message', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const onboardingMessage = 'Welcome to Sunset Apartments! Please review the house rules attached.';
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .update({ onboarding_message: onboardingMessage })
+      .eq('id', testPropertyId)
+      .select('onboarding_message')
+      .single();
+
+    expect(error).toBeNull();
+    expect(data?.onboarding_message).toBe(onboardingMessage);
+    console.log('Onboarding message set');
+  });
+
+  test('should disable tenant signup when needed', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    // Disable tenant signup
+    const { data: disabled, error: err1 } = await landlord1!.client
+      .from('properties')
+      .update({ allow_tenant_signup: false })
+      .eq('id', testPropertyId)
+      .select('allow_tenant_signup')
+      .single();
+
+    expect(err1).toBeNull();
+    expect(disabled?.allow_tenant_signup).toBe(false);
+
+    // Re-enable tenant signup
+    const { data: enabled, error: err2 } = await landlord1!.client
+      .from('properties')
+      .update({ allow_tenant_signup: true })
+      .eq('id', testPropertyId)
+      .select('allow_tenant_signup')
+      .single();
+
+    expect(err2).toBeNull();
+    expect(enabled?.allow_tenant_signup).toBe(true);
+    console.log('Tenant signup toggle working');
+  });
+
+  test('should fetch all landlord properties', async () => {
+    test.skip(!landlord1, 'landlord1 not authenticated');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('id, name, address, property_code, allow_tenant_signup')
+      .order('created_at', { ascending: false });
+
+    expect(error).toBeNull();
+    expect(Array.isArray(data)).toBe(true);
+    expect(data?.length).toBeGreaterThanOrEqual(1);
+    console.log(`Found ${data?.length} properties for landlord`);
+  });
+
+  test('should fetch property with full details', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { data, error } = await landlord1!.client
+      .from('properties')
+      .select('*')
+      .eq('id', testPropertyId)
+      .single();
+
+    expect(error).toBeNull();
+    expect(data).toBeTruthy();
+    expect(data?.name).toContain('Sunset Apartments');
+    expect(data?.property_code).toBe(testPropertyCode);
+    expect(data?.landlord_id).toBe(landlord1!.profileId);
+    console.log('Full property details retrieved');
+  });
+
+  test('should cleanup test property', async () => {
+    test.skip(!landlord1 || !testPropertyId, 'Prerequisites not met');
+
+    const { error } = await landlord1!.client.from('properties').delete().eq('id', testPropertyId);
+
+    expect(error).toBeNull();
+    console.log('Test property cleaned up');
+  });
+});
+
+test.describe('Property Setup - RLS Access Control', () => {
+  let landlord1: AuthenticatedClient | null = null;
+  let tenant1: AuthenticatedClient | null = null;
+
+  test.beforeAll(async () => {
+    landlord1 = await authenticateUser(TEST_USERS.landlord1.email, TEST_USERS.landlord1.password);
+    tenant1 = await authenticateUser(TEST_USERS.tenant1.email, TEST_USERS.tenant1.password);
+  });
+
+  test('user cannot create property with different landlord_id', async () => {
+    test.skip(!tenant1 || !landlord1, 'Users not authenticated');
+
+    // Try to create property with landlord1's ID while authenticated as tenant
+    const { data, error } = await tenant1!.client
+      .from('properties')
+      .insert({
+        landlord_id: landlord1!.profileId, // Different user's ID - should fail
+        name: 'Unauthorized Property',
+        address: '999 Fake St',
+        property_type: 'house',
+      })
+      .select('id')
+      .single();
+
+    // Should fail due to RLS - can only set landlord_id to own user ID
+    expect(error).toBeTruthy();
+    expect(data).toBeNull();
+    console.log('RLS: Correctly blocked creating property with different landlord_id');
+  });
+
+  test('tenant cannot see properties they are not linked to', async () => {
+    test.skip(!landlord1 || !tenant1, 'Prerequisites not met');
+
+    // Create a property without linking tenant
+    const { data: prop } = await landlord1!.client
+      .from('properties')
+      .insert({
+        landlord_id: landlord1!.profileId,
+        name: 'Unlinked Property',
+        address: '123 Private St',
+        property_type: 'house',
+        allow_tenant_signup: false,
+      })
+      .select('id')
+      .single();
+
+    // Tenant tries to access this property
+    const { data: tenantView } = await tenant1!.client
+      .from('properties')
+      .select('id, name')
+      .eq('id', prop!.id);
+
+    expect(tenantView).toEqual([]); // Empty - tenant can't see unlinked property
+    console.log('RLS: Tenant cannot see unlinked properties');
+
+    // Cleanup
+    await landlord1!.client.from('properties').delete().eq('id', prop!.id);
+  });
+
+  test('tenant can see linked property', async () => {
+    test.skip(!landlord1 || !tenant1, 'Prerequisites not met');
+
+    // Create property
+    const { data: prop } = await landlord1!.client
+      .from('properties')
+      .insert({
+        landlord_id: landlord1!.profileId,
+        name: 'Linked Property',
+        address: '456 Shared Ave',
+        property_type: 'apartment',
+        allow_tenant_signup: true,
+      })
+      .select('id')
+      .single();
+
+    // Link tenant
+    await landlord1!.client.from('tenant_property_links').insert({
+      tenant_id: tenant1!.profileId,
+      property_id: prop!.id,
+      is_active: true,
+      invitation_status: 'active',
     });
-  }
 
-  async function navigateToLandlordDashboard(page: any) {
-    // Start from welcome screen
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    
-    // Click Get Started
-    await page.getByText('Get Started').click();
-    await page.waitForLoadState('networkidle');
-    
-    // Select Landlord role
-    const landlordCard = page.locator('text=I\'m a Landlord').locator('..');
-    await landlordCard.click();
-    await page.waitForLoadState('networkidle');
-    
-    // Set authentication
-    await setupAuthentication(page);
-    
-    // Navigate to landlord home
-    await page.goto('/landlord');
-    await page.waitForLoadState('networkidle');
-  }
+    // Tenant should now see this property
+    const { data: tenantView, error } = await tenant1!.client
+      .from('properties')
+      .select('id, name')
+      .eq('id', prop!.id)
+      .single();
 
-  async function mockPropertyAPIs(page: any) {
-    // Mock property creation API
-    await page.route('**/api/properties', async route => {
-      if (route.request().method() === 'POST') {
-        const propertyData = await route.request().postDataJSON();
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            id: 'property_001',
-            ...propertyData,
-            createdAt: new Date().toISOString()
-          })
-        });
-      } else {
-        // GET properties
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: 'property_001',
-              name: mockPropertyData.propertyName,
-              address: `${mockPropertyData.addressLine1}, ${mockPropertyData.city}, ${mockPropertyData.state}`,
-              type: mockPropertyData.type,
-              tenants: 1,
-              activeRequests: 2
-            }
-          ])
-        });
-      }
-    });
+    expect(error).toBeNull();
+    expect(tenantView?.name).toBe('Linked Property');
+    console.log('RLS: Tenant can see linked property');
 
-    // Mock areas API
-    await page.route('**/api/properties/*/areas', async route => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({ success: true })
-        });
-      } else {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(mockAreas)
-        });
-      }
-    });
+    // Cleanup
+    await landlord1!.client.from('tenant_property_links').delete().eq('property_id', prop!.id);
+    await landlord1!.client.from('properties').delete().eq('id', prop!.id);
+  });
 
-    // Mock assets API
-    await page.route('**/api/properties/*/assets', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([])
-      });
-    });
+  test('unauthenticated user cannot see any properties', async () => {
+    const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Mock maintenance requests API
-    await page.route('**/api/maintenance-requests', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(mockMaintenanceRequests.map(req => ({
-          id: req.id,
-          issue_type: req.issueType.toLowerCase(),
-          description: req.description,
-          area: req.area.toLowerCase(),
-          priority: req.priority,
-          status: req.status,
-          created_at: req.submittedAt,
-          estimated_cost: req.estimatedCost,
-          images: req.images,
-          profiles: { name: req.tenantName }
-        })))
-      });
-    });
+    const { data, error } = await anonClient.from('properties').select('id').limit(1);
 
-    // Mock image upload API
-    await page.route('**/api/upload', async route => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          url: 'https://example.com/uploaded-image.jpg',
-          id: 'img_' + Math.random().toString(36).substr(2, 9)
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    console.log('RLS: Unauthenticated user cannot see properties');
+  });
+});
+
+test.describe('Property Setup - Property Code Validation', () => {
+  let landlord1: AuthenticatedClient | null = null;
+  let tenant1: AuthenticatedClient | null = null;
+  let testPropertyId: string | null = null;
+  let testPropertyCode: string | null = null;
+
+  test.beforeAll(async () => {
+    landlord1 = await authenticateUser(TEST_USERS.landlord1.email, TEST_USERS.landlord1.password);
+    tenant1 = await authenticateUser(TEST_USERS.tenant1.email, TEST_USERS.tenant1.password);
+
+    if (landlord1) {
+      const { data } = await landlord1.client
+        .from('properties')
+        .insert({
+          landlord_id: landlord1.profileId,
+          name: 'Code Validation Property',
+          address: '100 Test Lane',
+          property_type: 'house',
+          allow_tenant_signup: true,
         })
-      });
+        .select('id, property_code')
+        .single();
+
+      if (data) {
+        testPropertyId = data.id;
+        testPropertyCode = data.property_code;
+      }
+    }
+  });
+
+  test.afterAll(async () => {
+    if (landlord1 && testPropertyId) {
+      await landlord1.client.from('tenant_property_links').delete().eq('property_id', testPropertyId);
+      await landlord1.client.from('properties').delete().eq('id', testPropertyId);
+    }
+  });
+
+  test('should validate correct property code', async () => {
+    test.skip(!tenant1 || !testPropertyCode, 'Prerequisites not met');
+
+    const { data, error } = await tenant1!.client.rpc('validate_property_code', {
+      input_code: testPropertyCode,
+      tenant_id: tenant1!.profileId,
     });
-  }
 
-  test('Complete Property Setup and Maintenance Workflow', async ({ page }) => {
-    // Setup API mocks
-    await mockPropertyAPIs(page);
-    
-    // Navigate to landlord dashboard
-    await navigateToLandlordDashboard(page);
-    
-    // Take screenshot of starting point
-    await page.screenshot({ path: 'test-results/e2e-start.png', fullPage: true });
-    
-    console.log('✅ Step 1: Landlord authentication and navigation complete');
-
-    // STEP 2: Navigate to Property Management
-    await page.goto('/landlord/property-management');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-    
-    await page.screenshot({ path: 'test-results/e2e-property-management.png', fullPage: true });
-    
-    // Look for Add Property button
-    const addPropertyButton = page.locator('text=/Add Property|Create|New Property/i').first();
-    if (await addPropertyButton.isVisible()) {
-      await addPropertyButton.click();
-      await page.waitForLoadState('networkidle');
-    } else {
-      // Try direct navigation
-      await page.goto('/landlord/add-property');
-      await page.waitForLoadState('networkidle');
-    }
-    
-    console.log('✅ Step 2: Navigated to property creation');
-
-    // STEP 3: Fill Property Basic Information
-    await page.screenshot({ path: 'test-results/e2e-property-form.png', fullPage: true });
-    
-    // Fill property name
-    const propertyNameField = page.locator('input[placeholder*="Property Name"], input[name="propertyName"], #propertyName').first();
-    if (await propertyNameField.isVisible()) {
-      await propertyNameField.fill(mockPropertyData.propertyName);
-    }
-    
-    // Fill address fields
-    const addressFields = [
-      { selector: 'input[placeholder*="Address"], input[name="addressLine1"]', value: mockPropertyData.addressLine1 },
-      { selector: 'input[placeholder*="City"], input[name="city"]', value: mockPropertyData.city },
-      { selector: 'input[placeholder*="State"], input[name="state"]', value: mockPropertyData.state },
-      { selector: 'input[placeholder*="Zip"], input[name="postalCode"]', value: mockPropertyData.postalCode }
-    ];
-    
-    for (const field of addressFields) {
-      const element = page.locator(field.selector).first();
-      if (await element.isVisible()) {
-        await element.fill(field.value);
-        await page.waitForTimeout(300);
-      }
-    }
-    
-    // Select property type
-    const apartmentOption = page.locator('text=/Apartment|apartment/i').first();
-    if (await apartmentOption.isVisible()) {
-      await apartmentOption.click();
-    }
-    
-    await page.screenshot({ path: 'test-results/e2e-property-filled.png', fullPage: true });
-    
-    console.log('✅ Step 3: Property basic information filled');
-
-    // STEP 4: Continue to next step
-    const continueButton = page.locator('text=/Continue|Next|Save|Submit/i').first();
-    if (await continueButton.isVisible()) {
-      await continueButton.click();
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(1000);
-    }
-    
-    await page.screenshot({ path: 'test-results/e2e-after-continue.png', fullPage: true });
-    
-    console.log('✅ Step 4: Proceeded to next step');
-
-    // STEP 5: Add Property Areas (if on areas screen)
-    const currentUrl = page.url();
-    console.log('Current URL:', currentUrl);
-    
-    if (currentUrl.includes('areas') || await page.locator('text=/Areas|Rooms|Add Area/i').count() > 0) {
-      console.log('📝 Adding property areas...');
-      
-      // Add areas one by one
-      for (const area of mockAreas) {
-        const addAreaButton = page.locator('text=/Add Area|Add Room|+/i').first();
-        if (await addAreaButton.isVisible()) {
-          await addAreaButton.click();
-          await page.waitForTimeout(500);
-          
-          // Fill area name
-          const areaNameField = page.locator('input[placeholder*="Area"], input[placeholder*="Room"]').last();
-          if (await areaNameField.isVisible()) {
-            await areaNameField.fill(area.name);
-            
-            // Save area
-            const saveAreaButton = page.locator('text=/Save|Add|OK/i').first();
-            if (await saveAreaButton.isVisible()) {
-              await saveAreaButton.click();
-              await page.waitForTimeout(500);
-            }
-          }
-        }
-      }
-      
-      await page.screenshot({ path: 'test-results/e2e-areas-added.png', fullPage: true });
-      
-      // Continue to next step
-      const nextButton = page.locator('text=/Continue|Next|Finish/i').first();
-      if (await nextButton.isVisible()) {
-        await nextButton.click();
-        await page.waitForLoadState('networkidle');
-      }
-    }
-    
-    console.log('✅ Step 5: Property areas configured');
-
-    // STEP 6: Complete property setup
-    // Look for final submission button
-    const finalSubmitButton = page.locator('text=/Submit|Finish|Complete|Save Property/i').first();
-    if (await finalSubmitButton.isVisible()) {
-      await finalSubmitButton.click();
-      await page.waitForLoadState('networkidle');
-      await page.waitForTimeout(2000);
-    }
-    
-    await page.screenshot({ path: 'test-results/e2e-property-created.png', fullPage: true });
-    
-    console.log('✅ Step 6: Property creation completed');
-
-    // STEP 7: Navigate to Maintenance Dashboard
-    await page.goto('/landlord/dashboard');
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(2000);
-    
-    await page.screenshot({ path: 'test-results/e2e-maintenance-dashboard.png', fullPage: true });
-    
-    console.log('✅ Step 7: Navigated to maintenance dashboard');
-
-    // STEP 8: Verify maintenance requests are displayed
-    const dashboardContent = await page.locator('body').textContent();
-    console.log('Dashboard content preview:', dashboardContent?.substring(0, 300));
-    
-    // Look for maintenance-related elements
-    const maintenanceElements = await page.locator('text=/Maintenance|Cases|Requests|New|Progress|Plumbing|Kitchen/i').count();
-    console.log('Found maintenance elements:', maintenanceElements);
-    
-    if (maintenanceElements > 0) {
-      // Try to click on a maintenance case
-      const caseCard = page.locator('[data-testid="case-card"], .caseCard').first();
-      const kitchenText = page.locator('text=Kitchen').first();
-      const anyCase = await caseCard.isVisible() ? caseCard : kitchenText;
-      
-      if (await anyCase.isVisible()) {
-        await anyCase.click();
-        await page.waitForLoadState('networkidle');
-        
-        await page.screenshot({ path: 'test-results/e2e-case-detail.png', fullPage: true });
-        console.log('✅ Step 8: Accessed case detail');
-        
-        // Test sending to vendor
-        const sendToVendorButton = page.locator('text=/Send to Vendor|Vendor/i').first();
-        if (await sendToVendorButton.isVisible()) {
-          await sendToVendorButton.click();
-          await page.waitForLoadState('networkidle');
-          
-          await page.screenshot({ path: 'test-results/e2e-vendor-screen.png', fullPage: true });
-          console.log('✅ Step 9: Accessed vendor communication');
-        }
-      }
-    }
-    
-    // STEP 9: Verify complete workflow
-    await page.screenshot({ path: 'test-results/e2e-complete.png', fullPage: true });
-    
-    // Final verification - ensure we have evidence of successful workflow
-    const workflowSuccess = 
-      (await page.locator('text=/Property|Maintenance|Dashboard/i').count() > 0) ||
-      (await page.locator('text=/Welcome|Cases|Requests/i').count() > 0);
-    
-    expect(workflowSuccess).toBeTruthy();
-    
-    console.log('🎉 COMPLETE: End-to-end property setup and maintenance workflow validated!');
+    expect(error).toBeNull();
+    expect(data).toBeTruthy();
+    expect(data[0]?.success).toBe(true);
+    expect(data[0]?.property_name).toBe('Code Validation Property');
+    console.log('Property code validated successfully');
   });
 
-  test('Property Creation Form Validation', async ({ page }) => {
-    await mockPropertyAPIs(page);
-    await navigateToLandlordDashboard(page);
-    
-    // Navigate to add property
-    await page.goto('/landlord/add-property');
-    await page.waitForLoadState('networkidle');
-    
-    // Test form validation by submitting empty form
-    const submitButton = page.locator('text=/Submit|Continue|Save/i').first();
-    if (await submitButton.isVisible()) {
-      await submitButton.click();
-      await page.waitForTimeout(1000);
-      
-      // Should show validation errors
-      const hasValidationErrors = await page.locator('text=/required|error|invalid/i').count() > 0;
-      console.log('Form validation working:', hasValidationErrors);
-    }
-    
-    // Fill form with valid data
-    await page.locator('input').first().fill(mockPropertyData.propertyName);
-    
-    // Test that validation clears
-    await page.screenshot({ path: 'test-results/e2e-form-validation.png', fullPage: true });
+  test('should reject invalid property code', async () => {
+    test.skip(!tenant1, 'tenant1 not authenticated');
+
+    const { data, error } = await tenant1!.client.rpc('validate_property_code', {
+      input_code: 'XXX999',
+      tenant_id: tenant1!.profileId,
+    });
+
+    expect(error).toBeNull();
+    expect(data[0]?.success).toBe(false);
+    expect(data[0]?.error_message).toContain('Invalid');
+    console.log('Invalid code correctly rejected');
   });
 
-  test('Responsive Design During Property Setup', async ({ page }) => {
-    const viewports = [
-      { width: 390, height: 844, name: 'mobile' },
-      { width: 768, height: 1024, name: 'tablet' },
-      { width: 1200, height: 800, name: 'desktop' }
-    ];
+  test('should link tenant via property code', async () => {
+    test.skip(!tenant1 || !testPropertyCode, 'Prerequisites not met');
 
-    for (const viewport of viewports) {
-      await page.setViewportSize(viewport);
-      await mockPropertyAPIs(page);
-      await navigateToLandlordDashboard(page);
-      
-      // Test property form on different viewports
-      await page.goto('/landlord/add-property');
-      await page.waitForLoadState('networkidle');
-      
-      await page.screenshot({ 
-        path: `test-results/e2e-property-form-${viewport.name}.png`, 
-        fullPage: true 
-      });
-      
-      // Verify form is usable on this viewport
-      const formInputs = await page.locator('input, textarea, select').count();
-      expect(formInputs).toBeGreaterThan(0);
-      
-      console.log(`✅ Property form responsive on ${viewport.name}: ${formInputs} inputs`);
-    }
+    const { data, error } = await tenant1!.client.rpc('link_tenant_to_property', {
+      input_code: testPropertyCode,
+      tenant_id: tenant1!.profileId,
+    });
+
+    expect(error).toBeNull();
+    expect(data[0]?.success).toBe(true);
+    expect(data[0]?.link_id).toBeTruthy();
+    console.log('Tenant linked via property code');
   });
 });

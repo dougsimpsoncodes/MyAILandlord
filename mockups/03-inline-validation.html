@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inline Form Validation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .phone-frame {
+            width: 375px;
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 12px solid #1a1a2e;
+        }
+
+        .phone-notch {
+            width: 150px;
+            height: 30px;
+            background: #1a1a2e;
+            margin: 0 auto;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .screen {
+            background: #F7FAFC;
+            min-height: 700px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .back-btn {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+            color: #667eea;
+            cursor: pointer;
+        }
+
+        .header-title {
+            flex: 1;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1A202C;
+            text-align: center;
+            margin-right: 44px;
+        }
+
+        .content {
+            padding: 24px 20px;
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1A202C;
+            margin-bottom: 8px;
+        }
+
+        .form-subtitle {
+            font-size: 14px;
+            color: #5A6778;
+            margin-bottom: 24px;
+        }
+
+        /* Form Groups */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .label-hint {
+            font-weight: 400;
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 14px 16px;
+            padding-right: 44px;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input::placeholder {
+            color: #9CA3AF;
+        }
+
+        /* Validation States */
+        .form-input.valid {
+            border-color: #10B981;
+            padding-right: 44px;
+        }
+
+        .form-input.valid:focus {
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-input.invalid {
+            border-color: #EF4444;
+            padding-right: 44px;
+        }
+
+        .form-input.invalid:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        /* Validation Icons */
+        .validation-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            display: none;
+        }
+
+        .form-input.valid + .validation-icon.valid-icon,
+        .form-input.invalid + .validation-icon + .validation-icon.invalid-icon {
+            display: block;
+        }
+
+        .valid-icon {
+            display: none;
+            color: #10B981;
+        }
+
+        .invalid-icon {
+            display: none;
+            color: #EF4444;
+        }
+
+        .input-wrapper.valid .valid-icon {
+            display: block;
+        }
+
+        .input-wrapper.invalid .invalid-icon {
+            display: block;
+        }
+
+        /* Error/Success Messages */
+        .validation-message {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            margin-top: 6px;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: all 0.2s ease;
+        }
+
+        .validation-message.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .validation-message.error {
+            color: #EF4444;
+        }
+
+        .validation-message.success {
+            color: #10B981;
+        }
+
+        /* Password Strength */
+        .password-strength {
+            margin-top: 8px;
+        }
+
+        .strength-bar {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 6px;
+        }
+
+        .strength-segment {
+            flex: 1;
+            height: 4px;
+            background: #E2E8F0;
+            border-radius: 2px;
+            transition: background 0.2s ease;
+        }
+
+        .strength-weak .strength-segment:nth-child(1) {
+            background: #EF4444;
+        }
+
+        .strength-fair .strength-segment:nth-child(1),
+        .strength-fair .strength-segment:nth-child(2) {
+            background: #F59E0B;
+        }
+
+        .strength-good .strength-segment:nth-child(1),
+        .strength-good .strength-segment:nth-child(2),
+        .strength-good .strength-segment:nth-child(3) {
+            background: #10B981;
+        }
+
+        .strength-strong .strength-segment {
+            background: #10B981;
+        }
+
+        .strength-label {
+            font-size: 12px;
+            color: #6B7280;
+        }
+
+        .strength-weak .strength-label { color: #EF4444; }
+        .strength-fair .strength-label { color: #F59E0B; }
+        .strength-good .strength-label,
+        .strength-strong .strength-label { color: #10B981; }
+
+        /* Character Counter */
+        .char-counter {
+            font-size: 12px;
+            color: #6B7280;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .char-counter.warning {
+            color: #F59E0B;
+        }
+
+        .char-counter.error {
+            color: #EF4444;
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Textarea */
+        textarea.form-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 24px;
+        }
+
+        .info-box-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+
+        .info-box-text {
+            font-size: 13px;
+            color: #4A5568;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="screen">
+            <header class="header">
+                <button class="back-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="m15 18-6-6 6-6"/>
+                    </svg>
+                </button>
+                <h1 class="header-title">Add Property</h1>
+            </header>
+
+            <main class="content">
+                <h2 class="form-title">Property Details</h2>
+                <p class="form-subtitle">Enter the basic information about your property</p>
+
+                <form id="propertyForm">
+                    <!-- Property Name - Valid -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            Property Name
+                            <span class="label-hint">Required</span>
+                        </label>
+                        <div class="input-wrapper valid">
+                            <input type="text" class="form-input valid" value="Sunset Apartments" placeholder="e.g., Downtown Loft">
+                            <svg class="validation-icon valid-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            <svg class="validation-icon invalid-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message success show">
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            Looks good!
+                        </div>
+                    </div>
+
+                    <!-- Address - Invalid -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            Street Address
+                            <span class="label-hint">Required</span>
+                        </label>
+                        <div class="input-wrapper invalid">
+                            <input type="text" class="form-input invalid" value="123" placeholder="e.g., 789 Market St">
+                            <svg class="validation-icon valid-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            <svg class="validation-icon invalid-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message error show">
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+                            </svg>
+                            Please enter a complete street address
+                        </div>
+                    </div>
+
+                    <!-- Email - Valid -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            Contact Email
+                            <span class="label-hint">Optional</span>
+                        </label>
+                        <div class="input-wrapper valid">
+                            <input type="email" class="form-input valid" value="contact@property.com" placeholder="e.g., contact@property.com">
+                            <svg class="validation-icon valid-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            <svg class="validation-icon invalid-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/>
+                            </svg>
+                        </div>
+                        <div class="validation-message success show">
+                            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            Valid email format
+                        </div>
+                    </div>
+
+                    <!-- Description with Character Counter -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            Description
+                            <span class="label-hint">Max 200 characters</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <textarea class="form-input" placeholder="Describe your property...">Beautiful 2-bedroom apartment in downtown with city views, modern amenities, and parking included.</textarea>
+                        </div>
+                        <div class="char-counter">98 / 200</div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" disabled>
+                        Continue to Units Setup
+                    </button>
+                </form>
+
+                <div class="info-box">
+                    <div class="info-box-title">Real-time Validation</div>
+                    <div class="info-box-text">
+                        Form fields are validated as you type, providing immediate feedback.
+                        Errors are shown inline so you know exactly what needs to be fixed.
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

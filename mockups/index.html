@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyAILandlord - UX Mockups Gallery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #a0aec0;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .mockups-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .mockup-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .mockup-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3);
+        }
+
+        .mockup-preview {
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 64px;
+        }
+
+        .mockup-info {
+            padding: 24px;
+        }
+
+        .mockup-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .mockup-description {
+            font-size: 14px;
+            color: #a0aec0;
+            line-height: 1.6;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        .badge.critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .badge.enhancement {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .badge.new {
+            background: rgba(139, 92, 246, 0.2);
+            color: #8b5cf6;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+
+            .mockups-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>MyAILandlord UX Mockups</h1>
+            <p class="subtitle">Mobile-first design improvements based on our comprehensive UX audit. Click any mockup to view full interactive preview.</p>
+        </header>
+
+        <div class="mockups-grid">
+            <a href="01-color-contrast-fix.html" class="mockup-card">
+                <div class="mockup-preview">A</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Color Contrast Fix</h3>
+                    <p class="mockup-description">WCAG AA compliant color palette with improved text readability and accessible secondary colors.</p>
+                    <span class="badge critical">Critical Fix</span>
+                </div>
+            </a>
+
+            <a href="02-skeleton-loading.html" class="mockup-card">
+                <div class="mockup-preview">...</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Skeleton Loading States</h3>
+                    <p class="mockup-description">Animated skeleton screens that reduce perceived loading time and prevent layout shift.</p>
+                    <span class="badge critical">Critical Fix</span>
+                </div>
+            </a>
+
+            <a href="03-inline-validation.html" class="mockup-card">
+                <div class="mockup-preview">!</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Inline Form Validation</h3>
+                    <p class="mockup-description">Real-time validation feedback with clear error messages and success states.</p>
+                    <span class="badge critical">Critical Fix</span>
+                </div>
+            </a>
+
+            <a href="04-bottom-sheet.html" class="mockup-card">
+                <div class="mockup-preview">+</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Bottom Sheet Actions</h3>
+                    <p class="mockup-description">Thumb-zone optimized action sheets with swipe-to-dismiss and smooth animations.</p>
+                    <span class="badge enhancement">Enhancement</span>
+                </div>
+            </a>
+
+            <a href="05-empty-states.html" class="mockup-card">
+                <div class="mockup-preview">0</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Empty State Designs</h3>
+                    <p class="mockup-description">Engaging empty states with illustrations and clear call-to-action buttons.</p>
+                    <span class="badge enhancement">Enhancement</span>
+                </div>
+            </a>
+
+            <a href="06-touch-targets.html" class="mockup-card">
+                <div class="mockup-preview">44</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Touch Target Sizes</h3>
+                    <p class="mockup-description">Minimum 44px touch targets for all interactive elements, following iOS/Android guidelines.</p>
+                    <span class="badge critical">Critical Fix</span>
+                </div>
+            </a>
+
+            <a href="07-dark-mode.html" class="mockup-card">
+                <div class="mockup-preview" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);">D</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Dark Mode Theme</h3>
+                    <p class="mockup-description">Full dark mode support with proper contrast ratios and reduced eye strain.</p>
+                    <span class="badge new">New Feature</span>
+                </div>
+            </a>
+
+            <a href="08-micro-interactions.html" class="mockup-card">
+                <div class="mockup-preview">~</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Micro-interactions</h3>
+                    <p class="mockup-description">Delightful animations for button presses, card interactions, and status changes.</p>
+                    <span class="badge enhancement">Enhancement</span>
+                </div>
+            </a>
+
+            <a href="property-management-modern.html" class="mockup-card">
+                <div class="mockup-preview">P</div>
+                <div class="mockup-info">
+                    <h3 class="mockup-title">Property Management</h3>
+                    <p class="mockup-description">Modern card-based property list with draft sections and quick stats.</p>
+                    <span class="badge">Current Design</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>
