@@ -52,7 +52,14 @@ const PropertyAssetsScreen = () => {
 
   // State management
   const [currentAreaIndex, setCurrentAreaIndex] = useState(0);
-  const [selectedAreas] = useState<PropertyArea[]>(areas);
+  // Initialize from draftState if available, otherwise fall back to route params
+  const [selectedAreas, setSelectedAreas] = useState<PropertyArea[]>(() => {
+    // Don't use empty areas from route - that indicates we need to load from draft
+    if (areas && areas.length > 0) {
+      return areas;
+    }
+    return [];
+  });
   const [showAddAssetModal, setShowAddAssetModal] = useState(false);
   const [showAssetSuggestions, setShowAssetSuggestions] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,27 +87,67 @@ const PropertyAssetsScreen = () => {
     }
   }, [draftState?.currentStep, updateCurrentStep]);
 
+  // Sync selectedAreas from draftState when it changes
+  // This handles the case where we navigate back from AddAssetScreen with empty areas
+  useEffect(() => {
+    if (draftState?.areas && draftState.areas.length > 0) {
+      // Only update if local state is empty or if draftState has more recent assets
+      if (selectedAreas.length === 0) {
+        setSelectedAreas(draftState.areas);
+      } else {
+        // Merge assets from draftState into local state to capture any updates
+        const mergedAreas = selectedAreas.map(localArea => {
+          const draftArea = draftState.areas.find(a => a.id === localArea.id);
+          if (draftArea && draftArea.assets && draftArea.assets.length > localArea.assets?.length) {
+            return { ...localArea, assets: draftArea.assets };
+          }
+          return localArea;
+        });
+        // Check if we need to update
+        const needsUpdate = mergedAreas.some((area, idx) =>
+          area.assets?.length !== selectedAreas[idx]?.assets?.length
+        );
+        if (needsUpdate) {
+          setSelectedAreas(mergedAreas);
+        }
+      }
+    }
+  }, [draftState?.areas]);
+
   // Handle new asset from AddAssetScreen
   useEffect(() => {
     if (newAsset) {
-      // Find the area and add the asset to it
-      const updatedAreas = selectedAreas.map(area => {
-        if (area.id === newAsset.areaId) {
-          return {
-            ...area,
-            assets: [...(area.assets || []), newAsset]
-          };
+      // Use a function updater to get the latest selectedAreas state
+      setSelectedAreas(prevAreas => {
+        // Find the source of truth for areas
+        const currentAreas = prevAreas.length > 0 ? prevAreas : (draftState?.areas || []);
+
+        // Check if this asset already exists (prevent duplicates)
+        const areaWithAsset = currentAreas.find(a => a.id === newAsset.areaId);
+        if (areaWithAsset?.assets?.some(asset => asset.id === newAsset.id)) {
+          return prevAreas; // Asset already added, skip
         }
-        return area;
+
+        const updatedAreas = currentAreas.map(area => {
+          if (area.id === newAsset.areaId) {
+            return {
+              ...area,
+              assets: [...(area.assets || []), newAsset]
+            };
+          }
+          return area;
+        });
+
+        // Update draft with new areas (schedule after state update)
+        setTimeout(() => updateAreas(updatedAreas), 0);
+
+        return updatedAreas;
       });
-      
-      // Update draft with new areas
-      updateAreas(updatedAreas);
-      
+
       // Clear the navigation parameter to prevent re-adding
       navigation.setParams({ newAsset: undefined });
     }
-  }, [newAsset, selectedAreas, updateAreas, navigation]);
+  }, [newAsset, draftState?.areas, updateAreas, navigation]);
 
   // Handle draft error display
   useEffect(() => {

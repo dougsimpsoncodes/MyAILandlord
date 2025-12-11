@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full Data - Version 2: Collapsible Sections</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F5F7FA; }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: white;
+      border-bottom: 1px solid #E9ECEF;
+      margin-bottom: 20px;
+    }
+    .header-title { font-size: 20px; font-weight: 600; color: #2C3E50; }
+    .header-subtitle { font-size: 13px; color: #27AE60; }
+    .cancel-btn { color: #E74C3C; font-size: 16px; cursor: pointer; }
+
+    .area-card {
+      background: white;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .area-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .area-title-section { display: flex; align-items: center; gap: 12px; }
+    .area-icon { width: 40px; height: 40px; background: #E8F4FD; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .area-name { font-size: 18px; font-weight: 600; color: #2C3E50; }
+    .area-stats { display: flex; gap: 16px; margin-top: 4px; }
+    .area-stat { font-size: 13px; color: #7F8C8D; }
+
+    .area-content { padding: 0; }
+
+    /* Collapsible section */
+    .collapsible-section {
+      border-bottom: 1px solid #F0F0F0;
+    }
+    .collapsible-section:last-child { border-bottom: none; }
+
+    .section-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      cursor: pointer;
+      background: #FAFBFC;
+      transition: background 0.2s;
+    }
+    .section-toggle:hover { background: #F0F4F8; }
+    .section-toggle-left { display: flex; align-items: center; gap: 10px; }
+    .section-toggle-icon { font-size: 16px; }
+    .section-toggle-title { font-size: 14px; font-weight: 600; color: #2C3E50; }
+    .section-toggle-count {
+      font-size: 12px;
+      color: white;
+      background: #3498DB;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .section-toggle-arrow {
+      font-size: 12px;
+      color: #7F8C8D;
+      transition: transform 0.2s;
+    }
+    .section-toggle.open .section-toggle-arrow { transform: rotate(180deg); }
+
+    .section-content {
+      padding: 16px 20px;
+      display: none;
+    }
+    .section-content.open { display: block; }
+
+    /* Photo grid - compact */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 6px;
+    }
+    .photo-thumb {
+      aspect-ratio: 1;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-delete {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 16px;
+      height: 16px;
+      background: rgba(231, 76, 60, 0.9);
+      border-radius: 50%;
+      color: white;
+      font-size: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .photo-thumb:hover .photo-delete { opacity: 1; }
+
+    .add-photo-btn {
+      aspect-ratio: 1;
+      border: 2px dashed #DEE2E6;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #7F8C8D;
+      cursor: pointer;
+      font-size: 18px;
+      background: white;
+    }
+    .add-photo-btn:hover { border-color: #3498DB; color: #3498DB; }
+
+    /* Asset table */
+    .asset-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .asset-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #7F8C8D;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #E9ECEF;
+      background: #FAFBFC;
+    }
+    .asset-table td {
+      padding: 10px 12px;
+      font-size: 13px;
+      border-bottom: 1px solid #F0F0F0;
+      color: #2C3E50;
+    }
+    .asset-table tr:last-child td { border-bottom: none; }
+    .asset-table tr:hover { background: #F8FBFE; }
+    .asset-name-cell { font-weight: 500; }
+    .asset-detail-cell { color: #7F8C8D; }
+    .asset-delete-cell {
+      width: 40px;
+      text-align: center;
+      color: #E74C3C;
+      cursor: pointer;
+    }
+    .add-asset-row td {
+      padding: 12px;
+      text-align: center;
+      color: #7F8C8D;
+      cursor: pointer;
+    }
+    .add-asset-row:hover td { color: #3498DB; background: #F8FBFE; }
+
+    .bottom-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 16px 20px;
+      background: white;
+      border-top: 1px solid #E9ECEF;
+      display: flex;
+      gap: 12px;
+    }
+    .btn-secondary {
+      flex: 1;
+      padding: 14px;
+      border: 1px solid #E9ECEF;
+      border-radius: 10px;
+      background: white;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      flex: 2;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: #3498DB;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .version-label {
+      background: #E67E22;
+      color: white;
+      padding: 8px 16px;
+      text-align: center;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="version-label">Version 2: Collapsible Sections with Table View</div>
+
+  <div class="header">
+    <span style="font-size: 24px; cursor: pointer;">&#8592;</span>
+    <div style="text-align: center;">
+      <div class="header-title">Property Photos & Assets</div>
+      <div class="header-subtitle">Saved 8:35:34 AM</div>
+    </div>
+    <span class="cancel-btn">Cancel</span>
+  </div>
+
+  <div class="container">
+    <!-- Kitchen Area - FULL DATA -->
+    <div class="area-card">
+      <div class="area-header">
+        <div class="area-title-section">
+          <div class="area-icon">🍳</div>
+          <div>
+            <div class="area-name">Kitchen</div>
+            <div class="area-stats">
+              <span class="area-stat">📷 22 photos</span>
+              <span class="area-stat">📦 18 assets</span>
+            </div>
+          </div>
+        </div>
+        <span style="font-size: 20px; color: #7F8C8D;">▼</span>
+      </div>
+
+      <div class="area-content">
+        <!-- Photos Section - Collapsible -->
+        <div class="collapsible-section">
+          <div class="section-toggle open" onclick="toggleSection(this)">
+            <div class="section-toggle-left">
+              <span class="section-toggle-icon">📷</span>
+              <span class="section-toggle-title">Photos</span>
+              <span class="section-toggle-count">22</span>
+            </div>
+            <span class="section-toggle-arrow">▼</span>
+          </div>
+          <div class="section-content open">
+            <div class="photo-grid">
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="photo-thumb"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=100&h=100&fit=crop" alt=""><div class="photo-delete">×</div></div>
+              <div class="add-photo-btn">+</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assets Section - Collapsible -->
+        <div class="collapsible-section">
+          <div class="section-toggle" onclick="toggleSection(this)">
+            <div class="section-toggle-left">
+              <span class="section-toggle-icon">📦</span>
+              <span class="section-toggle-title">Assets & Inventory</span>
+              <span class="section-toggle-count">18</span>
+            </div>
+            <span class="section-toggle-arrow">▼</span>
+          </div>
+          <div class="section-content">
+            <table class="asset-table">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Brand/Model</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="asset-name-cell">Refrigerator</td><td class="asset-detail-cell">Samsung RF28R7551SR</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Gas Range</td><td class="asset-detail-cell">GE Profile PGS930</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Dishwasher</td><td class="asset-detail-cell">Bosch SHPM88Z75N</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Microwave</td><td class="asset-detail-cell">Whirlpool WMH53521HZ</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Range Hood</td><td class="asset-detail-cell">Broan-NuTone E6436SS</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Garbage Disposal</td><td class="asset-detail-cell">InSinkErator Evolution</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Kitchen Faucet</td><td class="asset-detail-cell">Delta Leland 9178</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Under-sink Filter</td><td class="asset-detail-cell">Aquasana AQ-5200</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Ice Maker</td><td class="asset-detail-cell">GE Opal 2.0</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Wine Cooler</td><td class="asset-detail-cell">NewAir AWR-460DB</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Granite Countertops</td><td class="asset-detail-cell">Black Galaxy</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Kitchen Island</td><td class="asset-detail-cell">Custom Built 2021</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Pendant Lights (3)</td><td class="asset-detail-cell">West Elm Globe</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Cabinet Hardware</td><td class="asset-detail-cell">Brushed Nickel Set</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Tile Backsplash</td><td class="asset-detail-cell">Subway White 3x6</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Smoke Detector</td><td class="asset-detail-cell">Nest Protect S3000</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">CO Detector</td><td class="asset-detail-cell">Kidde Nighthawk</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr><td class="asset-name-cell">Fire Extinguisher</td><td class="asset-detail-cell">Kidde FA110</td><td class="asset-delete-cell">🗑</td></tr>
+                <tr class="add-asset-row"><td colspan="3">+ Add Asset</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 100px;"></div>
+  </div>
+
+  <div class="bottom-actions">
+    <button class="btn-secondary">Save Draft</button>
+    <button class="btn-primary">Review & Submit</button>
+  </div>
+
+  <script>
+    function toggleSection(toggle) {
+      toggle.classList.toggle('open');
+      toggle.nextElementSibling.classList.toggle('open');
+    }
+  </script>
+</body>
+</html>

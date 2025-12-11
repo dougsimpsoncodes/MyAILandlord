@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landlord Dashboard - Web View - MyAI Landlord</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F5F7FA;
+            color: #2C3E50;
+            line-height: 1.5;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: #2C3E50;
+            color: white;
+            padding: 24px 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-logo {
+            padding: 0 24px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 16px;
+        }
+        .sidebar-logo h1 {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sidebar-logo h1 span { font-size: 24px; }
+        .sidebar-nav { flex: 1; }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .nav-item.active {
+            background: rgba(52,152,219,0.3);
+            color: white;
+            border-left: 3px solid #3498DB;
+        }
+        .nav-item span { font-size: 20px; }
+        .nav-badge {
+            margin-left: auto;
+            background: #E74C3C;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .sidebar-footer {
+            padding: 16px 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            background: #3498DB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .user-email {
+            font-size: 12px;
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 240px;
+            min-height: 100vh;
+        }
+
+        /* Top Header */
+        .top-header {
+            background: white;
+            padding: 16px 32px;
+            border-bottom: 1px solid #E1E8ED;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2C3E50;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: #3498DB;
+            color: white;
+        }
+        .btn-secondary {
+            background: white;
+            color: #7F8C8D;
+            border: 1px solid #E1E8ED;
+        }
+        .search-box {
+            display: flex;
+            align-items: center;
+            background: #F5F7FA;
+            border-radius: 8px;
+            padding: 8px 16px;
+            gap: 8px;
+        }
+        .search-box input {
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            width: 200px;
+            outline: none;
+        }
+
+        /* Dashboard Content */
+        .dashboard {
+            padding: 32px;
+        }
+
+        /* Two Column Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            gap: 24px;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #F5F7FA;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2C3E50;
+        }
+        .card-link {
+            font-size: 14px;
+            color: #3498DB;
+            text-decoration: none;
+        }
+        .card-body {
+            padding: 16px 24px;
+        }
+
+        /* Request Table */
+        .request-table {
+            width: 100%;
+        }
+        .request-row {
+            display: flex;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid #F5F7FA;
+            gap: 16px;
+        }
+        .request-row:last-child {
+            border-bottom: none;
+        }
+        .request-priority {
+            width: 4px;
+            height: 48px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .priority-urgent { background: #E74C3C; }
+        .priority-medium { background: #F39C12; }
+        .priority-low { background: #2ECC71; }
+        .request-info { flex: 1; }
+        .request-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2C3E50;
+            margin-bottom: 4px;
+        }
+        .request-meta {
+            font-size: 13px;
+            color: #7F8C8D;
+        }
+        .request-meta span {
+            margin-right: 16px;
+        }
+        .request-status {
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-new {
+            background: #FDEDEC;
+            color: #E74C3C;
+        }
+        .status-progress {
+            background: #EBF5FB;
+            color: #3498DB;
+        }
+        .status-scheduled {
+            background: #FEF5E7;
+            color: #F39C12;
+        }
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+        .action-btn-primary {
+            background: #3498DB;
+            color: white;
+        }
+        .action-btn-secondary {
+            background: #F5F7FA;
+            color: #7F8C8D;
+        }
+
+        /* Properties Panel */
+        .property-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #F5F7FA;
+            gap: 14px;
+        }
+        .property-item:last-child {
+            border-bottom: none;
+        }
+        .property-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: #EBF5FB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .property-info { flex: 1; }
+        .property-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2C3E50;
+        }
+        .property-address {
+            font-size: 13px;
+            color: #7F8C8D;
+        }
+        .property-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-issues {
+            background: #FDEDEC;
+            color: #E74C3C;
+        }
+        .badge-ok {
+            background: #E8F8F0;
+            color: #2ECC71;
+        }
+
+        /* Quick Stats */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #3498DB;
+        }
+        .stat-value.warning { color: #F39C12; }
+        .stat-value.danger { color: #E74C3C; }
+        .stat-label {
+            font-size: 14px;
+            color: #7F8C8D;
+            margin-top: 4px;
+        }
+
+        /* Messages Preview */
+        .message-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #F5F7FA;
+            gap: 12px;
+        }
+        .message-item:last-child {
+            border-bottom: none;
+        }
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: white;
+            flex-shrink: 0;
+        }
+        .avatar-green { background: #2ECC71; }
+        .avatar-blue { background: #3498DB; }
+        .avatar-orange { background: #F39C12; }
+        .message-content { flex: 1; min-width: 0; }
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        .message-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2C3E50;
+        }
+        .message-time {
+            font-size: 12px;
+            color: #95A5A6;
+        }
+        .message-preview {
+            font-size: 13px;
+            color: #7F8C8D;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .unread-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 4px;
+            background: #3498DB;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="sidebar-logo">
+            <h1><span>🏠</span> MyAI Landlord</h1>
+        </div>
+
+        <div class="sidebar-nav">
+            <a href="#" class="nav-item active">
+                <span>📊</span> Dashboard
+            </a>
+            <a href="#" class="nav-item">
+                <span>🏘️</span> Properties
+            </a>
+            <a href="#" class="nav-item">
+                <span>🔧</span> Requests
+                <div class="nav-badge">3</div>
+            </a>
+            <a href="#" class="nav-item">
+                <span>💬</span> Messages
+                <div class="nav-badge">2</div>
+            </a>
+            <a href="#" class="nav-item">
+                <span>👥</span> Tenants
+            </a>
+            <a href="#" class="nav-item">
+                <span>📄</span> Documents
+            </a>
+            <a href="#" class="nav-item">
+                <span>⚙️</span> Settings
+            </a>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">JS</div>
+                <div>
+                    <div class="user-name">John Smith</div>
+                    <div class="user-email">john@email.com</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+        <header class="top-header">
+            <h1 class="page-title">Dashboard</h1>
+            <div class="header-actions">
+                <div class="search-box">
+                    <span>🔍</span>
+                    <input type="text" placeholder="Search...">
+                </div>
+                <button class="btn btn-secondary">
+                    <span>🔔</span>
+                </button>
+                <button class="btn btn-primary">
+                    <span>+</span> Add Property
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <!-- Quick Stats -->
+            <div class="quick-stats">
+                <div class="stat-card">
+                    <div class="stat-value">3</div>
+                    <div class="stat-label">Total Properties</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value warning">3</div>
+                    <div class="stat-label">Active Requests</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value danger">1</div>
+                    <div class="stat-label">Urgent Issues</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Main Column - Requests -->
+                <div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Active Maintenance Requests</h2>
+                            <a href="#" class="card-link">View All →</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="request-table">
+                                <div class="request-row">
+                                    <div class="request-priority priority-urgent"></div>
+                                    <div class="request-info">
+                                        <div class="request-title">Leaking Faucet</div>
+                                        <div class="request-meta">
+                                            <span>📍 Kitchen</span>
+                                            <span>🏠 Sunset Apartments #204</span>
+                                            <span>⏰ 2 hours ago</span>
+                                        </div>
+                                    </div>
+                                    <div class="request-status status-new">New</div>
+                                    <div class="request-actions">
+                                        <button class="action-btn action-btn-primary">Respond</button>
+                                        <button class="action-btn action-btn-secondary">Assign</button>
+                                    </div>
+                                </div>
+
+                                <div class="request-row">
+                                    <div class="request-priority priority-medium"></div>
+                                    <div class="request-info">
+                                        <div class="request-title">AC Not Cooling</div>
+                                        <div class="request-meta">
+                                            <span>📍 Living Room</span>
+                                            <span>🏠 Oak Villa</span>
+                                            <span>⏰ 1 day ago</span>
+                                        </div>
+                                    </div>
+                                    <div class="request-status status-progress">In Progress</div>
+                                    <div class="request-actions">
+                                        <button class="action-btn action-btn-primary">Update</button>
+                                        <button class="action-btn action-btn-secondary">View</button>
+                                    </div>
+                                </div>
+
+                                <div class="request-row">
+                                    <div class="request-priority priority-low"></div>
+                                    <div class="request-info">
+                                        <div class="request-title">Light Bulb Replacement</div>
+                                        <div class="request-meta">
+                                            <span>📍 Bathroom</span>
+                                            <span>🏠 Sunset Apartments #102</span>
+                                            <span>⏰ 3 days ago</span>
+                                        </div>
+                                    </div>
+                                    <div class="request-status status-scheduled">Scheduled</div>
+                                    <div class="request-actions">
+                                        <button class="action-btn action-btn-primary">Details</button>
+                                        <button class="action-btn action-btn-secondary">Reschedule</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar Column -->
+                <div>
+                    <!-- Properties -->
+                    <div class="card" style="margin-bottom: 24px;">
+                        <div class="card-header">
+                            <h2 class="card-title">Properties</h2>
+                            <a href="#" class="card-link">Manage →</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="property-item">
+                                <div class="property-icon">🏢</div>
+                                <div class="property-info">
+                                    <div class="property-name">Sunset Apartments</div>
+                                    <div class="property-address">123 Main St, SF</div>
+                                </div>
+                                <div class="property-badge badge-issues">2</div>
+                            </div>
+                            <div class="property-item">
+                                <div class="property-icon">🏠</div>
+                                <div class="property-info">
+                                    <div class="property-name">Oak Villa</div>
+                                    <div class="property-address">456 Oak Ave</div>
+                                </div>
+                                <div class="property-badge badge-issues">1</div>
+                            </div>
+                            <div class="property-item">
+                                <div class="property-icon">🏬</div>
+                                <div class="property-info">
+                                    <div class="property-name">Downtown Condo</div>
+                                    <div class="property-address">789 Market St</div>
+                                </div>
+                                <div class="property-badge badge-ok">✓</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Messages -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">Recent Messages</h2>
+                            <a href="#" class="card-link">View All →</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="message-item">
+                                <div class="message-avatar avatar-green">SJ</div>
+                                <div class="message-content">
+                                    <div class="message-header">
+                                        <span class="message-name">Sarah Johnson</span>
+                                        <span class="message-time">2m</span>
+                                    </div>
+                                    <div class="message-preview">The plumber came and fixed the leak!</div>
+                                </div>
+                                <div class="unread-dot"></div>
+                            </div>
+                            <div class="message-item">
+                                <div class="message-avatar avatar-blue">MR</div>
+                                <div class="message-content">
+                                    <div class="message-header">
+                                        <span class="message-name">Mike Rodriguez</span>
+                                        <span class="message-time">1h</span>
+                                    </div>
+                                    <div class="message-preview">Thanks for the quick response!</div>
+                                </div>
+                            </div>
+                            <div class="message-item">
+                                <div class="message-avatar avatar-orange">EW</div>
+                                <div class="message-content">
+                                    <div class="message-header">
+                                        <span class="message-name">Emma Wilson</span>
+                                        <span class="message-time">3h</span>
+                                    </div>
+                                    <div class="message-preview">When will the AC be fixed?</div>
+                                </div>
+                                <div class="unread-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

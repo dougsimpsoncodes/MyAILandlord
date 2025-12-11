@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
+import { PropertyArea, PropertyData } from '../../types/property';
+import { propertyAreasService } from '../../services/supabase/propertyAreasService';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import log from '../../lib/log';
 
 type PropertyDetailsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyDetails'>;
 type PropertyDetailsRouteProp = RouteProp<LandlordStackParamList, 'PropertyDetails'>;
@@ -23,30 +28,108 @@ const PropertyDetailsScreen = () => {
   const navigation = useNavigation<PropertyDetailsNavigationProp>();
   const route = useRoute<PropertyDetailsRouteProp>();
   const { property } = route.params;
+  const { supabase } = useSupabaseWithAuth();
+
+  // State for areas loaded from database
+  const [areas, setAreas] = useState<PropertyArea[]>([]);
+  const [isLoadingAreas, setIsLoadingAreas] = useState(true);
+  const [areaCount, setAreaCount] = useState(0);
+  const [assetCount, setAssetCount] = useState(0);
+
+  // Load areas from database when screen comes into focus
+  const loadAreasFromDatabase = useCallback(async () => {
+    try {
+      setIsLoadingAreas(true);
+      console.log('🔍 PropertyDetailsScreen: Loading areas for property:', property.id);
+      console.log('🔍 PropertyDetailsScreen: Using authenticated client:', !!supabase);
+      log.info('Loading property areas from database', { propertyId: property.id });
+
+      const loadedAreas = await propertyAreasService.getAreasWithAssets(property.id, supabase);
+      console.log('🔍 PropertyDetailsScreen: Loaded', loadedAreas.length, 'areas from database');
+      setAreas(loadedAreas);
+      setAreaCount(loadedAreas.length);
+
+      // Calculate total assets across all areas
+      const totalAssets = loadedAreas.reduce(
+        (sum, area) => sum + (area.assets?.length || 0),
+        0
+      );
+      setAssetCount(totalAssets);
+
+      // Debug: Log what we got from database
+      loadedAreas.forEach(area => {
+        console.log(`📸 Area "${area.name}": photos=${area.photos?.length || 0}, photoPaths=${area.photoPaths?.length || 0}`);
+        if (area.photoPaths && area.photoPaths.length > 0) {
+          console.log(`   photoPaths[0]: ${area.photoPaths[0]?.substring(0, 50)}...`);
+        }
+        if (area.photos && area.photos.length > 0) {
+          console.log(`   photos[0]: ${area.photos[0]?.substring(0, 50)}...`);
+        }
+      });
+
+      log.info('Loaded property areas from database', {
+        propertyId: property.id,
+        areaCount: loadedAreas.length,
+        assetCount: totalAssets
+      });
+    } catch (error) {
+      console.error('🔍 PropertyDetailsScreen: ERROR loading areas:', error);
+      log.error('Failed to load property areas', { error: String(error) });
+      // Keep showing 0 counts on error
+      setAreaCount(0);
+      setAssetCount(0);
+    } finally {
+      setIsLoadingAreas(false);
+    }
+  }, [property.id, supabase]);
+
+  // Reload areas whenever screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadAreasFromDatabase();
+    }, [loadAreasFromDatabase])
+  );
 
   const handleEditProperty = () => {
-    // Navigate to edit property flow
+    // Navigate to edit property flow (reuse AddProperty with existing data)
     Alert.alert('Edit Property', 'Property editing will be available soon.');
   };
 
   const handleViewAreas = () => {
-    // Navigate to areas management
-    Alert.alert('Property Areas', 'Area management will be available soon.');
-  };
+    // Create a minimal PropertyData from the property object
+    const propertyData: PropertyData = {
+      name: property.name,
+      address: {
+        line1: property.address,
+        city: '',
+        state: '',
+        zipCode: ''
+      },
+      type: property.type as PropertyData['type'],
+      unit: '',
+      bedrooms: 0,
+      bathrooms: 0,
+      photos: []
+    };
 
-  const handleViewAssets = () => {
-    // Navigate to assets management
-    Alert.alert('Property Assets', 'Asset management will be available soon.');
+    // For existing properties, go directly to Photos & Assets screen
+    // (not the area selection screen - that's only for initial setup)
+    navigation.navigate('PropertyAssets', {
+      propertyData,
+      areas, // Pass areas loaded from database
+      propertyId: property.id // Pass property ID for database operations
+    });
   };
 
   const handleAddTenant = () => {
-    // Navigate to tenant management
-    Alert.alert('Add Tenant', 'Tenant management will be available soon.');
+    navigation.navigate('InviteTenant', {
+      propertyId: property.id,
+      propertyName: property.name,
+    });
   };
 
   const handleMaintenanceRequests = () => {
-    // Navigate to maintenance requests
-    Alert.alert('Maintenance Requests', 'Maintenance request management will be available soon.');
+    navigation.navigate('Dashboard');
   };
 
   return (
@@ -98,7 +181,7 @@ const PropertyDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           
           <Card style={styles.actionCard}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleViewAreas}
               activeOpacity={0.7}
@@ -107,42 +190,25 @@ const PropertyDetailsScreen = () => {
                 <Ionicons name="grid-outline" size={24} color="#3498DB" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Manage Areas</Text>
-                <Text style={styles.actionSubtitle}>View and edit property areas</Text>
+                <Text style={styles.actionTitle}>Manage Areas & Assets</Text>
+                <Text style={styles.actionSubtitle}>View rooms, photos, and inventory</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
             </TouchableOpacity>
           </Card>
 
           <Card style={styles.actionCard}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={handleViewAssets}
-              activeOpacity={0.7}
-            >
-              <View style={styles.actionIcon}>
-                <Ionicons name="cube-outline" size={24} color="#9B59B6" />
-              </View>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Manage Assets</Text>
-                <Text style={styles.actionSubtitle}>View and manage property inventory</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
-            </TouchableOpacity>
-          </Card>
-
-          <Card style={styles.actionCard}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleAddTenant}
               activeOpacity={0.7}
             >
-              <View style={styles.actionIcon}>
+              <View style={[styles.actionIcon, { backgroundColor: '#E8F8F0' }]}>
                 <Ionicons name="person-add-outline" size={24} color="#2ECC71" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Manage Tenants</Text>
-                <Text style={styles.actionSubtitle}>Add or manage tenants</Text>
+                <Text style={styles.actionTitle}>Invite Tenant</Text>
+                <Text style={styles.actionSubtitle}>Send an invitation to your tenant</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
             </TouchableOpacity>
@@ -169,15 +235,23 @@ const PropertyDetailsScreen = () => {
         {/* Property Statistics */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Property Overview</Text>
-          
+
           <Card style={styles.statsCard}>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>0</Text>
+                {isLoadingAreas ? (
+                  <ActivityIndicator size="small" color="#3498DB" />
+                ) : (
+                  <Text style={styles.statNumber}>{areaCount}</Text>
+                )}
                 <Text style={styles.statLabel}>Areas</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>0</Text>
+                {isLoadingAreas ? (
+                  <ActivityIndicator size="small" color="#3498DB" />
+                ) : (
+                  <Text style={styles.statNumber}>{assetCount}</Text>
+                )}
                 <Text style={styles.statLabel}>Assets</Text>
               </View>
               <View style={styles.statItem}>

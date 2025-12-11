@@ -9,8 +9,66 @@ import { PropertySetupState, PropertyData, PropertyArea, PropertyAsset } from '.
 export class PropertyDraftService {
   private static readonly STORAGE_PREFIX = '@MyAILandlord:propertyDraft';
   private static readonly DRAFTS_LIST_KEY = '@MyAILandlord:propertyDrafts';
+  private static readonly CURRENT_DRAFT_KEY = '@MyAILandlord:currentDraft';
   private static readonly MAX_DRAFTS_PER_USER = 10;
   private static readonly STORAGE_VERSION = '1.0';
+
+  /**
+   * Store the current working draft ID for page refresh persistence
+   */
+  static async setCurrentDraftId(userId: string, draftId: string, step: number): Promise<void> {
+    if (!userId || !draftId) return;
+
+    try {
+      const key = `${this.CURRENT_DRAFT_KEY}:${userId}`;
+      await AsyncStorage.setItem(key, JSON.stringify({ draftId, step, timestamp: Date.now() }));
+      log.info('Saved current draft ID for refresh persistence', { draftId, step });
+    } catch (error) {
+      log.error('Failed to save current draft ID', { error: String(error) });
+    }
+  }
+
+  /**
+   * Get the current working draft ID (if still valid)
+   */
+  static async getCurrentDraftId(userId: string): Promise<{ draftId: string; step: number } | null> {
+    if (!userId) return null;
+
+    try {
+      const key = `${this.CURRENT_DRAFT_KEY}:${userId}`;
+      const data = await AsyncStorage.getItem(key);
+
+      if (!data) return null;
+
+      const parsed = JSON.parse(data);
+
+      // Only return if it's less than 24 hours old
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      if (Date.now() - parsed.timestamp > maxAge) {
+        await this.clearCurrentDraftId(userId);
+        return null;
+      }
+
+      return { draftId: parsed.draftId, step: parsed.step };
+    } catch (error) {
+      log.error('Failed to get current draft ID', { error: String(error) });
+      return null;
+    }
+  }
+
+  /**
+   * Clear the current draft ID (after property is submitted or user leaves flow)
+   */
+  static async clearCurrentDraftId(userId: string): Promise<void> {
+    if (!userId) return;
+
+    try {
+      const key = `${this.CURRENT_DRAFT_KEY}:${userId}`;
+      await AsyncStorage.removeItem(key);
+    } catch (error) {
+      log.error('Failed to clear current draft ID', { error: String(error) });
+    }
+  }
 
   /**
    * Generate user-specific storage key
@@ -297,29 +355,6 @@ export class PropertyDraftService {
       areas,
       assets,
     };
-  }
-
-  /**
-   * Clear all drafts for a user (emergency storage cleanup)
-   */
-  static async clearAllUserDrafts(userId: string): Promise<void> {
-    try {
-      log.info('Clearing all drafts for user due to storage issues...');
-      const drafts = await this.getUserDrafts(userId);
-      
-      // Delete all drafts
-      for (const draft of drafts) {
-        await this.deleteDraft(userId, draft.id);
-      }
-      
-      // Clear the drafts list
-      const draftsListKey = this.getUserDraftsListKey(userId);
-      await AsyncStorage.removeItem(draftsListKey);
-      
-      log.info(`Cleared ${drafts.length} drafts for user`);
-    } catch (error) {
-      log.error('Failed to clear user drafts', { error: String(error) });
-    }
   }
 
   /**

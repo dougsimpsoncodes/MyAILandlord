@@ -108,20 +108,30 @@ export type LandlordStackParamList = {
     template: AssetTemplate | null;
     propertyData: PropertyData;
     draftId?: string;
+    propertyId?: string; // For existing properties (saves directly to database)
   };
   InviteTenant: {
     propertyId: string;
     propertyName: string;
-    propertyCode: string;
+    propertyCode?: string;
   };
 };
 
 const TenantStack = createNativeStackNavigator<TenantStackParamList>();
 const LandlordStack = createNativeStackNavigator<LandlordStackParamList>();
 
-const TenantNavigator = () => {
+interface TenantNavigatorProps {
+  pendingInvitePropertyId?: string | null;
+}
+
+const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInvitePropertyId }) => {
+  // If there's a pending invite, start on that screen
+  const initialRouteName = pendingInvitePropertyId ? 'PropertyInviteAccept' : 'Home';
+  const initialParams = pendingInvitePropertyId ? { propertyId: pendingInvitePropertyId } : undefined;
+
   return (
     <TenantStack.Navigator
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerStyle: {
           backgroundColor: '#2C3E50',
@@ -185,10 +195,11 @@ const TenantNavigator = () => {
         component={PropertyCodeEntryScreen}
         options={{ title: 'Link to Property' }}
       />
-      <TenantStack.Screen 
-        name="PropertyInviteAccept" 
+      <TenantStack.Screen
+        name="PropertyInviteAccept"
         component={PropertyInviteAcceptScreen}
         options={{ title: 'Accept Invitation' }}
+        initialParams={initialParams}
       />
       <TenantStack.Screen 
         name="PropertyWelcome" 
@@ -331,10 +342,15 @@ const LandlordNavigator = () => {
 
 interface MainStackProps {
   userRole: 'tenant' | 'landlord';
+  pendingInvitePropertyId?: string | null;
 }
 
-const MainStack: React.FC<MainStackProps> = ({ userRole }) => {
-  return userRole === 'tenant' ? <TenantNavigator /> : <LandlordNavigator />;
+const MainStack: React.FC<MainStackProps> = ({ userRole, pendingInvitePropertyId }) => {
+  return userRole === 'tenant' ? (
+    <TenantNavigator pendingInvitePropertyId={pendingInvitePropertyId} />
+  ) : (
+    <LandlordNavigator />
+  );
 };
 
 export default MainStack;

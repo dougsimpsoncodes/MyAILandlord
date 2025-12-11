@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,9 @@ import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { UserProfile } from '../../components/shared/UserProfile';
 import { useApiClient } from '../../services/api/client';
+import { LinearGradient } from 'expo-linear-gradient';
+import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
+import { log } from '../../lib/log';
 
 type LandlordHomeNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Home'>;
 
@@ -34,23 +37,73 @@ const LandlordHomeScreen = () => {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [totalProperties, setTotalProperties] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
+  const [isLoadingProperties, setIsLoadingProperties] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const hasRedirectedToDraft = useRef(false);
   const api = useApiClient();
+  const { drafts, isLoading: isDraftsLoading } = usePropertyDrafts();
 
-  // Load property count on screen mount
+  // Load property count on screen mount - only run once
   useEffect(() => {
+    if (hasLoadedOnce) return;
+
     const loadPropertyCount = async () => {
       try {
         if (!api) return;
         const properties = await api.getUserProperties();
         setTotalProperties(properties.length);
+        setHasLoadedOnce(true);
       } catch (error) {
         console.error('Error loading property count:', error);
         setTotalProperties(0);
+        setHasLoadedOnce(true);
+      } finally {
+        setIsLoadingProperties(false);
       }
     };
 
     loadPropertyCount();
-  }, [api]);
+  }, [api, hasLoadedOnce]);
+
+  // Redirect to incomplete draft if no published properties
+  useEffect(() => {
+    // Don't redirect if still loading, already redirected, or has published properties
+    if (isLoadingProperties || isDraftsLoading || hasRedirectedToDraft.current || totalProperties > 0) {
+      return;
+    }
+
+    // Check for incomplete drafts
+    const incompleteDraft = drafts.find(d => d.status !== 'completed');
+    if (incompleteDraft) {
+      hasRedirectedToDraft.current = true;
+      log.info('Redirecting to incomplete draft', {
+        draftId: incompleteDraft.id,
+        currentStep: incompleteDraft.currentStep,
+        completionPercentage: incompleteDraft.completionPercentage
+      });
+
+      // Navigate to the appropriate step based on currentStep
+      // Step 1 = Property details, Step 2 = Photos/Assets, Step 3 = Review
+      if (incompleteDraft.currentStep <= 1) {
+        // Still on property details - go back to AddProperty with draft
+        navigation.navigate('AddProperty', { draftId: incompleteDraft.id });
+      } else if (incompleteDraft.currentStep === 2) {
+        // On photos/assets step - need to pass propertyData and areas from draft
+        navigation.navigate('PropertyAssets', {
+          propertyData: incompleteDraft.propertyData,
+          areas: incompleteDraft.areas || [],
+          draftId: incompleteDraft.id
+        });
+      } else {
+        // On review step (step 3) - need to pass propertyData and areas from draft
+        navigation.navigate('PropertyReview', {
+          propertyData: incompleteDraft.propertyData,
+          areas: incompleteDraft.areas || [],
+          draftId: incompleteDraft.id
+        });
+      }
+    }
+  }, [isLoadingProperties, isDraftsLoading, totalProperties, drafts, navigation]);
 
   const quickActions: QuickAction[] = [
     {
@@ -159,6 +212,58 @@ const LandlordHomeScreen = () => {
             </View>
           </View>
         </View>
+
+        {/* Getting Started Card - Show when no properties */}
+        {!isLoadingProperties && totalProperties === 0 && (
+          <>
+            <LinearGradient
+              colors={['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.gettingStartedCard}
+            >
+              <View style={styles.gsBadge}>
+                <Text style={styles.gsBadgeText}>GETTING STARTED</Text>
+              </View>
+              <Ionicons name="home" size={48} color="#fff" style={styles.gsIcon} />
+              <Text style={styles.gsTitle}>Add Your First Property</Text>
+              <Text style={styles.gsSubtitle}>
+                Start managing your rentals with AI-powered maintenance tracking and tenant communication.
+              </Text>
+              <TouchableOpacity
+                style={styles.gsButton}
+                onPress={() => navigation.navigate('AddProperty')}
+                activeOpacity={0.8}
+                testID="add-property-button"
+              >
+                <Ionicons name="add" size={20} color="#667eea" />
+                <Text style={styles.gsButtonText}>Add Property</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <View style={styles.stepsCard}>
+              <Text style={styles.stepsTitle}>HOW IT WORKS</Text>
+              <View style={styles.stepItem}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>1</Text>
+                </View>
+                <Text style={styles.stepText}>Add your property details</Text>
+              </View>
+              <View style={styles.stepItem}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>2</Text>
+                </View>
+                <Text style={styles.stepText}>Invite your tenants</Text>
+              </View>
+              <View style={styles.stepItem}>
+                <View style={[styles.stepNumber, styles.stepNumberLast]}>
+                  <Text style={styles.stepNumberText}>3</Text>
+                </View>
+                <Text style={styles.stepText}>Receive AI-analyzed maintenance requests</Text>
+              </View>
+            </View>
+          </>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -436,6 +541,102 @@ const styles = StyleSheet.create({
   },
   modalCloseButton: {
     padding: 4,
+  },
+  // Getting Started Card styles
+  gettingStartedCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+  },
+  gsBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 16,
+  },
+  gsBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  gsIcon: {
+    marginBottom: 16,
+  },
+  gsTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  gsSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 10,
+  },
+  gsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  gsButtonText: {
+    color: '#667eea',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  stepsCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    padding: 20,
+  },
+  stepsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7f8c8d',
+    marginBottom: 16,
+    letterSpacing: 0.5,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    backgroundColor: '#e8f4fc',
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  stepNumberLast: {
+    // No border on last item
+  },
+  stepNumberText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3498db',
+  },
+  stepText: {
+    fontSize: 14,
+    color: '#2c3e50',
+    flex: 1,
   },
 });
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, TouchableOpacity, Text, ViewStyle, StyleProp } from 'react-native';
+import { Platform, TouchableOpacity, Text, ViewStyle, StyleProp, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface DeleteButtonProps {
@@ -7,21 +7,44 @@ interface DeleteButtonProps {
   itemName: string;
   iconOnly?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Skip confirmation dialog (default: false) */
+  skipConfirmation?: boolean;
 }
 
-export default function DeleteButton({ 
-  onDelete, 
-  itemName, 
+export default function DeleteButton({
+  onDelete,
+  itemName,
   iconOnly = false,
-  style 
+  style,
+  skipConfirmation = false,
 }: DeleteButtonProps) {
+
+  const handlePress = () => {
+    if (skipConfirmation) {
+      onDelete();
+      return;
+    }
+
+    Alert.alert(
+      'Delete',
+      `Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: onDelete,
+        },
+      ]
+    );
+  };
 
   return (
     <TouchableOpacity
       accessibilityLabel={`Delete ${itemName}`}
       accessibilityRole="button"
       accessibilityHint={`Deletes the ${itemName}`}
-      onPress={onDelete}
+      onPress={handlePress}
       style={[
         {
           backgroundColor: '#FFE5E5',
@@ -38,7 +61,6 @@ export default function DeleteButton({
         style
       ]}
       activeOpacity={0.7}
-      title={Platform.OS === 'web' ? `Delete ${itemName}` : undefined}
     >
       {iconOnly ? (
         <Ionicons name="trash-outline" size={20} color="#E74C3C" />

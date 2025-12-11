@@ -21,7 +21,9 @@ import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { supabase } from '../../lib/supabaseClient';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { propertyAreasService } from '../../services/supabase/propertyAreasService';
+import log from '../../lib/log';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -31,6 +33,7 @@ const PropertyReviewScreen = () => {
   const route = useRoute<PropertyReviewRouteProp>();
   const { propertyData, areas, draftId } = route.params;
   const api = useApiClient();
+  const { supabase } = useSupabaseWithAuth();
 
   // Initialize draft management
   const {
@@ -115,20 +118,21 @@ const PropertyReviewScreen = () => {
       const newProperty = await api.createProperty(propertyPayload);
       console.log('🏠 Property created successfully:', newProperty);
       
-      // Create area records
+      // Save areas and assets to database
       if (areas && areas.length > 0) {
-        const areaRecords = areas.map(area => ({
-          property_id: newProperty.id,
-          name: area.name,
-          area_type: area.type,
-          photos: area.photos || []
-        }));
-        
         try {
-          await api.createPropertyAreas(areaRecords);
+          log.info('Saving property areas and assets to database', {
+            propertyId: newProperty.id,
+            areaCount: areas.length,
+            totalAssets: areas.reduce((sum, area) => sum + (area.assets?.length || 0), 0)
+          });
+
+          await propertyAreasService.saveAreasAndAssets(newProperty.id, areas, supabase);
+
+          log.info('Successfully saved areas and assets to database');
         } catch (areasError) {
-          console.error('Error creating areas:', areasError);
-          // Continue anyway - areas are not critical
+          log.error('Error creating areas and assets:', { error: String(areasError) });
+          // Continue anyway - property is created, areas can be added later
         }
       }
       
@@ -147,9 +151,21 @@ const PropertyReviewScreen = () => {
         console.error('🏠 Error cleaning up draft:', error);
       }
       
-      // Navigate to PropertyManagement after 2 seconds
+      // Navigate to PropertyDetails after 2 seconds to allow user to invite tenant
       setTimeout(() => {
-        navigation.navigate('PropertyManagement');
+        // Format address as string for PropertyDetails
+        const addressString = `${propertyData.address.line1}${propertyData.address.line2 ? ', ' + propertyData.address.line2 : ''}, ${propertyData.address.city}, ${propertyData.address.state} ${propertyData.address.zipCode}`;
+
+        navigation.navigate('PropertyDetails', {
+          property: {
+            id: newProperty.id,
+            name: propertyData.name,
+            address: addressString,
+            type: propertyData.type,
+            tenants: 0,
+            activeRequests: 0,
+          }
+        });
       }, 2000);
     } catch (error) {
       console.error('🏠 PropertyReviewScreen: Submit error:', error);
@@ -312,10 +328,10 @@ const PropertyReviewScreen = () => {
           </Card>
         </View>
 
-        {/* Areas & Assets Section */}
+        {/* Rooms Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Areas & Assets</Text>
+            <Text style={styles.sectionTitle}>Rooms</Text>
             <Button
               title="Edit"
               onPress={() => handleEdit('assets')}
@@ -325,39 +341,40 @@ const PropertyReviewScreen = () => {
           </View>
 
           <Card style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Areas</Text>
-              <Text style={styles.summaryValue}>{areas.length}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Areas with Assets</Text>
-              <Text style={styles.summaryValue}>{areasWithAssets.length}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Assets</Text>
-              <Text style={styles.summaryValue}>{totalAssets}</Text>
+            <View style={styles.summaryRowCompact}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValueLarge}>{areas.length}</Text>
+                <Text style={styles.summaryLabelSmall}>Rooms</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValueLarge}>
+                  {areas.reduce((total, area) => total + (area.photos?.length || 0), 0)}
+                </Text>
+                <Text style={styles.summaryLabelSmall}>Photos</Text>
+              </View>
+              <View style={styles.summaryDivider} />
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryValueLarge}>{totalAssets}</Text>
+                <Text style={styles.summaryLabelSmall}>Equipment</Text>
+              </View>
             </View>
           </Card>
 
-          {areas.map((area) => (
-            <Card key={area.id} style={styles.areaCard}>
-              <View style={styles.areaHeader}>
-                <View>
-                  <Text style={styles.areaName}>{area.name}</Text>
-                  <Text style={styles.areaType}>{area.type}</Text>
-                </View>
-                <View style={styles.areaStats}>
-                  <Text style={styles.areaAssetCount}>
-                    {(area.assets || []).length} assets
+          {areas.map((area) => {
+            const photoCount = area.photos?.length || 0;
+            const equipmentCount = (area.assets || []).length;
+            return (
+              <Card key={area.id} style={styles.areaCard}>
+                <View style={styles.areaHeader}>
+                  <View>
+                    <Text style={styles.areaName}>{area.name}</Text>
+                    <Text style={styles.areaType}>{area.type}</Text>
+                  </View>
+                  <Text style={styles.areaStatsText}>
+                    {photoCount} {photoCount === 1 ? 'photo' : 'photos'} · {equipmentCount} equipment
                   </Text>
-                  {area.photos && area.photos.length > 0 && (
-                    <View style={styles.areaPhotoCount}>
-                      <Ionicons name="camera" size={14} color="#7F8C8D" />
-                      <Text style={styles.areaPhotoCountText}>{area.photos.length}</Text>
-                    </View>
-                  )}
                 </View>
-              </View>
               
               {area.assets && area.assets.length > 0 && (
                 <FlatList
@@ -369,7 +386,8 @@ const PropertyReviewScreen = () => {
                 />
               )}
             </Card>
-          ))}
+            );
+          })}
         </View>
 
         {/* Completion Summary */}
@@ -385,9 +403,9 @@ const PropertyReviewScreen = () => {
             </Text>
           </View>
           <Text style={styles.completionText}>
-            {submissionSuccess 
-              ? 'Your property has been added to your portfolio. Redirecting...'
-              : `Your property setup is complete with ${areas.length} areas and ${totalAssets} assets inventoried.`
+            {submissionSuccess
+              ? 'Your property has been added. Taking you to property details where you can invite a tenant...'
+              : `Your property setup is complete with ${areas.length} rooms and ${totalAssets} equipment items.`
             }
           </Text>
         </Card>
@@ -561,23 +579,32 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   summaryCard: {
-    // Card styles handled by Card component
     marginBottom: DesignSystem.spacing.md,
   },
-  summaryRow: {
+  summaryRowCompact: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
     paddingVertical: 8,
   },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#7F8C8D',
+  summaryItem: {
+    alignItems: 'center',
+    flex: 1,
   },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '600',
+  summaryValueLarge: {
+    fontSize: 24,
+    fontWeight: '700',
     color: DesignSystem.colors.text,
+  },
+  summaryLabelSmall: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginTop: 2,
+  },
+  summaryDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#E9ECEF',
   },
   areaCard: {
     // Card styles handled by Card component
@@ -599,23 +626,10 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginTop: 2,
   },
-  areaStats: {
-    alignItems: 'flex-end',
-  },
-  areaAssetCount: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
-  },
-  areaPhotoCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
-  },
-  areaPhotoCountText: {
-    fontSize: 12,
+  areaStatsText: {
+    fontSize: 13,
     color: '#7F8C8D',
+    fontWeight: '500',
   },
   assetItem: {
     flexDirection: 'row',

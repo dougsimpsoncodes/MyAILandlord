@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Upload UX - Web Design Mockup (Industry Standard)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+            background: #F8F9FA;
+            min-height: 100vh;
+        }
+
+        /* Navigation */
+        .nav {
+            background: #2C3E50;
+            padding: 16px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-brand .logo {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #3498DB 0%, #2980B9 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #fff;
+        }
+
+        .nav-avatar {
+            width: 40px;
+            height: 40px;
+            background: #3498DB;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        /* Layout */
+        .layout {
+            display: flex;
+            padding-top: 68px;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #fff;
+            border-right: 1px solid #E9ECEF;
+            padding: 24px 0;
+            position: fixed;
+            top: 68px;
+            bottom: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 0 16px;
+            margin-bottom: 24px;
+        }
+
+        .sidebar-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #7F8C8D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            padding: 0 12px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            color: #2C3E50;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .sidebar-item:hover {
+            background: #F8F9FA;
+        }
+
+        .sidebar-item.active {
+            background: #E8F4FD;
+            color: #3498DB;
+        }
+
+        .sidebar-item .icon {
+            font-size: 20px;
+        }
+
+        /* Main Content */
+        .main {
+            flex: 1;
+            margin-left: 260px;
+            padding: 32px 40px;
+        }
+
+        /* Page Header */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #2C3E50;
+        }
+
+        .page-subtitle {
+            font-size: 16px;
+            color: #7F8C8D;
+            margin-top: 4px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #7F8C8D;
+            margin-bottom: 8px;
+        }
+
+        .breadcrumb a {
+            color: #3498DB;
+            text-decoration: none;
+        }
+
+        /* Cards */
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #E9ECEF;
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-title .icon {
+            width: 48px;
+            height: 48px;
+            background: #E8F4FD;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .card-title h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2C3E50;
+        }
+
+        .card-title .count {
+            font-size: 14px;
+            color: #7F8C8D;
+            font-weight: 400;
+        }
+
+        /* Photo Grid - Web optimized */
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .photo-item {
+            aspect-ratio: 1;
+            background: #E9ECEF;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .photo-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        .photo-item:hover .photo-overlay {
+            opacity: 1;
+        }
+
+        .photo-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .photo-overlay button {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.9);
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.2s;
+        }
+
+        .photo-overlay button:hover {
+            transform: scale(1.1);
+        }
+
+        /* INDUSTRY STANDARD: Drag & Drop Upload Zone */
+        .upload-dropzone {
+            border: 2px dashed #DEE2E6;
+            border-radius: 16px;
+            padding: 48px 32px;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: #FAFBFC;
+        }
+
+        .upload-dropzone:hover {
+            border-color: #3498DB;
+            background: #F8FBFE;
+        }
+
+        .upload-dropzone.drag-over {
+            border-color: #3498DB;
+            background: #E8F4FD;
+            border-style: solid;
+        }
+
+        .upload-dropzone .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .upload-dropzone h4 {
+            font-size: 18px;
+            color: #2C3E50;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .upload-dropzone .or-text {
+            color: #7F8C8D;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .upload-dropzone .browse-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: #3498DB;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .upload-dropzone .browse-btn:hover {
+            background: #2980B9;
+            transform: translateY(-1px);
+        }
+
+        .upload-dropzone .file-types {
+            margin-top: 16px;
+            font-size: 13px;
+            color: #95A5A6;
+        }
+
+        /* Compact dropzone for existing photos */
+        .upload-dropzone.compact {
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .upload-dropzone.compact .upload-icon {
+            font-size: 32px;
+            margin-bottom: 0;
+        }
+
+        .upload-dropzone.compact .dropzone-content {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .upload-dropzone.compact h4 {
+            margin-bottom: 0;
+            font-size: 16px;
+        }
+
+        .upload-dropzone.compact .or-text {
+            margin: 0;
+        }
+
+        .upload-dropzone.compact .file-types {
+            display: none;
+        }
+
+        /* Add Asset Button */
+        .add-asset-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .add-asset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(155, 89, 182, 0.4);
+        }
+
+        /* Assets List */
+        .assets-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .asset-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #F8F9FA;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .asset-card:hover {
+            background: #E9ECEF;
+            transform: translateX(4px);
+        }
+
+        .asset-thumb {
+            width: 64px;
+            height: 64px;
+            background: #E9ECEF;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .asset-info {
+            flex: 1;
+        }
+
+        .asset-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2C3E50;
+            margin-bottom: 4px;
+        }
+
+        .asset-meta {
+            font-size: 14px;
+            color: #7F8C8D;
+        }
+
+        .asset-badge {
+            padding: 4px 10px;
+            background: #E8F8F0;
+            color: #27AE60;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Comparison Section */
+        .comparison-section {
+            margin-top: 60px;
+            padding: 40px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .comparison-section h2 {
+            font-size: 24px;
+            color: #2C3E50;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .comparison-table {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        .comparison-col {
+            padding: 24px;
+            border-radius: 12px;
+        }
+
+        .comparison-col.before {
+            background: #FDEDEC;
+        }
+
+        .comparison-col.after {
+            background: #E8F8F5;
+        }
+
+        .comparison-col h3 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-col.before h3 {
+            color: #C0392B;
+        }
+
+        .comparison-col.after h3 {
+            color: #1E8449;
+        }
+
+        .comparison-item {
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Button Samples */
+        .button-samples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 20px;
+            background: #F8F9FA;
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+
+        .old-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .old-btn.camera {
+            background: #E8F4FD;
+            border: 1px solid #3498DB;
+            color: #3498DB;
+        }
+
+        .old-btn.add-photos {
+            background: #3498DB;
+            border: none;
+            color: #fff;
+        }
+
+        .old-btn.select {
+            background: #F8F9FA;
+            border: 1px solid #BDC3C7;
+            color: #2C3E50;
+        }
+
+        .old-btn.take {
+            background: #2C3E50;
+            border: none;
+            color: #fff;
+        }
+
+        /* Mini dropzone preview */
+        .mini-dropzone {
+            border: 2px dashed #27AE60;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            background: #F0FDF4;
+            margin: 16px 0;
+        }
+
+        .mini-dropzone .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .mini-dropzone p {
+            color: #1E8449;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .mini-dropzone .browse-btn {
+            padding: 8px 16px;
+            background: #27AE60;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Two Column Layout for Demo */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .demo-section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .demo-section h2 {
+            font-size: 20px;
+            color: #2C3E50;
+            margin-bottom: 8px;
+        }
+
+        .demo-section .subtitle {
+            font-size: 14px;
+            color: #7F8C8D;
+            margin-bottom: 24px;
+        }
+
+        /* Form Demo */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #7F8C8D;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #E9ECEF;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #2C3E50;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3498DB;
+        }
+
+        .mini-photo-grid {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .mini-photo {
+            width: 80px;
+            height: 80px;
+            background: #E9ECEF;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .mini-photo .delete {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 24px;
+            height: 24px;
+            background: #E74C3C;
+            color: #fff;
+            border-radius: 12px;
+            border: 2px solid #fff;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Inline dropzone for forms */
+        .inline-dropzone {
+            border: 2px dashed #DEE2E6;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            background: #FAFBFC;
+            transition: all 0.2s;
+        }
+
+        .inline-dropzone:hover {
+            border-color: #3498DB;
+            background: #F8FBFE;
+        }
+
+        .inline-dropzone p {
+            color: #7F8C8D;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .inline-dropzone .browse-btn {
+            padding: 10px 20px;
+            background: #3498DB;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .section-label {
+            font-size: 14px;
+            color: #7F8C8D;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-brand">
+            <div class="logo">🏠</div>
+            MyAI Landlord
+        </div>
+        <div class="nav-user">
+            <span>Doug Simpson</span>
+            <div class="nav-avatar">DS</div>
+        </div>
+    </nav>
+
+    <!-- Layout -->
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">Dashboard</div>
+                <div class="sidebar-item">
+                    <span class="icon">📊</span>
+                    Overview
+                </div>
+                <div class="sidebar-item">
+                    <span class="icon">🔧</span>
+                    Maintenance
+                </div>
+                <div class="sidebar-item">
+                    <span class="icon">💬</span>
+                    Messages
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Properties</div>
+                <div class="sidebar-item active">
+                    <span class="icon">🏢</span>
+                    E2E Test Property
+                </div>
+                <div class="sidebar-item">
+                    <span class="icon">🏠</span>
+                    3101 Vista Lane
+                </div>
+                <div class="sidebar-item">
+                    <span class="icon">➕</span>
+                    Add Property
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="breadcrumb">
+                <a href="#">Properties</a>
+                <span>›</span>
+                <a href="#">E2E Test Property</a>
+                <span>›</span>
+                <span>Photos & Assets</span>
+            </div>
+
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Photos & Assets</h1>
+                    <p class="page-subtitle">Manage photos and inventory for E2E Test Property</p>
+                </div>
+            </div>
+
+            <!-- Kitchen Area - Has Photos -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="icon">🍳</div>
+                        <div>
+                            <h3>Kitchen</h3>
+                            <span class="count">4 photos • 2 assets</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-label">Photos</div>
+
+                <div class="photo-grid">
+                    <div class="photo-item" style="background: linear-gradient(135deg, #FFE5D9 0%, #FFD7C4 100%);">
+                        <div class="photo-overlay">
+                            <button title="View">👁️</button>
+                            <button title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="photo-item" style="background: linear-gradient(135deg, #FFD7C4 0%, #FFC9AF 100%);">
+                        <div class="photo-overlay">
+                            <button title="View">👁️</button>
+                            <button title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="photo-item" style="background: linear-gradient(135deg, #FFC9AF 0%, #FFBB9A 100%);">
+                        <div class="photo-overlay">
+                            <button title="View">👁️</button>
+                            <button title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="photo-item" style="background: linear-gradient(135deg, #FFBB9A 0%, #FFAD85 100%);">
+                        <div class="photo-overlay">
+                            <button title="View">👁️</button>
+                            <button title="Delete">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INDUSTRY STANDARD: Compact Drag & Drop Zone -->
+                <div class="upload-dropzone compact" id="kitchen-dropzone">
+                    <span class="upload-icon">📷</span>
+                    <div class="dropzone-content">
+                        <h4>Drag photos here</h4>
+                        <span class="or-text">or</span>
+                        <button class="browse-btn">Browse Files</button>
+                    </div>
+                </div>
+
+                <div class="section-label" style="margin-top: 32px;">Assets</div>
+
+                <div class="assets-list">
+                    <div class="asset-card">
+                        <div class="asset-thumb" style="background: linear-gradient(135deg, #D5E8D4 0%, #B8D4B8 100%);"></div>
+                        <div class="asset-info">
+                            <div class="asset-name">Refrigerator</div>
+                            <div class="asset-meta">Samsung • Model RF28R7551SR</div>
+                        </div>
+                        <span class="asset-badge">Good</span>
+                    </div>
+                    <div class="asset-card">
+                        <div class="asset-thumb" style="background: linear-gradient(135deg, #DAE8FC 0%, #B8D4FC 100%);"></div>
+                        <div class="asset-info">
+                            <div class="asset-name">Dishwasher</div>
+                            <div class="asset-meta">Bosch • Model SHPM88Z75N</div>
+                        </div>
+                        <span class="asset-badge">Excellent</span>
+                    </div>
+                </div>
+
+                <button class="add-asset-btn">
+                    <span>➕</span>
+                    Add Asset
+                </button>
+            </div>
+
+            <!-- Living Room Area - Empty -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="icon" style="background: #E8F8F0;">🛋️</div>
+                        <div>
+                            <h3>Living Room</h3>
+                            <span class="count">0 photos • 0 assets</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INDUSTRY STANDARD: Full Drag & Drop Zone (empty state) -->
+                <div class="upload-dropzone" id="living-dropzone">
+                    <div class="upload-icon">📷</div>
+                    <h4>Drag photos here to upload</h4>
+                    <p class="or-text">or</p>
+                    <button class="browse-btn">Browse Files</button>
+                    <p class="file-types">Supports JPG, PNG, HEIC • Max 10MB per file</p>
+                </div>
+            </div>
+
+            <!-- Demo Section: Before vs After -->
+            <div class="comparison-section">
+                <h2>Before vs After: Industry Standard Photo Upload</h2>
+
+                <div class="comparison-table">
+                    <div class="comparison-col before">
+                        <h3>❌ Previous Mockup (Wrong)</h3>
+
+                        <div class="comparison-item">
+                            <strong>Dropdown menu pattern:</strong><br>
+                            • Upload from Computer<br>
+                            • Use Webcam<br>
+                            • Import from URL
+                        </div>
+
+                        <div class="comparison-item">
+                            <strong>Problems:</strong>
+                            <ul style="margin-top: 8px; padding-left: 20px;">
+                                <li>Webcam rarely used on web</li>
+                                <li>URL import is edge case</li>
+                                <li>Extra click required</li>
+                                <li>Not the standard pattern</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="comparison-col after">
+                        <h3>✅ Industry Standard</h3>
+
+                        <div class="comparison-item">
+                            <strong>Drag & drop zone with browse fallback:</strong><br>
+                            Single combined area that accepts both
+                        </div>
+
+                        <div class="mini-dropzone">
+                            <div class="icon">📷</div>
+                            <p>Drag photos here or</p>
+                            <button class="browse-btn">Browse Files</button>
+                        </div>
+
+                        <div class="comparison-item">
+                            <strong>Benefits:</strong>
+                            <ul style="margin-top: 8px; padding-left: 20px;">
+                                <li>Industry standard pattern</li>
+                                <li>No extra clicks</li>
+                                <li>Visual drop feedback</li>
+                                <li>Accessible (keyboard + click)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Asset Form Demo -->
+            <div class="demo-grid">
+                <div class="demo-section">
+                    <h2>Add Asset Form</h2>
+                    <p class="subtitle">Same drag & drop pattern in forms</p>
+
+                    <div class="form-group">
+                        <label class="form-label">Asset Name</label>
+                        <input class="form-input" value="Refrigerator" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Brand / Model</label>
+                        <input class="form-input" value="Samsung RF28R7551SR" readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Photos</label>
+                        <div class="mini-photo-grid">
+                            <div class="mini-photo" style="background: linear-gradient(135deg, #D5E8D4 0%, #B8D4B8 100%);">
+                                <span class="delete">×</span>
+                            </div>
+                            <div class="mini-photo" style="background: linear-gradient(135deg, #DAE8FC 0%, #B8D4FC 100%);">
+                                <span class="delete">×</span>
+                            </div>
+                            <div class="mini-photo" style="background: linear-gradient(135deg, #FFF2CC 0%, #FFE6A0 100%);">
+                                <span class="delete">×</span>
+                            </div>
+                        </div>
+                        <div class="inline-dropzone">
+                            <p>Drag more photos or</p>
+                            <button class="browse-btn">Browse Files</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="demo-section">
+                    <h2>Key Features</h2>
+                    <p class="subtitle">Industry standard upload zone</p>
+
+                    <div style="background: #F8F9FA; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                        <h4 style="color: #2C3E50; margin-bottom: 8px;">🎯 Drag & Drop Zone</h4>
+                        <p style="color: #7F8C8D; font-size: 14px; line-height: 1.6;">
+                            Dashed border area that highlights when files are dragged over. The primary interaction method for desktop users.
+                        </p>
+                    </div>
+
+                    <div style="background: #F8F9FA; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                        <h4 style="color: #2C3E50; margin-bottom: 8px;">📁 Browse Button</h4>
+                        <p style="color: #7F8C8D; font-size: 14px; line-height: 1.6;">
+                            Fallback for users who prefer clicking. Also required for accessibility (keyboard navigation).
+                        </p>
+                    </div>
+
+                    <div style="background: #F8F9FA; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                        <h4 style="color: #2C3E50; margin-bottom: 8px;">✨ Visual Feedback</h4>
+                        <p style="color: #7F8C8D; font-size: 14px; line-height: 1.6;">
+                            Border color change + background highlight when dragging files over the zone. Confirms the drop target.
+                        </p>
+                    </div>
+
+                    <div style="background: #F8F9FA; border-radius: 12px; padding: 20px;">
+                        <h4 style="color: #2C3E50; margin-bottom: 8px;">📝 File Type Hints</h4>
+                        <p style="color: #7F8C8D; font-size: 14px; line-height: 1.6;">
+                            "Supports JPG, PNG • Max 10MB" - Set expectations before upload to reduce errors.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Drag & drop visual feedback demo
+        document.querySelectorAll('.upload-dropzone').forEach(zone => {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('drag-over');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('drag-over');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+                alert('Files would be uploaded here!');
+            });
+
+            zone.addEventListener('click', () => {
+                alert('File browser would open here!');
+            });
+        });
+    </script>
+</body>
+</html>

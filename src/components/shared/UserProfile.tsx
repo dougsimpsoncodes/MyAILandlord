@@ -12,30 +12,25 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
   const { user, signOut } = useAppAuth();
   const { clearRole } = useContext(RoleContext);
 
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearRole();
-              await signOut();
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const handleSignOut = async () => {
+    // On web, Alert.alert with buttons doesn't work the same way
+    // Use window.confirm for web compatibility
+    const confirmSignOut = typeof window !== 'undefined' && window.confirm
+      ? window.confirm('Are you sure you want to sign out?')
+      : true; // On native, we'll use Alert but for now just proceed
+
+    if (!confirmSignOut) return;
+
+    try {
+      console.log('[UserProfile] Starting sign out...');
+      await clearRole();
+      console.log('[UserProfile] Role cleared');
+      await signOut();
+      console.log('[UserProfile] Sign out complete');
+    } catch (error) {
+      console.error('[UserProfile] Error signing out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
   };
 
   const handleSwitchRole = () => {

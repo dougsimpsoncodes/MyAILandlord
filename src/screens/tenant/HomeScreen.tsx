@@ -47,8 +47,16 @@ const HomeScreen = () => {
 
   const quickActions: QuickAction[] = [
     {
+      id: 'report-issue',
+      title: 'Report Issue',
+      subtitle: 'Submit a maintenance request',
+      icon: 'warning',
+      color: '#E74C3C',
+      route: 'ReportIssue',
+    },
+    {
       id: 'maintenance',
-      title: 'Maintenance Hub',
+      title: 'Maintenance Status',
       subtitle: `${activeRequests} active requests`,
       icon: 'construct',
       color: '#3498DB',

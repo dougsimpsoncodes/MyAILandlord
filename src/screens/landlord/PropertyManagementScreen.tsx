@@ -20,7 +20,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
 import { PropertySetupState } from '../../types/property';
 import { formatAddressString } from '../../utils/addressValidation';
-import DeleteButton from '../../components/shared/DeleteButton';
 import { DataClearer } from '../../utils/dataClearer';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
@@ -52,6 +51,7 @@ const PropertyManagementScreen = () => {
   const [draftsCollapsed, setDraftsCollapsed] = useState(false);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
+  const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const api = useApiClient();
 
@@ -165,6 +165,16 @@ const PropertyManagementScreen = () => {
     setSelectedProperties(newSelected);
   };
 
+  const handleToggleDraftSelect = (draftId: string) => {
+    const newSelected = new Set(selectedDrafts);
+    if (newSelected.has(draftId)) {
+      newSelected.delete(draftId);
+    } else {
+      newSelected.add(draftId);
+    }
+    setSelectedDrafts(newSelected);
+  };
+
 
   const handleDraftPress = (draft: PropertySetupState) => {
     // Navigate to the appropriate screen based on current step
@@ -178,42 +188,6 @@ const PropertyManagementScreen = () => {
     } else {
       // For steps 3+, go to AddProperty for now
       navigation.navigate('AddProperty', { draftId: draft.id });
-    }
-  };
-
-  const handleDeleteDraft = async (draft: PropertySetupState) => {
-    const startTime = Date.now();
-    console.log('Property draft delete executing:', {
-      draftId: draft.id,
-      propertyName: draft.propertyData.name || 'Untitled',
-      completionPercentage: draft.completionPercentage,
-      currentStep: draft.currentStep,
-      lastModified: draft.lastModified,
-      platform: Platform.OS,
-      timestamp: new Date().toISOString()
-    });
-    
-    try {
-      await deleteDraft(draft.id);
-      const duration = Date.now() - startTime;
-      
-      console.log('Property draft delete successful:', {
-        draftId: draft.id,
-        duration: `${duration}ms`,
-        remainingDrafts: drafts.length - 1
-      });
-      
-    } catch (error) {
-      const duration = Date.now() - startTime;
-      
-      console.error('Property draft delete failed:', {
-        draftId: draft.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        duration: `${duration}ms`,
-        stack: error instanceof Error ? error.stack : undefined
-      });
-      
-      Alert.alert('Error', 'Failed to delete draft. Please try again.');
     }
   };
 
@@ -327,47 +301,36 @@ const PropertyManagementScreen = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Property Management</Text>
         <View style={styles.headerActions}>
-          {properties.length > 0 && (
-            <TouchableOpacity 
+          {(properties.length > 0 || drafts.length > 0) && (
+            <TouchableOpacity
               onPress={() => {
                 setIsDeleteMode(!isDeleteMode);
                 setSelectedProperties(new Set());
-              }} 
-              activeOpacity={0.7} 
+                setSelectedDrafts(new Set());
+              }}
+              activeOpacity={0.7}
               style={styles.deleteIconButton}
             >
-              <Ionicons 
-                name={isDeleteMode ? "close" : "trash-outline"} 
-                size={22} 
-                color={isDeleteMode ? "#E74C3C" : "#7F8C8D"} 
+              <Ionicons
+                name={isDeleteMode ? "close" : "trash-outline"}
+                size={22}
+                color={isDeleteMode ? "#E74C3C" : "#7F8C8D"}
               />
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={handleAddProperty} activeOpacity={0.7} style={styles.addIconButton}>
-            <Ionicons name="add" size={24} color={DesignSystem.colors.primary} />
-          </TouchableOpacity>
         </View>
       </View>
 
       {/* Delete Action Bar */}
-      {isDeleteMode && selectedProperties.size > 0 && (
+      {isDeleteMode && (selectedProperties.size > 0 || selectedDrafts.size > 0) && (
         <View style={styles.deleteActionBar}>
           <Text style={styles.deleteActionText}>
-            {selectedProperties.size} selected
+            {selectedProperties.size + selectedDrafts.size} selected
           </Text>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.deleteButton}
-            onPress={async () => {
-              const count = selectedProperties.size;
-              const propertyNames = properties
-                .filter(p => selectedProperties.has(p.id))
-                .map(p => p.name)
-                .join(', ');
-              
-              // Show custom modal instead of system popup
-              setShowDeleteModal(true);
-            }}
+            onPress={() => setShowDeleteModal(true)}
             activeOpacity={0.7}
           >
             <Text style={styles.deleteButtonText}>Delete</Text>
@@ -415,11 +378,23 @@ const PropertyManagementScreen = () => {
                 {drafts.map((draft) => (
                   <TouchableOpacity
                     key={draft.id}
-                    style={styles.draftItem}
-                    onPress={() => handleDraftPress(draft)}
+                    style={[
+                      styles.draftItem,
+                      isDeleteMode && selectedDrafts.has(draft.id) && styles.selectedDraftItem
+                    ]}
+                    onPress={() => isDeleteMode ? handleToggleDraftSelect(draft.id) : handleDraftPress(draft)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.draftItemContent}>
+                      {isDeleteMode && (
+                        <View style={styles.draftSelectionIndicator}>
+                          <Ionicons
+                            name={selectedDrafts.has(draft.id) ? "checkmark-circle" : "ellipse-outline"}
+                            size={18}
+                            color={selectedDrafts.has(draft.id) ? "#E74C3C" : "#BDC3C7"}
+                          />
+                        </View>
+                      )}
                       <View style={styles.draftItemLeft}>
                         <Text style={styles.draftItemName} numberOfLines={1}>
                           {draft.propertyData.name || 'Untitled'}
@@ -430,12 +405,9 @@ const PropertyManagementScreen = () => {
                           <Text style={styles.draftItemTime}>{formatLastModified(new Date(draft.lastModified))}</Text>
                         </View>
                       </View>
-                      <DeleteButton
-                        onDelete={() => handleDeleteDraft(draft)}
-                        itemName={`${draft.propertyData.name || 'Untitled Property'} draft`}
-                        iconOnly={true}
-                        style={styles.draftDeleteBtn}
-                      />
+                      {!isDeleteMode && (
+                        <Ionicons name="chevron-forward" size={16} color="#BDC3C7" />
+                      )}
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -510,18 +482,6 @@ const PropertyManagementScreen = () => {
               </View>
             </TouchableOpacity>
           ))}
-          
-          {/* Add Property Card */}
-          <TouchableOpacity
-            style={[styles.propertyCard, styles.addCard]}
-            onPress={handleAddProperty}
-            activeOpacity={0.7}
-          >
-            <View style={styles.addCardContent}>
-              <Ionicons name="add-circle-outline" size={32} color="#3498DB" />
-              <Text style={styles.addCardText}>Add Property</Text>
-            </View>
-          </TouchableOpacity>
         </View>
 
 
@@ -563,47 +523,67 @@ const PropertyManagementScreen = () => {
       {showDeleteModal && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Delete Properties</Text>
+            <Text style={styles.modalTitle}>Delete Items</Text>
             <Text style={styles.modalMessage}>
-              Are you sure you want to delete {selectedProperties.size} property(ies)?
+              Are you sure you want to delete {selectedProperties.size + selectedDrafts.size} item(s)?
             </Text>
-            <Text style={styles.modalPropertyNames}>
-              {properties
-                .filter(p => selectedProperties.has(p.id))
-                .map(p => p.name)
-                .join(', ')}
-            </Text>
+            {selectedProperties.size > 0 && (
+              <Text style={styles.modalPropertyNames}>
+                Properties: {properties
+                  .filter(p => selectedProperties.has(p.id))
+                  .map(p => p.name)
+                  .join(', ')}
+              </Text>
+            )}
+            {selectedDrafts.size > 0 && (
+              <Text style={styles.modalPropertyNames}>
+                Drafts: {drafts
+                  .filter(d => selectedDrafts.has(d.id))
+                  .map(d => d.propertyData.name || 'Untitled')
+                  .join(', ')}
+              </Text>
+            )}
             <Text style={styles.modalWarning}>
               This action cannot be undone.
             </Text>
-            
+
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalCancelButton}
                 onPress={() => setShowDeleteModal(false)}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={styles.modalDeleteButton}
                 onPress={async () => {
                   setShowDeleteModal(false);
                   try {
-                    const count = selectedProperties.size;
-                    const ids = Array.from(selectedProperties);
-                    if (!api) throw new Error('Not authenticated');
-                    await Promise.all(ids.map(id => api.deleteProperty(id)));
-                    
+                    const totalCount = selectedProperties.size + selectedDrafts.size;
+
+                    // Delete properties
+                    if (selectedProperties.size > 0) {
+                      if (!api) throw new Error('Not authenticated');
+                      const propertyIds = Array.from(selectedProperties);
+                      await Promise.all(propertyIds.map(id => api.deleteProperty(id)));
+                    }
+
+                    // Delete drafts
+                    if (selectedDrafts.size > 0) {
+                      const draftIds = Array.from(selectedDrafts);
+                      await Promise.all(draftIds.map(id => deleteDraft(id)));
+                    }
+
                     setSelectedProperties(new Set());
+                    setSelectedDrafts(new Set());
                     setIsDeleteMode(false);
                     await loadProperties();
-                    
-                    // Show success with custom modal or simple alert
-                    Alert.alert('Success', `${count} property(ies) deleted successfully.`);
+
+                    Alert.alert('Success', `${totalCount} item(s) deleted successfully.`);
                   } catch (error) {
                     console.error('Delete failed:', error);
-                    Alert.alert('Error', 'Failed to delete properties. Please try again.');
+                    Alert.alert('Error', 'Failed to delete items. Please try again.');
                   }
                 }}
               >
@@ -726,8 +706,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#95A5A6',
   },
-  draftDeleteBtn: {
-    padding: 4,
+  draftSelectionIndicator: {
+    marginRight: 10,
+  },
+  selectedDraftItem: {
+    backgroundColor: '#FFF5F5',
   },
 
   // Properties Section

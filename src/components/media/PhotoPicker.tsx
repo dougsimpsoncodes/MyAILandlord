@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Platform, View, TouchableOpacity, Text } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Platform, View, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
@@ -10,6 +10,7 @@ type Props = {
   areaId: string;
   onUploaded: (photos: { path: string; url: string }[]) => void;
   disabled?: boolean;
+  buttonLabel?: string;
 };
 
 async function pickNative() {
@@ -81,9 +82,11 @@ async function compressImageWeb(file: File, maxWidth = 1600, quality = 0.85): Pr
   });
 }
 
-export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled }: Props) {
+export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled, buttonLabel = 'Add Photos' }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
-  
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
+
   if (Platform.OS === 'web' && !inputRef.current) {
     const el = document.createElement('input');
     el.type = 'file';
@@ -93,36 +96,46 @@ export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled }
     document.body.appendChild(el);
     inputRef.current = el;
   }
-  
+
   const handlePick = async () => {
-    let assets = Platform.OS === 'web' 
+    let assets = Platform.OS === 'web'
       ? await pickWeb(inputRef.current as HTMLInputElement)
       : await pickNative();
 
     if (!assets.length) return;
 
-    // Web: compress and strip EXIF via canvas re-encode
-    if (Platform.OS === 'web') {
-      try {
-        const processed = await Promise.all(
-          (assets as any[]).map(async (a) => {
-            if (!a.file) return a; // Fallback if no File object
-            const { uri, mimeType, fileName } = await compressImageWeb(a.file);
-            return { ...a, uri, mimeType, fileName };
-          })
-        );
-        assets = processed as any;
-      } catch (e) {
-        log.warn('PhotoPicker web compression failed, using originals', { error: String(e) });
-      }
-    }
+    setIsUploading(true);
+    setUploadCount(assets.length);
 
-    const uploaded = await uploadPropertyPhotos(propertyId, areaId, assets as any);
-    onUploaded(uploaded.map(u => ({ path: u.path, url: u.url })));
+    try {
+      // Web: compress and strip EXIF via canvas re-encode
+      if (Platform.OS === 'web') {
+        try {
+          const processed = await Promise.all(
+            (assets as any[]).map(async (a) => {
+              if (!a.file) return a; // Fallback if no File object
+              const { uri, mimeType, fileName } = await compressImageWeb(a.file);
+              return { ...a, uri, mimeType, fileName };
+            })
+          );
+          assets = processed as any;
+        } catch (e) {
+          log.warn('PhotoPicker web compression failed, using originals', { error: String(e) });
+        }
+      }
+
+      const uploaded = await uploadPropertyPhotos(propertyId, areaId, assets as any);
+      onUploaded(uploaded.map(u => ({ path: u.path, url: u.url })));
+    } finally {
+      setIsUploading(false);
+      setUploadCount(0);
+    }
   };
-  
+
+  const isDisabled = disabled || isUploading;
+
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -131,20 +144,33 @@ export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled }
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,
-        opacity: disabled ? 0.6 : 1,
+        opacity: isDisabled ? 0.6 : 1,
         width: '100%',
         justifyContent: 'center'
       }}
       onPress={handlePick}
-      disabled={disabled}
+      disabled={isDisabled}
       activeOpacity={0.7}
     >
-      <Ionicons name="images" size={20} color="#3498DB" />
-      <Text style={{
-        fontSize: 14,
-        color: '#3498DB',
-        fontWeight: '500',
-      }}>Add Photos</Text>
+      {isUploading ? (
+        <>
+          <ActivityIndicator size="small" color="#3498DB" />
+          <Text style={{
+            fontSize: 14,
+            color: '#3498DB',
+            fontWeight: '500',
+          }}>Uploading {uploadCount} photo{uploadCount > 1 ? 's' : ''}...</Text>
+        </>
+      ) : (
+        <>
+          <Ionicons name="images" size={20} color="#3498DB" />
+          <Text style={{
+            fontSize: 14,
+            color: '#3498DB',
+            fontWeight: '500',
+          }}>{buttonLabel}</Text>
+        </>
+      )}
     </TouchableOpacity>
   );
 }

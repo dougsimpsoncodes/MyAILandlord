@@ -56,6 +56,8 @@ export interface PropertyArea {
   icon: string;
   isDefault: boolean;
   photos: string[];
+  // Storage paths for Supabase (permanent, used to regenerate signed URLs)
+  photoPaths?: string[];
   inventoryComplete: boolean;
   condition: AssetCondition;
   assets: InventoryItem[];
@@ -137,11 +139,14 @@ export interface PropertySetupState {
 // Navigation parameter types
 export interface PropertyAreasParams {
   propertyData: PropertyData;
+  propertyId?: string;         // For existing properties loaded from database
+  existingAreas?: PropertyArea[]; // Areas loaded from database
 }
 
 export interface PropertyAssetsParams {
   propertyData: PropertyData;
   areas: PropertyArea[];
+  propertyId?: string;         // For existing properties loaded from database
 }
 
 export interface PropertyReviewParams {

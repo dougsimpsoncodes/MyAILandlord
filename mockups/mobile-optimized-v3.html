@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mobile Optimized V3 - Full Vertical Scroll</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', sans-serif; background: #F5F7FA; max-width: 428px; margin: 0 auto; min-height: 100vh; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: white;
+      border-bottom: 1px solid #E9ECEF;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-back { font-size: 28px; color: #2C3E50; padding: 4px; }
+    .header-center { text-align: center; }
+    .header-title { font-size: 17px; font-weight: 600; color: #2C3E50; }
+    .header-subtitle { font-size: 12px; color: #27AE60; margin-top: 2px; }
+    .header-cancel { color: #E74C3C; font-size: 15px; font-weight: 500; }
+
+    .area-card {
+      background: white;
+      margin: 12px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .area-header {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .area-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #E8F4FD 0%, #D4EDFC 100%);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .area-info { flex: 1; }
+    .area-name { font-size: 17px; font-weight: 600; color: #2C3E50; }
+    .area-stats { display: flex; gap: 12px; margin-top: 3px; }
+    .area-stat { font-size: 13px; color: #7F8C8D; }
+    .area-stat-count { font-weight: 600; color: #3498DB; }
+    .area-chevron { font-size: 20px; color: #BDC3C7; transition: transform 0.3s; }
+    .area-card.expanded .area-chevron { transform: rotate(180deg); }
+
+    /* Collapsible content */
+    .area-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
+    .area-card.expanded .area-content {
+      max-height: 5000px;
+    }
+
+    /* Section */
+    .section {
+      padding: 0 16px 16px;
+      border-top: 1px solid #F0F0F0;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0 10px;
+    }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2C3E50;
+    }
+    .section-add-btn {
+      font-size: 13px;
+      color: #3498DB;
+      font-weight: 600;
+      padding: 6px 12px;
+      background: #E8F4FD;
+      border-radius: 14px;
+    }
+
+    /* Photo grid - 4 columns, all visible */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .photo-item {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .photo-item img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-item.add-photo {
+      background: #F8F9FA;
+      border: 2px dashed #DEE2E6;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #7F8C8D;
+    }
+    .photo-item.add-photo span { font-size: 24px; }
+
+    /* Asset list - full list with icons */
+    .asset-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .asset-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      background: #F8F9FA;
+      border-radius: 10px;
+      gap: 12px;
+    }
+    .asset-icon {
+      width: 36px;
+      height: 36px;
+      background: white;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border: 1px solid #E9ECEF;
+    }
+    .asset-info { flex: 1; min-width: 0; }
+    .asset-name { font-size: 14px; font-weight: 600; color: #2C3E50; }
+    .asset-detail { font-size: 12px; color: #7F8C8D; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .asset-row.add-asset {
+      background: white;
+      border: 2px dashed #DEE2E6;
+      justify-content: center;
+      color: #7F8C8D;
+      padding: 14px;
+    }
+
+    .bottom-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      max-width: 428px;
+      margin: 0 auto;
+      padding: 12px 16px 24px;
+      background: white;
+      border-top: 1px solid #E9ECEF;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-secondary {
+      flex: 1;
+      padding: 14px;
+      border: 1px solid #E9ECEF;
+      border-radius: 12px;
+      background: white;
+      font-size: 15px;
+      font-weight: 500;
+    }
+    .btn-primary {
+      flex: 2;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #3498DB;
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .version-label {
+      background: #27AE60;
+      color: white;
+      padding: 6px 12px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .spacer { height: 120px; }
+
+    /* Summary preview when collapsed */
+    .area-summary {
+      display: flex;
+      padding: 0 16px 14px;
+      gap: 8px;
+    }
+    .summary-photos {
+      display: flex;
+    }
+    .summary-photo {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 2px solid white;
+      margin-left: -8px;
+      overflow: hidden;
+    }
+    .summary-photo:first-child { margin-left: 0; }
+    .summary-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .summary-more {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: #E9ECEF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #7F8C8D;
+      margin-left: -8px;
+      border: 2px solid white;
+    }
+    .area-card.expanded .area-summary { display: none; }
+  </style>
+</head>
+<body>
+  <div class="version-label">V3: Collapsible with Full Vertical Scroll</div>
+
+  <div class="header">
+    <span class="header-back">‹</span>
+    <div class="header-center">
+      <div class="header-title">Photos & Assets</div>
+      <div class="header-subtitle">● Saved</div>
+    </div>
+    <span class="header-cancel">Cancel</span>
+  </div>
+
+  <!-- Kitchen - Collapsed to show collapsed state -->
+  <div class="area-card" onclick="toggleArea(this)">
+    <div class="area-header">
+      <div class="area-icon">🍳</div>
+      <div class="area-info">
+        <div class="area-name">Kitchen</div>
+        <div class="area-stats">
+          <span class="area-stat"><span class="area-stat-count">22</span> photos</span>
+          <span class="area-stat"><span class="area-stat-count">18</span> assets</span>
+        </div>
+      </div>
+      <span class="area-chevron">⌃</span>
+    </div>
+
+    <div class="area-summary">
+      <div class="summary-photos">
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=80&h=80&fit=crop"></div>
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=80&h=80&fit=crop"></div>
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=80&h=80&fit=crop"></div>
+        <div class="summary-more">+19</div>
+      </div>
+    </div>
+
+    <div class="area-content" onclick="event.stopPropagation()">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Photos (22)</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="photo-grid">
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=150&h=150&fit=crop"></div>
+          <div class="photo-item add-photo"><span>+</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Assets (18)</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="asset-list">
+          <div class="asset-row">
+            <div class="asset-icon">🧊</div>
+            <div class="asset-info">
+              <div class="asset-name">Refrigerator</div>
+              <div class="asset-detail">Samsung RF28R7201SR</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🔥</div>
+            <div class="asset-info">
+              <div class="asset-name">Gas Range</div>
+              <div class="asset-detail">GE Profile PGB960</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🍽</div>
+            <div class="asset-info">
+              <div class="asset-name">Dishwasher</div>
+              <div class="asset-detail">Bosch SHPM88Z75N</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">📦</div>
+            <div class="asset-info">
+              <div class="asset-name">Microwave</div>
+              <div class="asset-detail">Whirlpool WMH31017HZ</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">💨</div>
+            <div class="asset-info">
+              <div class="asset-name">Range Hood</div>
+              <div class="asset-detail">Broan-NuTone F403004</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🗑</div>
+            <div class="asset-info">
+              <div class="asset-name">Garbage Disposal</div>
+              <div class="asset-detail">InSinkErator Evolution</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🚰</div>
+            <div class="asset-info">
+              <div class="asset-name">Faucet</div>
+              <div class="asset-detail">Delta Leland 9178-DST</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">💧</div>
+            <div class="asset-info">
+              <div class="asset-name">Water Filter</div>
+              <div class="asset-detail">Aquasana AQ-5200</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🧊</div>
+            <div class="asset-info">
+              <div class="asset-name">Ice Maker</div>
+              <div class="asset-detail">GE Opal 2.0</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🍷</div>
+            <div class="asset-info">
+              <div class="asset-name">Wine Cooler</div>
+              <div class="asset-detail">NewAir AWC-270E</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🪨</div>
+            <div class="asset-info">
+              <div class="asset-name">Countertops</div>
+              <div class="asset-detail">Black Galaxy Granite</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🏝</div>
+            <div class="asset-info">
+              <div class="asset-name">Kitchen Island</div>
+              <div class="asset-detail">Custom Built 2021</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">💡</div>
+            <div class="asset-info">
+              <div class="asset-name">Pendant Lights</div>
+              <div class="asset-detail">West Elm 3-Light</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🔩</div>
+            <div class="asset-info">
+              <div class="asset-name">Cabinet Hardware</div>
+              <div class="asset-detail">Brushed Nickel Set</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🧱</div>
+            <div class="asset-info">
+              <div class="asset-name">Backsplash</div>
+              <div class="asset-detail">White Subway Tile</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🚨</div>
+            <div class="asset-info">
+              <div class="asset-name">Smoke Detector</div>
+              <div class="asset-detail">Nest Protect 2nd Gen</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">⚠️</div>
+            <div class="asset-info">
+              <div class="asset-name">CO Detector</div>
+              <div class="asset-detail">Kidde Nighthawk</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🧯</div>
+            <div class="asset-info">
+              <div class="asset-name">Fire Extinguisher</div>
+              <div class="asset-detail">Kidde FA110</div>
+            </div>
+          </div>
+          <div class="asset-row add-asset">
+            <span style="font-size: 18px; margin-right: 8px;">+</span> Add Asset
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Living Room - Collapsed -->
+  <div class="area-card" onclick="toggleArea(this)">
+    <div class="area-header">
+      <div class="area-icon">🛋</div>
+      <div class="area-info">
+        <div class="area-name">Living Room</div>
+        <div class="area-stats">
+          <span class="area-stat"><span class="area-stat-count">0</span> photos</span>
+          <span class="area-stat"><span class="area-stat-count">0</span> assets</span>
+        </div>
+      </div>
+      <span class="area-chevron">⌃</span>
+    </div>
+
+    <div class="area-content" onclick="event.stopPropagation()">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Photos</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="photo-grid">
+          <div class="photo-item add-photo"><span>+</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Assets</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="asset-list">
+          <div class="asset-row add-asset">
+            <span style="font-size: 18px; margin-right: 8px;">+</span> Add Asset
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Master Bedroom - Expanded to show both states -->
+  <div class="area-card expanded" onclick="toggleArea(this)">
+    <div class="area-header">
+      <div class="area-icon">🛏</div>
+      <div class="area-info">
+        <div class="area-name">Master Bedroom</div>
+        <div class="area-stats">
+          <span class="area-stat"><span class="area-stat-count">8</span> photos</span>
+          <span class="area-stat"><span class="area-stat-count">5</span> assets</span>
+        </div>
+      </div>
+      <span class="area-chevron">⌃</span>
+    </div>
+
+    <div class="area-summary">
+      <div class="summary-photos">
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=80&h=80&fit=crop"></div>
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=80&h=80&fit=crop"></div>
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=80&h=80&fit=crop"></div>
+        <div class="summary-more">+5</div>
+      </div>
+    </div>
+
+    <div class="area-content" onclick="event.stopPropagation()">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Photos (8)</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="photo-grid">
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item add-photo"><span>+</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Assets (5)</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="asset-list">
+          <div class="asset-row">
+            <div class="asset-icon">💨</div>
+            <div class="asset-info">
+              <div class="asset-name">Ceiling Fan</div>
+              <div class="asset-detail">Hunter 52" with Remote</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">❄️</div>
+            <div class="asset-info">
+              <div class="asset-name">AC Unit</div>
+              <div class="asset-detail">LG Window 12000 BTU</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🧶</div>
+            <div class="asset-info">
+              <div class="asset-name">Carpet</div>
+              <div class="asset-detail">Plush Beige - Shaw</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🪟</div>
+            <div class="asset-info">
+              <div class="asset-name">Blinds</div>
+              <div class="asset-detail">Levolor Cordless</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🚨</div>
+            <div class="asset-info">
+              <div class="asset-name">Smoke Alarm</div>
+              <div class="asset-detail">First Alert SA320CN</div>
+            </div>
+          </div>
+          <div class="asset-row add-asset">
+            <span style="font-size: 18px; margin-right: 8px;">+</span> Add Asset
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bathroom - Collapsed -->
+  <div class="area-card" onclick="toggleArea(this)">
+    <div class="area-header">
+      <div class="area-icon">🚿</div>
+      <div class="area-info">
+        <div class="area-name">Bathroom</div>
+        <div class="area-stats">
+          <span class="area-stat"><span class="area-stat-count">12</span> photos</span>
+          <span class="area-stat"><span class="area-stat-count">10</span> assets</span>
+        </div>
+      </div>
+      <span class="area-chevron">⌃</span>
+    </div>
+
+    <div class="area-summary">
+      <div class="summary-photos">
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=80&h=80&fit=crop"></div>
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=80&h=80&fit=crop"></div>
+        <div class="summary-photo"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=80&h=80&fit=crop"></div>
+        <div class="summary-more">+9</div>
+      </div>
+    </div>
+
+    <div class="area-content" onclick="event.stopPropagation()">
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Photos (12)</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="photo-grid">
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909190-bfffdbe31f4a?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1484154218962-a197022b5858?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1507089947368-19c1da9775ae?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1556909114-44e3e70034e2?w=150&h=150&fit=crop"></div>
+          <div class="photo-item"><img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=150&h=150&fit=crop"></div>
+          <div class="photo-item add-photo"><span>+</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <span class="section-title">Assets (10)</span>
+          <span class="section-add-btn">+ Add</span>
+        </div>
+        <div class="asset-list">
+          <div class="asset-row">
+            <div class="asset-icon">🚽</div>
+            <div class="asset-info">
+              <div class="asset-name">Toilet</div>
+              <div class="asset-detail">TOTO Drake II</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🚿</div>
+            <div class="asset-info">
+              <div class="asset-name">Shower System</div>
+              <div class="asset-detail">Moen Magnetix</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🛁</div>
+            <div class="asset-info">
+              <div class="asset-name">Bathtub</div>
+              <div class="asset-detail">Kohler Underscore 60"</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🪞</div>
+            <div class="asset-info">
+              <div class="asset-name">Vanity Mirror</div>
+              <div class="asset-detail">36" LED Backlit</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🚰</div>
+            <div class="asset-info">
+              <div class="asset-name">Vanity Faucet</div>
+              <div class="asset-detail">Delta Trinsic</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">💨</div>
+            <div class="asset-info">
+              <div class="asset-name">Exhaust Fan</div>
+              <div class="asset-detail">Panasonic WhisperCeiling</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🔥</div>
+            <div class="asset-info">
+              <div class="asset-name">Towel Warmer</div>
+              <div class="asset-detail">Amba Radiant</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">💡</div>
+            <div class="asset-info">
+              <div class="asset-name">Vanity Lights</div>
+              <div class="asset-detail">Kichler 3-Light</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🧱</div>
+            <div class="asset-info">
+              <div class="asset-name">Floor Tile</div>
+              <div class="asset-detail">Carrara Marble Look</div>
+            </div>
+          </div>
+          <div class="asset-row">
+            <div class="asset-icon">🚨</div>
+            <div class="asset-info">
+              <div class="asset-name">GFCI Outlets</div>
+              <div class="asset-detail">Leviton 2-Pack</div>
+            </div>
+          </div>
+          <div class="asset-row add-asset">
+            <span style="font-size: 18px; margin-right: 8px;">+</span> Add Asset
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="bottom-actions">
+    <button class="btn-secondary">Save Draft</button>
+    <button class="btn-primary">Review & Submit</button>
+  </div>
+
+  <script>
+    function toggleArea(card) {
+      card.classList.toggle('expanded');
+    }
+  </script>
+</body>
+</html>

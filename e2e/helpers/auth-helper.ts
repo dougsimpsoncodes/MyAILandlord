@@ -74,45 +74,133 @@ export class AuthHelper {
 
   /**
    * Login with email/password via Supabase Auth
+   * Note: React Native Web renders TouchableOpacity as div with role="button", not actual button elements
    * @param email - User email
    * @param password - User password
    */
   async loginWithEmail(email: string, password: string): Promise<boolean> {
     try {
-      // Navigate to welcome or login screen
-      await this.page.goto('/');
-      await this.page.waitForLoadState('networkidle');
+      console.log('[AuthHelper] Starting login flow...');
 
-      // Look for login button or link
-      const loginLink = this.page.locator('text=/Sign In|Log In|Login|Already have an account/i').first();
-      if (await loginLink.isVisible()) {
-        await loginLink.click();
+      // Navigate directly to login screen via URL
+      await this.page.goto('/login');
+      await this.page.waitForLoadState('networkidle');
+      await this.page.waitForTimeout(2000); // Wait for React to render
+
+      console.log('[AuthHelper] Navigated to login, checking for form...');
+
+      // Check if we're on the login screen (has Welcome Back text)
+      const welcomeBack = this.page.getByText('Welcome Back');
+      if (!await welcomeBack.isVisible({ timeout: 5000 }).catch(() => false)) {
+        console.log('[AuthHelper] Login screen not detected, trying alternative navigation...');
+
+        // Navigate to home and find login link
+        await this.page.goto('/');
+        await this.page.waitForLoadState('networkidle');
+        await this.page.waitForTimeout(2000);
+
+        // Click "Already have an account? Sign In"
+        const signInLink = this.page.getByText('Already have an account? Sign In');
+        if (await signInLink.isVisible({ timeout: 5000 })) {
+          console.log('[AuthHelper] Found sign in link, clicking...');
+          await signInLink.click();
+          await this.page.waitForTimeout(1500);
+        }
       }
 
-      // Wait for login form
-      await this.page.waitForSelector('input[type="email"], input[placeholder*="email" i]', { timeout: 10000 });
+      // Wait for login form inputs
+      await this.page.waitForSelector('input', { timeout: 10000 });
+      console.log('[AuthHelper] Found input elements');
 
-      // Fill email
-      const emailInput = this.page.locator('input[type="email"], input[placeholder*="email" i]').first();
-      await emailInput.fill(email);
+      // Fill email - find input with email placeholder
+      const emailInput = this.page.locator('input[placeholder="Email address"]').first();
+      if (await emailInput.isVisible({ timeout: 3000 })) {
+        await emailInput.fill(email);
+        console.log('[AuthHelper] Filled email');
+      } else {
+        // Fallback to first input
+        console.log('[AuthHelper] Email input not found by placeholder, using first input');
+        await this.page.locator('input').first().fill(email);
+      }
 
-      // Fill password
-      const passwordInput = this.page.locator('input[type="password"], input[placeholder*="password" i]').first();
-      await passwordInput.fill(password);
+      // Fill password - find input with password placeholder
+      const passwordInput = this.page.locator('input[placeholder="Password"]').first();
+      if (await passwordInput.isVisible({ timeout: 3000 })) {
+        await passwordInput.fill(password);
+        console.log('[AuthHelper] Filled password');
+      } else {
+        // Fallback to second input
+        console.log('[AuthHelper] Password input not found by placeholder, using second input');
+        await this.page.locator('input').nth(1).fill(password);
+      }
 
-      // Click sign in button
-      const signInButton = this.page.locator('button:has-text("Sign In"), button:has-text("Log In")').first();
-      await signInButton.click();
+      // Click sign in button - look for button-like element with "Sign In" text
+      // First check within the loginButton styled container
+      console.log('[AuthHelper] Looking for Sign In button...');
+
+      // Try multiple approaches for React Native Web
+      let clicked = false;
+
+      // Approach 1: Find by exact text "Sign In" (button text, not the link)
+      const signInButtons = await this.page.getByText('Sign In', { exact: true }).all();
+      console.log(`[AuthHelper] Found ${signInButtons.length} "Sign In" elements`);
+
+      // The first one is usually the button, the second is the link
+      for (const button of signInButtons) {
+        const isVisible = await button.isVisible();
+        if (isVisible) {
+          const text = await button.textContent();
+          console.log(`[AuthHelper] Checking element with text: "${text}"`);
+          // Skip if it's the link (contains "Already have an account")
+          if (text === 'Sign In') {
+            await button.click();
+            clicked = true;
+            console.log('[AuthHelper] Clicked Sign In button');
+            break;
+          }
+        }
+      }
+
+      if (!clicked) {
+        // Approach 2: Find by role button containing "Sign In"
+        const roleButton = this.page.locator('[role="button"]:has-text("Sign In")').first();
+        if (await roleButton.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await roleButton.click();
+          clicked = true;
+          console.log('[AuthHelper] Clicked Sign In via role=button');
+        }
+      }
+
+      if (!clicked) {
+        console.error('[AuthHelper] Could not find Sign In button');
+        return false;
+      }
 
       // Wait for redirect after successful login
-      await this.page.waitForTimeout(3000);
+      console.log('[AuthHelper] Waiting for login response...');
+      await this.page.waitForTimeout(4000);
 
-      // Check if we're logged in by looking for role selection or dashboard
-      const isLoggedIn = await this.page.locator('text=/Select your role|Dashboard|Welcome,/i').isVisible({ timeout: 5000 }).catch(() => false);
+      // Check if we're logged in by looking for role selection or dashboard elements
+      // The landlord home shows "Good afternoon/morning/evening, {name}!" and "Welcome to MyAILandlord"
+      const isLoggedIn = await this.page.locator('text=/Select your role|Dashboard|Welcome back|Property Management|Landlord Home|Getting Started|Welcome to MyAILandlord|Quick Actions|Good morning|Good afternoon|Good evening/i').isVisible({ timeout: 15000 }).catch(() => false);
+
+      console.log(`[AuthHelper] Login result: ${isLoggedIn ? 'SUCCESS' : 'FAILED'}`);
+
+      // Take screenshot on failure for debugging
+      if (!isLoggedIn) {
+        await this.page.screenshot({ path: '/tmp/login-failed.png' });
+        console.log('[AuthHelper] Screenshot saved to /tmp/login-failed.png');
+
+        // Log current URL and page content
+        console.log('[AuthHelper] Current URL:', this.page.url());
+        const pageContent = await this.page.content();
+        console.log('[AuthHelper] Page snippet:', pageContent.substring(0, 500));
+      }
 
       return isLoggedIn;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('[AuthHelper] Login failed with error:', error);
+      await this.page.screenshot({ path: '/tmp/login-error.png' }).catch(() => {});
       return false;
     }
   }
@@ -369,17 +457,21 @@ export class AuthTestData {
    * then falls back to known test users
    */
   static getTestUserCredentials(): { email: string; password: string } | null {
+    // Try environment variables first
     const email = process.env.TEST_USER_EMAIL;
     const password = process.env.TEST_USER_PASSWORD;
+
+    console.log('[AuthTestData] Checking credentials - email:', email ? 'configured' : 'not set');
 
     if (email && password) {
       return { email, password };
     }
 
-    // Fall back to known test landlord user
+    // Fall back to real user account (landlord)
+    console.log('[AuthTestData] Using fallback credentials');
     return {
-      email: 'test-landlord@myailandlord.com',
-      password: 'MyAI2025!Landlord#Test',
+      email: 'goblue12@aol.com',
+      password: '1234567',
     };
   }
 
@@ -387,9 +479,10 @@ export class AuthTestData {
    * Get tenant test credentials
    */
   static getTenantTestCredentials(): { email: string; password: string } {
+    // Use the same landlord credentials for now until a dedicated tenant account is set up
     return {
-      email: 'test-tenant@myailandlord.com',
-      password: 'MyAI2025!Tenant#Test',
+      email: 'goblue12@aol.com',
+      password: '1234567',
     };
   }
 }

@@ -8,6 +8,7 @@ import { RoleContext } from './context/RoleContext';
 import { useProfileSync } from './hooks/useProfileSync';
 import { LoadingScreen } from './components/LoadingSpinner';
 import { log } from './lib/log';
+import { PendingInviteService } from './services/storage/PendingInviteService';
 
 const AppNavigator = () => {
   const { user, isSignedIn, isLoading } = useAppAuth();
@@ -15,12 +16,29 @@ const AppNavigator = () => {
   const { userRole, isLoading: roleLoading } = useContext(RoleContext);
   const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
-  
+  const [pendingInvitePropertyId, setPendingInvitePropertyId] = useState<string | null>(null);
+
   // Debug logging (centralized)
   log.info('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
-  
+
   // Sync user with Supabase profile
   useProfileSync();
+
+  // Check for pending invite when user becomes authenticated
+  useEffect(() => {
+    const checkPendingInvite = async () => {
+      if (isSignedIn && user && userRole) {
+        const pendingPropertyId = await PendingInviteService.getPendingInvite();
+        if (pendingPropertyId) {
+          log.info('📥 Found pending invite after auth, redirecting to property:', pendingPropertyId);
+          setPendingInvitePropertyId(pendingPropertyId);
+          // Clear it so we don't redirect again
+          await PendingInviteService.clearPendingInvite();
+        }
+      }
+    };
+    checkPendingInvite();
+  }, [isSignedIn, user, userRole]);
 
   // Get initial URL for deep link handling
   useEffect(() => {
@@ -62,7 +80,9 @@ const AppNavigator = () => {
     prefixes: [
       'myailandlord://',
       'https://myailandlord.app',
-      'https://www.myailandlord.app'
+      'https://www.myailandlord.app',
+      'http://localhost:8081',
+      'http://localhost:8082',
     ],
     async getInitialURL() {
       // Handle deep link URL manually
@@ -90,6 +110,7 @@ const AppNavigator = () => {
         Welcome: 'welcome',
         Login: 'login',
         SignUp: 'signup',
+        AuthCallback: 'auth/callback',
         // Main app screens
         Home: 'home',
         PropertyCodeEntry: 'link',
@@ -97,6 +118,26 @@ const AppNavigator = () => {
         InviteTenant: 'invite-tenant',
         ReportIssue: 'report-issue',
         ReviewIssue: 'review-issue',
+        // Property creation flow with draft persistence
+        AddProperty: 'add-property',
+        PropertyAreas: {
+          path: 'property-areas',
+          parse: {
+            draftId: (draftId: string) => draftId,
+          }
+        },
+        PropertyAssets: {
+          path: 'property-assets',
+          parse: {
+            draftId: (draftId: string) => draftId,
+          }
+        },
+        PropertyReview: {
+          path: 'property-review',
+          parse: {
+            draftId: (draftId: string) => draftId,
+          }
+        },
       }
     }
   };
@@ -104,9 +145,9 @@ const AppNavigator = () => {
   return (
     <NavigationContainer linking={linking}>
       {shouldShowMainStack ? (
-        <MainStack userRole={userRole} />
+        <MainStack userRole={userRole as 'tenant' | 'landlord'} pendingInvitePropertyId={pendingInvitePropertyId} />
       ) : (
-        <AuthStack initialInvite={isInviteLink} />
+        <AuthStack initialInvite={!!isInviteLink} />
       )}
     </NavigationContainer>
   );

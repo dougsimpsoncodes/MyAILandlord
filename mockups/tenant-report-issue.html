@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Issue - MyAI Landlord</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .mockup-container {
+            display: flex;
+            gap: 60px;
+            align-items: flex-start;
+        }
+        .phone {
+            width: 320px;
+            height: 640px;
+            background: white;
+            border-radius: 32px;
+            border: 10px solid #1a1a1a;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+        .status-bar {
+            background: white;
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .header {
+            background: white;
+            padding: 12px 16px;
+            border-bottom: 1px solid #E1E8ED;
+            display: flex;
+            align-items: center;
+        }
+        .back-btn {
+            color: #3498DB;
+            font-size: 20px;
+            margin-right: 14px;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #2C3E50;
+        }
+        .content {
+            flex: 1;
+            background: #F5F7FA;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #2C3E50;
+            margin-bottom: 12px;
+        }
+        .area-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+        .area-chip {
+            padding: 10px 8px;
+            text-align: center;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #7F8C8D;
+            cursor: pointer;
+        }
+        .area-chip.selected {
+            background: #EBF5FB;
+            border-color: #3498DB;
+            color: #3498DB;
+            font-weight: 600;
+        }
+        .area-chip span {
+            display: block;
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3498DB;
+        }
+        .form-textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
+            font-size: 15px;
+            min-height: 100px;
+            resize: none;
+            font-family: inherit;
+        }
+        .form-textarea:focus {
+            outline: none;
+            border-color: #3498DB;
+        }
+        .priority-options {
+            display: flex;
+            gap: 8px;
+        }
+        .priority-btn {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
+            background: white;
+            font-size: 13px;
+            font-weight: 500;
+            color: #7F8C8D;
+            cursor: pointer;
+        }
+        .priority-btn.selected {
+            font-weight: 600;
+        }
+        .priority-btn.low.selected {
+            background: #E8F8F0;
+            border-color: #2ECC71;
+            color: #2ECC71;
+        }
+        .priority-btn.medium.selected {
+            background: #FEF5E7;
+            border-color: #F39C12;
+            color: #F39C12;
+        }
+        .priority-btn.high.selected {
+            background: #FDEDEC;
+            border-color: #E74C3C;
+            color: #E74C3C;
+        }
+        .photo-upload {
+            border: 2px dashed #E1E8ED;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .photo-upload span {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .photo-upload-text {
+            font-size: 14px;
+            color: #7F8C8D;
+        }
+        .photo-upload-hint {
+            font-size: 12px;
+            color: #BDC3C7;
+            margin-top: 4px;
+        }
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: #E74C3C;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .bottom-nav {
+            background: white;
+            border-top: 1px solid #E1E8ED;
+            padding: 8px 0;
+            display: flex;
+            justify-content: space-around;
+        }
+        .nav-item {
+            text-align: center;
+            font-size: 10px;
+            color: #7F8C8D;
+            padding: 4px 12px;
+        }
+        .nav-item.active { color: #3498DB; }
+        .nav-item span {
+            font-size: 22px;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .annotations {
+            width: 300px;
+            color: white;
+        }
+        .annotation {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-left: 3px solid #E74C3C;
+        }
+        .annotation h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #E74C3C;
+        }
+        .annotation p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #ccc;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            color: #3498DB;
+            margin-top: 20px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="mockup-container">
+        <div class="annotations">
+            <h2 style="margin-bottom: 20px; font-size: 24px;">Report Issue</h2>
+
+            <div class="annotation">
+                <h3>Area Selection</h3>
+                <p>Visual grid of common room types. One tap to select. Helps categorize issues automatically.</p>
+            </div>
+
+            <div class="annotation">
+                <h3>Simple Form</h3>
+                <p>Just the essentials: what's wrong and where. Description field for details.</p>
+            </div>
+
+            <div class="annotation">
+                <h3>Priority Levels</h3>
+                <p>Let tenant indicate urgency. Color-coded buttons make selection intuitive.</p>
+            </div>
+
+            <div class="annotation">
+                <h3>Photo Upload</h3>
+                <p>Optional photos help landlords understand the issue before sending help.</p>
+            </div>
+
+            <div class="annotation">
+                <h3>Clear Submit</h3>
+                <p>Prominent red button matches the urgency of reporting an issue.</p>
+            </div>
+
+            <a href="design-system-overview.html" class="back-link">&larr; Back to Design System</a>
+        </div>
+
+        <div class="phone">
+            <div class="status-bar">
+                <span>9:41</span>
+                <span>100%</span>
+            </div>
+
+            <div class="header">
+                <span class="back-btn">‹</span>
+                <div class="header-title">Report an Issue</div>
+            </div>
+
+            <div class="content">
+                <div class="form-section">
+                    <div class="section-title">Where is the issue?</div>
+                    <div class="area-grid">
+                        <div class="area-chip selected">
+                            <span>🍳</span>
+                            Kitchen
+                        </div>
+                        <div class="area-chip">
+                            <span>🛋️</span>
+                            Living
+                        </div>
+                        <div class="area-chip">
+                            <span>🛏️</span>
+                            Bedroom
+                        </div>
+                        <div class="area-chip">
+                            <span>🚿</span>
+                            Bathroom
+                        </div>
+                        <div class="area-chip">
+                            <span>🚪</span>
+                            Entry
+                        </div>
+                        <div class="area-chip">
+                            <span>📦</span>
+                            Other
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">What's the issue?</div>
+                    <input type="text" class="form-input" placeholder="Brief title (e.g., Leaking faucet)">
+                    <textarea class="form-textarea" placeholder="Describe the issue in more detail..."></textarea>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">How urgent is this?</div>
+                    <div class="priority-options">
+                        <button class="priority-btn low">Low</button>
+                        <button class="priority-btn medium selected">Medium</button>
+                        <button class="priority-btn high">Urgent</button>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="section-title">Add Photos (optional)</div>
+                    <div class="photo-upload">
+                        <span>📷</span>
+                        <div class="photo-upload-text">Tap to add photos</div>
+                        <div class="photo-upload-hint">Helps explain the issue</div>
+                    </div>
+                </div>
+
+                <button class="submit-btn">Submit Issue</button>
+            </div>
+
+            <div class="bottom-nav">
+                <div class="nav-item">
+                    <span>🏠</span>
+                    Home
+                </div>
+                <div class="nav-item active">
+                    <span>🔧</span>
+                    Requests
+                </div>
+                <div class="nav-item">
+                    <span>💬</span>
+                    Messages
+                </div>
+                <div class="nav-item">
+                    <span>👤</span>
+                    Profile
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -16,6 +16,7 @@ import CustomButton from '../../components/shared/CustomButton';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useRole } from '../../context/RoleContext';
 import * as Linking from 'expo-linking';
+import { PendingInviteService } from '../../services/storage/PendingInviteService';
 
 // Union type to handle both AuthStack and TenantStack navigation
 type PropertyInviteAcceptNavigationProp = 
@@ -162,9 +163,13 @@ const PropertyInviteAcceptScreen = () => {
       return;
     }
 
-    // If user is not authenticated, redirect to signup with invite context
+    // If user is not authenticated, save pending invite and redirect to signup
     if (!user) {
       log.info('🔄 Redirecting to signup - user not authenticated');
+      if (propertyId) {
+        await PendingInviteService.savePendingInvite(propertyId);
+        log.info('📥 Saved pending invite before redirect to signup');
+      }
       navigation.navigate('SignUp');
       return;
     }

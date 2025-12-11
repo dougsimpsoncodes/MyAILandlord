@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
+import AuthCallbackScreen from '../screens/AuthCallbackScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
 import { log } from '../lib/log';
 
@@ -10,6 +11,7 @@ export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
   SignUp: undefined;
+  AuthCallback: undefined;
   PropertyInviteAccept: { propertyId?: string; property?: string };
 };
 
@@ -36,6 +38,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false }) => {
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="AuthCallback" component={AuthCallbackScreen} />
       <Stack.Screen name="PropertyInviteAccept" component={PropertyInviteAcceptScreen} />
     </Stack.Navigator>
   );

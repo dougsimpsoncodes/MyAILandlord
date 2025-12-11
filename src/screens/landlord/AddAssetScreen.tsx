@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AssetTemplate, AssetCondition, InventoryItem, PropertyData } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { extractAssetDataFromImage, validateAndEnhanceData } from '../../services/ai/labelExtraction';
@@ -24,6 +26,9 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import Input from '../../components/shared/Input';
 import { DesignSystem } from '../../theme/DesignSystem';
+
+import { propertyAreasService } from '../../services/supabase/propertyAreasService';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 
 type AddAssetNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddAssetRouteProp = RouteProp<LandlordStackParamList, 'AddAsset'>;
@@ -33,7 +38,77 @@ const { width: screenWidth } = Dimensions.get('window');
 const AddAssetScreen = () => {
   const navigation = useNavigation<AddAssetNavigationProp>();
   const route = useRoute<AddAssetRouteProp>();
-  const { areaId, areaName, template, propertyData, draftId } = route.params;
+  const { supabase } = useSupabaseWithAuth();
+
+  // Route params (may be incomplete on web due to URL serialization)
+  const routeAreaId = route.params?.areaId;
+  const routeAreaName = route.params?.areaName;
+  const routeTemplate = route.params?.template;
+  const routePropertyData = route.params?.propertyData;
+  const routeDraftId = route.params?.draftId;
+  const routePropertyId = route.params?.propertyId;
+
+  // Effective params (recovered from storage on web if needed)
+  const [areaId, setAreaId] = useState(routeAreaId || '');
+  const [areaName, setAreaName] = useState(routeAreaName || '');
+  const [template, setTemplate] = useState<AssetTemplate | null>(routeTemplate || null);
+  const [propertyData, setPropertyData] = useState<PropertyData | undefined>(routePropertyData);
+  const [draftId, setDraftId] = useState<string | undefined>(routeDraftId);
+  const [propertyId, setPropertyId] = useState<string | undefined>(routePropertyId);
+  const [isParamsLoaded, setIsParamsLoaded] = useState(!!routePropertyData);
+
+  // Recover params from AsyncStorage on web (URL params lose complex objects)
+  useEffect(() => {
+    const recoverParams = async () => {
+      if (!routeAreaId) {
+        console.log('📦 AddAssetScreen: No areaId in route params, cannot recover');
+        return;
+      }
+
+      // If we already have propertyData from route, no need to recover
+      if (routePropertyData) {
+        console.log('📦 AddAssetScreen: Using route params directly');
+        setIsParamsLoaded(true);
+        return;
+      }
+
+      // Try to recover from AsyncStorage (web scenario)
+      const storageKey = `add_asset_params_${routeAreaId}`;
+      console.log('📦 AddAssetScreen: Attempting to recover params from storage:', storageKey);
+
+      try {
+        const storedParams = await AsyncStorage.getItem(storageKey);
+        if (storedParams) {
+          const params = JSON.parse(storedParams);
+          console.log('📦 AddAssetScreen: Recovered params from storage:', {
+            areaId: params.areaId,
+            areaName: params.areaName,
+            propertyId: params.propertyId,
+            draftId: params.draftId,
+            hasPropertyData: !!params.propertyData
+          });
+
+          setAreaId(params.areaId || routeAreaId);
+          setAreaName(params.areaName || routeAreaName || '');
+          setTemplate(params.template || null);
+          setPropertyData(params.propertyData);
+          setDraftId(params.draftId);
+          setPropertyId(params.propertyId);
+
+          // Clean up storage after recovery
+          await AsyncStorage.removeItem(storageKey);
+        } else {
+          console.warn('📦 AddAssetScreen: No stored params found for key:', storageKey);
+        }
+      } catch (error) {
+        console.error('📦 AddAssetScreen: Failed to recover params:', error);
+      }
+
+      setIsParamsLoaded(true);
+    };
+
+    recoverParams();
+  }, [routeAreaId, routePropertyData, routeAreaName]);
 
   // Form state
   const [assetName, setAssetName] = useState(template?.name || '');
@@ -53,6 +128,26 @@ const AddAssetScreen = () => {
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const dropdownRef = useRef<View>(null);
+  const webFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Create hidden file input for web multi-select
+  useEffect(() => {
+    if (Platform.OS === 'web' && !webFileInputRef.current) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      webFileInputRef.current = input;
+    }
+    return () => {
+      if (webFileInputRef.current) {
+        document.body.removeChild(webFileInputRef.current);
+        webFileInputRef.current = null;
+      }
+    };
+  }, []);
 
   // Brand options based on template or general brands
   const brandOptions = template?.commonBrands || [
@@ -129,7 +224,7 @@ const AddAssetScreen = () => {
 
       if (!result.canceled && result.assets[0]) {
         const imageUri = result.assets[0].uri;
-        
+
         // Validate image
         const validation = await validateImageFile(imageUri);
         if (!validation.isValid) {
@@ -141,6 +236,63 @@ const AddAssetScreen = () => {
       }
     } catch (error) {
       Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handlePickPhotos = async () => {
+    try {
+      // Use native file input for web (supports multi-select properly)
+      if (Platform.OS === 'web' && webFileInputRef.current) {
+        const input = webFileInputRef.current;
+
+        return new Promise<void>((resolve) => {
+          input.onchange = async () => {
+            const files = Array.from(input.files || []);
+            const newPhotos: string[] = [];
+
+            for (const file of files) {
+              const uri = URL.createObjectURL(file);
+              newPhotos.push(uri);
+            }
+
+            if (newPhotos.length > 0) {
+              setPhotos(prev => [...prev, ...newPhotos]);
+            }
+
+            input.value = ''; // Reset for next selection
+            resolve();
+          };
+          input.click();
+        });
+      }
+
+      // Native platform handling
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Photo library permission is required to select photos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newPhotos: string[] = [];
+        for (const asset of result.assets) {
+          const validation = await validateImageFile(asset.uri);
+          if (validation.isValid) {
+            newPhotos.push(asset.uri);
+          }
+        }
+        if (newPhotos.length > 0) {
+          setPhotos(prev => [...prev, ...newPhotos]);
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to select photos. Please try again.');
     }
   };
 
@@ -182,12 +334,36 @@ const AddAssetScreen = () => {
   };
 
   const handleSave = async () => {
+    // Alert at start to confirm button click is registered
+    console.log('📦 ===== handleSave CALLED =====');
+    console.log('📦 State values:');
+    console.log('📦   propertyId:', propertyId);
+    console.log('📦   draftId:', draftId);
+    console.log('📦   areaId:', areaId);
+    console.log('📦   isParamsLoaded:', isParamsLoaded);
+    console.log('📦   assetName:', assetName);
+
+    if (!isParamsLoaded) {
+      console.log('📦 BLOCKED: Params not yet loaded');
+      Alert.alert('Please Wait', 'Loading data, please try again in a moment.');
+      return;
+    }
+
+    if (!areaId) {
+      console.error('📦 BLOCKED: No areaId available');
+      Alert.alert('Error', 'Area information is missing. Please go back and try again.');
+      return;
+    }
+
     if (!assetName.trim()) {
+      console.log('📦 BLOCKED: No asset name');
       Alert.alert('Required Field', 'Please enter an asset name.');
       return;
     }
 
+    console.log('📦 All validations passed, starting save...');
     setIsSaving(true);
+
     try {
       const newAsset: InventoryItem = {
         id: `asset_${Date.now()}`,
@@ -207,25 +383,76 @@ const AddAssetScreen = () => {
         isActive: true,
       };
 
-      // Navigate back with the new asset data
-      // The PropertyAssetsScreen will handle adding it to the area
-      navigation.navigate('PropertyAssets', {
-        propertyData,
-        areas: [], // Will be updated by the receiving screen
-        draftId,
-        newAsset // Pass the new asset
-      });
+      console.log('📦 Created asset object:', JSON.stringify(newAsset, null, 2));
 
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save asset. Please try again.');
+      // For EXISTING properties (propertyId), save directly to database
+      if (propertyId) {
+        console.log('📦 MODE: EXISTING PROPERTY - saving to database');
+        console.log('📦 Calling propertyAreasService.addAsset with propertyId:', propertyId);
+        console.log('📦 Using authenticated Supabase client');
+        try {
+          // Pass the authenticated Supabase client to ensure RLS works correctly
+          const savedAsset = await propertyAreasService.addAsset(propertyId, newAsset, supabase);
+          console.log('📦 Asset saved to database successfully:', savedAsset);
+          Alert.alert('Success', 'Asset added successfully!', [
+            { text: 'OK', onPress: () => navigation.goBack() }
+          ]);
+        } catch (dbError: any) {
+          console.error('📦 DATABASE ERROR:', dbError);
+          console.error('📦 Error name:', dbError?.name);
+          console.error('📦 Error message:', dbError?.message);
+          console.error('📦 Error code:', dbError?.code);
+          console.error('📦 Full error:', JSON.stringify(dbError, null, 2));
+          Alert.alert('Database Error', `Failed to save asset to database: ${dbError?.message || 'Unknown error'}`);
+        }
+        return;
+      }
+
+      // For DRAFTS (draftId), save to AsyncStorage for later
+      if (draftId) {
+        console.log('📦 MODE: DRAFT - saving to AsyncStorage');
+        await AsyncStorage.setItem(`pending_asset_${draftId}`, JSON.stringify(newAsset));
+        console.log('📦 Saved pending asset to draft storage');
+        navigation.goBack();
+      } else {
+        console.warn('📦 WARNING: No propertyId or draftId - cannot persist asset!');
+        Alert.alert('Warning', 'Unable to save asset - no property context found. Please go back and try again.');
+      }
+
+    } catch (error: any) {
+      console.error('📦 ERROR saving asset:', error);
+      console.error('📦 Error details:', error?.message || String(error));
+      Alert.alert('Error', `Failed to save asset: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
+      console.log('📦 ===== handleSave COMPLETE =====');
     }
   };
 
   const removePhoto = (index: number) => {
     setPhotos(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Show loading while recovering params on web
+  if (!isParamsLoaded && !routePropertyData) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Add Asset</Text>
+          </View>
+          <View style={{ width: 50 }} />
+        </View>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={{ marginTop: 16, color: '#7F8C8D' }}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -287,7 +514,7 @@ const AddAssetScreen = () => {
           </View>
 
           {/* Brand Dropdown */}
-          <View style={styles.inputGroup}>
+          <View style={[styles.inputGroup, showBrandDropdown && styles.inputGroupDropdownOpen]}>
             <Text style={styles.inputLabel}>Brand</Text>
             <View style={styles.dropdownContainer} ref={dropdownRef}>
               <TouchableOpacity
@@ -299,20 +526,14 @@ const AddAssetScreen = () => {
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#7F8C8D" />
               </TouchableOpacity>
-              
+
               {showBrandDropdown && (
-                <>
-                  <TouchableOpacity 
-                    style={styles.dropdownBackdrop}
-                    onPress={() => setShowBrandDropdown(false)}
-                    activeOpacity={1}
-                  />
-                  <View style={styles.dropdownMenu}>
-                    <ScrollView 
-                      style={styles.dropdownScrollView}
-                      showsVerticalScrollIndicator={false}
-                      nestedScrollEnabled={true}
-                    >
+                <View style={styles.dropdownMenu}>
+                  <ScrollView
+                    style={styles.dropdownScrollView}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                  >
                     {brandOptions.map((brand, index) => (
                       <TouchableOpacity
                         key={index}
@@ -342,18 +563,31 @@ const AddAssetScreen = () => {
                             setSelectedBrand('');
                           }
                         }}
+                        onSubmitEditing={() => {
+                          if (customBrand.trim()) {
+                            setShowBrandDropdown(false);
+                          }
+                        }}
                         autoComplete="organization"
                         textContentType="organizationName"
                         autoCorrect={false}
                         autoCapitalize="words"
                       />
                     </View>
-                    </ScrollView>
-                  </View>
-                </>
+                  </ScrollView>
+                </View>
               )}
             </View>
           </View>
+
+          {/* Backdrop to close dropdown when clicking outside */}
+          {showBrandDropdown && (
+            <TouchableOpacity
+              style={styles.dropdownBackdrop}
+              onPress={() => setShowBrandDropdown(false)}
+              activeOpacity={1}
+            />
+          )}
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Model Number</Text>
@@ -424,33 +658,75 @@ const AddAssetScreen = () => {
 
         {/* Photos */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Photos</Text>
-            <TouchableOpacity style={styles.addPhotoButton} onPress={handleTakePhoto}>
-              <Ionicons name="camera" size={16} color="#3498DB" />
-              <Text style={styles.addPhotoText}>Add Photo</Text>
-            </TouchableOpacity>
-          </View>
-          
+          <Text style={styles.sectionTitle}>Photos</Text>
+
           {photos.length > 0 ? (
-            <ScrollView horizontal style={styles.photoScroll}>
-              {photos.map((photo, index) => (
-                <View key={index} style={styles.photoContainer}>
-                  <Image source={{ uri: photo }} style={styles.photo} />
-                  <TouchableOpacity
-                    style={styles.removePhotoButton}
-                    onPress={() => removePhoto(index)}
-                  >
-                    <Ionicons name="close" size={12} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
+            <>
+              <ScrollView horizontal style={styles.photoScroll}>
+                {photos.map((photo, index) => (
+                  <View key={index} style={styles.photoContainer}>
+                    <Image source={{ uri: photo }} style={styles.photo} />
+                    <TouchableOpacity
+                      style={styles.removePhotoButton}
+                      onPress={() => removePhoto(index)}
+                    >
+                      <Ionicons name="close" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+              {/* Compact dropzone for adding more photos */}
+              <View style={styles.dropzoneWrapper}>
+                <TouchableOpacity
+                  style={styles.compactDropzone}
+                  onPress={handlePickPhotos}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="cloud-upload-outline" size={20} color="#7F8C8D" />
+                  <Text style={styles.compactDropzoneText}>
+                    {Platform.OS === 'web' ? 'Drag photos here' : 'Add more photos'}
+                  </Text>
+                  {Platform.OS === 'web' && <Text style={styles.orText}>or</Text>}
+                  <View style={styles.browseButton}>
+                    <Text style={styles.browseButtonText}>Browse</Text>
+                  </View>
+                  {Platform.OS !== 'web' && (
+                    <TouchableOpacity
+                      style={styles.cameraButton}
+                      onPress={handleTakePhoto}
+                    >
+                      <Ionicons name="camera" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
           ) : (
-            <View style={styles.noPhotos}>
-              <Ionicons name="camera-outline" size={32} color="#BDC3C7" />
-              <Text style={styles.noPhotosText}>No photos added yet</Text>
-            </View>
+            /* Full dropzone for empty state */
+            <TouchableOpacity
+              style={styles.fullDropzone}
+              onPress={handlePickPhotos}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="cloud-upload-outline" size={40} color="#95A5A6" />
+              <Text style={styles.fullDropzoneText}>
+                {Platform.OS === 'web' ? 'Drag photos here to upload' : 'Add photos'}
+              </Text>
+              {Platform.OS === 'web' && <Text style={styles.orTextFull}>or</Text>}
+              <View style={styles.browseButtonFull}>
+                <Text style={styles.browseButtonFullText}>Browse Files</Text>
+              </View>
+              {Platform.OS !== 'web' && (
+                <TouchableOpacity
+                  style={styles.cameraButtonFull}
+                  onPress={handleTakePhoto}
+                >
+                  <Ionicons name="camera" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                  <Text style={styles.cameraButtonFullText}>Take Photo</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.fileTypes}>Supports JPG, PNG, HEIC</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -625,6 +901,10 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 16,
+    zIndex: 1,
+  },
+  inputGroupDropdownOpen: {
+    zIndex: 1000,
   },
   inputLabel: {
     fontSize: 14,
@@ -651,12 +931,13 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   dropdownBackdrop: {
-    position: 'absolute',
+    position: 'fixed' as any,
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     zIndex: 999,
+    backgroundColor: 'transparent',
   },
   dropdown: {
     backgroundColor: '#FFFFFF',
@@ -756,21 +1037,104 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontWeight: '600',
   },
-  addPhotoButton: {
+  photoScroll: {
+    marginBottom: 8,
+  },
+  dropzoneWrapper: {
+    marginTop: 12,
+  },
+  // Compact dropzone styles (has photos)
+  compactDropzone: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E8F4FD',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    gap: 4,
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#DEE2E6',
+    borderRadius: 12,
+    backgroundColor: '#FAFBFC',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
-  addPhotoText: {
+  compactDropzoneText: {
     fontSize: 14,
-    color: '#3498DB',
+    color: '#7F8C8D',
     fontWeight: '500',
   },
-  photoScroll: {
+  orText: {
+    fontSize: 14,
+    color: '#95A5A6',
+  },
+  browseButton: {
+    backgroundColor: '#3498DB',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  browseButtonText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  cameraButton: {
+    backgroundColor: '#2C3E50',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  // Full dropzone styles (empty state)
+  fullDropzone: {
+    alignItems: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#DEE2E6',
+    borderRadius: 12,
+    backgroundColor: '#FAFBFC',
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  fullDropzoneText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  orTextFull: {
+    fontSize: 14,
+    color: '#95A5A6',
+    marginBottom: 12,
+  },
+  browseButtonFull: {
+    backgroundColor: '#3498DB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  browseButtonFullText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  cameraButtonFull: {
+    backgroundColor: '#2C3E50',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  cameraButtonFullText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  fileTypes: {
+    fontSize: 12,
+    color: '#95A5A6',
     marginTop: 8,
   },
   photoContainer: {
@@ -792,20 +1156,6 @@ const styles = StyleSheet.create({
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  noPhotos: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    borderStyle: 'dashed',
-  },
-  noPhotosText: {
-    fontSize: 14,
-    color: '#BDC3C7',
-    marginTop: 8,
   },
   bottomActions: {
     paddingHorizontal: 20,

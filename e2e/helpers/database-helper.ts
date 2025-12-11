@@ -3,28 +3,49 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 /**
  * Database helper for Playwright E2E tests
  * Provides utilities for Supabase database operations and cleanup
+ *
+ * IMPORTANT: For auth user deletion, you need SUPABASE_SERVICE_ROLE_KEY
+ * Get it from: Supabase Dashboard > Settings > API > service_role key
  */
 
 export class DatabaseHelper {
   private supabase: SupabaseClient | null = null;
+  private supabaseAdmin: SupabaseClient | null = null;
+  private supabaseUrl: string | undefined;
 
   constructor() {
     this.initializeSupabase();
   }
 
   /**
-   * Initialize Supabase client
+   * Initialize Supabase clients (regular and admin)
    */
   private initializeSupabase(): void {
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    this.supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (!this.supabaseUrl || !supabaseKey) {
       console.warn('Supabase credentials not found in environment variables');
       return;
     }
 
-    this.supabase = createClient(supabaseUrl, supabaseKey);
+    // Regular client for normal operations
+    this.supabase = createClient(this.supabaseUrl, supabaseKey);
+
+    // Admin client for auth operations (requires service role key)
+    if (serviceRoleKey) {
+      this.supabaseAdmin = createClient(this.supabaseUrl, serviceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+      console.log('✓ Admin Supabase client initialized for auth operations');
+    } else {
+      console.warn('SUPABASE_SERVICE_ROLE_KEY not set - auth user deletion will not be available');
+      console.warn('Get it from: Supabase Dashboard > Settings > API > service_role key');
+    }
   }
 
   /**
@@ -32,6 +53,13 @@ export class DatabaseHelper {
    */
   isAvailable(): boolean {
     return this.supabase !== null;
+  }
+
+  /**
+   * Check if admin operations are available
+   */
+  isAdminAvailable(): boolean {
+    return this.supabaseAdmin !== null;
   }
 
   /**
@@ -296,6 +324,252 @@ export class DatabaseHelper {
     } catch (error) {
       console.error('Failed to cleanup all test data:', error);
       return false;
+    }
+  }
+
+  /**
+   * Delete an auth user by email (requires service role key)
+   * @param email - User email address
+   */
+  async deleteAuthUserByEmail(email: string): Promise<boolean> {
+    if (!this.supabaseAdmin) {
+      console.warn('Admin client not available - cannot delete auth user');
+      return false;
+    }
+
+    try {
+      // First, find the user by email
+      const { data, error: listError } = await this.supabaseAdmin.auth.admin.listUsers();
+
+      if (listError || !data) {
+        console.error('Failed to list users:', listError);
+        return false;
+      }
+
+      const userList = data.users as Array<{ id: string; email?: string }>;
+      const user = userList.find(u => u.email === email);
+      if (!user) {
+        console.log(`User with email ${email} not found - may already be deleted`);
+        return true; // Consider it a success if user doesn't exist
+      }
+
+      // Delete the user
+      const { error: deleteError } = await this.supabaseAdmin.auth.admin.deleteUser(user.id);
+
+      if (deleteError) {
+        console.error(`Failed to delete user ${email}:`, deleteError);
+        return false;
+      }
+
+      console.log(`✓ Deleted auth user: ${email}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to delete auth user ${email}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete auth users matching an email pattern (requires service role key)
+   * @param pattern - Email pattern to match (e.g., 'test-user-', '@example.com')
+   * @param preserveEmails - List of emails to preserve (not delete)
+   */
+  async deleteAuthUsersByPattern(
+    pattern: string,
+    preserveEmails: string[] = []
+  ): Promise<{ deleted: number; errors: number }> {
+    if (!this.supabaseAdmin) {
+      console.warn('Admin client not available - cannot delete auth users');
+      return { deleted: 0, errors: 0 };
+    }
+
+    const result = { deleted: 0, errors: 0 };
+
+    try {
+      // List all users
+      const { data, error: listError } = await this.supabaseAdmin.auth.admin.listUsers();
+
+      if (listError || !data) {
+        console.error('Failed to list users:', listError);
+        return result;
+      }
+
+      const userList = data.users as Array<{ id: string; email?: string }>;
+
+      // Filter users matching the pattern
+      const usersToDelete = userList.filter(
+        user =>
+          user.email &&
+          user.email.includes(pattern) &&
+          !preserveEmails.includes(user.email)
+      );
+
+      console.log(`Found ${usersToDelete.length} users matching pattern "${pattern}"`);
+
+      // Delete each matching user
+      for (const user of usersToDelete) {
+        try {
+          const { error: deleteError } = await this.supabaseAdmin.auth.admin.deleteUser(user.id);
+
+          if (deleteError) {
+            console.error(`Failed to delete user ${user.email}:`, deleteError);
+            result.errors++;
+          } else {
+            console.log(`✓ Deleted: ${user.email}`);
+            result.deleted++;
+          }
+        } catch (error) {
+          console.error(`Error deleting user ${user.email}:`, error);
+          result.errors++;
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Failed to delete users by pattern:', error);
+      return result;
+    }
+  }
+
+  /**
+   * Reset test environment - comprehensive cleanup of database and auth users
+   * This is the recommended method to call before running E2E tests
+   * @param options - Cleanup options
+   */
+  async resetTestEnvironment(options: {
+    deleteAuthUsers?: boolean;
+    emailPattern?: string;
+    preserveEmails?: string[];
+  } = {}): Promise<{
+    success: boolean;
+    authUsersDeleted: number;
+    authErrors: number;
+    databaseCleaned: boolean;
+  }> {
+    const {
+      deleteAuthUsers = true,
+      emailPattern = 'test-user-',
+      preserveEmails = ['e2e-test@myailandlord.com'], // Preserve the main E2E test user
+    } = options;
+
+    const result = {
+      success: true,
+      authUsersDeleted: 0,
+      authErrors: 0,
+      databaseCleaned: false,
+    };
+
+    console.log('\n🧹 Starting test environment reset...');
+
+    // Step 1: Delete auth users if enabled and admin client is available
+    if (deleteAuthUsers && this.supabaseAdmin) {
+      console.log('\n📧 Cleaning up auth users...');
+      const authResult = await this.deleteAuthUsersByPattern(emailPattern, preserveEmails);
+      result.authUsersDeleted = authResult.deleted;
+      result.authErrors = authResult.errors;
+
+      if (authResult.errors > 0) {
+        result.success = false;
+      }
+    } else if (deleteAuthUsers && !this.supabaseAdmin) {
+      console.warn('⚠️ Skipping auth user cleanup - SUPABASE_SERVICE_ROLE_KEY not configured');
+    }
+
+    // Step 2: Clean up database tables
+    if (this.supabase) {
+      console.log('\n🗄️ Cleaning up database tables...');
+
+      try {
+        // Delete in order respecting foreign key constraints
+        // Tables based on actual schema: maintenance_requests, tenants, property_invitations, invite_links, properties, profiles
+
+        // 1. Delete maintenance_requests first (references tenants and properties)
+        await this.supabase
+          .from('maintenance_requests')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+        // 2. Delete tenants (links tenants to properties)
+        await this.supabase
+          .from('tenants')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+        // 3. Delete property_invitations
+        await this.supabase
+          .from('property_invitations')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+        // 4. Delete invite_links
+        await this.supabase
+          .from('invite_links')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+        // 5. Delete properties
+        await this.supabase
+          .from('properties')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+        // 6. Delete profiles (except preserved emails)
+        const { error: profileError } = await this.supabase
+          .from('profiles')
+          .delete()
+          .not('email', 'in', `(${preserveEmails.map(e => `"${e}"`).join(',')})`);
+
+        if (profileError) {
+          console.error('Error cleaning profiles:', profileError);
+        }
+
+        result.databaseCleaned = true;
+        console.log('✓ Database tables cleaned');
+      } catch (error) {
+        console.error('Failed to clean database:', error);
+        result.success = false;
+        result.databaseCleaned = false;
+      }
+    }
+
+    // Summary
+    console.log('\n📊 Reset Summary:');
+    console.log(`   Auth users deleted: ${result.authUsersDeleted}`);
+    console.log(`   Auth errors: ${result.authErrors}`);
+    console.log(`   Database cleaned: ${result.databaseCleaned}`);
+    console.log(`   Overall success: ${result.success}`);
+    console.log('');
+
+    return result;
+  }
+
+  /**
+   * Get all auth users (useful for debugging)
+   */
+  async listAuthUsers(): Promise<{ id: string; email: string; created_at: string }[]> {
+    if (!this.supabaseAdmin) {
+      console.warn('Admin client not available');
+      return [];
+    }
+
+    try {
+      const { data, error } = await this.supabaseAdmin.auth.admin.listUsers();
+
+      if (error || !data) {
+        console.error('Failed to list users:', error);
+        return [];
+      }
+
+      const userList = data.users as Array<{ id: string; email?: string; created_at: string }>;
+
+      return userList.map(user => ({
+        id: user.id,
+        email: user.email || 'no-email',
+        created_at: user.created_at,
+      }));
+    } catch (error) {
+      console.error('Failed to list users:', error);
+      return [];
     }
   }
 

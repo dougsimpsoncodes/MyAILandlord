@@ -20,6 +20,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { PropertyData, PropertyArea, AssetCondition } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import Button from '../../components/shared/Button';
@@ -127,8 +129,11 @@ const PropertyAreasScreen = () => {
   const navigation = useNavigation<PropertyAreasNavigationProp>();
   const route = useRoute<PropertyAreasRouteProp>();
   const responsive = useResponsive();
+  const { user } = useAppAuth();
   const propertyData = route.params.propertyData;
   const draftId = route.params.draftId;
+  const propertyId = route.params.propertyId; // For existing properties from database
+  const existingAreas = route.params.existingAreas; // Areas loaded from database
 
   // Initialize draft management
   const {
@@ -150,15 +155,26 @@ const PropertyAreasScreen = () => {
   });
 
 
-  // Initialize areas based on draft state or route params
+  // Initialize areas based on existing areas (from DB), draft state, or generate new
   const initializeAreas = () => {
+    // Priority 1: Use existing areas from database (for existing properties)
+    if (existingAreas && existingAreas.length > 0) {
+      return existingAreas;
+    }
+    // Priority 2: Use draft state areas
     if (draftState?.areas && draftState.areas.length > 0) {
       return draftState.areas;
     }
+    // Priority 3: Generate new areas based on property data
     return propertyData ? generateDynamicAreas(propertyData) : [];
   };
 
   const initializeSelectedAreas = () => {
+    // Priority 1: Use existing areas from database (all are selected)
+    if (existingAreas && existingAreas.length > 0) {
+      return existingAreas.map(area => area.id);
+    }
+    // Priority 2: Use draft state areas
     if (draftState?.areas && draftState.areas.length > 0) {
       return draftState.areas.map(area => area.id);
     }
@@ -621,11 +637,17 @@ const PropertyAreasScreen = () => {
         ...currentData,
         photos: propertyPhotos,
       };
-      
-      navigation.navigate('PropertyAssets', { 
+
+      // Save current draft ID for page refresh persistence (step 2)
+      if (user?.id && draftState?.id) {
+        await PropertyDraftService.setCurrentDraftId(user.id, draftState.id, 2);
+      }
+
+      navigation.navigate('PropertyAssets', {
         propertyData: updatedPropertyData,
         areas: selectedAreaData,
         draftId: draftState?.id,
+        propertyId, // Pass property ID for existing properties
       });
     } catch (error) {
       console.error('Error proceeding to next step:', error);

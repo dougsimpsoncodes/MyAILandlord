@@ -10,32 +10,37 @@ import { Ionicons } from '@expo/vector-icons';
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
+// OAuth providers are not enabled in Supabase - hide buttons to prevent redirect errors
+const OAUTH_ENABLED = process.env.EXPO_PUBLIC_OAUTH_ENABLED === 'true';
+
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
     try {
       setLoading(true);
+      setError(null);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
 
-      if (error) {
-        Alert.alert('Login Error', error.message);
+      if (loginError) {
+        setError(loginError.message);
         return;
       }
 
       // Session is automatically set by Supabase
       // Role will be set automatically by useProfileSync hook
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to sign in. Please try again.';
-      Alert.alert('Login Error', errorMessage);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -44,20 +49,26 @@ const LoginScreen = () => {
   const handleOAuthSignIn = async (provider: 'google' | 'apple') => {
     try {
       setLoading(true);
+      setError(null);
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: provider,
       });
 
-      if (error) {
-        Alert.alert('OAuth Error', error.message);
+      if (oauthError) {
+        // Handle provider not enabled error gracefully
+        if (oauthError.message.includes('provider is not enabled') || oauthError.message.includes('Unsupported provider')) {
+          setError(`${provider === 'google' ? 'Google' : 'Apple'} sign-in is not available. Please use email/password.`);
+        } else {
+          setError(oauthError.message);
+        }
         return;
       }
 
       // OAuth flow will redirect - session will be set automatically
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to sign in with ${provider}. Please try again.`;
-      Alert.alert('OAuth Error', errorMessage);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : `Failed to sign in with ${provider}. Please try again.`;
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -87,6 +98,13 @@ const LoginScreen = () => {
           </Text>
         </View>
 
+        {error && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle" size={20} color="#E74C3C" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
+
         <View style={styles.loginContainer}>
           <TextInput
             style={styles.input}
@@ -98,15 +116,28 @@ const LoginScreen = () => {
             autoCorrect={false}
           />
           
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={styles.eyeButton}
+              onPress={() => setShowPassword(!showPassword)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={22}
+                color="#7F8C8D"
+              />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity
             style={[styles.loginButton, styles.primaryButton]}
@@ -121,43 +152,47 @@ const LoginScreen = () => {
             )}
           </TouchableOpacity>
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          {OAUTH_ENABLED && (
+            <>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-          <TouchableOpacity
-            style={[styles.loginButton, styles.googleButton]}
-            onPress={() => handleOAuthSignIn('google')}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={24} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Continue with Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.loginButton, styles.googleButton]}
+                onPress={() => handleOAuthSignIn('google')}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={24} color="#FFFFFF" />
+                    <Text style={styles.buttonText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.loginButton, styles.appleButton]}
-            onPress={() => handleOAuthSignIn('apple')}
-            disabled={loading}
-            activeOpacity={0.8}
-          >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
-                <Text style={styles.buttonText}>Continue with Apple</Text>
-              </>
-            )}
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.loginButton, styles.appleButton]}
+                onPress={() => handleOAuthSignIn('apple')}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="logo-apple" size={24} color="#FFFFFF" />
+                    <Text style={styles.buttonText}>Continue with Apple</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
 
           <TouchableOpacity
             style={styles.signUpButton}
@@ -237,6 +272,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E1E8ED',
   },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingRight: 50,
+    borderRadius: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+  },
+  eyeButton: {
+    position: 'absolute',
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
   loginButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -298,6 +355,21 @@ const styles = StyleSheet.create({
     color: '#95A5A6',
     textAlign: 'center',
     lineHeight: 18,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FDEDEC',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#E74C3C',
   },
 });
 
