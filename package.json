@@ -43,7 +43,7 @@
     "@supabase/supabase-js": "^2.56.0",
     "@upstash/redis": "^1.35.4",
     "base64-arraybuffer": "^1.0.2",
-    "expo": "~53.0.25",
+    "expo": "~54.0.29",
     "expo-auth-session": "^6.2.1",
     "expo-barcode-scanner": "^13.0.1",
     "expo-crypto": "~14.1.5",
