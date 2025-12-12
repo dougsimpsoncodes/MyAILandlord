@@ -16,6 +16,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isSignedIn: boolean;
   signOut: () => Promise<void>;
+  updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
   session: Session | null;
 }
 
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextValue>({
   isLoading: true,
   isSignedIn: false,
   signOut: async () => {},
+  updateProfile: async () => {},
   session: null,
 });
 
@@ -85,11 +87,42 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
     setSession(null);
   };
 
+  const updateProfile = async (data: { name?: string; phone?: string }) => {
+    if (authDisabled) {
+      // For dev mode, update the local user state
+      if (data.name) {
+        setUser(prev => prev ? { ...prev, name: data.name! } : null);
+      }
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        name: data.name,
+        full_name: data.name,
+        phone: data.phone,
+      },
+    });
+
+    if (error) {
+      log.error('Failed to update profile', { error: error.message });
+      throw error;
+    }
+
+    // Update local user state immediately
+    if (data.name && user) {
+      setUser({ ...user, name: data.name });
+    }
+
+    log.info('Profile updated successfully', { name: data.name });
+  };
+
   const value: AuthContextValue = {
     user,
     isLoading,
     isSignedIn: authDisabled ? true : !!session,
     signOut,
+    updateProfile,
     session,
   };
 

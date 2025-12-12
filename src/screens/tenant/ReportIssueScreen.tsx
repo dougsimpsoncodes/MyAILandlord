@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
@@ -14,6 +13,7 @@ import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
 import { AreaType } from '../../models/Property';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
 
@@ -39,6 +39,10 @@ const getCategoryIcon = (category: string) => {
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
   const { isSignedIn } = useAppAuth();
+
+  const handleGoBack = () => {
+    navigation.goBack();
+  };
   const apiClient = useApiClient();
   const [issueDescription, setIssueDescription] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -444,17 +448,35 @@ const ReportIssueScreen = () => {
     }
   };
 
+  // Check if form is valid for forward navigation
+  const isFormValid = () => {
+    if (!selectedProperty) return false;
+    if (!selectedArea || !selectedAsset || !selectedIssueType || !selectedPriority || !selectedDuration || !selectedTiming) return false;
+    if (selectedIssueType === 'other' && !otherIssueDescription.trim()) return false;
+    return true;
+  };
+
+  // Header right with forward navigation
+  const headerRight = (
+    <TouchableOpacity
+      style={[styles.headerNextButton, !isFormValid() && styles.headerNextButtonDisabled]}
+      onPress={handleSubmit}
+      disabled={!isFormValid()}
+    >
+      <Ionicons name="arrow-forward" size={24} color={!isFormValid() ? '#BDC3C7' : '#2C3E50'} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Report Maintenance Issue</Text>
-          <Text style={styles.subtitle}>Follow the steps below to submit your request</Text>
-        </View>
+    <ScreenContainer
+      title="Report Issue"
+      subtitle="Step 1 of 2"
+      showBackButton
+      onBackPress={handleGoBack}
+      headerRight={headerRight}
+      userRole="tenant"
+      keyboardAware
+    >
 
         {/* Property Selection */}
         {tenantProperties.length > 1 && (
@@ -733,68 +755,11 @@ const ReportIssueScreen = () => {
             {'\n'}• Mention if it's urgent or affecting daily life
           </Text>
         </View>
-        <View style={styles.submitSection}>
-          <TouchableOpacity
-            style={styles.continueButton}
-            onPress={() => {
-              console.log('=== BUTTON CLICKED at', new Date().toISOString(), '===');
-              console.log('Button onPress triggered!');
-              console.log('Current state values:');
-              console.log('- selectedProperty:', selectedProperty);
-              console.log('- selectedArea:', selectedArea);
-              console.log('- selectedAsset:', selectedAsset);
-              console.log('- selectedIssueType:', selectedIssueType);
-              console.log('- selectedPriority:', selectedPriority);
-              console.log('- selectedDuration:', selectedDuration);
-              console.log('- selectedTiming:', selectedTiming);
-              console.log('- mediaItems count:', mediaItems.length);
-              
-              try {
-                handleSubmit();
-                console.log('handleSubmit called successfully');
-              } catch (error) {
-                console.error('Error calling handleSubmit:', error);
-                console.error('Stack trace:', error.stack);
-                Alert.alert('Error', 'Failed to process request: ' + error.message);
-              }
-            }}
-            activeOpacity={0.8}
-            onPressIn={() => console.log('Button press started at', new Date().toISOString())}
-            onPressOut={() => console.log('Button press ended at', new Date().toISOString())}
-          >
-            <Text style={styles.continueButtonText}>
-              Review Request
-            </Text>
-            <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    paddingVertical: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
   inputSection: {
     marginBottom: 24,
   },
@@ -958,32 +923,15 @@ const styles = StyleSheet.create({
     color: '#D68910',
     lineHeight: 20,
   },
-  submitSection: {
-    paddingVertical: 20,
-    paddingHorizontal: 0,
-  },
-  continueButton: {
-    backgroundColor: '#3498DB',
-    flexDirection: 'row',
-    alignItems: 'center',
+  headerNextButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    
-    
-    
-    
-    elevation: 4,
+    alignItems: 'center',
   },
-  continueButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#95A5A6',
-    opacity: 0.7,
+  headerNextButtonDisabled: {
+    opacity: 0.4,
   },
   titleInput: {
     backgroundColor: '#FFFFFF',

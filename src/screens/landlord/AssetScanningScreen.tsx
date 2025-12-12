@@ -8,7 +8,6 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +25,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type AssetScanningNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'AssetScanning'>;
 
@@ -260,30 +260,10 @@ const AssetScanningScreen = () => {
   };
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8F9FA',
-    },
-    header: {
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingVertical: responsive.spacing.section[responsive.screenSize],
-      backgroundColor: '#FFFFFF',
-      borderBottomWidth: 1,
-      borderBottomColor: '#E9ECEF',
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      marginBottom: 16,
-    },
-    backButtonText: {
-      marginLeft: 8,
-      fontSize: 16,
-      color: '#6C757D',
-    },
     progressContainer: {
       marginBottom: 24,
+      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
+      paddingTop: responsive.spacing.section[responsive.screenSize],
     },
     progressBar: {
       height: 4,
@@ -534,42 +514,70 @@ const AssetScanningScreen = () => {
     },
   });
 
+  const footerContent = (
+    <View style={styles.footer}>
+      {/* Save Status */}
+      <View style={styles.saveStatus}>
+        <Ionicons
+          name={isDraftLoading ? 'sync' : 'checkmark-circle'}
+          size={16}
+          color={isDraftLoading ? '#6C757D' : '#28A745'}
+        />
+        <Text style={styles.saveStatusText}>
+          {isDraftLoading ? 'Saving...' : 'All changes saved'}
+        </Text>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={() => proceedToNext()}
+        >
+          <Text style={styles.skipButtonText}>Skip</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.continueButton}
+          onPress={handleContinue}
+        >
+          <Text style={styles.continueButtonText}>
+            Continue to Details ({detectedAssets.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer
+      title="Asset Detection"
+      subtitle="Scan barcodes, take photos, or manually add assets to your property inventory"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      scrollable={true}
+      padded={false}
+      bottomContent={footerContent}
+    >
       <ResponsiveContainer maxWidth="large" padding={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#6C757D" />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-
-          <ResponsiveTitle style={{ marginBottom: 8 }}>Asset Detection</ResponsiveTitle>
-          <ResponsiveBody style={{ color: '#6C757D' }}>
-            Scan barcodes, take photos, or manually add assets to your property inventory.
-          </ResponsiveBody>
-
-          {/* Progress Indicator */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${getProgressPercentage()}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {getProgressPercentage()}% complete • Step 5 of 8
-            </Text>
+        {/* Progress Indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${getProgressPercentage()}%` }
+              ]}
+            />
           </View>
+          <Text style={styles.progressText}>
+            {getProgressPercentage()}% complete • Step 5 of 8
+          </Text>
         </View>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
           {/* Scanner */}
           {scannerActive ? (
             <View style={styles.scannerContainer}>
@@ -703,40 +711,6 @@ const AssetScanningScreen = () => {
               </View>
             </View>
           )}
-        </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          {/* Save Status */}
-          <View style={styles.saveStatus}>
-            <Ionicons 
-              name={isDraftLoading ? 'sync' : 'checkmark-circle'} 
-              size={16} 
-              color={isDraftLoading ? '#6C757D' : '#28A745'} 
-            />
-            <Text style={styles.saveStatusText}>
-              {isDraftLoading ? 'Saving...' : 'All changes saved'}
-            </Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={() => proceedToNext()}
-            >
-              <Text style={styles.skipButtonText}>Skip</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={handleContinue}
-            >
-              <Text style={styles.continueButtonText}>
-                Continue to Details ({detectedAssets.length})
-              </Text>
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Loading Overlay */}
@@ -749,7 +723,7 @@ const AssetScanningScreen = () => {
           </View>
         )}
       </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

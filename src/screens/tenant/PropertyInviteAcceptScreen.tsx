@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
@@ -9,9 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
-import { useResponsive } from '../../hooks/useResponsive';
-import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveTitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 import CustomButton from '../../components/shared/CustomButton';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useRole } from '../../context/RoleContext';
@@ -70,7 +67,6 @@ const PropertyInviteAcceptScreen = () => {
   };
   
   const apiClient = useApiClient();
-  const responsive = useResponsive();
   const { setUserRole } = useRole();
   
   const [loading, setLoading] = useState(true);
@@ -233,115 +229,111 @@ const PropertyInviteAcceptScreen = () => {
 
   if (loading && !property) {
     return (
-      <SafeAreaView style={styles.container}>
+      <ScreenContainer
+        title="Property Invitation"
+        userRole="tenant"
+        scrollable={false}
+      >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#007AFF" />
           <Text style={styles.loadingText}>Loading property details...</Text>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   if (error && !property) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ResponsiveContainer>
-          <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle" size={64} color="#ff4444" />
-            <ResponsiveTitle style={styles.errorTitle}>Invalid Invite</ResponsiveTitle>
-            <ResponsiveBody style={styles.errorText}>{error}</ResponsiveBody>
-            <CustomButton
-              title="Go to Home"
-              onPress={() => navigation.navigate('Home')}
-              style={styles.homeButton}
-            />
-          </View>
-        </ResponsiveContainer>
-      </SafeAreaView>
+      <ScreenContainer
+        title="Invalid Invite"
+        showBackButton
+        onBackPress={() => navigation.navigate('Welcome')}
+        userRole="tenant"
+      >
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={64} color="#ff4444" />
+          <Text style={styles.errorTitle}>Invalid Invite</Text>
+          <Text style={styles.errorMessageText}>{error}</Text>
+          <CustomButton
+            title="Go to Home"
+            onPress={() => navigation.navigate('Home')}
+            style={styles.homeButton}
+          />
+        </View>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ResponsiveContainer>
-        {/* Header */}
-        <View style={styles.header}>
-          <Ionicons name="mail-open" size={48} color="#007AFF" />
-          <ResponsiveTitle style={styles.title}>
-            Property Invitation
-          </ResponsiveTitle>
-          <ResponsiveBody style={styles.subtitle}>
-            You've been invited to connect to a property
-          </ResponsiveBody>
+    <ScreenContainer
+      title="Property Invitation"
+      subtitle="You've been invited to connect"
+      showBackButton
+      onBackPress={handleDecline}
+      userRole="tenant"
+    >
+      {/* Property Card */}
+      {property && (
+        <View style={styles.propertyCard}>
+          <View style={styles.propertyHeader}>
+            <Ionicons name="home" size={32} color="#007AFF" />
+          </View>
+          <Text style={styles.propertyName}>{property.name}</Text>
+          <Text style={styles.propertyAddress}>{property.address}</Text>
+          {property.unit && (
+            <Text style={styles.propertyUnit}>Unit: {property.unit}</Text>
+          )}
         </View>
+      )}
 
-        {/* Property Card */}
-        {property && (
-          <View style={styles.propertyCard}>
-            <View style={styles.propertyHeader}>
-              <Ionicons name="home" size={32} color="#007AFF" />
-            </View>
-            <Text style={styles.propertyName}>{property.name}</Text>
-            <Text style={styles.propertyAddress}>{property.address}</Text>
-            {property.unit && (
-              <Text style={styles.propertyUnit}>Unit: {property.unit}</Text>
-            )}
-          </View>
-        )}
-
-        {/* Benefits */}
-        <View style={styles.benefitsSection}>
-          <Text style={styles.benefitsTitle}>By accepting, you'll be able to:</Text>
-          <View style={styles.benefitItem}>
-            <Ionicons name="construct" size={20} color="#666" />
-            <Text style={styles.benefitText}>Report maintenance issues</Text>
-          </View>
-          <View style={styles.benefitItem}>
-            <Ionicons name="chatbubbles" size={20} color="#666" />
-            <Text style={styles.benefitText}>Communicate with your landlord</Text>
-          </View>
-          <View style={styles.benefitItem}>
-            <Ionicons name="document-text" size={20} color="#666" />
-            <Text style={styles.benefitText}>Access property information</Text>
-          </View>
-          <View style={styles.benefitItem}>
-            <Ionicons name="notifications" size={20} color="#666" />
-            <Text style={styles.benefitText}>Receive important updates</Text>
-          </View>
+      {/* Benefits */}
+      <View style={styles.benefitsSection}>
+        <Text style={styles.benefitsTitle}>By accepting, you'll be able to:</Text>
+        <View style={styles.benefitItem}>
+          <Ionicons name="construct" size={20} color="#666" />
+          <Text style={styles.benefitText}>Report maintenance issues</Text>
         </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionSection}>
-          <CustomButton
-            title={loading ? 'Connecting...' : 'Accept & Connect'}
-            onPress={handleAcceptInvite}
-            disabled={loading}
-            style={styles.acceptButton}
-            icon="checkmark-circle"
-          />
-
-          <CustomButton
-            title="Not Now"
-            onPress={handleDecline}
-            variant="outline"
-            style={styles.declineButton}
-          />
+        <View style={styles.benefitItem}>
+          <Ionicons name="chatbubbles" size={20} color="#666" />
+          <Text style={styles.benefitText}>Communicate with your landlord</Text>
         </View>
+        <View style={styles.benefitItem}>
+          <Ionicons name="document-text" size={20} color="#666" />
+          <Text style={styles.benefitText}>Access property information</Text>
+        </View>
+        <View style={styles.benefitItem}>
+          <Ionicons name="notifications" size={20} color="#666" />
+          <Text style={styles.benefitText}>Receive important updates</Text>
+        </View>
+      </View>
 
-        {/* Error Message */}
-        {error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : null}
-      </ResponsiveContainer>
-    </SafeAreaView>
+      {/* Action Buttons */}
+      <View style={styles.actionSection}>
+        <CustomButton
+          title={loading ? 'Connecting...' : 'Accept & Connect'}
+          onPress={handleAcceptInvite}
+          disabled={loading}
+          style={styles.acceptButton}
+          icon="checkmark-circle"
+        />
+
+        <CustomButton
+          title="Not Now"
+          onPress={handleDecline}
+          variant="outline"
+          style={styles.declineButton}
+        />
+      </View>
+
+      {/* Error Message */}
+      {error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : null}
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -361,7 +353,15 @@ const styles = StyleSheet.create({
   errorTitle: {
     marginTop: 16,
     marginBottom: 8,
+    fontSize: 20,
+    fontWeight: '600',
     color: '#ff4444',
+  },
+  errorMessageText: {
+    color: '#666',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
   errorText: {
     color: '#ff4444',
@@ -371,22 +371,6 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     marginTop: 24,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-  },
-  title: {
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-    color: '#1a1a1a',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#666',
-    lineHeight: 22,
   },
   propertyCard: {
     backgroundColor: '#f8f9fa',

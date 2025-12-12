@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Switch } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type SendToVendorScreenRouteProp = RouteProp<LandlordStackParamList, 'SendToVendor'>;
 type SendToVendorScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'SendToVendor'>;
@@ -179,18 +179,48 @@ Property Management
     ));
   };
 
+  // Bottom footer buttons
+  const footerButtons = (
+    <View style={styles.footer}>
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
+        onPress={handleSendToVendor}
+        disabled={isSending || !selectedVendor}
+        activeOpacity={0.8}
+      >
+        {isSending ? (
+          <>
+            <Ionicons name="hourglass" size={20} color="#FFFFFF" />
+            <Text style={styles.sendButtonText}>Sending...</Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name="send" size={20} color="#FFFFFF" />
+            <Text style={styles.sendButtonText}>Send to Vendor</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="mail" size={32} color="#F39C12" />
-          </View>
-          <Text style={styles.title}>Send to Vendor</Text>
-          <Text style={styles.subtitle}>
-            Select a vendor and customize the maintenance request email
-          </Text>
-        </View>
+    <ScreenContainer
+      title="Send to Vendor"
+      subtitle="Select a vendor and customize the maintenance request email"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      bottomContent={footerButtons}
+    >
+      <ScrollView showsVerticalScrollIndicator={false}>
 
         <View style={styles.casePreview}>
           <Text style={styles.sectionTitle}>Case Summary</Text>
@@ -352,67 +382,11 @@ Property Management
           </ScrollView>
         </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
-          onPress={handleSendToVendor}
-          disabled={isSending || !selectedVendor}
-          activeOpacity={0.8}
-        >
-          {isSending ? (
-            <>
-              <Ionicons name="hourglass" size={20} color="#FFFFFF" />
-              <Text style={styles.sendButtonText}>Sending...</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="send" size={20} color="#FFFFFF" />
-              <Text style={styles.sendButtonText}>Send to Vendor</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
-  headerIcon: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',

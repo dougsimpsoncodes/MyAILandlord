@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
+import { DesignSystem } from '../../theme/DesignSystem';
+import ScreenContainer from '../../components/shared/ScreenContainer';
+import Button from '../../components/shared/Button';
 
 type MaintenanceStatusScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'MaintenanceStatus'>;
 
@@ -105,22 +107,22 @@ const MaintenanceStatusScreen = () => {
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
-      new: '#3498DB',
-      in_progress: '#F39C12',
-      pending_vendor: '#9B59B6',
-      resolved: '#27AE60',
-      closed: '#95A5A6'
+      new: '#F39C12',
+      in_progress: '#3498DB',
+      pending_vendor: '#3498DB',
+      resolved: '#2ECC71',
+      closed: '#2ECC71'
     };
     return colors[status] || '#95A5A6';
   };
 
   const getStatusText = (status: string) => {
     const texts: { [key: string]: string } = {
-      new: 'New',
+      new: 'Pending',
       in_progress: 'In Progress',
-      pending_vendor: 'Vendor Assigned',
-      resolved: 'Resolved',
-      closed: 'Closed'
+      pending_vendor: 'In Progress',
+      resolved: 'Complete',
+      closed: 'Complete'
     };
     return texts[status] || status;
   };
@@ -152,367 +154,178 @@ const MaintenanceStatusScreen = () => {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <ScreenContainer title="My Requests" userRole="tenant" scrollable={false}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3498DB" />
-          <Text style={styles.loadingText}>Loading maintenance hub...</Text>
+          <ActivityIndicator size="large" color="#2ECC71" />
+          <Text style={styles.loadingText}>Loading requests...</Text>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            colors={['#3498DB']}
-          />
-        }
-      >
-        <View style={styles.header}>
-          <Text style={styles.title}>Maintenance Hub</Text>
-          <TouchableOpacity
-            style={styles.newRequestButton}
-            onPress={() => navigation.navigate('ReportIssue')}
-          >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.newRequestButtonText}>New</Text>
-          </TouchableOpacity>
-        </View>
+    <ScreenContainer
+      title="My Requests"
+      userRole="tenant"
+      refreshing={isRefreshing}
+      onRefresh={handleRefresh}
+      bottomContent={
+        <Button
+          title="Report New Issue"
+          onPress={() => navigation.navigate('ReportIssue')}
+          type="success"
+          fullWidth
+          icon={<Ionicons name="construct" size={20} color="#fff" />}
+        />
+      }
+    >
 
         {activeRequests.length === 0 && resolvedRequests.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="construct-outline" size={80} color="#D5D8DC" />
-            <Text style={styles.emptyStateTitle}>No maintenance requests</Text>
+            <Ionicons name="checkmark-circle-outline" size={80} color="#2ECC71" />
+            <Text style={styles.emptyStateTitle}>No Active Requests</Text>
             <Text style={styles.emptyStateSubtitle}>
-              When you report issues, they'll appear here
+              Report an issue if something needs fixing
             </Text>
-            <TouchableOpacity
-              style={styles.emptyStateButton}
-              onPress={() => navigation.navigate('ReportIssue')}
-            >
-              <Text style={styles.emptyStateButtonText}>Report First Issue</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <>
-            {activeRequests.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Active Requests ({activeRequests.length})</Text>
-                {activeRequests.map((request) => (
-                  <TouchableOpacity
-                    key={request.id}
-                    style={styles.requestCard}
-                    onPress={() => {
-                      // Navigate to detail view when implemented
-                    }}
-                  >
-                    <View style={styles.requestHeader}>
-                      <View style={styles.requestTitleContainer}>
-                        <Text style={styles.requestTitle}>{request.title}</Text>
-                        <View style={styles.requestMeta}>
-                          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(request.status) + '20' }]}>
-                            <Text style={[styles.statusText, { color: getStatusColor(request.status) }]}>
-                              {getStatusText(request.status)}
-                            </Text>
-                          </View>
-                          <View style={styles.priorityIndicator}>
-                            <Ionicons 
-                              name={getPriorityIcon(request.priority).name as keyof typeof Ionicons.glyphMap} 
-                              size={16} 
-                              color={getPriorityIcon(request.priority).color} 
-                            />
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.requestDetails}>
-                      <View style={styles.detailItem}>
-                        <Ionicons name="location-outline" size={14} color="#7F8C8D" />
-                        <Text style={styles.detailText}>{request.location}</Text>
-                      </View>
-                      <View style={styles.detailItem}>
-                        <Ionicons name="time-outline" size={14} color="#7F8C8D" />
-                        <Text style={styles.detailText}>{formatDate(request.createdAt)}</Text>
-                      </View>
-                    </View>
-                    
-                    <Text style={styles.requestDescription} numberOfLines={2}>
-                      {request.description}
+            {activeRequests.map((request) => (
+              <TouchableOpacity
+                key={request.id}
+                style={styles.requestCard}
+                onPress={() => {
+                  // Navigate to detail view when implemented
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.requestHeader}>
+                  <Text style={styles.requestTitle}>{request.title}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(request.status) + '20' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(request.status) }]}>
+                      {getStatusText(request.status)}
                     </Text>
-                    
-                    <View style={styles.cardActions}>
-                      <TouchableOpacity style={styles.actionButton}>
-                        <Ionicons name="chatbubble-outline" size={16} color="#3498DB" />
-                        <Text style={styles.actionButtonText}>Message</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.actionButton}>
-                        <Ionicons name="create-outline" size={16} color="#3498DB" />
-                        <Text style={styles.actionButtonText}>Edit</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                  </View>
+                </View>
 
-            {resolvedRequests.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Resolved ({resolvedRequests.length})</Text>
-                {resolvedRequests.map((request) => (
-                  <TouchableOpacity
-                    key={request.id}
-                    style={[styles.requestCard, styles.resolvedCard]}
-                    onPress={() => {
-                    }}
-                  >
-                    <View style={styles.requestHeader}>
-                      <Text style={[styles.requestTitle, styles.resolvedTitle]}>{request.title}</Text>
-                      <Ionicons name="checkmark-circle" size={20} color="#27AE60" />
-                    </View>
-                    <View style={styles.requestDetails}>
-                      <View style={styles.detailItem}>
-                        <Ionicons name="location-outline" size={14} color="#95A5A6" />
-                        <Text style={[styles.detailText, styles.resolvedText]}>{request.location}</Text>
-                      </View>
-                      <View style={styles.detailItem}>
-                        <Ionicons name="time-outline" size={14} color="#95A5A6" />
-                        <Text style={[styles.detailText, styles.resolvedText]}>
-                          Resolved {formatDate(request.createdAt)}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                <Text style={styles.requestMeta}>
+                  {request.location} • {formatDate(request.createdAt)}
+                </Text>
+
+                {request.description && (
+                  <Text style={styles.requestDescription} numberOfLines={2}>
+                    {request.description}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ))}
+
+            {resolvedRequests.map((request) => (
+              <TouchableOpacity
+                key={request.id}
+                style={[styles.requestCard, styles.resolvedCard]}
+                onPress={() => {
+                  // Navigate to detail view when implemented
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.requestHeader}>
+                  <Text style={[styles.requestTitle, styles.resolvedTitle]}>{request.title}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(request.status) + '20' }]}>
+                    <Text style={[styles.statusText, { color: getStatusColor(request.status) }]}>
+                      {getStatusText(request.status)}
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.requestMeta, styles.resolvedText]}>
+                  {request.location} • Resolved {formatDate(request.createdAt)}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </>
         )}
-
-        {hasMore && (
-          <View style={{ paddingHorizontal: 20, paddingVertical: 16, alignItems: 'center' }}>
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#FFFFFF',
-                borderWidth: 1,
-                borderColor: '#E1E8ED',
-                borderRadius: 8,
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-                opacity: isLoadingMore ? 0.7 : 1,
-              }}
-              onPress={loadMore}
-              disabled={isLoadingMore}
-              activeOpacity={0.7}
-            >
-              <Text style={{ color: '#2C3E50', fontWeight: '600' }}>
-                {isLoadingMore ? 'Loading...' : 'Load More'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F5F7FA',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#7F8C8D',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    minHeight: 60,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    flex: 1,
-    marginRight: 12,
-  },
-  newRequestButton: {
-    backgroundColor: '#3498DB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    gap: 4,
-    minWidth: 70,
-    
-    
-    
-    
-    elevation: 4,
-  },
-  newRequestButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    color: DesignSystem.colors.textSecondary,
   },
   emptyState: {
-    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 40,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
+    marginTop: 40,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptyStateSubtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
+    fontSize: 14,
+    color: DesignSystem.colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyStateButton: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  emptyStateButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  section: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 12,
   },
   requestCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-    
-    
-    
-    
-    elevation: 2,
   },
   resolvedCard: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E8E8E8',
+    opacity: 0.7,
   },
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     marginBottom: 8,
-  },
-  requestTitleContainer: {
-    flex: 1,
   },
   requestTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 6,
+    color: DesignSystem.colors.text,
+    flex: 1,
+    marginRight: 8,
   },
   resolvedTitle: {
-    color: '#7F8C8D',
-  },
-  requestMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    color: DesignSystem.colors.textSecondary,
   },
   statusBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
-  priorityIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 4,
-  },
-  requestDetails: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 8,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  detailText: {
+  requestMeta: {
     fontSize: 12,
-    color: '#7F8C8D',
+    color: DesignSystem.colors.textSecondary,
+    marginBottom: 4,
   },
   resolvedText: {
     color: '#95A5A6',
   },
   requestDescription: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F2F6',
-    paddingTop: 12,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
+    fontSize: 13,
+    color: DesignSystem.colors.textSecondary,
+    lineHeight: 18,
   },
 });
 

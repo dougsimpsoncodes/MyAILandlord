@@ -3,15 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
   Animated,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -21,6 +17,7 @@ import { validatePropertyData, sanitizePropertyData, validatePhotos } from '../.
 import { AddressForm } from '../../components/forms/AddressForm';
 import { validateAddress, migrateAddressData } from '../../utils/addressValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type AddPropertyNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddPropertyRouteProp = RouteProp<LandlordStackParamList, 'AddProperty'>;
@@ -271,53 +268,44 @@ const AddPropertyScreen = () => {
            propertyData.type;
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+  const headerRight = (
+    <View style={styles.headerRightContainer}>
+      {(isSaving || lastSaved) && (
+        <View style={styles.saveStatus}>
+          {isSaving ? (
+            <>
+              <Ionicons name="sync" size={12} color="#3498DB" />
+              <Text style={styles.saveStatusText}>Saving...</Text>
+            </>
+          ) : lastSaved ? (
+            <>
+              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+              <Text style={styles.saveStatusText}>Saved</Text>
+            </>
+          ) : null}
+        </View>
+      )}
+      <TouchableOpacity
+        style={[styles.headerNextButton, (!isFormValid() || isSubmitting || isDraftLoading) && styles.headerNextButtonDisabled]}
+        onPress={handleNext}
+        disabled={!isFormValid() || isSubmitting || isDraftLoading}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>
-              {draftId ? 'Edit Property Draft' : 'Add New Property'}
-            </Text>
-            {(isSaving || lastSaved) && (
-              <View style={styles.saveStatus}>
-                {isSaving ? (
-                  <>
-                    <Ionicons name="sync" size={12} color="#3498DB" />
-                    <Text style={styles.saveStatusText}>Saving...</Text>
-                  </>
-                ) : lastSaved ? (
-                  <>
-                    <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-                    <Text style={styles.saveStatusText}>
-                      Saved {new Date(lastSaved).toLocaleTimeString()}
-                    </Text>
-                  </>
-                ) : null}
-              </View>
-            )}
-          </View>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
+        <Ionicons name="arrow-forward" size={24} color={(!isFormValid() || isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'} />
+      </TouchableOpacity>
+    </View>
+  );
 
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '20%' }]} />
-          </View>
-          <Text style={styles.progressText}>Step 1 of 5: Property Details</Text>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+  return (
+    <ScreenContainer
+      title="Property Details"
+      subtitle="Step 1 of 4"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      scrollable
+      keyboardAware
+    >
           {/* Property Name */}
           <View style={styles.section}>
             <Text style={styles.label}>Property Name</Text>
@@ -417,118 +405,50 @@ const AddPropertyScreen = () => {
               </View>
             </View>
           </View>
-        </ScrollView>
-
-        {/* Bottom Actions */}
-        <View style={styles.bottomActions}>
-          <TouchableOpacity 
-            style={styles.saveButton} 
-            onPress={handleSaveDraft}
-            disabled={isSaving || isDraftLoading}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name={isSaving ? "sync" : "bookmark-outline"} 
-              size={18} 
-              color={isSaving ? "#007AFF" : "#8E8E93"} 
-            />
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Saving...' : 'Save Draft'}
-            </Text>
-          </TouchableOpacity>
-          
-          {draftId && (
-            <TouchableOpacity 
-              style={styles.deleteButton} 
-              onPress={handleDeleteDraft}
-              disabled={isSaving || isDraftLoading}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
-            </TouchableOpacity>
-          )}
-          
-          <TouchableOpacity
-            style={[
-              styles.nextButton, 
-              (!isFormValid() || isSubmitting || isDraftLoading) && styles.nextButtonDisabled
-            ]}
-            onPress={handleNext}
-            disabled={!isFormValid() || isSubmitting || isDraftLoading}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.nextButtonText}>
-              {isSubmitting ? 'Validating...' : 'Continue'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
+  headerRightContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
+    gap: 12,
   },
   saveStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
     gap: 4,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   saveStatusText: {
     fontSize: 11,
     color: '#7F8C8D',
   },
+  headerNextButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerNextButtonDisabled: {
+    opacity: 0.4,
+  },
+  headerNextButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3498DB',
+  },
+  headerNextButtonTextDisabled: {
+    color: '#BDC3C7',
+  },
   cancelText: {
     fontSize: 16,
     color: '#E74C3C',
-  },
-  progressContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E9ECEF',
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3498DB',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#7F8C8D',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
   },
   section: {
     marginBottom: 24,

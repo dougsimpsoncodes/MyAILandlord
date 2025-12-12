@@ -4,11 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +22,7 @@ import { usePhotoCapture } from '../../hooks/usePhotoCapture';
 import PhotoCapture from '../../components/property/PhotoCapture';
 import PhotoGrid from '../../components/property/PhotoGrid';
 import PhotoPreviewModal from '../../components/property/PhotoPreviewModal';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyPhotosNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyPhotos'>;
 
@@ -259,52 +258,6 @@ const PropertyPhotosScreen = () => {
   };
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8F9FA',
-    },
-    header: {
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingVertical: responsive.spacing.section[responsive.screenSize],
-      backgroundColor: '#FFFFFF',
-      borderBottomWidth: 1,
-      borderBottomColor: '#E9ECEF',
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      marginBottom: 16,
-    },
-    backButtonText: {
-      marginLeft: 8,
-      fontSize: 16,
-      color: '#6C757D',
-    },
-    progressContainer: {
-      marginBottom: 24,
-    },
-    progressBar: {
-      height: 4,
-      backgroundColor: '#E9ECEF',
-      borderRadius: 2,
-      marginBottom: 8,
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: '#28A745',
-      borderRadius: 2,
-    },
-    progressText: {
-      fontSize: 14,
-      color: '#6C757D',
-      textAlign: 'center',
-    },
-    content: {
-      flex: 1,
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingTop: responsive.spacing.section[responsive.screenSize],
-    },
     tipBox: {
       backgroundColor: '#E7F5FF',
       borderRadius: 12,
@@ -330,25 +283,6 @@ const PropertyPhotosScreen = () => {
       fontSize: 14,
       color: '#004499',
       lineHeight: 20,
-    },
-    footer: {
-      backgroundColor: '#FFFFFF',
-      borderTopWidth: 1,
-      borderTopColor: '#E9ECEF',
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
-    },
-    saveStatus: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
-    saveStatusText: {
-      fontSize: 14,
-      color: '#6C757D',
-      marginLeft: 6,
     },
     buttonRow: {
       flexDirection: 'row',
@@ -393,42 +327,41 @@ const PropertyPhotosScreen = () => {
     },
   });
 
+  const bottomActions = (
+    <View style={styles.buttonRow}>
+      <TouchableOpacity
+        style={styles.skipButton}
+        onPress={handleSkip}
+      >
+        <Text style={styles.skipButtonText}>Skip</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.continueButton,
+          photos.length === 0 && styles.continueButtonDisabled
+        ]}
+        onPress={handleContinue}
+        disabled={photos.length === 0}
+      >
+        <Text style={styles.continueButtonText}>
+          Continue to Rooms
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer
+      title="Property Photos"
+      subtitle="Add up to 5 exterior photos to document your property's condition and features."
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      scrollable
+      bottomContent={bottomActions}
+    >
       <ResponsiveContainer maxWidth="large" padding={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#6C757D" />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-
-          <ResponsiveTitle style={{ marginBottom: 8 }}>Property Photos</ResponsiveTitle>
-          <ResponsiveBody style={{ color: '#6C757D' }}>
-            Add up to 5 exterior photos to document your property's condition and features.
-          </ResponsiveBody>
-
-          {/* Progress Indicator */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${getProgressPercentage()}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {getProgressPercentage()}% complete • Step 2 of 8 • {getTimeEstimate()}
-            </Text>
-          </View>
-        </View>
-
-        {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Photo Capture Section */}
           {canAddMore && (
             <PhotoCapture
@@ -467,45 +400,6 @@ const PropertyPhotosScreen = () => {
               </Text>
             </View>
           </View>
-        </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          {/* Save Status */}
-          <View style={styles.saveStatus}>
-            <Ionicons 
-              name={isDraftLoading ? 'sync' : 'checkmark-circle'} 
-              size={16} 
-              color={isDraftLoading ? '#6C757D' : '#28A745'} 
-            />
-            <Text style={styles.saveStatusText}>
-              {isDraftLoading ? 'Saving...' : 'All changes saved'}
-            </Text>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={handleSkip}
-            >
-              <Text style={styles.skipButtonText}>Skip</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.continueButton,
-                photos.length === 0 && styles.continueButtonDisabled
-              ]}
-              onPress={handleContinue}
-              disabled={photos.length === 0}
-            >
-              <Text style={styles.continueButtonText}>
-                Continue to Rooms
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Photo Preview Modal */}
         <PhotoPreviewModal
@@ -539,7 +433,7 @@ const PropertyPhotosScreen = () => {
           </View>
         )}
       </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

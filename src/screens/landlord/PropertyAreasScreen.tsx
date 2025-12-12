@@ -3,15 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Image,
   Alert,
   Modal,
   TextInput,
   Dimensions,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -671,40 +671,43 @@ const PropertyAreasScreen = () => {
     return areas.filter(area => selectedAreas.includes(area.id) && area.photos.length > 0).length;
   };
 
-  return (
-    <SafeAreaView style={[styles.container, responsive.isWeb && styles.containerWeb]}>
-      <ResponsiveContainer style={{ flex: 1 }} padding={false}>
-        {/* Header */}
-        <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Property Areas</Text>
-          {(isSaving || lastSaved) && (
-            <View style={styles.saveStatus}>
-              {isSaving ? (
-                <>
-                  <Ionicons name="sync" size={12} color="#3498DB" />
-                  <Text style={styles.saveStatusText}>Saving...</Text>
-                </>
-              ) : lastSaved ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-                  <Text style={styles.saveStatusText}>
-                    Saved {new Date(lastSaved).toLocaleTimeString()}
-                  </Text>
-                </>
-              ) : null}
-            </View>
-          )}
+  const headerRight = (
+    <View style={styles.headerRightContainer}>
+      {(isSaving || lastSaved) && (
+        <View style={styles.saveStatus}>
+          {isSaving ? (
+            <>
+              <Ionicons name="sync" size={12} color="#3498DB" />
+              <Text style={styles.saveStatusText}>Saving...</Text>
+            </>
+          ) : lastSaved ? (
+            <>
+              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+              <Text style={styles.saveStatusText}>Saved</Text>
+            </>
+          ) : null}
         </View>
-        <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')} activeOpacity={0.7}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+      )}
+      <TouchableOpacity
+        style={[styles.headerNextButton, (selectedAreas.length === 0 || isSubmitting || isDraftLoading) && styles.headerNextButtonDisabled]}
+        onPress={handleNext}
+        disabled={selectedAreas.length === 0 || isSubmitting || isDraftLoading}
+      >
+        <Ionicons name="arrow-forward" size={24} color={(selectedAreas.length === 0 || isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'} />
+      </TouchableOpacity>
+    </View>
+  );
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+  return (
+    <ScreenContainer
+      title="Select Rooms"
+      subtitle="Step 2 of 4"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      scrollable
+    >
         {/* Areas Section */}
         <View style={styles.section}>
           <View style={styles.headerSection}>
@@ -875,32 +878,6 @@ const PropertyAreasScreen = () => {
           </Text>
         </View>
 
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <Button
-          title={isSaving ? 'Saving...' : 'Save Draft'}
-          onPress={handleSaveDraft}
-          type="secondary"
-          size="md"
-          disabled={isSaving || isDraftLoading}
-          loading={isSaving}
-          icon={!isSaving ? <Ionicons name="bookmark-outline" size={18} color={DesignSystem.colors.secondaryText} /> : undefined}
-        />
-        
-        <Button
-          title={isSubmitting ? 'Processing...' : 'Continue to Photos & Assets'}
-          onPress={handleNext}
-          type="primary"
-          size="lg"
-          fullWidth
-          disabled={selectedAreas.length === 0 || isSubmitting || isDraftLoading}
-          loading={isSubmitting}
-          style={{ flex: 1, marginLeft: DesignSystem.spacing.md }}
-        />
-      </View>
-
       {/* Add Custom Room Modal */}
       <Modal
         visible={showAddRoomModal}
@@ -1017,47 +994,46 @@ const PropertyAreasScreen = () => {
           </View>
         </SafeAreaView>
       </Modal>
-      </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  containerWeb: {
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
+  headerRightContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
+    gap: 12,
   },
   saveStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
     gap: 4,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   saveStatusText: {
     fontSize: 11,
     color: '#7F8C8D',
+  },
+  headerNextButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerNextButtonDisabled: {
+    opacity: 0.4,
+  },
+  headerNextButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3498DB',
+  },
+  headerNextButtonTextDisabled: {
+    color: '#BDC3C7',
   },
   cancelText: {
     fontSize: 16,
@@ -1150,11 +1126,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
   },
   section: {
     marginBottom: 24,

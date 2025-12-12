@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ViewStyle, TextStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ViewStyle, TextStyle } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type FollowUpScreenRouteProp = RouteProp<TenantStackParamList, 'FollowUp'>;
 type FollowUpScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'FollowUp'>;
@@ -127,28 +127,46 @@ const FollowUpScreen = () => {
     return baseStyle;
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressText}>
-            {currentQuestionIndex + 1} of {questions.length}
-          </Text>
-          <View style={styles.progressBar}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }
-              ]} 
-            />
-          </View>
-        </View>
+  // Header right showing progress
+  const headerRight = (
+    <View style={styles.progressContainer}>
+      <Text style={styles.progressText}>
+        {currentQuestionIndex + 1} of {questions.length}
+      </Text>
+      <View style={styles.progressBar}>
+        <View
+          style={[
+            styles.progressFill,
+            { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }
+          ]}
+        />
       </View>
+    </View>
+  );
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+  // Bottom button
+  const bottomButton = (
+    <TouchableOpacity
+      style={styles.nextButton}
+      onPress={handleNext}
+      activeOpacity={0.8}
+    >
+      <Text style={styles.nextButtonText}>
+        {currentQuestionIndex === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
+      </Text>
+      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+    </TouchableOpacity>
+  );
+
+  return (
+    <ScreenContainer
+      title="Follow-up Questions"
+      showBackButton
+      onBackPress={handleBack}
+      headerRight={headerRight}
+      userRole="tenant"
+      bottomContent={bottomButton}
+    >
         <View style={styles.questionContainer}>
           <View style={styles.questionHeader}>
             <Ionicons name="help-circle" size={32} color="#3498DB" />
@@ -203,49 +221,13 @@ const FollowUpScreen = () => {
             {currentQuestion.id === '4' && "Priority level helps us schedule repairs appropriately and manage expectations."}
           </Text>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.nextButton}
-          onPress={handleNext}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.nextButtonText}>
-            {currentQuestionIndex === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
-          </Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8F9FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
   progressContainer: {
-    flex: 1,
+    minWidth: 100,
   },
   progressText: {
     fontSize: 14,
@@ -261,10 +243,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#3498DB',
     borderRadius: 2,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
   },
   questionContainer: {
     backgroundColor: '#FFFFFF',
@@ -361,12 +339,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E44AD',
     lineHeight: 20,
-  },
-  footer: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E1E8ED',
   },
   nextButton: {
     backgroundColor: '#3498DB',

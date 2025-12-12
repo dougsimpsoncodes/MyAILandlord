@@ -11,7 +11,17 @@
  *   → Output: User logged in { userId: 'user_123', email: 't***@example.com' }
  */
 
-import crypto from 'crypto';
+// Simple hash function for React Native (no Node.js crypto dependency)
+// Uses a basic string hash - sufficient for log redaction purposes
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0').substring(0, 16);
+}
 
 // Sensitive field patterns (case-insensitive)
 const SENSITIVE_FIELD_PATTERNS = [
@@ -52,10 +62,10 @@ const URL_PATTERNS = [
 ];
 
 /**
- * Hash a value using SHA-256 for consistent logging
+ * Hash a value for consistent logging (using simple hash for RN compatibility)
  */
 function hashValue(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex').substring(0, 16);
+  return simpleHash(value);
 }
 
 /**

@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { TenantStackParamList } from '../../navigation/TenantStack';
+import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
-import { useResponsive } from '../../hooks/useResponsive';
-import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveTitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 import CustomButton from '../../components/shared/CustomButton';
 import CustomTextInput from '../../components/shared/CustomTextInput';
 
@@ -20,8 +17,7 @@ const PropertyCodeEntryScreen = () => {
   const navigation = useNavigation<PropertyCodeEntryNavigationProp>();
   const { user } = useAppAuth();
   const apiClient = useApiClient();
-  const responsive = useResponsive();
-  
+
   const [propertyCode, setPropertyCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -126,119 +122,93 @@ const PropertyCodeEntryScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ResponsiveContainer>
-        {/* Header */}
-        <View style={styles.header}>
-          <ResponsiveTitle style={styles.title}>
-            Connect to Your Property
-          </ResponsiveTitle>
-          <ResponsiveBody style={styles.subtitle}>
-            Enter the property code provided by your landlord or property manager
-          </ResponsiveBody>
+    <ScreenContainer
+      title="Connect to Property"
+      subtitle="Enter the code from your landlord"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="tenant"
+      keyboardAware
+    >
+      {/* Property Code Input */}
+      <View style={styles.inputSection}>
+        <Text style={styles.inputLabel}>Property Code</Text>
+        <CustomTextInput
+          value={propertyCode}
+          onChangeText={(text) => {
+            setPropertyCode(text.toUpperCase());
+            setError('');
+          }}
+          placeholder="ABC123"
+          maxLength={6}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          autoFocus={true}
+          style={[
+            styles.codeInput,
+            error ? styles.inputError : null
+          ]}
+          onSubmitEditing={handleCodeSubmit}
+          returnKeyType="done"
+        />
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
+        <Text style={styles.helpText}>Example: ABC123 (6 characters)</Text>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionSection}>
+        <CustomButton
+          title={loading ? 'Validating...' : 'Continue'}
+          onPress={handleCodeSubmit}
+          disabled={loading || !propertyCode.trim()}
+          style={styles.continueButton}
+          icon={loading ? undefined : 'arrow-forward'}
+        />
+
+        <CustomButton
+          title="Don't have a code?"
+          onPress={() => navigation.navigate('PropertySearch')}
+          variant="outline"
+          style={styles.searchButton}
+          icon="search"
+        />
+
+        <CustomButton
+          title="Skip for now"
+          onPress={handleSkip}
+          variant="text"
+          style={styles.skipButton}
+        />
+      </View>
+
+      {/* Help Section */}
+      <View style={styles.helpSection}>
+        <View style={styles.helpItem}>
+          <Ionicons name="information-circle-outline" size={20} color="#666" />
+          <Text style={styles.helpItemText}>
+            Property codes are provided by your landlord via email, text, or lease documents
+          </Text>
         </View>
-
-        {/* Property Code Input */}
-        <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Property Code</Text>
-          <CustomTextInput
-            value={propertyCode}
-            onChangeText={(text) => {
-              setPropertyCode(text.toUpperCase());
-              setError('');
-            }}
-            placeholder="ABC123"
-            maxLength={6}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            autoFocus={true}
-            style={[
-              styles.codeInput,
-              error ? styles.inputError : null
-            ]}
-            onSubmitEditing={handleCodeSubmit}
-            returnKeyType="done"
-          />
-          {error ? (
-            <Text style={styles.errorText}>{error}</Text>
-          ) : null}
-          <ResponsiveCaption style={styles.helpText}>
-            Example: ABC123 (6 characters)
-          </ResponsiveCaption>
+        <View style={styles.helpItem}>
+          <Ionicons name="time-outline" size={20} color="#666" />
+          <Text style={styles.helpItemText}>
+            Codes may expire for security. Contact your landlord if yours doesn't work
+          </Text>
         </View>
+      </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionSection}>
-          <CustomButton
-            title={loading ? 'Validating...' : 'Continue'}
-            onPress={handleCodeSubmit}
-            disabled={loading || !propertyCode.trim()}
-            style={styles.continueButton}
-            icon={loading ? undefined : 'arrow-forward'}
-          />
-
-          <CustomButton
-            title="Don't have a code?"
-            onPress={() => navigation.navigate('PropertySearch')}
-            variant="outline"
-            style={styles.searchButton}
-            icon="search"
-          />
-
-          <CustomButton
-            title="Skip for now"
-            onPress={handleSkip}
-            variant="text"
-            style={styles.skipButton}
-          />
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#007AFF" />
         </View>
-
-        {/* Help Section */}
-        <View style={styles.helpSection}>
-          <View style={styles.helpItem}>
-            <Ionicons name="information-circle-outline" size={20} color="#666" />
-            <ResponsiveCaption style={styles.helpItemText}>
-              Property codes are provided by your landlord via email, text, or lease documents
-            </ResponsiveCaption>
-          </View>
-          <View style={styles.helpItem}>
-            <Ionicons name="time-outline" size={20} color="#666" />
-            <ResponsiveCaption style={styles.helpItemText}>
-              Codes may expire for security. Contact your landlord if yours doesn't work
-            </ResponsiveCaption>
-          </View>
-        </View>
-
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#007AFF" />
-          </View>
-        )}
-      </ResponsiveContainer>
-    </SafeAreaView>
+      )}
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: 8,
-    color: '#1a1a1a',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#666',
-    lineHeight: 22,
-  },
   inputSection: {
     paddingHorizontal: 24,
     marginBottom: 32,

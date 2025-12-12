@@ -1,13 +1,12 @@
-import React, { useContext, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../components/shared/ScreenContainer';
 
-type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
 type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
 // OAuth providers are not enabled in Supabase - hide buttons to prevent redirect errors
@@ -79,21 +78,18 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-
+    <ScreenContainer
+      title="Sign In"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      keyboardAware
+    >
         <View style={styles.header}>
           <Text style={styles.roleIcon}>🏠</Text>
-          <Text style={styles.title}>
+          <Text style={styles.welcomeTitle}>
             Welcome Back
           </Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.welcomeSubtitle}>
             Sign in to your My AI Landlord account
           </Text>
         </View>
@@ -211,54 +207,30 @@ const LoginScreen = () => {
             By continuing, you agree to our Terms of Service and Privacy Policy
           </Text>
         </View>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-  },
-  backButton: {
-    marginTop: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    
-    
-    
-    
-    elevation: 2,
-  },
   header: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   roleIcon: {
     fontSize: 48,
     marginBottom: 12,
   },
-  title: {
+  welcomeTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#2C3E50',
     marginBottom: 6,
   },
-  subtitle: {
+  welcomeSubtitle: {
     fontSize: 16,
     color: '#7F8C8D',
     textAlign: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 20,
   },
   loginContainer: {
     gap: 12,

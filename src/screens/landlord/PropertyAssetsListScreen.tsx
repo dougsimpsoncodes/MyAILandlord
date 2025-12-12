@@ -8,8 +8,8 @@ import {
   Image,
   Alert,
   Animated,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -29,6 +29,7 @@ import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import ResponsiveGrid from '../../components/shared/ResponsiveGrid';
 import { ResponsiveTitle, ResponsiveSubtitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
 import { LoadingScreen } from '../../components/LoadingSpinner';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyAssetsListNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAssetsListRouteProp = RouteProp<LandlordStackParamList, 'PropertyAssets'>;
@@ -119,45 +120,35 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
         <View style={styles.contentSection}>
           <Text style={styles.sectionTitle}>Photos</Text>
 
-            {photoCount > 0 ? (
-              <>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.photoScroll}
-                >
-                  {validPhotos.map((photo, index) => (
-                    <Image
-                      key={index}
-                      source={{ uri: photo }}
-                      style={[
-                        styles.photoThumbnail,
-                        { width: responsive.select({ mobile: 80, desktop: 100, default: 80 }) }
-                      ]}
-                      onError={(e) => console.error(`📸 Image load failed for ${area.name}[${index}]:`, e.nativeEvent.error, 'URL:', photo?.substring(0, 100))}
-                      onLoad={() => console.log(`📸 Image loaded successfully for ${area.name}[${index}]`)}
-                    />
-                  ))}
-                </ScrollView>
-                <View style={styles.dropzoneWrapper}>
-                  <PhotoDropzone
-                    propertyId={propertyId}
-                    areaId={area.id}
-                    onUploaded={onPhotosUploaded}
-                    onCameraPress={onAddPhoto}
-                    variant="compact"
+            {photoCount > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.photoScroll}
+              >
+                {validPhotos.map((photo, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri: photo }}
+                    style={[
+                      styles.photoThumbnail,
+                      { width: responsive.select({ mobile: 80, desktop: 100, default: 80 }) }
+                    ]}
+                    onError={(e) => console.error(`📸 Image load failed for ${area.name}[${index}]:`, e.nativeEvent.error, 'URL:', photo?.substring(0, 100))}
+                    onLoad={() => console.log(`📸 Image loaded successfully for ${area.name}[${index}]`)}
                   />
-                </View>
-              </>
-            ) : (
+                ))}
+              </ScrollView>
+            )}
+            <View style={photoCount > 0 ? styles.dropzoneWrapper : undefined}>
               <PhotoDropzone
                 propertyId={propertyId}
                 areaId={area.id}
                 onUploaded={onPhotosUploaded}
                 onCameraPress={onAddPhoto}
-                variant="full"
+                variant="compact"
               />
-            )}
+            </View>
         </View>
       </View>
 
@@ -247,7 +238,6 @@ const PropertyAssetsListScreen = () => {
 
   const [selectedAreas, setSelectedAreas] = useState<PropertyArea[]>(routeAreas || []);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [processedAssetIds, setProcessedAssetIds] = useState<Set<string>>(new Set());
 
   // Refs to hold latest values for the focus listener
@@ -771,145 +761,88 @@ const PropertyAssetsListScreen = () => {
     return <LoadingScreen message="Loading your property draft..." />;
   }
 
+  const headerRight = (
+    <View style={styles.headerRightContainer}>
+      {/* Auto-save status indicator */}
+      {(isSaving || lastSaved) && (
+        <View style={styles.saveStatus}>
+          {isSaving ? (
+            <>
+              <Ionicons name="sync" size={12} color="#3498DB" />
+              <Text style={styles.saveStatusText}>Saving...</Text>
+            </>
+          ) : lastSaved ? (
+            <>
+              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+              <Text style={styles.saveStatusText}>Saved</Text>
+            </>
+          ) : null}
+        </View>
+      )}
+      {/* Review button */}
+      <TouchableOpacity
+        style={[
+          styles.headerReviewButton,
+          (isSubmitting || isDraftLoading) && styles.headerReviewButtonDisabled
+        ]}
+        onPress={handleNext}
+        disabled={isSubmitting || isDraftLoading}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name="arrow-forward"
+          size={24}
+          color={(isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'}
+        />
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={[styles.container, responsive.isWeb && styles.containerWeb]}>
+    <ScreenContainer
+      title="Photos & Assets"
+      subtitle="Step 3 of 4"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      scrollable={true}
+    >
       <ResponsiveContainer maxWidth={responsive.isLargeScreen() ? 'large' : 'desktop'} style={{ flex: 1 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <ResponsiveSubtitle style={styles.headerTitle}>
-              Property Photos & Assets
-            </ResponsiveSubtitle>
-            {(isSaving || lastSaved) && (
-              <View style={styles.saveStatus}>
-                {isSaving ? (
-                  <>
-                    <Ionicons name="sync" size={12} color="#3498DB" />
-                    <Text style={styles.saveStatusText}>Saving...</Text>
-                  </>
-                ) : lastSaved ? (
-                  <>
-                    <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-                    <Text style={styles.saveStatusText}>
-                      Saved {new Date(lastSaved).toLocaleTimeString()}
-                    </Text>
-                  </>
-                ) : null}
-              </View>
-            )}
+        {selectedAreas.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="alert-circle" size={48} color="#8E8E93" />
+            <Text style={styles.emptyStateTitle}>No Areas Selected</Text>
+            <Text style={styles.emptyStateText}>
+              Please go back to Step 1 and select areas for your property.
+            </Text>
+            <TouchableOpacity
+              style={styles.goBackButton}
+              onPress={() => navigation.goBack()}
+            >
+              <Text style={styles.goBackButtonText}>Go Back to Step 1</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Areas List */}
-        <View style={styles.scrollContainer}>
-          <ScrollView
-            style={styles.areasList}
-            showsVerticalScrollIndicator={true}
-            contentContainerStyle={styles.areasListContent}
-            scrollEnabled={true}
-          >
-          {selectedAreas.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="alert-circle" size={48} color="#8E8E93" />
-              <Text style={styles.emptyStateTitle}>No Areas Selected</Text>
-              <Text style={styles.emptyStateText}>
-                Please go back to Step 1 and select areas for your property.
-              </Text>
-              <Text style={styles.emptyStateText}>
-                Debug: Areas length = {selectedAreas.length}
-              </Text>
-              <TouchableOpacity
-                style={styles.goBackButton}
-                onPress={() => navigation.goBack()}
-              >
-                <Text style={styles.goBackButtonText}>Go Back to Step 1</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.areasContainer}>
-              {selectedAreas.map((area) => (
-                <ExpandableAreaCard
-                  key={area.id}
-                  area={area}
-                  isSelected={false}
-                  onToggle={() => {}}
-                  onAddPhoto={() => handleAddPhoto(area.id)}
-                  onPhotosUploaded={handlePhotosUploaded(area.id)}
-                  onAddAsset={() => handleAddAsset(area.id, area.name)}
-                  onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
-                  responsive={responsive}
-                  propertyId={routePropertyId || effectiveDraftId || 'temp'}
-                />
-              ))}
-            </View>
-          )}
-          </ScrollView>
-        </View>
-
-        {/* Bottom Actions */}
-        <View style={styles.bottomActions}>
-          <TouchableOpacity 
-            style={[
-              styles.saveButton,
-              isSaving && styles.saveButtonActive
-            ]} 
-            onPress={async () => {
-              console.log('Save draft button pressed, isSaving:', isSaving);
-              if (isSaving || isDraftLoading) return;
-              
-              try {
-                await saveDraft();
-                setShowSaveSuccess(true);
-                setTimeout(() => setShowSaveSuccess(false), 2000);
-              } catch (error) {
-                console.error('Save failed:', error);
-              }
-            }}
-            disabled={isSaving || isDraftLoading}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name={isSaving ? "sync" : "bookmark-outline"} 
-              size={18} 
-              color={isSaving ? "#007AFF" : "#8E8E93"} 
-            />
-            <Text style={[
-              styles.saveButtonText,
-              isSaving && styles.saveButtonTextActive
-            ]}>
-              {isSaving ? 'Saving...' : 'Save Draft'}
-            </Text>
-            {showSaveSuccess && (
-              <Ionicons 
-                name="checkmark-circle" 
-                size={16} 
-                color="#2ECC71" 
+        ) : (
+          <View style={styles.areasContainer}>
+            {selectedAreas.map((area) => (
+              <ExpandableAreaCard
+                key={area.id}
+                area={area}
+                isSelected={false}
+                onToggle={() => {}}
+                onAddPhoto={() => handleAddPhoto(area.id)}
+                onPhotosUploaded={handlePhotosUploaded(area.id)}
+                onAddAsset={() => handleAddAsset(area.id, area.name)}
+                onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
+                responsive={responsive}
+                propertyId={routePropertyId || effectiveDraftId || 'temp'}
               />
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.nextButton, 
-              (isSubmitting || isDraftLoading) && styles.nextButtonDisabled
-            ]}
-            onPress={handleNext}
-            disabled={isSubmitting || isDraftLoading}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.nextButtonText}>
-              {isSubmitting ? 'Processing...' : 'Review & Submit'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+            ))}
+          </View>
+        )}
       </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
@@ -928,11 +861,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
+  },
+  backButton: {
+    padding: 8,
   },
   headerCenter: {
     flex: 1,
@@ -942,15 +878,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C3E50',
   },
+  headerTitleSimple: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  headerRightContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   saveStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
     gap: 4,
   },
   saveStatusText: {
     fontSize: 11,
     color: '#7F8C8D',
+  },
+  headerReviewButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerReviewButtonDisabled: {
+    opacity: 0.4,
+  },
+  headerReviewButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3498DB',
+  },
+  headerReviewButtonTextDisabled: {
+    color: '#BDC3C7',
   },
   cancelText: {
     fontSize: 16,
@@ -1076,7 +1039,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   areasContainer: {
-    gap: 16,
+    gap: 10,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addButtonText: {
+    fontSize: 14,
+    color: '#3498DB',
+    fontWeight: '500',
   },
   debugText: {
     fontSize: 16,
@@ -1087,12 +1060,8 @@ const styles = StyleSheet.create({
   },
   areaCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    marginBottom: 12,
-    
-    
-    
-    
+    borderRadius: 10,
+    marginBottom: 0,
     elevation: 2,
   },
   areaCardWeb: {
@@ -1102,8 +1071,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 12,
+    borderRadius: 10,
   },
   areaHeaderExpanded: {
     borderBottomWidth: 1,
@@ -1121,23 +1090,23 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#E9ECEF',
-    marginRight: 12,
+    marginRight: 8,
   },
   areaStatusComplete: {
     backgroundColor: '#2ECC71',
   },
   areaInfo: {
-    marginLeft: 12,
+    marginLeft: 8,
     flex: 1,
   },
   areaName: {
     fontWeight: '600',
     color: '#2C3E50',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   areaStats: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
   },
   statItem: {
     flexDirection: 'row',
@@ -1149,64 +1118,64 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
   },
   areaContent: {
-    padding: 16,
-    paddingTop: 0,
+    padding: 12,
+    paddingTop: 8,
   },
   contentSection: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#2C3E50',
   },
   dropzoneWrapper: {
-    marginTop: 12,
+    marginTop: 8,
   },
   photoScroll: {
     marginHorizontal: -4,
   },
   photoThumbnail: {
-    height: 80,
-    borderRadius: 8,
-    marginHorizontal: 4,
+    height: 70,
+    borderRadius: 6,
+    marginHorizontal: 3,
   },
   assetsList: {
-    gap: 8,
+    gap: 6,
   },
   assetItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 0,
   },
   assetItemInfo: {
     flex: 1,
   },
   assetName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#2C3E50',
   },
   assetDetails: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#7F8C8D',
-    marginTop: 2,
+    marginTop: 1,
   },
   removeButton: {
-    padding: 8,
+    padding: 6,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#95A5A6',
     fontStyle: 'italic',
   },
@@ -1240,64 +1209,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  bottomActions: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
-    gap: 12,
-  },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F7',
-    gap: 6,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  saveButtonActive: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  saveButtonText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  saveButtonTextActive: {
-    color: '#007AFF',
-  },
-  nextButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50,
-    
-    
-    
-    
-    elevation: 3,
-  },
-  nextButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-    
-    elevation: 0,
-  },
-  nextButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: -0.4,
   },
 });
 

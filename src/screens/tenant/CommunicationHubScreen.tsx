@@ -1,22 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
   TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  FlatList,
   Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type CommunicationHubNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'CommunicationHub'>;
 
@@ -108,21 +105,15 @@ const CommunicationHubScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {/* Header with Tabs */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Communication Hub</Text>
-        </View>
+    <ScreenContainer
+      title="Communication Hub"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="tenant"
+      scrollable={false}
+      keyboardAware
+      padded={false}
+    >
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -236,33 +227,11 @@ const CommunicationHubScreen = () => {
             ))}
           </ScrollView>
         )}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',

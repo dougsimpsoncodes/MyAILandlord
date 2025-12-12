@@ -11,8 +11,8 @@ import {
   TextInput,
   Dimensions,
   FlatList,
+  SafeAreaView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -22,6 +22,7 @@ import { PropertyArea, InventoryItem, AssetCondition, AssetTemplate } from '../.
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { getAssetsByRoom, templateToInventoryItem } from '../../data/assetTemplates';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyAssetsNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAssetsRouteProp = RouteProp<LandlordStackParamList, 'PropertyAssets'>;
@@ -361,45 +362,55 @@ const PropertyAssetsScreen = () => {
 
   const currentAssets = currentArea?.assets || [];
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Property Assets</Text>
-          {(isSaving || lastSaved) && (
-            <View style={styles.saveStatus}>
-              {isSaving ? (
-                <>
-                  <Ionicons name="sync" size={12} color="#3498DB" />
-                  <Text style={styles.saveStatusText}>Saving...</Text>
-                </>
-              ) : lastSaved ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-                  <Text style={styles.saveStatusText}>
-                    Saved {new Date(lastSaved).toLocaleTimeString()}
-                  </Text>
-                </>
-              ) : null}
-            </View>
-          )}
-        </View>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+  const headerRight = (
+    <TouchableOpacity onPress={() => navigation.goBack()}>
+      <Text style={styles.cancelText}>Cancel</Text>
+    </TouchableOpacity>
+  );
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '60%' }]} />
-        </View>
-        <Text style={styles.progressText}>Step 3 of 5: Asset Inventory</Text>
-      </View>
+  const bottomActions = (
+    <View style={styles.bottomActionsRow}>
+      <TouchableOpacity
+        style={styles.saveButton}
+        onPress={saveDraft}
+        disabled={isSaving || isDraftLoading}
+      >
+        <Ionicons
+          name={isSaving ? "sync" : "bookmark-outline"}
+          size={18}
+          color={isSaving ? "#007AFF" : "#8E8E93"}
+        />
+        <Text style={styles.saveButtonText}>
+          {isSaving ? 'Saving...' : 'Save Draft'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[
+          styles.nextButton,
+          (isSubmitting || isDraftLoading) && styles.nextButtonDisabled
+        ]}
+        onPress={handleNext}
+        disabled={isSubmitting || isDraftLoading}
+      >
+        <Text style={styles.nextButtonText}>
+          {isSubmitting ? 'Processing...' : 'Review & Submit'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <ScreenContainer
+      title="Property Assets"
+      subtitle={`Step 3 of 5: Asset Inventory`}
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      scrollable
+      bottomContent={bottomActions}
+    >
 
       {/* Area Navigation */}
       <View style={styles.areaNavigation}>
@@ -426,8 +437,6 @@ const PropertyAssetsScreen = () => {
           <Ionicons name="chevron-forward" size={20} color={currentAreaIndex === totalAreas - 1 ? "#BDC3C7" : "#3498DB"} />
         </TouchableOpacity>
       </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Current Assets */}
         {currentAssets.length > 0 && (
           <View style={styles.section}>
@@ -533,38 +542,6 @@ const PropertyAssetsScreen = () => {
             {getProgressPercentage()}% complete • {selectedAreas.reduce((total, area) => total + (area.assets || []).length, 0)} total assets
           </Text>
         </View>
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity 
-          style={styles.saveButton} 
-          onPress={saveDraft}
-          disabled={isSaving || isDraftLoading}
-        >
-          <Ionicons 
-            name={isSaving ? "sync" : "bookmark-outline"} 
-            size={18} 
-            color={isSaving ? "#007AFF" : "#8E8E93"} 
-          />
-          <Text style={styles.saveButtonText}>
-            {isSaving ? 'Saving...' : 'Save Draft'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.nextButton, 
-            (isSubmitting || isDraftLoading) && styles.nextButtonDisabled
-          ]}
-          onPress={handleNext}
-          disabled={isSubmitting || isDraftLoading}
-        >
-          <Text style={styles.nextButtonText}>
-            {isSubmitting ? 'Processing...' : 'Review & Submit'}
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Add Custom Asset Modal */}
       <Modal
@@ -655,67 +632,14 @@ const PropertyAssetsScreen = () => {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  saveStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-    gap: 4,
-  },
-  saveStatusText: {
-    fontSize: 11,
-    color: '#7F8C8D',
-  },
   cancelText: {
     fontSize: 16,
     color: '#E74C3C',
-  },
-  progressContainer: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E9ECEF',
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3498DB',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#7F8C8D',
   },
   areaNavigation: {
     flexDirection: 'row',
@@ -968,13 +892,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#3498DB',
   },
-  bottomActions: {
+  bottomActionsRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
     gap: 12,
   },
   saveButton: {

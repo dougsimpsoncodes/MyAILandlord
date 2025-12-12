@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type CaseDetailScreenRouteProp = RouteProp<LandlordStackParamList, 'CaseDetail'>;
 type CaseDetailScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'CaseDetail'>;
@@ -273,8 +273,39 @@ const CaseDetailScreen = () => {
     </View>
   );
 
+  // Footer buttons
+  const footerButtons = (
+    <View style={styles.footer}>
+      <TouchableOpacity
+        style={styles.secondaryButton}
+        onPress={handleSendToVendor}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="mail" size={20} color="#F39C12" />
+        <Text style={styles.secondaryButtonText}>Send to Vendor</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.primaryButton}
+        onPress={handleMarkResolved}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+        <Text style={styles.primaryButtonText}>Mark Resolved</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer
+      title="Case Details"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      scrollable={false}
+      padded={false}
+      bottomContent={footerButtons}
+    >
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.tenantInfo}>
@@ -349,35 +380,11 @@ const CaseDetailScreen = () => {
         {selectedTab === 'details' && renderDetails()}
         {selectedTab === 'media' && renderMedia()}
       </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleSendToVendor}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="mail" size={20} color="#F39C12" />
-          <Text style={styles.secondaryButtonText}>Send to Vendor</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={handleMarkResolved}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-          <Text style={styles.primaryButtonText}>Mark Resolved</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
   header: {
     backgroundColor: '#FFFFFF',
     padding: 20,

@@ -5,12 +5,8 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +20,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import PropertyAddressFormSimplified from '../../components/forms/PropertyAddressFormSimplified';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 // Address type for the form
 type Address = {
@@ -241,51 +238,6 @@ const PropertyBasicsScreen = () => {
   };
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8F9FA',
-    },
-    scrollContent: {
-      flexGrow: 1,
-      paddingBottom: 120, // Space for fixed footer
-    },
-    header: {
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingVertical: responsive.spacing.section[responsive.screenSize],
-      backgroundColor: '#FFFFFF',
-      borderBottomWidth: 1,
-      borderBottomColor: '#E9ECEF',
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      marginBottom: 16,
-    },
-    backButtonText: {
-      marginLeft: 8,
-      fontSize: 16,
-      color: '#6C757D',
-    },
-    progressContainer: {
-      marginBottom: 24,
-    },
-    progressBar: {
-      height: 4,
-      backgroundColor: '#E9ECEF',
-      borderRadius: 2,
-      marginBottom: 8,
-    },
-    progressFill: {
-      height: '100%',
-      backgroundColor: '#28A745',
-      borderRadius: 2,
-    },
-    progressText: {
-      fontSize: 14,
-      color: '#6C757D',
-      textAlign: 'center',
-    },
     content: {
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingTop: responsive.spacing.section[responsive.screenSize],
@@ -409,47 +361,6 @@ const PropertyBasicsScreen = () => {
       fontWeight: '600',
       color: '#343A40',
     },
-    footer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: '#FFFFFF',
-      borderTopWidth: 1,
-      borderTopColor: '#E9ECEF',
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
-    },
-    saveStatus: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 12,
-    },
-    saveStatusText: {
-      fontSize: 14,
-      color: '#6C757D',
-      marginLeft: 6,
-    },
-    continueButton: {
-      backgroundColor: '#28A745',
-      borderRadius: 12,
-      paddingVertical: 16,
-      alignItems: 'center',
-      minHeight: 56,
-    },
-    continueButtonDisabled: {
-      backgroundColor: '#DEE2E6',
-    },
-    continueButtonText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
-    continueButtonTextDisabled: {
-      color: '#6C757D',
-    },
     dropdown: {
       backgroundColor: '#FFFFFF',
       borderRadius: 12,
@@ -499,34 +410,31 @@ const PropertyBasicsScreen = () => {
     },
   });
 
+  const bottomActions = (
+    <Button
+      title={isValidating ? 'Validating...' : 'Continue to Photos'}
+      onPress={handleContinue}
+      type="primary"
+      size="lg"
+      fullWidth
+      disabled={!canContinue() || isValidating}
+      loading={isValidating}
+    />
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer
+      title="Add New Property"
+      subtitle="Let's start with the basics. This should take about 2 minutes."
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      scrollable
+      keyboardAware
+      bottomContent={bottomActions}
+    >
       <ResponsiveContainer maxWidth="large" padding={false}>
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-back" size={24} color="#6C757D" />
-              <Text style={styles.backButtonText}>Back</Text>
-            </TouchableOpacity>
-
-            <ResponsiveTitle style={{ marginBottom: 8 }}>Add New Property</ResponsiveTitle>
-            <ResponsiveBody style={{ color: '#6C757D' }}>
-              Let's start with the basics. This should take about 2 minutes.
-            </ResponsiveBody>
-
-          </View>
-
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.content}>
+        <View style={styles.content}>
               {/* Property Address Form */}
               <PropertyAddressFormSimplified
                 value={addressData}
@@ -635,24 +543,8 @@ const PropertyBasicsScreen = () => {
                 </View>
               </Card>
             </View>
-          </ScrollView>
-
-          {/* Fixed Footer */}
-          <View style={styles.footer}>
-            {/* Continue Button */}
-            <Button
-              title={isValidating ? 'Validating...' : 'Continue to Photos'}
-              onPress={handleContinue}
-              type="primary"
-              size="lg"
-              fullWidth
-              disabled={!canContinue() || isValidating}
-              loading={isValidating}
-            />
-          </View>
-        </KeyboardAvoidingView>
       </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

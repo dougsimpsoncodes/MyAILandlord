@@ -1,10 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type SubmissionSuccessScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'SubmissionSuccess'>;
 
@@ -23,14 +23,17 @@ const SubmissionSuccessScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer
+      title="Request Submitted"
+      userRole="tenant"
+      scrollable={false}
+      padded={false}
+    >
       <View style={styles.content}>
         <View style={styles.successIcon}>
           <Ionicons name="checkmark-circle" size={100} color="#27AE60" />
         </View>
-        
-        <Text style={styles.title}>Request Submitted!</Text>
-        
+
         <View style={styles.infoCard}>
           <Text style={styles.infoTitle}>What happens next?</Text>
           <View style={styles.infoItem}>
@@ -70,15 +73,11 @@ const SubmissionSuccessScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
@@ -87,12 +86,6 @@ const styles = StyleSheet.create({
   },
   successIcon: {
     marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 32,
   },
   infoCard: {
     backgroundColor: '#FFFFFF',

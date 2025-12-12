@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Alert, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
-import { useResponsive } from '../../hooks/useResponsive';
-import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import ResponsiveGrid from '../../components/shared/ResponsiveGrid';
-import { ResponsiveText, ResponsiveTitle, ResponsiveSubtitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
+import { DesignSystem } from '../../theme/DesignSystem';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type DashboardScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Dashboard'>;
 
@@ -45,7 +42,6 @@ interface MaintenanceRequestResponse {
 const DashboardScreen = () => {
   const navigation = useNavigation<DashboardScreenNavigationProp>();
   const apiClient = useApiClient();
-  const responsive = useResponsive();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
   const [cases, setCases] = useState<CaseFile[]>([]);
@@ -125,15 +121,15 @@ const DashboardScreen = () => {
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
       case 'Emergency':
-        return '#E74C3C';
+        return '#E74C3C'; // Red for urgent
       case 'Very urgent':
-        return '#E67E22';
+        return '#E74C3C'; // Red for urgent
       case 'Moderate':
-        return '#F39C12';
+        return '#F39C12'; // Orange for medium
       case 'Can wait':
-        return '#27AE60';
+        return '#2ECC71'; // Green for low
       case 'Low priority':
-        return '#95A5A6';
+        return '#2ECC71'; // Green for low
       default:
         return '#3498DB';
     }
@@ -177,487 +173,330 @@ const DashboardScreen = () => {
     navigation.navigate('CaseDetail', { caseId });
   };
 
+  const handleRespondPress = (caseId: string) => {
+    navigation.navigate('CaseDetail', { caseId });
+  };
+
+  const handleAssignVendorPress = (caseId: string) => {
+    navigation.navigate('SendToVendor', { caseId });
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ResponsiveContainer maxWidth="xl" padding={false}>
-        <View style={styles.header}>
-          <View>
-            <ResponsiveTitle fluid>Welcome back!</ResponsiveTitle>
-            <ResponsiveSubtitle style={{ color: '#7F8C8D' }}>Maintenance Dashboard</ResponsiveSubtitle>
-          </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons 
-              name="notifications" 
-              size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
-              color="#34495E" 
-            />
-            {newCasesCount > 0 && <View style={styles.notificationBadge} />}
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <ResponsiveGrid minItemWidth={200} maxColumns={3}>
-            <View style={styles.statCard}>
-              <ResponsiveText
-                variant="display" 
-                style={{ 
-                  color: '#2C3E50', 
-                  marginBottom: 4,
-                  textAlign: 'center'
-                }}
-              >
-                {newCasesCount}
-              </ResponsiveText>
-              <ResponsiveCaption style={{ color: '#7F8C8D', marginBottom: 8, textAlign: 'center' }}>
-                New Cases
-              </ResponsiveCaption>
-              <Ionicons 
-                name="alert-circle" 
-                size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
-                color="#3498DB" 
-              />
-            </View>
-            <View style={styles.statCard}>
-              <ResponsiveText 
-                variant="display" 
-                style={{ 
-                  color: '#2C3E50', 
-                  marginBottom: 4,
-                  textAlign: 'center'
-                }}
-              >
-                {inProgressCount}
-              </ResponsiveText>
-              <ResponsiveCaption style={{ color: '#7F8C8D', marginBottom: 8, textAlign: 'center' }}>
-                In Progress
-              </ResponsiveCaption>
-              <Ionicons 
-                name="time" 
-                size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
-                color="#F39C12" 
-              />
-            </View>
-            <View style={styles.statCard}>
-              <ResponsiveText 
-                variant="display" 
-                style={{ 
-                  color: '#2C3E50', 
-                  marginBottom: 4,
-                  textAlign: 'center'
-                }}
-              >
-                {resolvedCount}
-              </ResponsiveText>
-              <ResponsiveCaption style={{ color: '#7F8C8D', marginBottom: 8, textAlign: 'center' }}>
-                Resolved
-              </ResponsiveCaption>
-              <Ionicons 
-                name="checkmark-circle" 
-                size={responsive.select({ mobile: 24, tablet: 26, desktop: 28, large: 30, xl: 32, xxl: 34, default: 24 })} 
-                color="#27AE60" 
-              />
-            </View>
-          </ResponsiveGrid>
-        </View>
-
-      <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[
-            { key: 'all', label: 'All Cases', count: cases.length },
-            { key: 'new', label: 'New', count: newCasesCount },
-            { key: 'in_progress', label: 'In Progress', count: inProgressCount },
-            { key: 'resolved', label: 'Resolved', count: resolvedCount },
-          ].map((filter) => (
-            <TouchableOpacity
-              key={filter.key}
-              style={[
-                styles.filterButton,
-                selectedFilter === filter.key && styles.filterButtonActive,
-              ]}
-              onPress={() => setSelectedFilter(filter.key as typeof selectedFilter)}
-            >
-              <Text
+    <ScreenContainer
+      title="Maintenance Dashboard"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      padded={false}
+    >
+      <View style={styles.content}>
+        {/* Filter Pills */}
+        <View style={styles.filtersContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {[
+              { key: 'all', label: 'All Cases', count: cases.length },
+              { key: 'new', label: 'New', count: newCasesCount },
+              { key: 'in_progress', label: 'In Progress', count: inProgressCount },
+              { key: 'resolved', label: 'Resolved', count: resolvedCount },
+            ].map((filter) => (
+              <TouchableOpacity
+                key={filter.key}
                 style={[
-                  styles.filterText,
-                  selectedFilter === filter.key && styles.filterTextActive,
+                  styles.filterButton,
+                  selectedFilter === filter.key && styles.filterButtonActive,
                 ]}
+                onPress={() => setSelectedFilter(filter.key as typeof selectedFilter)}
               >
-                {filter.label} ({filter.count})
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <ScrollView
-        style={styles.casesContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
+                <Text
+                  style={[
+                    styles.filterText,
+                    selectedFilter === filter.key && styles.filterTextActive,
+                  ]}
+                >
+                  {filter.label} ({filter.count})
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+        {/* Loading State */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#3498DB" />
-            <Text style={styles.loadingText}>Loading cases...</Text>
+            <Text style={styles.loadingText}>Loading requests...</Text>
           </View>
         ) : filteredCases.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="folder-open-outline" size={64} color="#95A5A6" />
-            <Text style={styles.emptyTitle}>No Cases Found</Text>
-            <Text style={styles.emptySubtitle}>
-              {selectedFilter === 'all' 
-                ? 'No maintenance cases have been reported yet.'
-                : `No ${selectedFilter.replace('_', ' ')} cases found.`}
+          /* Empty State */
+          <View style={styles.emptyCard}>
+            <Ionicons name="folder-open-outline" size={48} color="#BDC3C7" />
+            <Text style={styles.emptyCardTitle}>
+              {selectedFilter === 'all' ? 'All Caught Up!' : 'No Cases Found'}
+            </Text>
+            <Text style={styles.emptyCardSubtitle}>
+              {selectedFilter === 'all'
+                ? 'No maintenance requests at the moment'
+                : `No ${selectedFilter.replace('_', ' ')} cases found`}
             </Text>
           </View>
         ) : (
+          /* Request Cards with Action Buttons */
           filteredCases.map((case_) => (
-          <TouchableOpacity
-            key={case_.id}
-            style={styles.caseCard}
-            onPress={() => handleCasePress(case_.id)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.caseHeader}>
-              <View style={styles.caseInfo}>
-                <Text style={styles.tenantName}>{case_.tenantName}</Text>
-                <Text style={styles.tenantUnit}>{case_.tenantUnit}</Text>
-              </View>
-              <View style={styles.caseStatus}>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(case_.status) },
-                  ]}
-                >
-                  <Text style={styles.statusText}>{getStatusText(case_.status)}</Text>
+            <TouchableOpacity
+              key={case_.id}
+              style={styles.requestCard}
+              onPress={() => handleCasePress(case_.id)}
+              activeOpacity={0.7}
+            >
+              {/* Priority Indicator Bar */}
+              <View style={[styles.priorityBar, { backgroundColor: getUrgencyColor(case_.urgency) }]} />
+
+              <View style={styles.requestContent}>
+                {/* Request Header */}
+                <View style={styles.requestHeader}>
+                  <View style={styles.requestHeaderLeft}>
+                    <Text style={styles.requestTitle}>{case_.issueType}</Text>
+                    <Text style={styles.requestLocation}>
+                      {case_.location} • {case_.tenantName}
+                    </Text>
+                  </View>
+                  <Text style={styles.requestTime}>{case_.submittedAt}</Text>
                 </View>
-                <View
-                  style={[
-                    styles.urgencyBadge,
-                    { borderColor: getUrgencyColor(case_.urgency) },
-                  ]}
-                >
-                  <Text
+
+                {/* Description */}
+                <Text style={styles.requestDescription} numberOfLines={2}>
+                  {case_.description}
+                </Text>
+
+                {/* Metadata */}
+                <View style={styles.requestMeta}>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="images" size={14} color="#7F8C8D" />
+                    <Text style={styles.metaText}>{case_.mediaCount} photos</Text>
+                  </View>
+                  {case_.estimatedCost && (
+                    <View style={styles.metaItem}>
+                      <Text style={styles.metaLabel}>Est:</Text>
+                      <Text style={styles.metaCost}>{case_.estimatedCost}</Text>
+                    </View>
+                  )}
+                  <View
                     style={[
-                      styles.urgencyText,
-                      { color: getUrgencyColor(case_.urgency) },
+                      styles.statusBadge,
+                      { backgroundColor: getStatusColor(case_.status) },
                     ]}
                   >
-                    {case_.urgency}
-                  </Text>
+                    <Text style={styles.statusText}>{getStatusText(case_.status)}</Text>
+                  </View>
+                </View>
+
+                {/* Inline Action Buttons */}
+                <View style={styles.requestActions}>
+                  <TouchableOpacity
+                    style={styles.btnPrimary}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleRespondPress(case_.id);
+                    }}
+                  >
+                    <Text style={styles.btnPrimaryText}>Respond</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.btnSecondary}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleAssignVendorPress(case_.id);
+                    }}
+                  >
+                    <Text style={styles.btnSecondaryText}>Assign Vendor</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-            </View>
-
-            <View style={styles.caseContent}>
-              <View style={styles.issueTypeContainer}>
-                <Ionicons name="construct" size={16} color="#7F8C8D" />
-                <Text style={styles.issueType}>{case_.issueType}</Text>
-                <Text style={styles.separator}>•</Text>
-                <Text style={styles.location}>{case_.location}</Text>
-              </View>
-              <Text style={styles.description} numberOfLines={2}>
-                {case_.description}
-              </Text>
-            </View>
-
-            <View style={styles.caseFooter}>
-              <View style={styles.caseMetadata}>
-                <View style={styles.mediaInfo}>
-                  <Ionicons name="images" size={16} color="#7F8C8D" />
-                  <Text style={styles.mediaCount}>{case_.mediaCount} photos</Text>
-                </View>
-                <Text style={styles.timestamp}>{case_.submittedAt}</Text>
-              </View>
-              {case_.estimatedCost && (
-                <View style={styles.costContainer}>
-                  <Text style={styles.costLabel}>Est. Cost:</Text>
-                  <Text style={styles.costValue}>{case_.estimatedCost}</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.caseActions}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="chatbubble" size={16} color="#3498DB" />
-                <Text style={styles.actionText}>Message</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="mail" size={16} color="#3498DB" />
-                <Text style={styles.actionText}>Send to Vendor</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="checkmark" size={16} color="#27AE60" />
-                <Text style={[styles.actionText, { color: '#27AE60' }]}>Mark Resolved</Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        )))}
-
-        {!loading && filteredCases.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons name="folder-open" size={64} color="#BDC3C7" />
-            <Text style={styles.emptyTitle}>No cases found</Text>
-            <Text style={styles.emptyText}>
-              {selectedFilter === 'all'
-                ? 'No maintenance cases have been submitted yet.'
-                : `No ${selectedFilter.replace('_', ' ')} cases at the moment.`}
-            </Text>
-          </View>
+            </TouchableOpacity>
+          ))
         )}
-      </ScrollView>
-      </ResponsiveContainer>
-    </SafeAreaView>
+
+        <View style={styles.bottomSpacer} />
+      </View>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  content: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#E74C3C',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
-    
-    
-    
-    
-    elevation: 2,
   },
+  // Filter Pills
   filtersContainer: {
-    paddingHorizontal: 20,
     marginBottom: 16,
   },
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DesignSystem.colors.background,
     borderWidth: 1,
-    borderColor: '#E1E8ED',
+    borderColor: DesignSystem.colors.border,
     marginRight: 8,
   },
   filterButtonActive: {
-    backgroundColor: '#34495E',
-    borderColor: '#34495E',
+    backgroundColor: '#3498DB',
+    borderColor: '#3498DB',
   },
   filterText: {
-    fontSize: 14,
-    color: '#7F8C8D',
+    fontSize: 13,
+    color: DesignSystem.colors.textSecondary,
     fontWeight: '500',
   },
   filterTextActive: {
     color: '#FFFFFF',
   },
-  casesContainer: {
+  // Request Cards with Priority Bars
+  requestCard: {
+    backgroundColor: DesignSystem.colors.background,
+    borderRadius: 12,
+    padding: 14,
+    paddingLeft: 16,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  priorityBar: {
+    width: 4,
+    borderRadius: 2,
+    alignSelf: 'stretch',
+    minHeight: 48,
+  },
+  requestContent: {
     flex: 1,
-    paddingHorizontal: 20,
   },
-  caseCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
-    elevation: 6,
-  },
-  caseHeader: {
+  requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 4,
   },
-  caseInfo: {},
-  tenantName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2C3E50',
+  requestHeaderLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  requestTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: DesignSystem.colors.text,
     marginBottom: 2,
   },
-  tenantUnit: {
-    fontSize: 14,
-    color: '#7F8C8D',
+  requestLocation: {
+    fontSize: 13,
+    color: DesignSystem.colors.textSecondary,
   },
-  caseStatus: {
-    alignItems: 'flex-end',
-    gap: 6,
+  requestTime: {
+    fontSize: 11,
+    color: DesignSystem.colors.textSubtle,
+  },
+  requestDescription: {
+    fontSize: 14,
+    color: DesignSystem.colors.text,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  // Metadata Row
+  requestMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    color: DesignSystem.colors.textSecondary,
+  },
+  metaLabel: {
+    fontSize: 11,
+    color: DesignSystem.colors.textSecondary,
+  },
+  metaCost: {
+    fontSize: 12,
+    color: DesignSystem.colors.success,
+    fontWeight: '600',
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 'auto',
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#FFFFFF',
     fontWeight: '600',
   },
-  urgencyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    backgroundColor: '#FFFFFF',
+  // Inline Action Buttons
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  urgencyText: {
+  btnPrimary: {
+    backgroundColor: '#3498DB',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  btnPrimaryText: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  caseContent: {
-    marginBottom: 12,
+  btnSecondary: {
+    backgroundColor: DesignSystem.colors.surface,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
   },
-  issueTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
-  },
-  issueType: {
-    fontSize: 14,
-    color: '#34495E',
+  btnSecondaryText: {
+    fontSize: 12,
     fontWeight: '600',
+    color: DesignSystem.colors.textSecondary,
   },
-  separator: {
-    fontSize: 14,
-    color: '#BDC3C7',
-  },
-  location: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  description: {
-    fontSize: 16,
-    color: '#2C3E50',
-    lineHeight: 22,
-  },
-  caseFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  caseMetadata: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  mediaInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  mediaCount: {
-    fontSize: 12,
-    color: '#7F8C8D',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#95A5A6',
-  },
-  costContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  costLabel: {
-    fontSize: 12,
-    color: '#7F8C8D',
-  },
-  costValue: {
-    fontSize: 12,
-    color: '#27AE60',
-    fontWeight: '600',
-  },
-  caseActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F2F6',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-  },
-  actionText: {
-    fontSize: 12,
-    color: '#3498DB',
-    fontWeight: '500',
-  },
+  // Loading State
   loadingContainer: {
     alignItems: 'center',
     paddingVertical: 60,
   },
   loadingText: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    marginTop: 16,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#7F8C8D',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#95A5A6',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
-  emptySubtitle: {
     fontSize: 14,
-    color: '#95A5A6',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    marginTop: 8,
+    color: DesignSystem.colors.textSecondary,
+    marginTop: 16,
   },
-  emptyState: {
+  // Empty State
+  emptyCard: {
+    backgroundColor: DesignSystem.colors.background,
+    borderRadius: 12,
+    padding: 32,
     alignItems: 'center',
-    paddingVertical: 60,
+  },
+  emptyCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: DesignSystem.colors.text,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptyCardSubtitle: {
+    fontSize: 13,
+    color: DesignSystem.colors.textSecondary,
+    textAlign: 'center',
+  },
+  bottomSpacer: {
+    height: 20,
   },
 });
 

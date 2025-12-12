@@ -2,6 +2,9 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { Platform, View, Text, StyleSheet } from 'react-native';
+
+// Tenant Screens
 import HomeScreen from '../screens/tenant/HomeScreen';
 import MaintenanceStatusScreen from '../screens/tenant/MaintenanceStatusScreen';
 import ReportIssueScreen from '../screens/tenant/ReportIssueScreen';
@@ -15,6 +18,8 @@ import PropertyCodeEntryScreen from '../screens/tenant/PropertyCodeEntryScreen';
 import PropertyWelcomeScreen from '../screens/tenant/PropertyWelcomeScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
 import InviteAcceptScreen from '../screens/tenant/InviteAcceptScreen';
+
+// Landlord Screens
 import LandlordHomeScreen from '../screens/landlord/LandlordHomeScreen';
 import DashboardScreen from '../screens/landlord/DashboardScreen';
 import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
@@ -36,13 +41,32 @@ import AssetDetailsScreen from '../screens/landlord/AssetDetailsScreen';
 import AssetPhotosScreen from '../screens/landlord/AssetPhotosScreen';
 import ReviewSubmitScreen from '../screens/landlord/ReviewSubmitScreen';
 import InviteTenantScreen from '../screens/landlord/InviteTenantScreen';
+
+// Shared Screens
+import ProfileScreen from '../screens/shared/ProfileScreen';
+import EditProfileScreen from '../screens/shared/EditProfileScreen';
+import SecurityScreen from '../screens/shared/SecurityScreen';
+import NotificationsScreen from '../screens/shared/NotificationsScreen';
+import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
+import ContactSupportScreen from '../screens/shared/ContactSupportScreen';
+
 import { PropertyAreasParams, PropertyAssetsParams, PropertyReviewParams, AssetTemplate, PropertyData, InventoryItem } from '../types/property';
 
+// ============ TYPE DEFINITIONS ============
+
+export type TenantTabParamList = {
+  TenantHome: undefined;
+  TenantRequests: undefined;
+  TenantMessages: undefined;
+  TenantProfile: { userRole?: 'landlord' | 'tenant' } | undefined;
+};
+
 export type TenantStackParamList = {
+  TenantTabs: undefined;
   Home: undefined;
   MaintenanceStatus: undefined;
   ReportIssue: undefined;
-  ReviewIssue: { 
+  ReviewIssue: {
     reviewData: {
       propertyId?: string;
       propertyName?: string;
@@ -82,7 +106,16 @@ export type TenantStackParamList = {
   };
 };
 
+export type LandlordTabParamList = {
+  LandlordHome: undefined;
+  LandlordRequests: undefined;
+  LandlordProperties: undefined;
+  LandlordMessages: undefined;
+  LandlordProfile: { userRole?: 'landlord' | 'tenant' } | undefined;
+};
+
 export type LandlordStackParamList = {
+  LandlordTabs: undefined;
   Home: undefined;
   Dashboard: undefined;
   CaseDetail: { caseId: string };
@@ -108,7 +141,7 @@ export type LandlordStackParamList = {
     template: AssetTemplate | null;
     propertyData: PropertyData;
     draftId?: string;
-    propertyId?: string; // For existing properties (saves directly to database)
+    propertyId?: string;
   };
   InviteTenant: {
     propertyId: string;
@@ -117,228 +150,283 @@ export type LandlordStackParamList = {
   };
 };
 
-const TenantStack = createNativeStackNavigator<TenantStackParamList>();
-const LandlordStack = createNativeStackNavigator<LandlordStackParamList>();
+// ============ TAB BAR STYLES ============
+
+const tabBarStyles = {
+  tabBarStyle: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E1E8ED',
+    height: Platform.OS === 'ios' ? 88 : 64,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+    paddingTop: 8,
+  },
+  tabBarActiveTintColor: '#3498DB',
+  tabBarInactiveTintColor: '#7F8C8D',
+  tabBarLabelStyle: {
+    fontSize: 11,
+    fontWeight: '500' as const,
+  },
+};
+
+// ============ LANDLORD NAVIGATION ============
+
+const LandlordTab = createBottomTabNavigator<LandlordTabParamList>();
+
+// Stack navigator for Home tab
+const LandlordHomeStack = createNativeStackNavigator();
+const LandlordHomeStackNavigator = () => (
+  <LandlordHomeStack.Navigator screenOptions={{ headerShown: false }}>
+    <LandlordHomeStack.Screen name="LandlordHomeMain" component={LandlordHomeScreen} />
+    <LandlordHomeStack.Screen name="Dashboard" component={DashboardScreen} />
+    <LandlordHomeStack.Screen name="CaseDetail" component={CaseDetailScreen} />
+    <LandlordHomeStack.Screen name="SendToVendor" component={SendToVendorScreen} />
+    <LandlordHomeStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+    <LandlordHomeStack.Screen name="PropertyManagement" component={PropertyManagementScreen} />
+    <LandlordHomeStack.Screen name="AddProperty" component={AddPropertyScreen} />
+    <LandlordHomeStack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
+    <LandlordHomeStack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
+    <LandlordHomeStack.Screen name="PropertyReview" component={PropertyReviewScreen} />
+    <LandlordHomeStack.Screen name="AddAsset" component={AddAssetScreen} />
+    <LandlordHomeStack.Screen name="InviteTenant" component={InviteTenantScreen} />
+  </LandlordHomeStack.Navigator>
+);
+
+// Stack navigator for Properties tab
+const LandlordPropertiesStack = createNativeStackNavigator();
+const LandlordPropertiesStackNavigator = () => (
+  <LandlordPropertiesStack.Navigator screenOptions={{ headerShown: false }}>
+    <LandlordPropertiesStack.Screen name="PropertyManagementMain" component={PropertyManagementScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+    <LandlordPropertiesStack.Screen name="AddProperty" component={AddPropertyScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyPhotos" component={PropertyPhotosScreen} />
+    <LandlordPropertiesStack.Screen name="RoomSelection" component={RoomSelectionScreen} />
+    <LandlordPropertiesStack.Screen name="RoomPhotography" component={RoomPhotographyScreen} />
+    <LandlordPropertiesStack.Screen name="AssetScanning" component={AssetScanningScreen} />
+    <LandlordPropertiesStack.Screen name="AssetDetails" component={AssetDetailsScreen} />
+    <LandlordPropertiesStack.Screen name="AssetPhotos" component={AssetPhotosScreen} />
+    <LandlordPropertiesStack.Screen name="ReviewSubmit" component={ReviewSubmitScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyReview" component={PropertyReviewScreen} />
+    <LandlordPropertiesStack.Screen name="AddAsset" component={AddAssetScreen} />
+    <LandlordPropertiesStack.Screen name="InviteTenant" component={InviteTenantScreen} />
+  </LandlordPropertiesStack.Navigator>
+);
+
+// Stack navigator for Messages tab
+const LandlordMessagesStack = createNativeStackNavigator();
+const LandlordMessagesStackNavigator = () => (
+  <LandlordMessagesStack.Navigator screenOptions={{ headerShown: false }}>
+    <LandlordMessagesStack.Screen name="LandlordMessagesMain" component={LandlordCommunicationScreen} />
+  </LandlordMessagesStack.Navigator>
+);
+
+// Stack navigator for Requests tab
+const LandlordRequestsStack = createNativeStackNavigator();
+const LandlordRequestsStackNavigator = () => (
+  <LandlordRequestsStack.Navigator screenOptions={{ headerShown: false }}>
+    <LandlordRequestsStack.Screen name="LandlordRequestsMain" component={DashboardScreen} />
+    <LandlordRequestsStack.Screen name="CaseDetail" component={CaseDetailScreen} />
+    <LandlordRequestsStack.Screen name="SendToVendor" component={SendToVendorScreen} />
+  </LandlordRequestsStack.Navigator>
+);
+
+// Stack navigator for Profile tab
+const LandlordProfileStack = createNativeStackNavigator();
+const LandlordProfileStackNavigator = () => (
+  <LandlordProfileStack.Navigator screenOptions={{ headerShown: false }}>
+    <LandlordProfileStack.Screen
+      name="LandlordProfileMain"
+      component={ProfileScreen}
+      initialParams={{ userRole: 'landlord' }}
+    />
+    <LandlordProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+    <LandlordProfileStack.Screen name="Security" component={SecurityScreen} />
+    <LandlordProfileStack.Screen name="Notifications" component={NotificationsScreen} />
+    <LandlordProfileStack.Screen name="HelpCenter" component={HelpCenterScreen} />
+    <LandlordProfileStack.Screen name="ContactSupport" component={ContactSupportScreen} />
+  </LandlordProfileStack.Navigator>
+);
+
+const LandlordNavigator = () => {
+  return (
+    <LandlordTab.Navigator
+      screenOptions={{
+        headerShown: false,
+        ...tabBarStyles,
+      }}
+    >
+      <LandlordTab.Screen
+        name="LandlordHome"
+        component={LandlordHomeStackNavigator}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
+        }}
+      />
+      <LandlordTab.Screen
+        name="LandlordRequests"
+        component={LandlordRequestsStackNavigator}
+        options={{
+          tabBarLabel: 'Maintenance',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="construct" size={size} color={color} />
+          ),
+        }}
+      />
+      <LandlordTab.Screen
+        name="LandlordProperties"
+        component={LandlordPropertiesStackNavigator}
+        options={{
+          tabBarLabel: 'Properties',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="business" size={size} color={color} />
+          ),
+        }}
+      />
+      <LandlordTab.Screen
+        name="LandlordMessages"
+        component={LandlordMessagesStackNavigator}
+        options={{
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+        }}
+      />
+      <LandlordTab.Screen
+        name="LandlordProfile"
+        component={LandlordProfileStackNavigator}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
+      />
+    </LandlordTab.Navigator>
+  );
+};
+
+// ============ TENANT NAVIGATION ============
+
+const TenantTab = createBottomTabNavigator<TenantTabParamList>();
+
+// Stack navigator for Home tab (includes maintenance request flow)
+const TenantHomeStack = createNativeStackNavigator();
+const TenantHomeStackNavigator = () => (
+  <TenantHomeStack.Navigator screenOptions={{ headerShown: false }}>
+    <TenantHomeStack.Screen name="TenantHomeMain" component={HomeScreen} />
+    <TenantHomeStack.Screen name="ReportIssue" component={ReportIssueScreen} />
+    <TenantHomeStack.Screen name="ReviewIssue" component={ReviewIssueScreen} />
+    <TenantHomeStack.Screen name="SubmissionSuccess" component={SubmissionSuccessScreen} />
+    <TenantHomeStack.Screen name="FollowUp" component={FollowUpScreen} />
+    <TenantHomeStack.Screen name="ConfirmSubmission" component={ConfirmSubmissionScreen} />
+    <TenantHomeStack.Screen name="PropertyCodeEntry" component={PropertyCodeEntryScreen} />
+    <TenantHomeStack.Screen name="PropertyInviteAccept" component={PropertyInviteAcceptScreen} />
+    <TenantHomeStack.Screen name="PropertyWelcome" component={PropertyWelcomeScreen} />
+    <TenantHomeStack.Screen name="InviteAccept" component={InviteAcceptScreen} />
+    <TenantHomeStack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
+  </TenantHomeStack.Navigator>
+);
+
+// Stack navigator for Requests tab
+const TenantRequestsStack = createNativeStackNavigator();
+const TenantRequestsStackNavigator = () => (
+  <TenantRequestsStack.Navigator screenOptions={{ headerShown: false }}>
+    <TenantRequestsStack.Screen name="TenantRequestsMain" component={MaintenanceStatusScreen} />
+    <TenantRequestsStack.Screen name="FollowUp" component={FollowUpScreen} />
+  </TenantRequestsStack.Navigator>
+);
+
+// Stack navigator for Messages tab
+const TenantMessagesStack = createNativeStackNavigator();
+const TenantMessagesStackNavigator = () => (
+  <TenantMessagesStack.Navigator screenOptions={{ headerShown: false }}>
+    <TenantMessagesStack.Screen name="TenantMessagesMain" component={CommunicationHubScreen} />
+  </TenantMessagesStack.Navigator>
+);
+
+// Stack navigator for Profile tab
+const TenantProfileStack = createNativeStackNavigator();
+const TenantProfileStackNavigator = () => (
+  <TenantProfileStack.Navigator screenOptions={{ headerShown: false }}>
+    <TenantProfileStack.Screen
+      name="TenantProfileMain"
+      component={ProfileScreen}
+      initialParams={{ userRole: 'tenant' }}
+    />
+    <TenantProfileStack.Screen name="EditProfile" component={EditProfileScreen} />
+    <TenantProfileStack.Screen name="Security" component={SecurityScreen} />
+    <TenantProfileStack.Screen name="Notifications" component={NotificationsScreen} />
+    <TenantProfileStack.Screen name="HelpCenter" component={HelpCenterScreen} />
+    <TenantProfileStack.Screen name="ContactSupport" component={ContactSupportScreen} />
+  </TenantProfileStack.Navigator>
+);
 
 interface TenantNavigatorProps {
   pendingInvitePropertyId?: string | null;
 }
 
 const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInvitePropertyId }) => {
-  // If there's a pending invite, start on that screen
-  const initialRouteName = pendingInvitePropertyId ? 'PropertyInviteAccept' : 'Home';
-  const initialParams = pendingInvitePropertyId ? { propertyId: pendingInvitePropertyId } : undefined;
-
+  // For pending invites, we'll handle the initial navigation in the Home stack
   return (
-    <TenantStack.Navigator
-      initialRouteName={initialRouteName}
+    <TenantTab.Navigator
       screenOptions={{
-        headerStyle: {
-          backgroundColor: '#2C3E50',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerShown: false,
+        ...tabBarStyles,
+        tabBarActiveTintColor: '#2ECC71', // Green for tenant
       }}
     >
-      <TenantStack.Screen 
-        name="Home" 
-        component={HomeScreen}
-        options={{ 
-          title: 'Home',
-          headerShown: false 
+      <TenantTab.Screen
+        name="TenantHome"
+        component={TenantHomeStackNavigator}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home" size={size} color={color} />
+          ),
         }}
       />
-      <TenantStack.Screen 
-        name="MaintenanceStatus" 
-        component={MaintenanceStatusScreen}
-        options={{ title: 'Maintenance' }}
+      <TenantTab.Screen
+        name="TenantRequests"
+        component={TenantRequestsStackNavigator}
+        options={{
+          tabBarLabel: 'Requests',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="construct" size={size} color={color} />
+          ),
+        }}
       />
-      <TenantStack.Screen 
-        name="ReportIssue" 
-        component={ReportIssueScreen}
-        options={{ title: 'Report Issue' }}
+      <TenantTab.Screen
+        name="TenantMessages"
+        component={TenantMessagesStackNavigator}
+        options={{
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="chatbubbles" size={size} color={color} />
+          ),
+        }}
       />
-      <TenantStack.Screen 
-        name="ReviewIssue" 
-        component={ReviewIssueScreen}
-        options={{ title: 'Review Request' }}
+      <TenantTab.Screen
+        name="TenantProfile"
+        component={TenantProfileStackNavigator}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person" size={size} color={color} />
+          ),
+        }}
       />
-      <TenantStack.Screen 
-        name="SubmissionSuccess" 
-        component={SubmissionSuccessScreen}
-        options={{ title: 'Success', headerLeft: () => null }}
-      />
-      <TenantStack.Screen 
-        name="FollowUp" 
-        component={FollowUpScreen}
-        options={{ title: 'Additional Details' }}
-      />
-      <TenantStack.Screen 
-        name="ConfirmSubmission" 
-        component={ConfirmSubmissionScreen}
-        options={{ title: 'Confirm Submission' }}
-      />
-      <TenantStack.Screen 
-        name="CommunicationHub" 
-        component={CommunicationHubScreen}
-        options={{ headerShown: false }}
-      />
-      <TenantStack.Screen 
-        name="PropertyInfo" 
-        component={PropertyInfoScreen}
-        options={{ headerShown: false }}
-      />
-      <TenantStack.Screen 
-        name="PropertyCodeEntry" 
-        component={PropertyCodeEntryScreen}
-        options={{ title: 'Link to Property' }}
-      />
-      <TenantStack.Screen
-        name="PropertyInviteAccept"
-        component={PropertyInviteAcceptScreen}
-        options={{ title: 'Accept Invitation' }}
-        initialParams={initialParams}
-      />
-      <TenantStack.Screen 
-        name="PropertyWelcome" 
-        component={PropertyWelcomeScreen}
-        options={{ title: 'Welcome', headerShown: false }}
-      />
-      <TenantStack.Screen 
-        name="InviteAccept" 
-        component={InviteAcceptScreen}
-        options={{ title: 'Accept Invitation', headerShown: false }}
-      />
-    </TenantStack.Navigator>
+    </TenantTab.Navigator>
   );
 };
 
-const LandlordNavigator = () => {
-  return (
-    <LandlordStack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#34495E',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-      }}
-    >
-      <LandlordStack.Screen 
-        name="Home" 
-        component={LandlordHomeScreen}
-        options={{ 
-          title: 'Landlord Dashboard',
-          headerShown: false 
-        }}
-      />
-      <LandlordStack.Screen 
-        name="Dashboard" 
-        component={DashboardScreen}
-        options={{ title: 'Maintenance Dashboard' }}
-      />
-      <LandlordStack.Screen 
-        name="CaseDetail" 
-        component={CaseDetailScreen}
-        options={{ title: 'Case Details' }}
-      />
-      <LandlordStack.Screen 
-        name="SendToVendor" 
-        component={SendToVendorScreen}
-        options={{ title: 'Send to Vendor' }}
-      />
-      <LandlordStack.Screen 
-        name="Communications" 
-        component={LandlordCommunicationScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyManagement" 
-        component={PropertyManagementScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyDetails" 
-        component={PropertyDetailsScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="AddProperty" 
-        component={AddPropertyScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyBasics" 
-        component={PropertyBasicsScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyPhotos" 
-        component={PropertyPhotosScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="RoomSelection" 
-        component={RoomSelectionScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="RoomPhotography" 
-        component={RoomPhotographyScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="AssetScanning" 
-        component={AssetScanningScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="AssetDetails" 
-        component={AssetDetailsScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="AssetPhotos" 
-        component={AssetPhotosScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="ReviewSubmit" 
-        component={ReviewSubmitScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyAreas" 
-        component={PropertyAreasScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyAssets" 
-        component={PropertyAssetsListScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="PropertyReview" 
-        component={PropertyReviewScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="AddAsset" 
-        component={AddAssetScreen}
-        options={{ headerShown: false }}
-      />
-      <LandlordStack.Screen 
-        name="InviteTenant" 
-        component={InviteTenantScreen}
-        options={{ title: 'Invite Tenant' }}
-      />
-    </LandlordStack.Navigator>
-  );
-};
+// ============ MAIN STACK ============
 
 interface MainStackProps {
   userRole: 'tenant' | 'landlord';

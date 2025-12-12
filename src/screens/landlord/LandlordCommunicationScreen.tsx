@@ -5,10 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
@@ -17,6 +15,7 @@ import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';
 import { formatRelativeTime } from '../../utils/helpers';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 interface Conversation {
   id: string;
@@ -99,24 +98,25 @@ const LandlordCommunicationScreen = () => {
     return <LoadingSpinner message="Loading conversations..." />;
   }
 
+  // Header right button
+  const headerRight = (
+    <TouchableOpacity style={styles.newMessageButton} onPress={handleNewMessage}>
+      <Ionicons name="add" size={24} color="#3498DB" />
+    </TouchableOpacity>
+  );
+
   return (
     <ErrorBoundary>
-      <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#34495E" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Communications</Text>
-          </View>
-          <TouchableOpacity style={styles.newMessageButton} onPress={handleNewMessage}>
-            <Ionicons name="add" size={24} color="#3498DB" />
-          </TouchableOpacity>
-        </View>
+      <ScreenContainer
+        title="Communications"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        headerRight={headerRight}
+        userRole="landlord"
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        padded={false}
+      >
 
         {/* Search Bar */}
         <View style={styles.searchContainer}>
@@ -167,13 +167,7 @@ const LandlordCommunicationScreen = () => {
         </View>
 
         {/* Conversations List */}
-        <ScrollView
-          style={styles.conversationsList}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
+        <View style={styles.conversationsList}>
           {filteredConversations.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="chatbubbles-outline" size={64} color="#BDC3C7" />
@@ -241,40 +235,13 @@ const LandlordCommunicationScreen = () => {
               </TouchableOpacity>
             ))
           )}
-        </ScrollView>
-      </SafeAreaView>
+        </View>
+      </ScreenContainer>
     </ErrorBoundary>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 16,
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
   newMessageButton: {
     padding: 8,
     backgroundColor: '#E8F4FD',

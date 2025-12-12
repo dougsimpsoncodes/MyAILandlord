@@ -3,13 +3,11 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Image,
   Alert,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -24,6 +22,7 @@ import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import log from '../../lib/log';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -231,51 +230,45 @@ const PropertyReviewScreen = () => {
     </View>
   );
 
-  // Test logging on every render (centralized)
-  // Note: Uses console in dev originally; you may replace with log if desired.
-  
+  const headerRight = (
+    <View style={styles.headerRightContainer}>
+      {(isSaving || lastSaved) && (
+        <View style={styles.saveStatus}>
+          {isSaving ? (
+            <>
+              <Ionicons name="sync" size={12} color="#3498DB" />
+              <Text style={styles.saveStatusText}>Saving...</Text>
+            </>
+          ) : lastSaved ? (
+            <>
+              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+              <Text style={styles.saveStatusText}>Saved</Text>
+            </>
+          ) : null}
+        </View>
+      )}
+      <TouchableOpacity
+        style={[styles.headerSubmitButton, (isSubmitting || isDraftLoading) && styles.headerSubmitButtonDisabled]}
+        onPress={handleSubmit}
+        disabled={isSubmitting || isDraftLoading}
+      >
+        <Text style={[styles.headerSubmitButtonText, (isSubmitting || isDraftLoading) && styles.headerSubmitButtonTextDisabled]}>
+          {isSubmitting ? 'Submitting...' : 'Submit'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Review Property</Text>
-          {(isSaving || lastSaved) && (
-            <View style={styles.saveStatus}>
-              {isSaving ? (
-                <>
-                  <Ionicons name="sync" size={12} color="#3498DB" />
-                  <Text style={styles.saveStatusText}>Saving...</Text>
-                </>
-              ) : lastSaved ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-                  <Text style={styles.saveStatusText}>
-                    Saved {new Date(lastSaved).toLocaleTimeString()}
-                  </Text>
-                </>
-              ) : null}
-            </View>
-          )}
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: '80%' }]} />
-        </View>
-        <Text style={styles.progressText}>Step 4 of 5: Review & Submit</Text>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+    <ScreenContainer
+      title="Review & Submit"
+      subtitle="Step 4 of 4"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      scrollable
+    >
         {/* Property Information Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -409,98 +402,49 @@ const PropertyReviewScreen = () => {
             }
           </Text>
         </Card>
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <Button
-          title={isSaving ? 'Saving...' : 'Save Draft'}
-          onPress={() => {
-            console.log('🚨 Save Draft button pressed');
-            saveDraft();
-          }}
-          type="secondary"
-          size="md"
-          disabled={isSaving || isDraftLoading}
-          loading={isSaving}
-          icon={!isSaving ? <Ionicons name="bookmark-outline" size={18} color={DesignSystem.colors.secondaryText} /> : undefined}
-        />
-        
-        <Button
-          title={isSubmitting ? 'Submitting...' : 'Add Property'}
-          onPress={handleSubmit}
-          type="primary"
-          size="md"
-          disabled={isSubmitting || isDraftLoading}
-          loading={isSubmitting}
-          style={{ flex: 1, marginLeft: DesignSystem.spacing.md }}
-        />
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: DesignSystem.colors.surfaceSecondary,
-  },
-  header: {
+  headerRightContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: DesignSystem.colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: DesignSystem.colors.text,
+    gap: 12,
   },
   saveStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
     gap: 4,
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   saveStatusText: {
     fontSize: 11,
     color: '#7F8C8D',
   },
+  headerSubmitButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#3498DB',
+  },
+  headerSubmitButtonDisabled: {
+    backgroundColor: '#BDC3C7',
+  },
+  headerSubmitButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  headerSubmitButtonTextDisabled: {
+    color: '#FFFFFF',
+  },
   cancelText: {
     fontSize: 16,
     color: '#E74C3C',
-  },
-  progressContainer: {
-    backgroundColor: DesignSystem.colors.background,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E9ECEF',
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3498DB',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 12,
-    color: '#7F8C8D',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
   },
   section: {
     marginVertical: 16,
@@ -701,13 +645,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  bottomActions: {
+  bottomActionsRow: {
     flexDirection: 'row',
-    paddingHorizontal: DesignSystem.spacing.lg,
-    paddingVertical: DesignSystem.spacing.lg,
-    backgroundColor: DesignSystem.colors.background,
-    borderTopWidth: 1,
-    borderTopColor: DesignSystem.colors.border,
     gap: DesignSystem.spacing.md,
     alignItems: 'center',
   },

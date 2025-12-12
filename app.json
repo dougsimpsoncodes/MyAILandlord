@@ -12,7 +12,8 @@
       "backgroundColor": "#ffffff"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/e0bbde0b-8807-4eca-ab59-987973d4967c"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -28,7 +29,8 @@
       "associatedDomains": [
         "applinks:myailandlord.app",
         "applinks:www.myailandlord.app"
-      ]
+      ],
+      "runtimeVersion": "1.0.0"
     },
     "android": {
       "adaptiveIcon": {
@@ -60,7 +62,10 @@
             "DEFAULT"
           ]
         }
-      ]
+      ],
+      "runtimeVersion": {
+        "policy": "appVersion"
+      }
     },
     "platforms": [
       "ios",
@@ -70,7 +75,8 @@
     "scheme": "myailandlord",
     "plugins": [
       "expo-barcode-scanner",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "extra": {
       "eas": {

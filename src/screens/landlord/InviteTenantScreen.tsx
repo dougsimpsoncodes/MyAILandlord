@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Clipboard, Platform, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
-import { useResponsive } from '../../hooks/useResponsive';
-import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveTitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
 import CustomButton from '../../components/shared/CustomButton';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type InviteTenantNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'InviteTenant'>;
 
@@ -23,10 +20,8 @@ const InviteTenantScreen = () => {
   const navigation = useNavigation<InviteTenantNavigationProp>();
   const route = useRoute();
   const { propertyId, propertyName, propertyCode } = route.params as RouteParams;
-  const responsive = useResponsive();
-  
+
   const [inviteUrl, setInviteUrl] = useState('');
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     generateInviteUrl();
@@ -97,20 +92,13 @@ const InviteTenantScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ResponsiveContainer>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <ResponsiveTitle style={styles.title}>
-            Invite Tenant
-          </ResponsiveTitle>
-          <ResponsiveBody style={styles.subtitle}>
-            Share this link with your tenant to automatically connect them to the property
-          </ResponsiveBody>
-        </View>
+    <ScreenContainer
+      title="Invite Tenant"
+      subtitle="Share this link with your tenant to automatically connect them to the property"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+    >
 
         {/* Property Info */}
         <View style={styles.propertyCard}>
@@ -173,34 +161,11 @@ const InviteTenantScreen = () => {
             <Text style={styles.stepText}>Tenant can start reporting maintenance issues!</Text>
           </View>
         </View>
-      </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: 8,
-    color: '#1a1a1a',
-  },
-  subtitle: {
-    textAlign: 'center',
-    color: '#666',
-    lineHeight: 22,
-  },
   propertyCard: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,

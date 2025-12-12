@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type ConfirmSubmissionScreenRouteProp = RouteProp<TenantStackParamList, 'ConfirmSubmission'>;
 type ConfirmSubmissionScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ConfirmSubmission'>;
@@ -97,17 +97,30 @@ const ConfirmSubmissionScreen = () => {
     }
   };
 
+  // Header right with Submit button
+  const headerRight = (
+    <TouchableOpacity
+      style={[styles.headerSubmitButton, isSubmitting && styles.headerSubmitButtonDisabled]}
+      onPress={handleSubmit}
+      disabled={isSubmitting}
+    >
+      <Text style={[styles.headerSubmitButtonText, isSubmitting && styles.headerSubmitButtonTextDisabled]}>
+        {isSubmitting ? 'Submitting...' : 'Submit'}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View style={styles.headerIcon}>
-            <Ionicons name="checkmark-circle" size={48} color="#27AE60" />
-          </View>
-          <Text style={styles.title}>Review Your Request</Text>
-          <Text style={styles.subtitle}>
-            Please review the details and select your preferred repair times
-          </Text>
+    <ScreenContainer
+      title="Confirm Request"
+      subtitle="Step 2 of 2"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="tenant"
+    >
+        <View style={styles.headerIcon}>
+          <Ionicons name="checkmark-circle" size={48} color="#27AE60" />
         </View>
 
         <View style={styles.summaryCard}>
@@ -235,68 +248,14 @@ const ConfirmSubmissionScreen = () => {
             repair team bring the right tools and parts.
           </Text>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="pencil" size={20} color="#7F8C8D" />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          activeOpacity={0.8}
-        >
-          {isSubmitting ? (
-            <>
-              <Ionicons name="hourglass" size={20} color="#FFFFFF" />
-              <Text style={styles.submitButtonText}>Submitting...</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="send" size={20} color="#FFFFFF" />
-              <Text style={styles.submitButtonText}>Submit Request</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 24,
-  },
   headerIcon: {
+    alignSelf: 'center',
     marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    paddingHorizontal: 20,
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',
@@ -433,54 +392,22 @@ const styles = StyleSheet.create({
     color: '#8E44AD',
     lineHeight: 20,
   },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E1E8ED',
-    gap: 12,
+  headerSubmitButton: {
+    backgroundColor: '#2ECC71',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  editButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-    gap: 8,
+  headerSubmitButtonDisabled: {
+    backgroundColor: '#BDC3C7',
   },
-  editButtonText: {
-    color: '#7F8C8D',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  submitButton: {
-    flex: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#27AE60',
-    gap: 8,
-    
-    
-    
-    
-    elevation: 4,
-  },
-  submitButtonDisabled: {
-    backgroundColor: '#95A5A6',
-  },
-  submitButtonText: {
+  headerSubmitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  headerSubmitButtonTextDisabled: {
+    color: '#FFFFFF',
   },
 });
 

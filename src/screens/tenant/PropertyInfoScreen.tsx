@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
   TouchableOpacity,
   Linking,
   Alert,
   Clipboard
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyInfoNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'PropertyInfo'>;
 
@@ -252,19 +251,12 @@ const PropertyInfoScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Property Info</Text>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+    <ScreenContainer
+      title="Property Info"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="tenant"
+    >
         {/* Property Address Header */}
         <View style={styles.propertyHeader}>
           <Ionicons name="location" size={24} color="#3498DB" />
@@ -326,36 +318,11 @@ const PropertyInfoScreen = () => {
             For life-threatening emergencies, call 911 immediately.
           </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-  },
-  content: {
-    flex: 1,
-  },
   propertyHeader: {
     flexDirection: 'row',
     alignItems: 'center',

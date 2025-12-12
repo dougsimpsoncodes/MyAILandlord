@@ -8,7 +8,6 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +17,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type RoomSelectionNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'RoomSelection'>;
 
@@ -195,30 +195,10 @@ const PropertyRoomSelectionScreen = () => {
   const getSelectedCount = () => rooms.filter(r => r.selected).length;
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8F9FA',
-    },
-    header: {
-      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
-      paddingVertical: responsive.spacing.section[responsive.screenSize],
-      backgroundColor: '#FFFFFF',
-      borderBottomWidth: 1,
-      borderBottomColor: '#E9ECEF',
-    },
-    backButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 8,
-      marginBottom: 16,
-    },
-    backButtonText: {
-      marginLeft: 8,
-      fontSize: 16,
-      color: '#6C757D',
-    },
     progressContainer: {
       marginBottom: 24,
+      paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
+      paddingTop: responsive.spacing.section[responsive.screenSize],
     },
     progressBar: {
       height: 4,
@@ -414,42 +394,65 @@ const PropertyRoomSelectionScreen = () => {
     },
   });
 
+  const footerContent = (
+    <View style={styles.footer}>
+      {/* Save Status */}
+      <View style={styles.saveStatus}>
+        <Ionicons
+          name={isDraftLoading ? 'sync' : 'checkmark-circle'}
+          size={16}
+          color={isDraftLoading ? '#6C757D' : '#28A745'}
+        />
+        <Text style={styles.saveStatusText}>
+          {isDraftLoading ? 'Saving...' : 'All changes saved'}
+        </Text>
+      </View>
+
+      {/* Continue Button */}
+      <TouchableOpacity
+        style={[
+          styles.continueButton,
+          getSelectedCount() === 0 && styles.continueButtonDisabled
+        ]}
+        onPress={handleContinue}
+        disabled={getSelectedCount() === 0}
+      >
+        <Text style={styles.continueButtonText}>
+          Continue to Room Photos
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer
+      title="Select Rooms"
+      subtitle="Choose which rooms to document. You can add custom rooms too"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      userRole="landlord"
+      scrollable={true}
+      padded={false}
+      bottomContent={footerContent}
+    >
       <ResponsiveContainer maxWidth="large" padding={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#6C757D" />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-
-          <ResponsiveTitle style={{ marginBottom: 8 }}>Select Rooms</ResponsiveTitle>
-          <ResponsiveBody style={{ color: '#6C757D' }}>
-            Choose which rooms to document. You can add custom rooms too.
-          </ResponsiveBody>
-
-          {/* Progress Indicator */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${getProgressPercentage()}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {getProgressPercentage()}% complete • Step 3 of 8
-            </Text>
+        {/* Progress Indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${getProgressPercentage()}%` }
+              ]}
+            />
           </View>
+          <Text style={styles.progressText}>
+            {getProgressPercentage()}% complete • Step 3 of 8
+          </Text>
         </View>
 
         {/* Content */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
           {/* Selection Summary */}
           <View style={styles.selectionSummary}>
             <Text style={styles.summaryText}>Rooms Selected</Text>
@@ -548,38 +551,9 @@ const PropertyRoomSelectionScreen = () => {
               </View>
             )}
           </View>
-        </ScrollView>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          {/* Save Status */}
-          <View style={styles.saveStatus}>
-            <Ionicons 
-              name={isDraftLoading ? 'sync' : 'checkmark-circle'} 
-              size={16} 
-              color={isDraftLoading ? '#6C757D' : '#28A745'} 
-            />
-            <Text style={styles.saveStatusText}>
-              {isDraftLoading ? 'Saving...' : 'All changes saved'}
-            </Text>
-          </View>
-
-          {/* Continue Button */}
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              getSelectedCount() === 0 && styles.continueButtonDisabled
-            ]}
-            onPress={handleContinue}
-            disabled={getSelectedCount() === 0}
-          >
-            <Text style={styles.continueButtonText}>
-              Continue to Room Photos
-            </Text>
-          </TouchableOpacity>
         </View>
       </ResponsiveContainer>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 // import { ASSET_TEMPLATES } from '../../data/nulls'; // TODO: Fix import
 
 type ReviewIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReviewIssue'>;
@@ -40,17 +40,17 @@ const ReviewIssueScreen = () => {
     console.error('Invalid reviewData received:', reviewData);
     // Navigate back or show error
     return (
-      <SafeAreaView style={styles.container}>
+      <ScreenContainer title="Error" userRole="tenant" showBackButton onBackPress={() => navigation.goBack()}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Error: Invalid review data received</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <Text style={styles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
   
@@ -304,13 +304,28 @@ Vendor Instructions: ${vendorComment}` : ''}`;
   const areaName = AREA_TEMPLATES.find(a => a.type === reviewData.area)?.displayName || reviewData.area;
   const priorityDisplay = formatPriorityDisplay(reviewData.priority);
 
+  // Header right with Submit button
+  const headerRight = (
+    <TouchableOpacity
+      style={[styles.headerSubmitButton, isSubmitting && styles.headerSubmitButtonDisabled]}
+      onPress={handleSubmit}
+      disabled={isSubmitting}
+    >
+      <Text style={[styles.headerSubmitButtonText, isSubmitting && styles.headerSubmitButtonTextDisabled]}>
+        {isSubmitting ? 'Submitting...' : 'Submit'}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Review Your Request</Text>
-          <Text style={styles.subtitle}>Confirm details and select your availability</Text>
-        </View>
+    <ScreenContainer
+      title="Review Request"
+      subtitle="Step 2 of 2"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="tenant"
+    >
 
         {/* Request Summary */}
         <View style={styles.summaryCard}>
@@ -489,46 +504,11 @@ Vendor Instructions: ${vendorComment}` : ''}`;
             textAlignVertical="top"
           />
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.submitButtonText}>
-            {isSubmitting ? 'Submitting...' : 'Submit Request'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  header: {
-    paddingVertical: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-  },
   summaryCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -808,34 +788,22 @@ const styles = StyleSheet.create({
   toggleCircleActive: {
     alignSelf: 'flex-end',
   },
-  footer: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E1E8ED',
+  headerSubmitButton: {
+    backgroundColor: '#2ECC71',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
-  submitButton: {
-    backgroundColor: '#3498DB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    
-    
-    
-    
-    elevation: 4,
+  headerSubmitButtonDisabled: {
+    backgroundColor: '#BDC3C7',
   },
-  submitButtonDisabled: {
-    backgroundColor: '#27AE60',
-    opacity: 1,
-  },
-  submitButtonText: {
+  headerSubmitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  headerSubmitButtonTextDisabled: {
+    color: '#FFFFFF',
   },
   errorContainer: {
     flex: 1,

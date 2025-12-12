@@ -28,9 +28,9 @@ const WelcomeScreen = () => {
       // The AppNavigator will handle the transition automatically
       return;
     }
-    
-    // User not authenticated or no role, go to signup
-    navigation.navigate('SignUp');
+
+    // User not authenticated or no role, go to unified Auth screen
+    navigation.navigate('Auth');
   };
 
   return (
@@ -76,7 +76,7 @@ const WelcomeScreen = () => {
 
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate('Auth')}
           activeOpacity={0.8}
         >
           <Text style={styles.loginButtonText}>Already have an account? Sign In</Text>

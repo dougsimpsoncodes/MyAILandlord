@@ -3,16 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
-  RefreshControl,
-  Pressable,
   Platform,
-  Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -21,13 +15,11 @@ import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
 import { PropertySetupState } from '../../types/property';
 import { formatAddressString } from '../../utils/addressValidation';
 import { DataClearer } from '../../utils/dataClearer';
-import Button from '../../components/shared/Button';
-import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { Property as DbProperty } from '../../types/api';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
-const { width: screenWidth } = Dimensions.get('window');
 
 type PropertyManagementNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyManagement'>;
 
@@ -129,7 +121,6 @@ const PropertyManagementScreen = () => {
     error: draftsError,
     refreshDrafts,
     deleteDraft,
-    clearAllDrafts,
   } = usePropertyDrafts();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -189,31 +180,6 @@ const PropertyManagementScreen = () => {
       // For steps 3+, go to AddProperty for now
       navigation.navigate('AddProperty', { draftId: draft.id });
     }
-  };
-
-  const handleClearAllDrafts = async () => {
-    if (drafts.length === 0) return;
-    
-    Alert.alert(
-      'Clear All Drafts',
-      `Are you sure you want to delete all ${drafts.length} drafts? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearAllDrafts();
-              Alert.alert('Success', 'All drafts cleared successfully.');
-            } catch (error) {
-              // Error already shown in alert
-              Alert.alert('Error', 'Failed to clear drafts. Please try again.');
-            }
-          }
-        }
-      ]
-    );
   };
 
   const handleClearAllAppData = async () => {
@@ -292,34 +258,45 @@ const PropertyManagementScreen = () => {
     }
   };
 
+  const getPropertyIcon = (type: string) => {
+    switch (type) {
+      case 'apartment': return 'business';
+      case 'condo': return 'business';
+      case 'townhouse': return 'home';
+      default: return 'home';
+    }
+  };
+
+  // Header right with delete button
+  const headerRight = (properties.length > 0 || drafts.length > 0) ? (
+    <TouchableOpacity
+      onPress={() => {
+        setIsDeleteMode(!isDeleteMode);
+        setSelectedProperties(new Set());
+        setSelectedDrafts(new Set());
+      }}
+      activeOpacity={0.7}
+      style={styles.deleteIconButton}
+    >
+      <Ionicons
+        name={isDeleteMode ? "close" : "trash-outline"}
+        size={22}
+        color={isDeleteMode ? DesignSystem.colors.danger : DesignSystem.colors.textSecondary}
+      />
+    </TouchableOpacity>
+  ) : undefined;
+
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Property Management</Text>
-        <View style={styles.headerActions}>
-          {(properties.length > 0 || drafts.length > 0) && (
-            <TouchableOpacity
-              onPress={() => {
-                setIsDeleteMode(!isDeleteMode);
-                setSelectedProperties(new Set());
-                setSelectedDrafts(new Set());
-              }}
-              activeOpacity={0.7}
-              style={styles.deleteIconButton}
-            >
-              <Ionicons
-                name={isDeleteMode ? "close" : "trash-outline"}
-                size={22}
-                color={isDeleteMode ? "#E74C3C" : "#7F8C8D"}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+    <ScreenContainer
+      title="Properties"
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
+      padded={false}
+    >
 
       {/* Delete Action Bar */}
       {isDeleteMode && (selectedProperties.size > 0 || selectedDrafts.size > 0) && (
@@ -338,18 +315,7 @@ const PropertyManagementScreen = () => {
         </View>
       )}
 
-      <ScrollView 
-        style={styles.content} 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={['#3498DB']}
-            tintColor="#3498DB"
-          />
-        }
-      >
+      <View style={styles.content}>
         {/* Drafts Section - Compact */}
         {drafts.length > 0 && (
           <View style={styles.draftsContainer}>
@@ -366,11 +332,6 @@ const PropertyManagementScreen = () => {
                 />
                 <Text style={styles.draftsTitle}>Drafts ({drafts.length})</Text>
               </View>
-              {drafts.length > 1 && (
-                <TouchableOpacity onPress={handleClearAllDrafts} activeOpacity={0.7}>
-                  <Text style={styles.clearAllText}>Clear All</Text>
-                </TouchableOpacity>
-              )}
             </TouchableOpacity>
 
             {!draftsCollapsed && (
@@ -386,15 +347,6 @@ const PropertyManagementScreen = () => {
                     activeOpacity={0.7}
                   >
                     <View style={styles.draftItemContent}>
-                      {isDeleteMode && (
-                        <View style={styles.draftSelectionIndicator}>
-                          <Ionicons
-                            name={selectedDrafts.has(draft.id) ? "checkmark-circle" : "ellipse-outline"}
-                            size={18}
-                            color={selectedDrafts.has(draft.id) ? "#E74C3C" : "#BDC3C7"}
-                          />
-                        </View>
-                      )}
                       <View style={styles.draftItemLeft}>
                         <Text style={styles.draftItemName} numberOfLines={1}>
                           {draft.propertyData.name || 'Untitled'}
@@ -405,7 +357,15 @@ const PropertyManagementScreen = () => {
                           <Text style={styles.draftItemTime}>{formatLastModified(new Date(draft.lastModified))}</Text>
                         </View>
                       </View>
-                      {!isDeleteMode && (
+                      {isDeleteMode ? (
+                        <View style={styles.draftSelectionIndicator}>
+                          <Ionicons
+                            name={selectedDrafts.has(draft.id) ? "checkmark-circle" : "ellipse-outline"}
+                            size={18}
+                            color={selectedDrafts.has(draft.id) ? "#E74C3C" : "#BDC3C7"}
+                          />
+                        </View>
+                      ) : (
                         <Ionicons name="chevron-forward" size={16} color="#BDC3C7" />
                       )}
                     </View>
@@ -416,70 +376,36 @@ const PropertyManagementScreen = () => {
           </View>
         )}
 
-        {/* Properties Header */}
-        <View style={styles.propertiesHeader}>
-          <Text style={styles.propertiesTitle}>Properties ({properties.length})</Text>
-        </View>
-
-        {/* Properties Grid */}
-        <View style={styles.propertiesGrid}>
+        {/* Properties List */}
+        <View style={styles.propertiesList}>
           {properties.map((property) => (
             <TouchableOpacity
               key={property.id}
               style={[
-                styles.propertyCard,
+                styles.propertyItem,
                 isDeleteMode && selectedProperties.has(property.id) && styles.selectedCard
               ]}
               onPress={() => isDeleteMode ? handleToggleSelect(property.id) : handlePropertyPress(property)}
               activeOpacity={0.7}
             >
+              <View style={styles.propertyIcon}>
+                <Ionicons name={getPropertyIcon(property.type)} size={22} color="#3498DB" />
+              </View>
+              <View style={styles.propertyInfo}>
+                <Text style={styles.propertyName}>{property.name}</Text>
+                <Text style={styles.propertyAddress} numberOfLines={1}>
+                  {property.address}
+                </Text>
+              </View>
               {isDeleteMode && (
                 <View style={styles.selectionIndicator}>
-                  <Ionicons 
-                    name={selectedProperties.has(property.id) ? "checkmark-circle" : "ellipse-outline"} 
-                    size={20} 
-                    color={selectedProperties.has(property.id) ? "#E74C3C" : "#BDC3C7"} 
+                  <Ionicons
+                    name={selectedProperties.has(property.id) ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={selectedProperties.has(property.id) ? DesignSystem.colors.danger : '#BDC3C7'}
                   />
                 </View>
               )}
-              
-              <View style={styles.propertyCardInner}>
-                <Text style={styles.propertyName} numberOfLines={1}>{property.name}</Text>
-                <Text style={styles.propertyAddress} numberOfLines={2}>
-                  {property.address}
-                </Text>
-                
-                <View style={styles.propertyStats}>
-                  <View style={styles.stat}>
-                    <Ionicons name="people-outline" size={14} color="#7F8C8D" />
-                    <Text style={styles.statText}>{property.tenants}</Text>
-                  </View>
-                  <View style={styles.stat}>
-                    <Ionicons 
-                      name="build-outline" 
-                      size={14} 
-                      color={property.activeRequests > 0 ? '#E74C3C' : '#27AE60'} 
-                    />
-                    <Text style={[styles.statText, property.activeRequests > 0 && styles.alertText]}>
-                      {property.activeRequests}
-                    </Text>
-                  </View>
-                </View>
-                
-                {!isDeleteMode && (
-                  <TouchableOpacity 
-                    style={styles.inviteButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleInviteTenant(property);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="person-add-outline" size={14} color="#007AFF" />
-                    <Text style={styles.inviteText}>Invite Tenant</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -487,27 +413,31 @@ const PropertyManagementScreen = () => {
 
         {/* Empty State */}
         {properties.length === 0 && drafts.length === 0 && (
-          <View style={styles.emptyState}>
+          <View style={styles.emptyCard}>
             <Ionicons name="home-outline" size={48} color="#BDC3C7" />
-            <Text style={styles.emptyTitle}>No Properties Yet</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={styles.emptyCardTitle}>No Properties Yet</Text>
+            <Text style={styles.emptyCardSubtitle}>
               Add your first property to get started
             </Text>
-            <TouchableOpacity 
-              style={styles.emptyAddBtn}
-              onPress={handleAddProperty}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="add" size={20} color="#FFFFFF" />
-              <Text style={styles.emptyAddText}>Add Property</Text>
-            </TouchableOpacity>
           </View>
+        )}
+
+        {/* Add Property Button at bottom */}
+        {properties.length > 0 && (
+          <TouchableOpacity
+            style={styles.addPropertyListBtn}
+            onPress={handleAddProperty}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle-outline" size={20} color="#3498DB" />
+            <Text style={styles.addPropertyListBtnText}>Add Another Property</Text>
+          </TouchableOpacity>
         )}
 
         {/* Load More */}
         {hasMore && (
           <View style={styles.loadMoreContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.loadMoreButton, isLoadingMore && { opacity: 0.7 }]}
               onPress={loadMore}
               disabled={isLoadingMore}
@@ -517,7 +447,9 @@ const PropertyManagementScreen = () => {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
+
+        <View style={styles.bottomSpacer} />
+      </View>
 
       {/* Custom Delete Modal */}
       {showDeleteModal && (
@@ -593,54 +525,25 @@ const PropertyManagementScreen = () => {
           </View>
         </View>
       )}
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  addIconButton: {
-    padding: 4,
-  },
   deleteIconButton: {
     padding: 4,
   },
   content: {
     flex: 1,
+    padding: 16,
   },
   
   // Drafts Section - Compact
   draftsContainer: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 8,
-    marginHorizontal: 16,
-    borderRadius: 8,
+    backgroundColor: DesignSystem.colors.background,
+    marginBottom: 16,
+    borderRadius: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
   },
   draftsHeader: {
     flexDirection: 'row',
@@ -648,7 +551,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: DesignSystem.colors.surface,
   },
   draftsHeaderLeft: {
     flexDirection: 'row',
@@ -658,12 +561,7 @@ const styles = StyleSheet.create({
   draftsTitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2C3E50',
-  },
-  clearAllText: {
-    fontSize: 12,
-    color: '#E74C3C',
-    fontWeight: '500',
+    color: DesignSystem.colors.text,
   },
   draftsList: {
     maxHeight: 120,
@@ -685,7 +583,7 @@ const styles = StyleSheet.create({
   draftItemName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     marginBottom: 2,
   },
   draftItemMeta: {
@@ -700,192 +598,118 @@ const styles = StyleSheet.create({
   },
   draftItemStatus: {
     fontSize: 11,
-    color: '#7F8C8D',
+    color: DesignSystem.colors.textSecondary,
   },
   draftItemTime: {
     fontSize: 11,
     color: '#95A5A6',
   },
   draftSelectionIndicator: {
-    marginRight: 10,
+    marginLeft: 8,
   },
   selectedDraftItem: {
     backgroundColor: '#FFF5F5',
   },
 
-  // Properties Section
-  propertiesHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  // Properties List
+  propertiesList: {
+    gap: 10,
+  },
+  propertyItem: {
+    backgroundColor: DesignSystem.colors.background,
+    borderRadius: 12,
+    padding: 14,
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  propertiesTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  deleteSelectedBtn: {
-    backgroundColor: '#E74C3C',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  deleteSelectedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  
-  // Grid Layout
-  propertiesGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-  },
-  propertyCard: {
-    width: (screenWidth - 36) / 2,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    margin: 6,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.05)',
-    elevation: 2,
-    position: 'relative',
+    alignItems: 'center',
+    gap: 14,
   },
   selectedCard: {
-    borderColor: '#E74C3C',
+    borderColor: DesignSystem.colors.danger,
     borderWidth: 2,
     backgroundColor: '#FFF5F5',
   },
   selectionIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 10,
+    marginLeft: 8,
   },
-  propertyCardContent: {
-    flex: 1,
+  propertyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#EBF5FB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  propertyCardInner: {
+  propertyInfo: {
     flex: 1,
   },
   propertyName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#2C3E50',
-    marginBottom: 4,
+    color: DesignSystem.colors.text,
   },
   propertyAddress: {
     fontSize: 12,
-    color: '#7F8C8D',
-    marginBottom: 8,
-    lineHeight: 16,
-    minHeight: 32,
+    color: DesignSystem.colors.textSecondary,
+    marginTop: 2,
   },
-  propertyStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F3F5',
-  },
-  stat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#7F8C8D',
-  },
-  alertText: {
-    color: '#E74C3C',
-  },
-  
-  // Add Card
-  addCard: {
-    borderStyle: 'dashed',
-    borderColor: '#3498DB',
-    backgroundColor: '#F0F8FF',
-    justifyContent: 'center',
+
+  // Empty State Card
+  emptyCard: {
+    backgroundColor: DesignSystem.colors.background,
+    borderRadius: 12,
+    padding: 32,
     alignItems: 'center',
   },
-  addCardContent: {
-    alignItems: 'center',
-    gap: 8,
+  emptyCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: DesignSystem.colors.text,
+    marginTop: 12,
+    marginBottom: 4,
   },
-  addCardText: {
+  emptyCardSubtitle: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#3498DB',
+    color: DesignSystem.colors.textSecondary,
   },
-  addPropertyButtonContent: {
-    flex: 1,
-  },
-  
-  // Empty State
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyAddBtn: {
+
+  // Add Property Button
+  addPropertyListBtn: {
     flexDirection: 'row',
-    backgroundColor: '#3498DB',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 6,
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
+    padding: 14,
+    marginTop: 4,
   },
-  emptyAddText: {
+  addPropertyListBtnText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#3498DB',
+    fontWeight: '500',
   },
   loadMoreContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingVertical: 8,
     alignItems: 'center',
   },
   loadMoreButton: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
+    backgroundColor: DesignSystem.colors.background,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
   loadMoreText: {
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     fontWeight: '600',
+  },
+  bottomSpacer: {
+    height: 20,
   },
   
   // Delete Action Bar
   deleteActionBar: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DesignSystem.colors.background,
     borderBottomWidth: 1,
     borderBottomColor: '#E1E8ED',
     flexDirection: 'row',
@@ -894,17 +718,17 @@ const styles = StyleSheet.create({
   },
   deleteActionText: {
     fontSize: 14,
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     fontWeight: '500',
   },
   deleteButton: {
-    backgroundColor: '#E74C3C',
+    backgroundColor: DesignSystem.colors.danger,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
   },
   deleteButtonText: {
-    color: '#FFFFFF',
+    color: DesignSystem.colors.dangerText,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -922,39 +746,38 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   modalContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DesignSystem.colors.background,
     borderRadius: 12,
     padding: 20,
     margin: 16,
     minWidth: 280,
     maxWidth: Platform.OS === 'web' ? 360 : 400,
     width: Platform.OS === 'web' ? 'auto' : '90%',
-    boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.25)',
     elevation: 8,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
   modalMessage: {
     fontSize: 14,
-    color: '#2C3E50',
+    color: DesignSystem.colors.text,
     marginBottom: 6,
     textAlign: 'center',
   },
   modalPropertyNames: {
     fontSize: 13,
-    color: '#7F8C8D',
+    color: DesignSystem.colors.textSecondary,
     marginBottom: 8,
     textAlign: 'center',
     fontWeight: '500',
   },
   modalWarning: {
     fontSize: 12,
-    color: '#E74C3C',
+    color: DesignSystem.colors.danger,
     marginBottom: 16,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -970,12 +793,12 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#BDC3C7',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: DesignSystem.colors.background,
   },
   modalCancelText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#7F8C8D',
+    color: DesignSystem.colors.textSecondary,
     textAlign: 'center',
   },
   modalDeleteButton: {
@@ -983,33 +806,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: 6,
-    backgroundColor: '#E74C3C',
+    backgroundColor: DesignSystem.colors.danger,
   },
   modalDeleteText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: DesignSystem.colors.dangerText,
     textAlign: 'center',
-  },
-  
-  // Invite Button
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f8ff',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    marginTop: 8,
-    gap: 4,
-  },
-  inviteText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#007AFF',
   },
 });
 

@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../../components/shared/CustomButton';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyWelcomeNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'PropertyWelcome'>;
 
@@ -37,14 +37,15 @@ const PropertyWelcomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+    <ScreenContainer
+      title="Welcome!"
+      userRole="tenant"
+    >
         {/* Welcome Header */}
         <View style={styles.header}>
           <View style={styles.successIcon}>
             <Ionicons name="checkmark-circle" size={64} color="#2ECC71" />
           </View>
-          <Text style={styles.title}>Welcome to Your Property!</Text>
           <Text style={styles.subtitle}>
             You've been successfully linked to {propertyName}
           </Text>
@@ -162,33 +163,17 @@ const PropertyWelcomeScreen = () => {
             don't hesitate to contact your landlord through the Communication Hub.
           </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   header: {
     alignItems: 'center',
     paddingVertical: 32,
   },
   successIcon: {
     marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    textAlign: 'center',
-    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,

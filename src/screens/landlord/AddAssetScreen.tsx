@@ -12,7 +12,6 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -26,6 +25,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import Input from '../../components/shared/Input';
 import { DesignSystem } from '../../theme/DesignSystem';
+import ScreenContainer from '../../components/shared/ScreenContainer';
 
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
@@ -436,41 +436,51 @@ const AddAssetScreen = () => {
   // Show loading while recovering params on web
   if (!isParamsLoaded && !routePropertyData) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Add Asset</Text>
-          </View>
-          <View style={{ width: 50 }} />
-        </View>
+      <ScreenContainer
+        title="Add Asset"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable={false}
+      >
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#3498DB" />
           <Text style={{ marginTop: 16, color: '#7F8C8D' }}>Loading...</Text>
         </View>
-      </SafeAreaView>
+      </ScreenContainer>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#2C3E50" />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Add Asset</Text>
-          <Text style={styles.headerSubtitle}>{areaName}</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
+  const headerRight = (
+    <TouchableOpacity onPress={() => navigation.goBack()}>
+      <Text style={styles.cancelText}>Cancel</Text>
+    </TouchableOpacity>
+  );
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+  return (
+    <ScreenContainer
+      title="Add Asset"
+      subtitle={areaName}
+      showBackButton
+      onBackPress={() => navigation.goBack()}
+      headerRight={headerRight}
+      userRole="landlord"
+      keyboardAware
+      scrollable
+      bottomContent={
+        <TouchableOpacity
+          style={[styles.saveButton, (isSaving || !assetName.trim()) && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={isSaving || !assetName.trim()}
+        >
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveButtonText}>Add Asset</Text>
+          )}
+        </TouchableOpacity>
+      }
+    >
 
         {/* AI Scan Section */}
         <View style={styles.section}>
@@ -775,62 +785,14 @@ const AddAssetScreen = () => {
             />
           </View>
         </View>
-      </ScrollView>
-
-      {/* Bottom Actions */}
-      <View style={styles.bottomActions}>
-        <TouchableOpacity
-          style={[styles.saveButton, (isSaving || !assetName.trim()) && styles.saveButtonDisabled]}
-          onPress={handleSave}
-          disabled={isSaving || !assetName.trim()}
-        >
-          {isSaving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveButtonText}>Add Asset</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E9ECEF',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginTop: 2,
-  },
   cancelText: {
     fontSize: 16,
     color: '#E74C3C',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
   },
   templateCard: {
     backgroundColor: '#E8F5E8',
@@ -1156,13 +1118,6 @@ const styles = StyleSheet.create({
     height: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bottomActions: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E9ECEF',
   },
   saveButton: {
     backgroundColor: '#2ECC71',
