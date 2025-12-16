@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rent • Simple Tracker</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav">
+          <a href="./index.html">🏁 Getting Started</a>
+          <a href="./property-setup.html">🏠 Your Property</a>
+          <a class="active" href="./rent.html">💵 Rent</a>
+          <a href="./tenant-link.html">🔗 Tenant</a>
+          <a href="./maintenance.html">🛠️ Maintenance</a>
+        </div>
+      </aside>
+      <header class="header"><div class="title">Rent</div><button class="btn" onclick="notify('Saved')">Save</button></header>
+      <main class="content grid cols-2">
+        <div class="card"><div class="p stack"><div class="title">Monthly settings</div><input class="btn ghost" placeholder="Amount (e.g., 1450)" /><input class="btn ghost" placeholder="Due day of month (e.g., 1)" /><div class="row"><label class="chip">Late fee: $50</label><label class="chip">Reminder: 3 days before</label></div><button class="btn">Update</button></div></div>
+        <div class="card"><div class="p stack"><div class="title">Record a payment</div><input class="btn ghost" placeholder="Amount" /><input class="btn ghost" placeholder="Date (e.g., Feb 4)" /><button class="btn" onclick="notify('Payment recorded')">Mark received</button></div></div>
+        <div class="card" style="grid-column: 1 / span 2;">
+          <div class="p stack">
+            <div class="title">History</div>
+            <table class="table"><thead><tr><th>Month</th><th>Status</th><th>Received</th></tr></thead><tbody>
+              <tr><td>Feb</td><td><span class="chip bad">Late 3d</span></td><td>—</td></tr>
+              <tr><td>Jan</td><td><span class="chip good">On time</span></td><td>$1,450</td></tr>
+            </tbody></table>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Saved</div>
+  </body>
+  </html>
+

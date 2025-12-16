@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Welcome • First Property Setup</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav">
+          <a class="active" href="./index.html">🏁 Getting Started</a>
+          <a href="./property-setup.html">🏠 Your Property</a>
+          <a href="./rent.html">💵 Rent</a>
+          <a href="./tenant-link.html">🔗 Tenant</a>
+          <a href="./maintenance.html">🛠️ Maintenance</a>
+        </div>
+      </aside>
+      <header class="header">
+        <div class="title">Let’s set up your first property</div>
+        <button class="btn" onclick="notify('Progress saved')">Save Progress</button>
+      </header>
+      <main class="content grid cols-2">
+        <div class="card">
+          <div class="p stack">
+            <div class="title">Setup checklist</div>
+            <div class="muted">Complete these steps to start collecting rent and handling requests.</div>
+            <div class="progress"><div style="width: 40%;"></div></div>
+
+            <div class="task done">
+              <div class="circle"></div>
+              <div>
+                <div><b>Create your property</b></div>
+                <div class="muted">Name and address added</div>
+              </div>
+              <a class="action" href="./property-setup.html">Review</a>
+            </div>
+
+            <div class="task">
+              <div class="circle"></div>
+              <div>
+                <div><b>Set monthly rent and due date</b></div>
+                <div class="muted">Enable reminders and late fees</div>
+              </div>
+              <a class="action" href="./rent.html">Set up</a>
+            </div>
+
+            <div class="task">
+              <div class="circle"></div>
+              <div>
+                <div><b>Link your tenant</b></div>
+                <div class="muted">Share your 6‑digit code or send an invite</div>
+              </div>
+              <a class="action" href="./tenant-link.html">Get code</a>
+            </div>
+
+            <div class="task">
+              <div class="circle"></div>
+              <div>
+                <div><b>Add a maintenance contact</b></div>
+                <div class="muted">Who should handle fixes?</div>
+              </div>
+              <a class="action" href="./maintenance.html">Add</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="p stack">
+            <div class="title">Quick actions</div>
+            <button class="btn" onclick="location.href='tenant-link.html'">Share tenant code</button>
+            <button class="btn" onclick="location.href='rent.html'">Record a payment</button>
+            <button class="btn" onclick="location.href='maintenance.html'">Create a maintenance request</button>
+            <div class="muted">These are the most common actions for new landlords.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="p grid cols-3">
+            <div class="metric"><div class="muted">Monthly rent</div><div class="big">$1,450</div><div class="chip">Due 1st</div></div>
+            <div class="metric"><div class="muted">This month</div><div class="big">Not received</div><div class="chip bad">Late 3 days</div></div>
+            <div class="metric"><div class="muted">Next due</div><div class="big">Mar 1</div><div class="chip">Auto reminder ON</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="p grid cols-2">
+            <div class="stack">
+              <div class="title">Tenant status</div>
+              <div class="muted">Not linked yet. Share your code or email invite.</div>
+              <div class="row"><span class="chip">Code: ABC123</span><button class="btn" onclick="notify('Code copied')">Copy</button><button class="btn ghost" onclick="notify('Invite sent')">Send email invite</button></div>
+            </div>
+            <div class="stack">
+              <div class="title">Help your tenant</div>
+              <div class="muted">Share Wi‑Fi and emergency contact info so they’re set from day one.</div>
+              <div class="row"><span class="chip">Wi‑Fi: Property_Guest</span><span class="chip">Pass: ••••••</span></div>
+              <div class="row"><span class="chip">Manager</span><span class="chip">(555) 123‑4567</span></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Saved</div>
+  </body>
+  </html>
+

@@ -12,6 +12,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/shared/Card';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { PropertyImage } from '../../components/shared/PropertyImage';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { PropertyArea, PropertyData } from '../../types/property';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
@@ -102,32 +103,18 @@ const PropertyDetailsScreen = () => {
         </TouchableOpacity>
       }
       userRole="landlord"
+      padded={false}
     >
-        {/* Property Information */}
-        <Card style={styles.propertyCard}>
-          <Text style={styles.propertyName}>{property.name}</Text>
+        {/* Property Header */}
+        <View style={styles.propertyHeader}>
+          <PropertyImage
+            address={property.address}
+            width={320}
+            height={200}
+            borderRadius={12}
+          />
           <Text style={styles.propertyAddress}>{property.address}</Text>
-          
-          <View style={styles.propertyMeta}>
-            <View style={styles.metaItem}>
-              <Ionicons name="home" size={20} color="#3498DB" />
-              <Text style={styles.metaText}>{property.type}</Text>
-            </View>
-            {property.activeRequests > 0 ? (
-              <View style={styles.issuesBadge}>
-                <Ionicons name="warning" size={16} color="#E74C3C" />
-                <Text style={styles.issuesBadgeText}>
-                  {property.activeRequests} Active Issue{property.activeRequests !== 1 ? 's' : ''}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.allGoodBadge}>
-                <Ionicons name="checkmark-circle" size={16} color="#2ECC71" />
-                <Text style={styles.allGoodBadgeText}>All Good</Text>
-              </View>
-            )}
-          </View>
-        </Card>
+        </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -143,8 +130,8 @@ const PropertyDetailsScreen = () => {
                 <Ionicons name="grid-outline" size={24} color="#3498DB" />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>Manage Areas & Assets</Text>
-                <Text style={styles.actionSubtitle}>View rooms, photos, and inventory</Text>
+                <Text style={styles.actionTitle}>Rooms & Inventory</Text>
+                <Text style={styles.actionSubtitle}>View rooms and inventory items</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
             </TouchableOpacity>
@@ -195,67 +182,24 @@ const styles = StyleSheet.create({
     color: '#3498DB',
     fontWeight: '500',
   },
-  propertyCard: {
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  propertyName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: DesignSystem.colors.text,
+  // Property Header
+  propertyHeader: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
     marginBottom: 8,
   },
   propertyAddress: {
     fontSize: 16,
-    color: '#7F8C8D',
-    marginBottom: 16,
-    lineHeight: 22,
-  },
-  propertyMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  metaText: {
-    fontSize: 14,
-    color: '#2C3E50',
     fontWeight: '500',
-  },
-  issuesBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FDEDEC',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  issuesBadgeText: {
-    fontSize: 14,
-    color: '#E74C3C',
-    fontWeight: '600',
-  },
-  allGoodBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F8F0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  allGoodBadgeText: {
-    fontSize: 14,
-    color: '#2ECC71',
-    fontWeight: '600',
+    color: '#2C3E50',
+    marginTop: 12,
+    textAlign: 'center',
   },
   section: {
     marginVertical: 16,
+    paddingHorizontal: 16,
   },
   sectionTitle: {
     fontSize: 20,

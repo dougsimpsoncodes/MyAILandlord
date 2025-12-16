@@ -9,6 +9,9 @@ import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import Button from '../../components/shared/Button';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
+import { useApiClient } from '../../services/api/client';
+import log from '../../lib/log';
+import { PropertyImage } from '../../components/shared/PropertyImage';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'Home'>;
 
@@ -17,7 +20,7 @@ interface MaintenanceRequest {
   title: string;
   location: string;
   submittedAt: string;
-  status: 'pending' | 'in_progress' | 'complete';
+  status: 'pending' | 'in_progress' | 'completed';
 }
 
 interface LinkedProperty {
@@ -30,6 +33,7 @@ interface LinkedProperty {
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAppAuth();
+  const apiClient = useApiClient();
   const pendingInviteChecked = useRef(false);
 
   const [linkedProperty, setLinkedProperty] = useState<LinkedProperty | null>(null);
@@ -37,33 +41,95 @@ const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Check for pending property invite on initial load
+  // Check for pending property invite on initial load and auto-link
   useEffect(() => {
-    const checkPendingInvite = async () => {
-      if (pendingInviteChecked.current) return;
+    const checkAndProcessPendingInvite = async () => {
+      if (pendingInviteChecked.current || !apiClient) return;
       pendingInviteChecked.current = true;
 
       const pendingPropertyId = await PendingInviteService.getPendingInvite();
       if (pendingPropertyId) {
-        navigation.navigate('PropertyInviteAccept', { propertyId: pendingPropertyId });
+        log.info('📥 Processing pending invite for property:', pendingPropertyId);
+
+        try {
+          // Directly link the tenant to the property
+          await apiClient.linkTenantToPropertyById(pendingPropertyId);
+          log.info('✅ Tenant successfully linked to property via pending invite');
+
+          // Clear the pending invite
+          await PendingInviteService.clearPendingInvite();
+
+          // Reload data to show the linked property
+          loadData();
+        } catch (linkError: unknown) {
+          const message = linkError instanceof Error ? linkError.message : '';
+          // If already linked, just clear and continue
+          if (message.includes('duplicate') || message.includes('23505')) {
+            log.warn('⚠️ Tenant already linked to this property');
+            await PendingInviteService.clearPendingInvite();
+            loadData();
+          } else {
+            log.error('Failed to auto-link tenant to property:', linkError as any);
+            // Still clear the invite to prevent infinite loops
+            await PendingInviteService.clearPendingInvite();
+          }
+        }
       }
     };
 
-    checkPendingInvite();
-  }, [navigation]);
+    checkAndProcessPendingInvite();
+  }, [apiClient]);
 
   const loadData = useCallback(async () => {
+    if (!apiClient) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // TODO: Load actual linked property and requests from API
-      // For now, show empty/unlinked state
-      setLinkedProperty(null);
-      setRequests([]);
+      // Load tenant's linked properties
+      const tenantProperties = await apiClient.getTenantProperties();
+      log.info('Loaded tenant properties', { count: tenantProperties.length });
+
+      if (tenantProperties.length > 0) {
+        // Use the first active property (most apps link tenant to one property)
+        const firstLink = tenantProperties[0];
+        const property = firstLink.properties as any;
+
+        if (property) {
+          setLinkedProperty({
+            id: property.id,
+            name: property.name,
+            address: property.address || '',
+            unit: firstLink.unit_number || undefined,
+          });
+        }
+      } else {
+        setLinkedProperty(null);
+      }
+
+      // Load maintenance requests for this tenant
+      const maintenanceRequests = await apiClient.getMaintenanceRequests();
+      log.info('Loaded maintenance requests', { count: maintenanceRequests.length });
+
+      // Map to our local interface format, filtering out completed requests
+      const mappedRequests: MaintenanceRequest[] = maintenanceRequests
+        .filter((req: any) => req.status !== 'completed')
+        .map((req: any) => ({
+          id: req.id,
+          title: req.title || 'Maintenance Request',
+          location: req.area || 'Unknown',
+          submittedAt: new Date(req.created_at).toLocaleDateString(),
+          status: req.status as 'pending' | 'in_progress' | 'completed',
+        }));
+
+      setRequests(mappedRequests);
     } catch (error) {
-      console.error('Error loading data:', error);
+      log.error('Error loading tenant data', { error: String(error) });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [apiClient]);
 
   useFocusEffect(
     useCallback(() => {
@@ -76,13 +142,6 @@ const HomeScreen = () => {
     await loadData();
     setRefreshing(false);
   }, [loadData]);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Welcome back,';
-    if (hour < 18) return 'Good afternoon,';
-    return 'Good evening,';
-  };
 
   const getInitials = () => {
     if (!user?.name) return '?';
@@ -99,8 +158,8 @@ const HomeScreen = () => {
         return { label: 'In Progress', style: styles.badgeProgress };
       case 'pending':
         return { label: 'Pending', style: styles.badgePending };
-      case 'complete':
-        return { label: 'Complete', style: styles.badgeComplete };
+      case 'completed':
+        return { label: 'Completed', style: styles.badgeComplete };
       default:
         return { label: status, style: styles.badgePending };
     }
@@ -118,12 +177,6 @@ const HomeScreen = () => {
           </View>
         }
       >
-        {/* Header greeting */}
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.userName}>{user?.name?.split(' ')[0] || 'Tenant'}</Text>
-        </View>
-
         <View style={styles.emptyStateContainer}>
           <View style={styles.emptyState}>
             <Ionicons name="home-outline" size={48} color="#BDC3C7" />
@@ -145,6 +198,7 @@ const HomeScreen = () => {
 
   return (
     <ScreenContainer
+      title="MyAILandlord"
       userRole="tenant"
       refreshing={refreshing}
       onRefresh={onRefresh}
@@ -154,36 +208,23 @@ const HomeScreen = () => {
         </View>
       }
     >
-      {/* Header greeting */}
-      <View style={styles.greetingContainer}>
-        <Text style={styles.greeting}>{getGreeting()}</Text>
-        <Text style={styles.userName}>{user?.name?.split(' ')[0] || 'Tenant'}</Text>
-      </View>
         {/* Property Banner */}
         {linkedProperty && (
           <TouchableOpacity
             style={styles.propertyBanner}
-            onPress={() => navigation.navigate('PropertyInfo')}
+            onPress={() => navigation.navigate('PropertyInfo', { address: linkedProperty.address })}
             activeOpacity={0.8}
           >
-            <Text style={styles.propertyLabel}>Your Property</Text>
-            <Text style={styles.propertyName}>
-              {linkedProperty.name}
-              {linkedProperty.unit && ` ${linkedProperty.unit}`}
-            </Text>
+            <PropertyImage
+              address={linkedProperty.address}
+              width={320}
+              height={200}
+              borderRadius={12}
+              style={{ alignSelf: 'center' }}
+            />
             <Text style={styles.propertyAddress}>{linkedProperty.address}</Text>
           </TouchableOpacity>
         )}
-
-        {/* Report Issue CTA */}
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => navigation.navigate('ReportIssue')}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="construct" size={24} color="#fff" />
-          <Text style={styles.ctaButtonText}>Report an Issue</Text>
-        </TouchableOpacity>
 
         {/* Your Requests Section */}
         <Text style={styles.sectionTitle}>Your Requests</Text>
@@ -225,6 +266,14 @@ const HomeScreen = () => {
         <View style={styles.quickLinks}>
           <TouchableOpacity
             style={styles.quickLink}
+            onPress={() => navigation.navigate('ReportIssue')}
+          >
+            <Ionicons name="construct-outline" size={28} color="#2ECC71" />
+            <Text style={styles.quickLinkLabel}>Report{'\n'}Issue</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.quickLink}
             onPress={() => navigation.navigate('CommunicationHub')}
           >
             <Ionicons name="chatbubbles-outline" size={28} color="#2ECC71" />
@@ -233,15 +282,10 @@ const HomeScreen = () => {
 
           <TouchableOpacity
             style={styles.quickLink}
-            onPress={() => navigation.navigate('PropertyInfo')}
+            onPress={() => navigation.navigate('PropertyInfo', { address: linkedProperty?.address })}
           >
-            <Ionicons name="document-text-outline" size={28} color="#2ECC71" />
-            <Text style={styles.quickLinkLabel}>View{'\n'}Documents</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.quickLink}>
-            <Ionicons name="call-outline" size={28} color="#2ECC71" />
-            <Text style={styles.quickLinkLabel}>Emergency{'\n'}Contact</Text>
+            <Ionicons name="home-outline" size={28} color="#2ECC71" />
+            <Text style={styles.quickLinkLabel}>Property{'\n'}Info</Text>
           </TouchableOpacity>
         </View>
 
@@ -251,18 +295,6 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  greetingContainer: {
-    marginBottom: 16,
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  userName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2C3E50',
-  },
   avatar: {
     width: 40,
     height: 40,
@@ -278,46 +310,16 @@ const styles = StyleSheet.create({
   },
   // Property Banner
   propertyBanner: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 16,
+    alignItems: 'center',
+    paddingVertical: 16,
     marginBottom: 16,
   },
-  propertyLabel: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  propertyName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 4,
-  },
   propertyAddress: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 2,
-  },
-  // CTA Button
-  ctaButton: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 20,
-    shadowColor: '#E74C3C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  ctaButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '500',
+    color: '#2C3E50',
+    marginTop: 12,
+    textAlign: 'center',
   },
   // Section
   sectionTitle: {

@@ -269,6 +269,8 @@ export class SupabaseClient {
     requestId: string,
     updates: Partial<MaintenanceRequest>
   ): Promise<MaintenanceRequest> {
+    console.log('[SupabaseClient] updateMaintenanceRequest called', { requestId, updates });
+
     const { data, error } = await this.client
       .from('maintenance_requests')
       .update({
@@ -278,6 +280,8 @@ export class SupabaseClient {
       .eq('id', requestId)
       .select()
       .single();
+
+    console.log('[SupabaseClient] updateMaintenanceRequest result', { data, error });
 
     if (error) {
       throw new Error(`Failed to update maintenance request: ${error.message}`);
@@ -338,18 +342,13 @@ export class SupabaseClient {
     attachmentUrl?: string;
     propertyId?: string;
   }): Promise<Message> {
-    const senderProfile = await this.getProfile(messageData.senderId);
-    const recipientProfile = await this.getProfile(messageData.recipientId);
-
-    if (!senderProfile || !recipientProfile) {
-      throw new Error('Sender or recipient profile not found');
-    }
-
+    // Use the IDs directly - the foreign key constraints will validate they exist
+    // This avoids RLS issues where a user can't read another user's profile
     const { data, error } = await this.client
       .from('messages')
       .insert({
-        sender_id: senderProfile.id,
-        recipient_id: recipientProfile.id,
+        sender_id: messageData.senderId,
+        recipient_id: messageData.recipientId,
         content: messageData.content,
         message_type: messageData.messageType || 'text',
         attachment_url: messageData.attachmentUrl || null,

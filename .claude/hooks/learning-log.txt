@@ -698,3 +698,18 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-12T17:51:11Z] Commit addc5b5cce945d1cd4012229fdf24c5549ad7856 successful
+Message: feat: profile improvements and UI cleanup
+
+- Add updateProfile function to auth context for saving user profile data
+- Fix Edit Profile screen to actually save name changes to Supabase
+- Remove Appearance/Light-Dark mode feature (not implemented)
+- Add shared screen components (ProfileScreen, EditProfileScreen, etc.)
+- Clean up PropertyDetailsScreen by removing unused stats section
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

@@ -372,16 +372,16 @@ const AssetDetailsScreen = () => {
   if (!currentAsset) {
     return (
       <ScreenContainer
-        title="Asset Details"
+        title="Item Details"
         showBackButton
         onBackPress={() => navigation.goBack()}
         userRole="landlord"
         scrollable={false}
       >
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ResponsiveTitle>No Assets to Configure</ResponsiveTitle>
+          <ResponsiveTitle>No Items to Configure</ResponsiveTitle>
           <ResponsiveBody style={{ marginTop: 16, textAlign: 'center' }}>
-            No assets were detected in the previous step.
+            No items were detected in the previous step.
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
@@ -396,8 +396,8 @@ const AssetDetailsScreen = () => {
 
   return (
     <ScreenContainer
-      title="Asset Details"
-      subtitle="Complete information for each detected asset"
+      title="Item Details"
+      subtitle="Complete information for each inventory item"
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"

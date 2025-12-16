@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { useApiClient } from '../../services/api/client';
+import log from '../../lib/log';
 
 type CommunicationHubNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'CommunicationHub'>;
 
@@ -37,13 +40,65 @@ interface Announcement {
 const CommunicationHubScreen = () => {
   const navigation = useNavigation<CommunicationHubNavigationProp>();
   const { user } = useAppAuth();
+  const apiClient = useApiClient();
   const scrollViewRef = useRef<ScrollView>(null);
-  
+
   const [activeTab, setActiveTab] = useState<'messages' | 'announcements'>('messages');
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [landlordId, setLandlordId] = useState<string | null>(null);
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+
+  // Load messages and property info on mount
+  const loadMessages = useCallback(async () => {
+    if (!apiClient) return;
+
+    try {
+      // First get the tenant's linked property to find the landlord
+      const tenantProperties = await apiClient.getTenantProperties();
+      if (tenantProperties.length > 0) {
+        const property = tenantProperties[0].properties as any;
+        if (property) {
+          setPropertyId(property.id);
+          // Get landlord ID from property
+          if (property.landlord_id) {
+            setLandlordId(property.landlord_id);
+            log.info('Found landlord from property', { landlordId: property.landlord_id });
+          }
+        }
+      }
+
+      // Load messages from API
+      const dbMessages = await apiClient.getMessages();
+      log.info('Loaded messages from database', { count: dbMessages.length });
+
+      // Map database messages to local format
+      const mappedMessages: Message[] = dbMessages.map((msg: any) => ({
+        id: msg.id,
+        text: msg.content,
+        sender: msg.sender_id === user?.id ? 'tenant' : 'landlord',
+        timestamp: new Date(msg.created_at),
+        read: msg.is_read || false,
+      }));
+
+      // Sort by timestamp
+      mappedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      setMessages(mappedMessages);
+    } catch (error) {
+      log.error('Error loading messages', { error: String(error) });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [apiClient, user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadMessages();
+    }, [loadMessages])
+  );
 
   useEffect(() => {
     // Mark messages as read when viewing
@@ -54,24 +109,64 @@ const CommunicationHubScreen = () => {
     }
   }, [activeTab]);
 
-  const sendMessage = () => {
-    if (!messageText.trim()) return;
+  const showAlert = (title: string, message: string) => {
+    if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: messageText.trim(),
-      sender: 'tenant',
-      timestamp: new Date(),
-      read: true,
-    };
+  const sendMessage = async () => {
+    if (!messageText.trim() || !apiClient) return;
 
-    setMessages(prev => [...prev, newMessage]);
-    setMessageText('');
-    
-    // Scroll to bottom
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    // Need a recipient to send a message
+    if (!landlordId) {
+      showAlert('Error', 'No landlord found to message. Please link to a property first.');
+      return;
+    }
+
+    setIsSending(true);
+    log.info('Attempting to send message', {
+      recipientId: landlordId,
+      propertyId,
+      contentLength: messageText.trim().length
+    });
+    try {
+      // Send message to database
+      const sentMessage = await apiClient.sendMessage({
+        recipientId: landlordId,
+        content: messageText.trim(),
+        messageType: 'text',
+        propertyId: propertyId || undefined,
+      });
+      log.info('Message sent response', { sentMessage });
+
+      // Add to local state immediately for responsiveness
+      const newMessage: Message = {
+        id: sentMessage.id,
+        text: messageText.trim(),
+        sender: 'tenant',
+        timestamp: new Date(),
+        read: true,
+      };
+
+      setMessages(prev => [...prev, newMessage]);
+      setMessageText('');
+
+      // Scroll to bottom
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+
+      log.info('Message sent successfully');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      log.error('Error sending message', { error: errorMsg });
+      showAlert('Error', `Failed to send message: ${errorMsg}`);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const formatTimestamp = (date: Date) => {
@@ -148,54 +243,74 @@ const CommunicationHubScreen = () => {
         {/* Content Area */}
         {activeTab === 'messages' ? (
           <>
-            <ScrollView 
+            <ScrollView
               ref={scrollViewRef}
               style={styles.messagesContainer}
               showsVerticalScrollIndicator={false}
             >
-              {messages.map((message) => (
-                <View
-                  key={message.id}
-                  style={[
-                    styles.messageBubble,
-                    message.sender === 'tenant' ? styles.tenantMessage : styles.landlordMessage
-                  ]}
-                >
-                  <Text style={[
-                    styles.messageText,
-                    message.sender === 'tenant' && styles.tenantMessageText
-                  ]}>
-                    {message.text}
-                  </Text>
-                  <Text style={[
-                    styles.messageTime,
-                    message.sender === 'tenant' && styles.tenantMessageTime
-                  ]}>
-                    {formatTimestamp(message.timestamp)}
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#3498DB" />
+                  <Text style={styles.loadingText}>Loading messages...</Text>
+                </View>
+              ) : messages.length === 0 ? (
+                <View style={styles.emptyMessagesContainer}>
+                  <Ionicons name="chatbubbles-outline" size={48} color="#BDC3C7" />
+                  <Text style={styles.emptyMessagesText}>No messages yet</Text>
+                  <Text style={styles.emptyMessagesSubtext}>
+                    {landlordId ? 'Start a conversation with your landlord' : 'Link to a property to message your landlord'}
                   </Text>
                 </View>
-              ))}
+              ) : (
+                messages.map((message) => (
+                  <View
+                    key={message.id}
+                    style={[
+                      styles.messageBubble,
+                      message.sender === 'tenant' ? styles.tenantMessage : styles.landlordMessage
+                    ]}
+                  >
+                    <Text style={[
+                      styles.messageText,
+                      message.sender === 'tenant' && styles.tenantMessageText
+                    ]}>
+                      {message.text}
+                    </Text>
+                    <Text style={[
+                      styles.messageTime,
+                      message.sender === 'tenant' && styles.tenantMessageTime
+                    ]}>
+                      {formatTimestamp(message.timestamp)}
+                    </Text>
+                  </View>
+                ))
+              )}
             </ScrollView>
 
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.messageInput}
-                placeholder="Type a message..."
+                placeholder={landlordId ? "Type a message..." : "Link to a property first..."}
                 value={messageText}
                 onChangeText={setMessageText}
                 multiline
                 maxLength={500}
+                editable={!!landlordId && !isSending}
               />
               <TouchableOpacity
-                style={[styles.sendButton, !messageText.trim() && styles.sendButtonDisabled]}
+                style={[styles.sendButton, (!messageText.trim() || isSending || !landlordId) && styles.sendButtonDisabled]}
                 onPress={sendMessage}
-                disabled={!messageText.trim()}
+                disabled={!messageText.trim() || isSending || !landlordId}
               >
-                <Ionicons 
-                  name="send" 
-                  size={20} 
-                  color={messageText.trim() ? '#FFFFFF' : '#BDC3C7'} 
-                />
+                {isSending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons
+                    name="send"
+                    size={20}
+                    color={messageText.trim() && landlordId ? '#FFFFFF' : '#BDC3C7'}
+                  />
+                )}
               </TouchableOpacity>
             </View>
           </>
@@ -205,7 +320,7 @@ const CommunicationHubScreen = () => {
               <TouchableOpacity
                 key={announcement.id}
                 style={styles.announcementCard}
-                onPress={() => Alert.alert(announcement.title, announcement.content)}
+                onPress={() => showAlert(announcement.title, announcement.content)}
               >
                 <View style={styles.announcementHeader}>
                   <View style={[
@@ -276,6 +391,36 @@ const styles = StyleSheet.create({
   messagesContainer: {
     flex: 1,
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  emptyMessagesContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyMessagesText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  emptyMessagesSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   messageBubble: {
     maxWidth: '80%',

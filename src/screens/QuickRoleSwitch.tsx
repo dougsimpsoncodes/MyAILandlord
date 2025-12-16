@@ -1,8 +1,9 @@
-import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useContext, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RoleContext } from '../context/RoleContext';
 import { Ionicons } from '@expo/vector-icons';
+import ConfirmDialog from '../components/shared/ConfirmDialog';
 
 /**
  * Quick role switcher for testing purposes
@@ -11,29 +12,46 @@ import { Ionicons } from '@expo/vector-icons';
 const QuickRoleSwitch = () => {
   const { userRole, setUserRole, clearRole } = useContext(RoleContext);
 
+  // Dialog state
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmStyle?: 'default' | 'destructive' | 'info';
+  }>({ visible: false, title: '', message: '' });
+
+  const showNotification = (title: string, msg: string, style: 'default' | 'destructive' | 'info' = 'info') => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message: msg,
+      confirmStyle: style,
+    });
+  };
+
   const handleRoleSwitch = async (role: 'tenant' | 'landlord') => {
     try {
       await setUserRole(role);
-      Alert.alert(
+      showNotification(
         'Role Changed',
         `You are now viewing the app as a ${role}`,
-        [{ text: 'OK' }]
+        'default'
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to switch role. Please try again.');
+      showNotification('Error', 'Failed to switch role. Please try again.', 'destructive');
     }
   };
 
   const handleClearRole = async () => {
     try {
       await clearRole();
-      Alert.alert(
+      showNotification(
         'Role Cleared',
         'You will be prompted to select a role on next app launch',
-        [{ text: 'OK' }]
+        'default'
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to clear role. Please try again.');
+      showNotification('Error', 'Failed to clear role. Please try again.', 'destructive');
     }
   };
 
@@ -91,6 +109,15 @@ const QuickRoleSwitch = () => {
           The app will reload with the selected role's interface.
         </Text>
       </View>
+
+      <ConfirmDialog
+        visible={dialogConfig.visible}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        confirmStyle={dialogConfig.confirmStyle}
+        onConfirm={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+        onCancel={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+      />
     </SafeAreaView>
   );
 };

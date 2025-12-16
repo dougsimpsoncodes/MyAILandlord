@@ -206,7 +206,13 @@ const ReviewIssueScreen = () => {
   const handleSubmit = async () => {
     const selectedCount = getSelectedSlotsCount();
     if (selectedCount === 0) {
-      Alert.alert('Select Availability', 'Please select at least one time slot when you\'ll be available for the repair.');
+      // Use window.alert on web, Alert.alert on native
+      const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
+      if (isWeb) {
+        window.alert('Please select at least one time slot when you\'ll be available for the repair.');
+      } else {
+        Alert.alert('Select Availability', 'Please select at least one time slot when you\'ll be available for the repair.');
+      }
       return;
     }
 
@@ -268,12 +274,23 @@ Vendor Instructions: ${vendorComment}` : ''}`;
         console.error('API client not available');
         return;
       }
-      
+
+      if (!reviewData.propertyId) {
+        console.error('Property ID is missing');
+        const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
+        if (isWeb) {
+          window.alert('Property information is missing. Please try again.');
+        } else {
+          Alert.alert('Error', 'Property information is missing. Please try again.');
+        }
+        return;
+      }
+
       const maintenanceRequestData = {
         propertyId: reviewData.propertyId,
         title: reviewData.title || reviewData.issueType,
         description: structuredDescription,
-        priority: reviewData.priority,
+        priority: reviewData.priority as 'low' | 'medium' | 'high' | 'urgent',
         area: reviewData.area,
         asset: reviewData.asset,
         issueType: reviewData.issueType,
@@ -284,17 +301,30 @@ Vendor Instructions: ${vendorComment}` : ''}`;
       console.log('Request data:', JSON.stringify(maintenanceRequestData, null, 2));
       
       const response = await apiClient.createMaintenanceRequest(maintenanceRequestData);
-      
-      // Navigate to success screen
-      navigation.navigate('SubmissionSuccess');
+
+      // Navigate to success screen with summary data
+      navigation.navigate('SubmissionSuccess', {
+        summary: {
+          title: reviewData.title || reviewData.issueType,
+          area: areaName,
+          asset: reviewData.asset,
+          issueType: reviewData.issueType,
+          priority: reviewData.priority,
+        }
+      });
     } catch (error) {
       console.error('Error creating maintenance request:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert(
-        'Submission Failed',
-        `Failed to submit your request: ${errorMessage}`,
-        [{ text: 'OK' }]
-      );
+      const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
+      if (isWeb) {
+        window.alert(`Failed to submit your request: ${errorMessage}`);
+      } else {
+        Alert.alert(
+          'Submission Failed',
+          `Failed to submit your request: ${errorMessage}`,
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -491,7 +521,7 @@ Vendor Instructions: ${vendorComment}` : ''}`;
         <View style={styles.commentCard}>
           <View style={styles.commentHeader}>
             <Ionicons name="chatbubble-outline" size={20} color="#3498DB" />
-            <Text style={styles.commentTitle}>Comments for vendor (optional)</Text>
+            <Text style={styles.commentTitle}>Comments (optional)</Text>
           </View>
           <TextInput
             style={styles.commentInput}

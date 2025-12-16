@@ -1,363 +1,465 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ViewStyle, TextStyle } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { useApiClient } from '../../services/api/client';
 
 type FollowUpScreenRouteProp = RouteProp<TenantStackParamList, 'FollowUp'>;
 type FollowUpScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'FollowUp'>;
 
-interface Question {
+interface MaintenanceRequest {
   id: string;
-  question: string;
-  type: 'single' | 'multiple';
-  options: string[];
-  answer?: string | string[];
+  title: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  area?: string;
+  asset?: string;
+  issue_type?: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 const FollowUpScreen = () => {
   const route = useRoute<FollowUpScreenRouteProp>();
   const navigation = useNavigation<FollowUpScreenNavigationProp>();
   const { issueId } = route.params;
+  const apiClient = useApiClient();
 
-  const [questions] = useState<Question[]>([
-    {
-      id: '1',
-      question: 'Where exactly is this issue located?',
-      type: 'single',
-      options: ['Kitchen', 'Bathroom', 'Living Room', 'Bedroom', 'Other'],
-    },
-    {
-      id: '2',
-      question: 'How long has this problem been occurring?',
-      type: 'single',
-      options: ['Just noticed', 'A few days', 'A week', 'More than a week', 'Ongoing for months'],
-    },
-    {
-      id: '3',
-      question: 'Does this happen at specific times?',
-      type: 'single',
-      options: ['All the time', 'Only mornings', 'Only evenings', 'Randomly', 'When using specific items'],
-    },
-    {
-      id: '4',
-      question: 'How urgent is this repair?',
-      type: 'single',
-      options: ['Emergency', 'Very urgent', 'Moderate', 'Can wait', 'Low priority'],
-    },
-  ]);
+  const [request, setRequest] = useState<MaintenanceRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  useEffect(() => {
+    loadRequestDetails();
+  }, [issueId]);
 
-  const currentQuestion = questions[currentQuestionIndex];
-
-  const handleAnswer = (questionId: string, answer: string) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: answer,
-    }));
-  };
-
-  const handleNext = () => {
-    if (!answers[currentQuestion.id]) {
-      Alert.alert('Please Select', 'Please select an answer before continuing.');
+  const loadRequestDetails = async () => {
+    if (!apiClient) {
+      setError('Unable to connect to services');
+      setIsLoading(false);
       return;
     }
 
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    } else {
-      navigation.navigate('ConfirmSubmission', { issueId });
-    }
-  };
+    try {
+      setIsLoading(true);
+      // Get all requests and find the one we need
+      const requests = await apiClient.getMaintenanceRequests();
+      const found = requests.find((r: any) => r.id === issueId);
 
-  const handleBack = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    } else {
-      navigation.goBack();
-    }
-  };
-
-  const getUrgencyColor = (option: string) => {
-    switch (option) {
-      case 'Emergency':
-        return '#E74C3C';
-      case 'Very urgent':
-        return '#E67E22';
-      case 'Moderate':
-        return '#F39C12';
-      case 'Can wait':
-        return '#27AE60';
-      case 'Low priority':
-        return '#95A5A6';
-      default:
-        return '#3498DB';
-    }
-  };
-
-  const getOptionStyle = (questionId: string, option: string): ViewStyle[] => {
-    const isSelected = answers[questionId] === option;
-    const baseStyle: ViewStyle[] = [styles.optionButton];
-
-    if (isSelected) {
-      baseStyle.push(styles.optionButtonSelected);
-      if (questionId === '4') {
-        baseStyle.push({ borderColor: getUrgencyColor(option) });
+      if (found) {
+        setRequest({
+          id: found.id,
+          title: found.title || 'Maintenance Request',
+          description: found.description || '',
+          status: found.status || 'pending',
+          priority: found.priority || 'medium',
+          area: found.area,
+          asset: found.asset,
+          issue_type: found.issue_type,
+          created_at: found.created_at,
+          updated_at: found.updated_at,
+        });
+      } else {
+        setError('Request not found');
       }
+    } catch (err) {
+      console.error('Error loading request:', err);
+      setError('Failed to load request details');
+    } finally {
+      setIsLoading(false);
     }
-
-    return baseStyle;
   };
 
-  const getOptionTextStyle = (questionId: string, option: string): TextStyle[] => {
-    const isSelected = answers[questionId] === option;
-    const baseStyle: TextStyle[] = [styles.optionText];
-
-    if (isSelected) {
-      baseStyle.push(styles.optionTextSelected);
-      if (questionId === '4') {
-        baseStyle.push({ color: getUrgencyColor(option) });
-      }
-    }
-    
-    return baseStyle;
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   };
 
-  // Header right showing progress
-  const headerRight = (
-    <View style={styles.progressContainer}>
-      <Text style={styles.progressText}>
-        {currentQuestionIndex + 1} of {questions.length}
-      </Text>
-      <View style={styles.progressBar}>
-        <View
-          style={[
-            styles.progressFill,
-            { width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }
-          ]}
-        />
-      </View>
-    </View>
-  );
+  const getStatusDisplay = (status: string) => {
+    const statusMap: { [key: string]: { label: string; color: string; bgColor: string; icon: string } } = {
+      pending: { label: 'Pending', color: '#F39C12', bgColor: '#FEF5E7', icon: 'time-outline' },
+      in_progress: { label: 'In Progress', color: '#3498DB', bgColor: '#EBF5FB', icon: 'construct-outline' },
+      completed: { label: 'Completed', color: '#27AE60', bgColor: '#E8F8F0', icon: 'checkmark-circle-outline' },
+      cancelled: { label: 'Cancelled', color: '#95A5A6', bgColor: '#F5F5F5', icon: 'close-circle-outline' },
+    };
+    return statusMap[status] || statusMap.pending;
+  };
 
-  // Bottom button
-  const bottomButton = (
-    <TouchableOpacity
-      style={styles.nextButton}
-      onPress={handleNext}
-      activeOpacity={0.8}
-    >
-      <Text style={styles.nextButtonText}>
-        {currentQuestionIndex === questions.length - 1 ? 'Review & Submit' : 'Next Question'}
-      </Text>
-      <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-    </TouchableOpacity>
-  );
+  const getPriorityDisplay = (priority: string) => {
+    const priorityMap: { [key: string]: { label: string; color: string } } = {
+      low: { label: 'Low', color: '#27AE60' },
+      medium: { label: 'Medium', color: '#F39C12' },
+      high: { label: 'High', color: '#E67E22' },
+      urgent: { label: 'Urgent', color: '#E74C3C' },
+    };
+    return priorityMap[priority] || priorityMap.medium;
+  };
+
+  if (isLoading) {
+    return (
+      <ScreenContainer
+        title="Request Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="tenant"
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={styles.loadingText}>Loading request details...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (error || !request) {
+    return (
+      <ScreenContainer
+        title="Request Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="tenant"
+      >
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color="#E74C3C" />
+          <Text style={styles.errorText}>{error || 'Request not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadRequestDetails}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  const statusDisplay = getStatusDisplay(request.status);
+  const priorityDisplay = getPriorityDisplay(request.priority);
 
   return (
     <ScreenContainer
-      title="Follow-up Questions"
+      title="Request Details"
       showBackButton
-      onBackPress={handleBack}
-      headerRight={headerRight}
+      onBackPress={() => navigation.goBack()}
       userRole="tenant"
-      bottomContent={bottomButton}
     >
-        <View style={styles.questionContainer}>
-          <View style={styles.questionHeader}>
-            <Ionicons name="help-circle" size={32} color="#3498DB" />
-            <Text style={styles.questionNumber}>Question {currentQuestionIndex + 1}</Text>
-          </View>
-          
-          <Text style={styles.questionText}>{currentQuestion.question}</Text>
-          
-          <View style={styles.optionsContainer}>
-            {currentQuestion.options.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={getOptionStyle(currentQuestion.id, option)}
-                onPress={() => handleAnswer(currentQuestion.id, option)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.optionContent}>
-                  <Text style={getOptionTextStyle(currentQuestion.id, option)}>
-                    {option}
-                  </Text>
-                  {answers[currentQuestion.id] === option && (
-                    <Ionicons 
-                      name="checkmark-circle" 
-                      size={24} 
-                      color={currentQuestion.id === '4' ? getUrgencyColor(option) : '#3498DB'} 
-                    />
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {currentQuestion.id === '4' && (
-            <View style={styles.urgencyNote}>
-              <Ionicons name="information-circle" size={16} color="#7F8C8D" />
-              <Text style={styles.urgencyNoteText}>
-                Emergency repairs will be prioritized for immediate response
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.aiInsight}>
-          <View style={styles.aiHeader}>
-            <Ionicons name="sparkles" size={20} color="#9B59B6" />
-            <Text style={styles.aiTitle}>AI Insight</Text>
-          </View>
-          <Text style={styles.aiText}>
-            {currentQuestion.id === '1' && "Knowing the exact location helps us send the right tools and expertise."}
-            {currentQuestion.id === '2' && "Duration helps us understand if this is a new issue or ongoing problem."}
-            {currentQuestion.id === '3' && "Timing patterns can help identify the root cause of the problem."}
-            {currentQuestion.id === '4' && "Priority level helps us schedule repairs appropriately and manage expectations."}
+      {/* Status Banner */}
+      <View style={[styles.statusBanner, { backgroundColor: statusDisplay.bgColor }]}>
+        <Ionicons name={statusDisplay.icon as any} size={24} color={statusDisplay.color} />
+        <View style={styles.statusBannerContent}>
+          <Text style={[styles.statusLabel, { color: statusDisplay.color }]}>
+            {statusDisplay.label}
+          </Text>
+          <Text style={styles.statusDate}>
+            Submitted {formatDate(request.created_at)}
           </Text>
         </View>
+      </View>
+
+      {/* Request Summary Card */}
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryHeader}>
+          <Ionicons name="document-text" size={20} color="#3498DB" />
+          <Text style={styles.summaryTitle}>Request Summary</Text>
+        </View>
+
+        <Text style={styles.requestTitle}>{request.title}</Text>
+
+        <View style={styles.detailsGrid}>
+          {request.area && (
+            <View style={styles.detailRow}>
+              <Ionicons name="location-outline" size={16} color="#7F8C8D" />
+              <Text style={styles.detailLabel}>Location:</Text>
+              <Text style={styles.detailValue}>{request.area}</Text>
+            </View>
+          )}
+
+          {request.asset && (
+            <View style={styles.detailRow}>
+              <Ionicons name="cube-outline" size={16} color="#7F8C8D" />
+              <Text style={styles.detailLabel}>Item:</Text>
+              <Text style={styles.detailValue}>{request.asset}</Text>
+            </View>
+          )}
+
+          {request.issue_type && (
+            <View style={styles.detailRow}>
+              <Ionicons name="warning-outline" size={16} color="#7F8C8D" />
+              <Text style={styles.detailLabel}>Issue:</Text>
+              <Text style={styles.detailValue}>{request.issue_type}</Text>
+            </View>
+          )}
+
+          <View style={styles.detailRow}>
+            <Ionicons name="flag-outline" size={16} color="#7F8C8D" />
+            <Text style={styles.detailLabel}>Priority:</Text>
+            <View style={[styles.priorityBadge, { backgroundColor: priorityDisplay.color + '20' }]}>
+              <Text style={[styles.priorityText, { color: priorityDisplay.color }]}>
+                {priorityDisplay.label}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {request.description && (
+          <View style={styles.descriptionSection}>
+            <Text style={styles.descriptionLabel}>Description</Text>
+            <Text style={styles.descriptionText}>{request.description}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* What's Next Card */}
+      <View style={styles.nextStepsCard}>
+        <View style={styles.nextStepsHeader}>
+          <Ionicons name="time-outline" size={20} color="#9B59B6" />
+          <Text style={styles.nextStepsTitle}>What's happening</Text>
+        </View>
+
+        {request.status === 'pending' && (
+          <View style={styles.nextStepsList}>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+              <Text style={styles.nextStepText}>Your landlord has been notified</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="ellipse-outline" size={18} color="#BDC3C7" />
+              <Text style={styles.nextStepTextPending}>Waiting for vendor assignment</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="ellipse-outline" size={18} color="#BDC3C7" />
+              <Text style={styles.nextStepTextPending}>Repair to be scheduled</Text>
+            </View>
+          </View>
+        )}
+
+        {request.status === 'in_progress' && (
+          <View style={styles.nextStepsList}>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+              <Text style={styles.nextStepText}>Your landlord has been notified</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+              <Text style={styles.nextStepText}>Vendor has been assigned</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="ellipse-outline" size={18} color="#BDC3C7" />
+              <Text style={styles.nextStepTextPending}>Repair in progress</Text>
+            </View>
+          </View>
+        )}
+
+        {request.status === 'completed' && (
+          <View style={styles.nextStepsList}>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+              <Text style={styles.nextStepText}>Request submitted</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+              <Text style={styles.nextStepText}>Vendor assigned</Text>
+            </View>
+            <View style={styles.nextStepItem}>
+              <Ionicons name="checkmark-circle" size={18} color="#27AE60" />
+              <Text style={styles.nextStepText}>Repair completed</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Contact Landlord Button */}
+      <TouchableOpacity
+        style={styles.contactButton}
+        onPress={() => navigation.navigate('CommunicationHub')}
+      >
+        <Ionicons name="chatbubbles-outline" size={20} color="#3498DB" />
+        <Text style={styles.contactButtonText}>Message Landlord</Text>
+      </TouchableOpacity>
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  progressContainer: {
-    minWidth: 100,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#E1E8ED',
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3498DB',
-    borderRadius: 2,
-  },
-  questionContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    marginTop: 20,
-    
-    
-    
-    
-    elevation: 6,
-  },
-  questionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  questionNumber: {
-    fontSize: 16,
-    color: '#3498DB',
-    fontWeight: '600',
-  },
-  questionText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginBottom: 24,
-    lineHeight: 28,
-  },
-  optionsContainer: {
-    gap: 12,
-  },
-  optionButton: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#E1E8ED',
-  },
-  optionButtonSelected: {
-    backgroundColor: '#EBF5FF',
-    borderColor: '#3498DB',
-  },
-  optionContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  optionText: {
-    fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '500',
-  },
-  optionTextSelected: {
-    color: '#3498DB',
-    fontWeight: '600',
-  },
-  urgencyNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  loadingText: {
     marginTop: 16,
-    gap: 8,
-    padding: 12,
-    backgroundColor: '#F8F9FA',
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#7F8C8D',
+    marginTop: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#3498DB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 8,
   },
-  urgencyNoteText: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    flex: 1,
-  },
-  aiInsight: {
-    backgroundColor: '#F8F5FF',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#E8D5FF',
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  aiTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9B59B6',
-  },
-  aiText: {
-    fontSize: 14,
-    color: '#8E44AD',
-    lineHeight: 20,
-  },
-  nextButton: {
-    backgroundColor: '#3498DB',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    
-    
-    
-    
-    elevation: 4,
-  },
-  nextButtonText: {
+  retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  statusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 12,
+  },
+  statusBannerContent: {
+    flex: 1,
+  },
+  statusLabel: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  statusDate: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginTop: 2,
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3498DB',
+  },
+  requestTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 16,
+  },
+  detailsGrid: {
+    gap: 10,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    width: 60,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#2C3E50',
+    flex: 1,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  descriptionSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E1E8ED',
+  },
+  descriptionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7F8C8D',
+    marginBottom: 8,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: '#2C3E50',
+    lineHeight: 20,
+  },
+  nextStepsCard: {
+    backgroundColor: '#F8F5FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E8D5FF',
+  },
+  nextStepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  nextStepsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9B59B6',
+  },
+  nextStepsList: {
+    gap: 12,
+  },
+  nextStepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  nextStepText: {
+    fontSize: 14,
+    color: '#2C3E50',
+  },
+  nextStepTextPending: {
+    fontSize: 14,
+    color: '#95A5A6',
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EBF5FB',
+    borderRadius: 12,
+    padding: 16,
+    gap: 8,
+    marginBottom: 24,
+  },
+  contactButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3498DB',
   },
 });
 

@@ -19,6 +19,8 @@ import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { Property as DbProperty } from '../../types/api';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
+import { PropertyImage } from '../../components/shared/PropertyImage';
 
 
 type PropertyManagementNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyManagement'>;
@@ -45,6 +47,8 @@ const PropertyManagementScreen = () => {
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
   const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showClearDataDialog, setShowClearDataDialog] = useState(false);
+  const [isClearingData, setIsClearingData] = useState(false);
   const api = useApiClient();
 
   // Load properties on screen mount and when screen is focused
@@ -182,32 +186,28 @@ const PropertyManagementScreen = () => {
     }
   };
 
-  const handleClearAllAppData = async () => {
-    Alert.alert(
-      'Clear All App Data',
-      'This will remove ALL data from the app including drafts, cache, and settings. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear Everything',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const stats = await DataClearer.getStorageStats();
-              console.log('Storage before clear:', stats);
-              
-              await DataClearer.clearAllData();
-              await refreshDrafts(); // Refresh the drafts list
-              
-              Alert.alert('Success', 'All app data cleared successfully.');
-            } catch (error) {
-              console.error('Failed to clear app data:', error);
-              Alert.alert('Error', 'Failed to clear app data. Please try again.');
-            }
-          }
-        }
-      ]
-    );
+  const handleClearAllAppData = () => {
+    setShowClearDataDialog(true);
+  };
+
+  const confirmClearAllData = async () => {
+    setIsClearingData(true);
+    try {
+      const stats = await DataClearer.getStorageStats();
+      console.log('Storage before clear:', stats);
+
+      await DataClearer.clearAllData();
+      await refreshDrafts(); // Refresh the drafts list
+
+      setShowClearDataDialog(false);
+      Alert.alert('Success', 'All app data cleared successfully.');
+    } catch (error) {
+      console.error('Failed to clear app data:', error);
+      setShowClearDataDialog(false);
+      Alert.alert('Error', 'Failed to clear app data. Please try again.');
+    } finally {
+      setIsClearingData(false);
+    }
   };
 
   const handleRefresh = async () => {
@@ -376,36 +376,58 @@ const PropertyManagementScreen = () => {
           </View>
         )}
 
-        {/* Properties List */}
+        {/* Properties List - Option A Banner Style */}
         <View style={styles.propertiesList}>
           {properties.map((property) => (
             <TouchableOpacity
               key={property.id}
               style={[
-                styles.propertyItem,
+                styles.propertyCard,
                 isDeleteMode && selectedProperties.has(property.id) && styles.selectedCard
               ]}
               onPress={() => isDeleteMode ? handleToggleSelect(property.id) : handlePropertyPress(property)}
               activeOpacity={0.7}
             >
-              <View style={styles.propertyIcon}>
-                <Ionicons name={getPropertyIcon(property.type)} size={22} color="#3498DB" />
+              {/* Property Image */}
+              <View style={styles.propertyImageContainer}>
+                <PropertyImage
+                  address={property.address}
+                  width={320}
+                  height={200}
+                  borderRadius={12}
+                />
               </View>
-              <View style={styles.propertyInfo}>
-                <Text style={styles.propertyName}>{property.name}</Text>
-                <Text style={styles.propertyAddress} numberOfLines={1}>
-                  {property.address}
-                </Text>
-              </View>
-              {isDeleteMode && (
-                <View style={styles.selectionIndicator}>
-                  <Ionicons
-                    name={selectedProperties.has(property.id) ? "checkmark-circle" : "ellipse-outline"}
-                    size={20}
-                    color={selectedProperties.has(property.id) ? DesignSystem.colors.danger : '#BDC3C7'}
-                  />
+
+              {/* Property Info Bar */}
+              <View style={styles.propertyInfoBar}>
+                <View style={styles.propertyInfoContent}>
+                  <Text style={styles.propertyName}>{property.name}</Text>
+                  <Text style={styles.propertyAddress} numberOfLines={1}>
+                    {property.address}
+                  </Text>
+                  <View style={styles.propertyStats}>
+                    <View style={styles.statItem}>
+                      <Ionicons name="people-outline" size={12} color="rgba(255,255,255,0.8)" />
+                      <Text style={styles.statText}>{property.tenants} Tenants</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Ionicons name="construct-outline" size={12} color="rgba(255,255,255,0.8)" />
+                      <Text style={styles.statText}>{property.activeRequests} Requests</Text>
+                    </View>
+                  </View>
                 </View>
-              )}
+                {isDeleteMode ? (
+                  <View style={styles.selectionIndicator}>
+                    <Ionicons
+                      name={selectedProperties.has(property.id) ? "checkmark-circle" : "ellipse-outline"}
+                      size={24}
+                      color={selectedProperties.has(property.id) ? '#fff' : 'rgba(255,255,255,0.5)'}
+                    />
+                  </View>
+                ) : (
+                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+                )}
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -525,6 +547,18 @@ const PropertyManagementScreen = () => {
           </View>
         </View>
       )}
+
+      <ConfirmDialog
+        visible={showClearDataDialog}
+        title="Clear All App Data"
+        message="This will remove ALL data from the app including drafts, cache, and settings. This action cannot be undone."
+        confirmText="Clear Everything"
+        cancelText="Cancel"
+        confirmStyle="destructive"
+        onConfirm={confirmClearAllData}
+        onCancel={() => setShowClearDataDialog(false)}
+        isLoading={isClearingData}
+      />
     </ScreenContainer>
   );
 };
@@ -611,47 +645,66 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF5F5',
   },
 
-  // Properties List
+  // Properties List - Option A Banner Style
   propertiesList: {
-    gap: 10,
+    gap: 12,
   },
-  propertyItem: {
+  propertyCard: {
     backgroundColor: DesignSystem.colors.background,
     borderRadius: 12,
-    padding: 14,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   selectedCard: {
     borderColor: DesignSystem.colors.danger,
     borderWidth: 2,
-    backgroundColor: '#FFF5F5',
+  },
+  propertyImageContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+  },
+  propertyInfoBar: {
+    backgroundColor: '#3498DB',
+    padding: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  propertyInfoContent: {
+    flex: 1,
   },
   selectionIndicator: {
     marginLeft: 8,
   },
-  propertyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#EBF5FB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  propertyInfo: {
-    flex: 1,
-  },
   propertyName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    color: DesignSystem.colors.text,
+    color: '#fff',
   },
   propertyAddress: {
     fontSize: 12,
-    color: DesignSystem.colors.textSecondary,
+    color: 'rgba(255,255,255,0.9)',
     marginTop: 2,
+  },
+  propertyStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 6,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
   },
 
   // Empty State Card

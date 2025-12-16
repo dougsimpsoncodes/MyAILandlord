@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -18,7 +18,7 @@ interface CaseFile {
   description: string;
   location: string;
   urgency: 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority';
-  status: 'new' | 'in_progress' | 'resolved';
+  status: 'pending' | 'in_progress' | 'completed';
   submittedAt: string;
   mediaCount: number;
   estimatedCost?: string;
@@ -30,7 +30,7 @@ interface MaintenanceRequestResponse {
   description: string;
   area: string;
   priority: string;
-  status: 'new' | 'in_progress' | 'resolved';
+  status: 'pending' | 'in_progress' | 'completed';
   created_at: string;
   estimated_cost?: number;
   images?: string[];
@@ -43,7 +43,7 @@ const DashboardScreen = () => {
   const navigation = useNavigation<DashboardScreenNavigationProp>();
   const apiClient = useApiClient();
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'pending' | 'in_progress' | 'completed'>('pending');
   const [cases, setCases] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -118,31 +118,14 @@ const DashboardScreen = () => {
     setRefreshing(false);
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'Emergency':
-        return '#E74C3C'; // Red for urgent
-      case 'Very urgent':
-        return '#E74C3C'; // Red for urgent
-      case 'Moderate':
-        return '#F39C12'; // Orange for medium
-      case 'Can wait':
-        return '#2ECC71'; // Green for low
-      case 'Low priority':
-        return '#2ECC71'; // Green for low
-      default:
-        return '#3498DB';
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'new':
-        return '#3498DB';
-      case 'in_progress':
+      case 'pending':
         return '#F39C12';
-      case 'resolved':
-        return '#27AE60';
+      case 'in_progress':
+        return '#3498DB';
+      case 'completed':
+        return '#2ECC71';
       default:
         return '#95A5A6';
     }
@@ -150,353 +133,306 @@ const DashboardScreen = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'new':
-        return 'New';
+      case 'pending':
+        return 'Pending';
       case 'in_progress':
         return 'In Progress';
-      case 'resolved':
-        return 'Resolved';
+      case 'completed':
+        return 'Completed';
       default:
         return status;
     }
   };
 
-  const filteredCases = selectedFilter === 'all' 
-    ? cases 
-    : cases.filter(case_ => case_.status === selectedFilter);
+  const filteredCases = cases.filter(case_ => case_.status === selectedFilter);
 
-  const newCasesCount = cases.filter(case_ => case_.status === 'new').length;
+  const newCasesCount = cases.filter(case_ => case_.status === 'pending').length;
   const inProgressCount = cases.filter(case_ => case_.status === 'in_progress').length;
-  const resolvedCount = cases.filter(case_ => case_.status === 'resolved').length;
+  const completedCount = cases.filter(case_ => case_.status === 'completed').length;
 
   const handleCasePress = (caseId: string) => {
     navigation.navigate('CaseDetail', { caseId });
   };
 
-  const handleRespondPress = (caseId: string) => {
-    navigation.navigate('CaseDetail', { caseId });
+  const getEmptyStateMessage = () => {
+    switch (selectedFilter) {
+      case 'pending':
+        return { title: 'No New Requests', subtitle: 'New maintenance requests will appear here' };
+      case 'in_progress':
+        return { title: 'No Requests In Progress', subtitle: 'Requests being worked on will appear here' };
+      case 'completed':
+        return { title: 'No Completed Requests', subtitle: 'Completed requests will appear here' };
+      default:
+        return { title: 'No Requests', subtitle: 'Maintenance requests will appear here' };
+    }
   };
 
-  const handleAssignVendorPress = (caseId: string) => {
-    navigation.navigate('SendToVendor', { caseId });
-  };
+  const emptyState = getEmptyStateMessage();
 
   return (
     <ScreenContainer
-      title="Maintenance Dashboard"
+      title="Requests"
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"
       refreshing={refreshing}
       onRefresh={onRefresh}
-      padded={false}
     >
-      <View style={styles.content}>
-        {/* Filter Pills */}
-        <View style={styles.filtersContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {[
-              { key: 'all', label: 'All Cases', count: cases.length },
-              { key: 'new', label: 'New', count: newCasesCount },
-              { key: 'in_progress', label: 'In Progress', count: inProgressCount },
-              { key: 'resolved', label: 'Resolved', count: resolvedCount },
-            ].map((filter) => (
-              <TouchableOpacity
-                key={filter.key}
-                style={[
-                  styles.filterButton,
-                  selectedFilter === filter.key && styles.filterButtonActive,
-                ]}
-                onPress={() => setSelectedFilter(filter.key as typeof selectedFilter)}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    selectedFilter === filter.key && styles.filterTextActive,
-                  ]}
-                >
-                  {filter.label} ({filter.count})
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-        {/* Loading State */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3498DB" />
-            <Text style={styles.loadingText}>Loading requests...</Text>
-          </View>
-        ) : filteredCases.length === 0 ? (
-          /* Empty State */
-          <View style={styles.emptyCard}>
-            <Ionicons name="folder-open-outline" size={48} color="#BDC3C7" />
-            <Text style={styles.emptyCardTitle}>
-              {selectedFilter === 'all' ? 'All Caught Up!' : 'No Cases Found'}
-            </Text>
-            <Text style={styles.emptyCardSubtitle}>
-              {selectedFilter === 'all'
-                ? 'No maintenance requests at the moment'
-                : `No ${selectedFilter.replace('_', ' ')} cases found`}
-            </Text>
-          </View>
-        ) : (
-          /* Request Cards with Action Buttons */
-          filteredCases.map((case_) => (
-            <TouchableOpacity
-              key={case_.id}
-              style={styles.requestCard}
-              onPress={() => handleCasePress(case_.id)}
-              activeOpacity={0.7}
-            >
-              {/* Priority Indicator Bar */}
-              <View style={[styles.priorityBar, { backgroundColor: getUrgencyColor(case_.urgency) }]} />
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterButton, selectedFilter === 'pending' && styles.filterButtonActive]}
+          onPress={() => setSelectedFilter('pending')}
+        >
+          <Text style={[styles.filterText, selectedFilter === 'pending' && styles.filterTextActive]}>
+            New
+          </Text>
+          {newCasesCount > 0 && (
+            <View style={[styles.filterBadge, selectedFilter === 'pending' && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeText, selectedFilter === 'pending' && styles.filterBadgeTextActive]}>
+                {newCasesCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
-              <View style={styles.requestContent}>
-                {/* Request Header */}
-                <View style={styles.requestHeader}>
-                  <View style={styles.requestHeaderLeft}>
-                    <Text style={styles.requestTitle}>{case_.issueType}</Text>
-                    <Text style={styles.requestLocation}>
-                      {case_.location} • {case_.tenantName}
-                    </Text>
-                  </View>
-                  <Text style={styles.requestTime}>{case_.submittedAt}</Text>
-                </View>
+        <TouchableOpacity
+          style={[styles.filterButton, selectedFilter === 'in_progress' && styles.filterButtonActive]}
+          onPress={() => setSelectedFilter('in_progress')}
+        >
+          <Text style={[styles.filterText, selectedFilter === 'in_progress' && styles.filterTextActive]}>
+            In Progress
+          </Text>
+          {inProgressCount > 0 && (
+            <View style={[styles.filterBadge, selectedFilter === 'in_progress' && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeText, selectedFilter === 'in_progress' && styles.filterBadgeTextActive]}>
+                {inProgressCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
-                {/* Description */}
-                <Text style={styles.requestDescription} numberOfLines={2}>
-                  {case_.description}
-                </Text>
-
-                {/* Metadata */}
-                <View style={styles.requestMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="images" size={14} color="#7F8C8D" />
-                    <Text style={styles.metaText}>{case_.mediaCount} photos</Text>
-                  </View>
-                  {case_.estimatedCost && (
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Est:</Text>
-                      <Text style={styles.metaCost}>{case_.estimatedCost}</Text>
-                    </View>
-                  )}
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { backgroundColor: getStatusColor(case_.status) },
-                    ]}
-                  >
-                    <Text style={styles.statusText}>{getStatusText(case_.status)}</Text>
-                  </View>
-                </View>
-
-                {/* Inline Action Buttons */}
-                <View style={styles.requestActions}>
-                  <TouchableOpacity
-                    style={styles.btnPrimary}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleRespondPress(case_.id);
-                    }}
-                  >
-                    <Text style={styles.btnPrimaryText}>Respond</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.btnSecondary}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleAssignVendorPress(case_.id);
-                    }}
-                  >
-                    <Text style={styles.btnSecondaryText}>Assign Vendor</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-
-        <View style={styles.bottomSpacer} />
+        <TouchableOpacity
+          style={[styles.filterButton, selectedFilter === 'completed' && styles.filterButtonActive]}
+          onPress={() => setSelectedFilter('completed')}
+        >
+          <Text style={[styles.filterText, selectedFilter === 'completed' && styles.filterTextActive]}>
+            Completed
+          </Text>
+          {completedCount > 0 && (
+            <View style={[styles.filterBadge, selectedFilter === 'completed' && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeText, selectedFilter === 'completed' && styles.filterBadgeTextActive]}>
+                {completedCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
+
+      {/* Loading State */}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={styles.loadingText}>Loading requests...</Text>
+        </View>
+      ) : filteredCases.length === 0 ? (
+        /* Empty State */
+        <View style={styles.emptyState}>
+          <Ionicons
+            name={selectedFilter === 'completed' ? 'checkmark-circle-outline' : 'document-text-outline'}
+            size={64}
+            color={selectedFilter === 'completed' ? '#3498DB' : '#BDC3C7'}
+          />
+          <Text style={styles.emptyStateTitle}>{emptyState.title}</Text>
+          <Text style={styles.emptyStateSubtitle}>{emptyState.subtitle}</Text>
+        </View>
+      ) : (
+        /* Request Cards - Simple clickable design */
+        filteredCases.map((case_) => (
+          <TouchableOpacity
+            key={case_.id}
+            style={[
+              styles.requestCard,
+              selectedFilter === 'completed' && styles.resolvedCard
+            ]}
+            onPress={() => handleCasePress(case_.id)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.requestHeader}>
+              <Text style={[
+                styles.requestTitle,
+                selectedFilter === 'completed' && styles.resolvedTitle
+              ]}>
+                {case_.issueType}
+              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(case_.status) + '20' }]}>
+                <Text style={[styles.statusText, { color: getStatusColor(case_.status) }]}>
+                  {getStatusText(case_.status)}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[
+              styles.requestMeta,
+              selectedFilter === 'completed' && styles.resolvedText
+            ]}>
+              {case_.location} • {case_.tenantName}
+            </Text>
+
+            <Text style={[
+              styles.requestTime,
+              selectedFilter === 'completed' && styles.resolvedText
+            ]}>
+              {selectedFilter === 'completed' ? 'Completed ' : ''}{case_.submittedAt}
+            </Text>
+
+            {case_.description && selectedFilter !== 'completed' && (
+              <Text style={styles.requestDescription} numberOfLines={2}>
+                {case_.description}
+              </Text>
+            )}
+          </TouchableOpacity>
+        ))
+      )}
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  // Filter Pills
-  filtersContainer: {
+  // Filter Tabs
+  filterContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 4,
     marginBottom: 16,
   },
   filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: DesignSystem.colors.background,
-    borderWidth: 1,
-    borderColor: DesignSystem.colors.border,
-    marginRight: 8,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    gap: 6,
   },
   filterButtonActive: {
     backgroundColor: '#3498DB',
-    borderColor: '#3498DB',
   },
   filterText: {
     fontSize: 13,
+    fontWeight: '600',
     color: DesignSystem.colors.textSecondary,
-    fontWeight: '500',
   },
   filterTextActive: {
-    color: '#FFFFFF',
+    color: '#fff',
   },
-  // Request Cards with Priority Bars
-  requestCard: {
-    backgroundColor: DesignSystem.colors.background,
-    borderRadius: 12,
-    padding: 14,
-    paddingLeft: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
+  filterBadge: {
+    backgroundColor: '#E8E8E8',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
   },
-  priorityBar: {
-    width: 4,
-    borderRadius: 2,
-    alignSelf: 'stretch',
-    minHeight: 48,
+  filterBadgeActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
-  requestContent: {
+  filterBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: DesignSystem.colors.textSecondary,
+  },
+  filterBadgeTextActive: {
+    color: '#fff',
+  },
+  // Loading State
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: DesignSystem.colors.textSecondary,
+  },
+  // Empty State
+  emptyState: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 40,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: DesignSystem.colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtitle: {
+    fontSize: 14,
+    color: DesignSystem.colors.textSecondary,
+    textAlign: 'center',
+  },
+  // Request Cards
+  requestCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  resolvedCard: {
+    opacity: 0.7,
   },
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  requestHeaderLeft: {
-    flex: 1,
-    marginRight: 8,
+    alignItems: 'center',
+    marginBottom: 8,
   },
   requestTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: DesignSystem.colors.text,
-    marginBottom: 2,
+    flex: 1,
+    marginRight: 8,
   },
-  requestLocation: {
-    fontSize: 13,
+  resolvedTitle: {
     color: DesignSystem.colors.textSecondary,
-  },
-  requestTime: {
-    fontSize: 11,
-    color: DesignSystem.colors.textSubtle,
-  },
-  requestDescription: {
-    fontSize: 14,
-    color: DesignSystem.colors.text,
-    lineHeight: 20,
-    marginBottom: 10,
-  },
-  // Metadata Row
-  requestMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: DesignSystem.colors.textSecondary,
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: DesignSystem.colors.textSecondary,
-  },
-  metaCost: {
-    fontSize: 12,
-    color: DesignSystem.colors.success,
-    fontWeight: '600',
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginLeft: 'auto',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
     fontSize: 11,
-    color: '#FFFFFF',
     fontWeight: '600',
   },
-  // Inline Action Buttons
-  requestActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  btnPrimary: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  btnPrimaryText: {
+  requestMeta: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  btnSecondary: {
-    backgroundColor: DesignSystem.colors.surface,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  btnSecondaryText: {
-    fontSize: 12,
-    fontWeight: '600',
     color: DesignSystem.colors.textSecondary,
-  },
-  // Loading State
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: DesignSystem.colors.textSecondary,
-    marginTop: 16,
-  },
-  // Empty State
-  emptyCard: {
-    backgroundColor: DesignSystem.colors.background,
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyCardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: DesignSystem.colors.text,
-    marginTop: 12,
     marginBottom: 4,
   },
-  emptyCardSubtitle: {
+  requestTime: {
+    fontSize: 12,
+    color: DesignSystem.colors.textSecondary,
+    marginBottom: 4,
+  },
+  resolvedText: {
+    color: '#95A5A6',
+  },
+  requestDescription: {
     fontSize: 13,
     color: DesignSystem.colors.textSecondary,
-    textAlign: 'center',
-  },
-  bottomSpacer: {
-    height: 20,
+    lineHeight: 18,
+    marginTop: 4,
   },
 });
 

@@ -176,7 +176,46 @@ export interface UseApiClientReturn {
   setUserRole: (role: UserRole) => Promise<Profile>;
 
   // Property methods
-  getUserProperties: () => Promise<Property[]>;
+  getUserProperties: (opts?: { limit?: number; offset?: number }) => Promise<Property[]>;
+  createProperty: (payload: {
+    name: string;
+    address_jsonb: { line1: string; line2?: string; city: string; state: string; zipCode: string };
+    property_type: string;
+    unit?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+  }) => Promise<Property>;
+  createPropertyAreas: (areas: Array<{ property_id: string; name: string; area_type: string; photos?: string[] }>) => Promise<boolean>;
+  deleteProperty: (propertyId: string) => Promise<boolean>;
+
+  // Property code methods (tenant linking)
+  validatePropertyCode: (propertyCode: string) => Promise<{
+    success: boolean;
+    property_id?: string;
+    property_name?: string;
+    property_address?: string;
+    is_multi_unit?: boolean;
+    wifi_network?: string | null;
+    wifi_password?: string | null;
+    error_message?: string;
+  }>;
+  linkTenantToProperty: (propertyCode: string, unitNumber?: string) => Promise<{ success: boolean; error_message?: string }>;
+  getTenantProperties: () => Promise<Array<{
+    id: string;
+    unit_number: string | null;
+    is_active: boolean;
+    properties: {
+      id: string;
+      name: string;
+      address: string;
+      landlord_id: string | null;
+      wifi_network: string | null;
+      wifi_password: string | null;
+      emergency_contact: string | null;
+      emergency_phone: string | null;
+    };
+  }>>;
+  linkTenantToPropertyById: (propertyId: string, unitNumber?: string) => Promise<boolean>;
 
   // Maintenance request methods
   getMaintenanceRequests: () => Promise<MaintenanceRequest[]>;

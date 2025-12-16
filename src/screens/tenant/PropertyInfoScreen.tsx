@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,13 +8,15 @@ import {
   Alert,
   Clipboard
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { PropertyImage } from '../../components/shared/PropertyImage';
 
 type PropertyInfoNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'PropertyInfo'>;
+type PropertyInfoRouteProp = RouteProp<TenantStackParamList, 'PropertyInfo'>;
 
 interface InfoSection {
   id: string;
@@ -34,6 +36,8 @@ interface InfoItem {
 
 const PropertyInfoScreen = () => {
   const navigation = useNavigation<PropertyInfoNavigationProp>();
+  const route = useRoute<PropertyInfoRouteProp>();
+  const address = route.params?.address || 'Property Address';
 
   const infoSections: InfoSection[] = [
     {
@@ -257,13 +261,15 @@ const PropertyInfoScreen = () => {
       onBackPress={() => navigation.goBack()}
       userRole="tenant"
     >
-        {/* Property Address Header */}
+        {/* Property Header with Street View */}
         <View style={styles.propertyHeader}>
-          <Ionicons name="location" size={24} color="#3498DB" />
-          <View style={styles.propertyHeaderText}>
-            <Text style={styles.propertyAddress}>123 Main St, Apt 4B</Text>
-            <Text style={styles.propertySubtext}>Your rental property information</Text>
-          </View>
+          <PropertyImage
+            address={address}
+            width={320}
+            height={200}
+            borderRadius={12}
+          />
+          <Text style={styles.propertyAddress}>{address}</Text>
         </View>
 
         {/* Info Sections */}
@@ -324,27 +330,16 @@ const PropertyInfoScreen = () => {
 
 const styles = StyleSheet.create({
   propertyHeader: {
-    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 20,
+    paddingVertical: 16,
     marginBottom: 16,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-  },
-  propertyHeaderText: {
-    marginLeft: 12,
-    flex: 1,
   },
   propertyAddress: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '500',
     color: '#2C3E50',
-    marginBottom: 2,
-  },
-  propertySubtext: {
-    fontSize: 14,
-    color: '#7F8C8D',
+    marginTop: 12,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 20,

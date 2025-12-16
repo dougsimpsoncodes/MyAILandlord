@@ -245,14 +245,18 @@ const styles = StyleSheet.create({
   headerLeft: {
     position: 'absolute',
     left: DesignSystem.spacing.md,
-    zIndex: 1,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    zIndex: 10,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
+    cursor: 'pointer',
   },
   titleContainer: {
     alignItems: 'center',

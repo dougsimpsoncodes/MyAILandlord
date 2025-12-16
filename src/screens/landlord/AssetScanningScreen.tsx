@@ -551,8 +551,8 @@ const AssetScanningScreen = () => {
 
   return (
     <ScreenContainer
-      title="Asset Detection"
-      subtitle="Scan barcodes, take photos, or manually add assets to your property inventory"
+      title="Item Detection"
+      subtitle="Scan barcodes, take photos, or manually add items to your inventory"
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"

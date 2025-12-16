@@ -81,8 +81,6 @@ const AppNavigator = () => {
       'myailandlord://',
       'https://myailandlord.app',
       'https://www.myailandlord.app',
-      'http://localhost:8081',
-      'http://localhost:8082',
     ],
     async getInitialURL() {
       // Handle deep link URL manually
@@ -111,31 +109,97 @@ const AppNavigator = () => {
         Login: 'login',
         SignUp: 'signup',
         AuthCallback: 'auth/callback',
-        // Main app screens
-        Home: 'home',
-        PropertyCodeEntry: 'link',
-        PropertyManagement: 'properties',
-        InviteTenant: 'invite-tenant',
-        ReportIssue: 'report-issue',
-        ReviewIssue: 'review-issue',
-        // Property creation flow with draft persistence
-        AddProperty: 'add-property',
-        PropertyAreas: {
-          path: 'property-areas',
-          parse: {
-            draftId: (draftId: string) => draftId,
+        // Tenant Tab Navigator with nested stacks
+        TenantHome: {
+          screens: {
+            TenantHomeMain: 'home',
+            ReportIssue: 'report-issue',
+            ReviewIssue: 'review-issue',
+            SubmissionSuccess: 'submission-success',
+            FollowUp: 'follow-up',
+            PropertyCodeEntry: 'link',
+            PropertyInviteAccept: 'property-invite',
+            PropertyWelcome: 'property-welcome',
+            PropertyInfo: 'property-info',
+            CommunicationHub: 'communication',
           }
         },
-        PropertyAssets: {
-          path: 'property-assets',
-          parse: {
-            draftId: (draftId: string) => draftId,
+        TenantRequests: {
+          screens: {
+            TenantRequestsMain: 'requests',
+            FollowUp: 'request-details',
           }
         },
-        PropertyReview: {
-          path: 'property-review',
-          parse: {
-            draftId: (draftId: string) => draftId,
+        TenantMessages: {
+          screens: {
+            TenantMessagesMain: 'messages',
+          }
+        },
+        TenantProfile: {
+          screens: {
+            TenantProfileMain: 'profile',
+            EditProfile: 'edit-profile',
+            Security: 'security',
+            Notifications: 'notifications',
+            HelpCenter: 'help',
+            ContactSupport: 'support',
+          }
+        },
+        // Landlord Tab Navigator with nested stacks
+        LandlordHome: {
+          screens: {
+            LandlordHomeMain: 'landlord-home',
+            Dashboard: 'dashboard',
+            CaseDetail: 'case',
+            PropertyDetails: 'property-details',
+            PropertyManagement: 'properties',
+            AddProperty: 'add-property',
+            PropertyAreas: 'property-areas',
+            PropertyAssets: 'property-assets',
+            PropertyReview: 'property-review',
+            AddAsset: 'add-asset',
+            InviteTenant: 'invite-tenant',
+          }
+        },
+        LandlordRequests: {
+          screens: {
+            LandlordRequestsMain: 'landlord-requests',
+            CaseDetail: 'landlord-case',
+          }
+        },
+        LandlordProperties: {
+          screens: {
+            PropertyManagementMain: 'landlord-properties',
+            PropertyDetails: 'landlord-property-details',
+            AddProperty: 'landlord-add-property',
+            PropertyBasics: 'property-basics',
+            PropertyPhotos: 'property-photos',
+            RoomSelection: 'room-selection',
+            RoomPhotography: 'room-photography',
+            AssetScanning: 'asset-scanning',
+            AssetDetails: 'asset-details',
+            AssetPhotos: 'asset-photos',
+            ReviewSubmit: 'review-submit',
+            PropertyAreas: 'landlord-property-areas',
+            PropertyAssets: 'landlord-property-assets',
+            PropertyReview: 'landlord-property-review',
+            AddAsset: 'landlord-add-asset',
+            InviteTenant: 'landlord-invite-tenant',
+          }
+        },
+        LandlordMessages: {
+          screens: {
+            LandlordMessagesMain: 'landlord-messages',
+          }
+        },
+        LandlordProfile: {
+          screens: {
+            LandlordProfileMain: 'landlord-profile',
+            EditProfile: 'landlord-edit-profile',
+            Security: 'landlord-security',
+            Notifications: 'landlord-notifications',
+            HelpCenter: 'landlord-help',
+            ContactSupport: 'landlord-support',
           }
         },
       }

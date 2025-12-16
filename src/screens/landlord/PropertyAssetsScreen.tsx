@@ -402,8 +402,8 @@ const PropertyAssetsScreen = () => {
 
   return (
     <ScreenContainer
-      title="Property Assets"
-      subtitle={`Step 3 of 5: Asset Inventory`}
+      title="Room Inventory"
+      subtitle={`Step 3 of 5: Item Inventory`}
       showBackButton
       onBackPress={() => navigation.goBack()}
       headerRight={headerRight}

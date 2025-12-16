@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tenant Portal • Requests</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav-group"><div class="nav-label">Tenant</div><div class="nav-links">
+          <a class="nav-link" href="./tenant-home.html">🏡 Home</a>
+          <a class="nav-link active" href="./tenant-requests.html">📨 Requests</a>
+        </div></div>
+      </aside>
+      <header class="header">
+        <div class="search">🔎 <input placeholder="Search your requests…" /></div>
+        <div class="header-actions"><button class="btn ghost" onclick="toggleTheme()">Theme</button><button class="btn" onclick="notify('Starting report')">+ Report Issue</button><div class="avatar"></div></div>
+      </header>
+      <main class="content">
+        <div class="card">
+          <div class="p toolbar"><div class="title">Your Requests</div><div class="row"><button class="btn ghost">Filter</button></div></div>
+          <div class="p">
+            <table class="table"><thead><tr><th>Title</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody>
+              <tr><td>AC not cooling</td><td><span class="chip red">pending</span></td><td>2h</td><td class="row-actions"><button class="btn ghost">Open</button></td></tr>
+              <tr><td>Door lock stuck</td><td><span class="chip yellow">in_progress</span></td><td>5h</td><td class="row-actions"><button class="btn ghost">Open</button></td></tr>
+              <tr><td>Smoke alarm replace</td><td><span class="chip green">completed</span></td><td>1d</td><td class="row-actions"><button class="btn ghost">Open</button></td></tr>
+            </tbody></table>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Action completed</div>
+  </body>
+  </html>
+

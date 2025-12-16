@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 const EditProfileScreen = () => {
   const navigation = useNavigation();
@@ -22,6 +23,28 @@ const EditProfileScreen = () => {
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Dialog state
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmStyle?: 'default' | 'destructive' | 'info';
+    onConfirm: () => void;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+
+  const showNotification = (title: string, msg: string, style: 'default' | 'destructive' | 'info' = 'info', onConfirm?: () => void) => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message: msg,
+      confirmStyle: style,
+      onConfirm: () => {
+        setDialogConfig(prev => ({ ...prev, visible: false }));
+        onConfirm?.();
+      },
+    });
+  };
 
   const getInitials = () => {
     if (!name) return '?';
@@ -34,7 +57,7 @@ const EditProfileScreen = () => {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Name is required');
+      showNotification('Error', 'Name is required', 'destructive');
       return;
     }
 
@@ -44,10 +67,9 @@ const EditProfileScreen = () => {
         name: name.trim(),
         phone: phone.trim() || undefined
       });
-      Alert.alert('Success', 'Profile updated successfully');
-      navigation.goBack();
+      showNotification('Success', 'Profile updated successfully', 'default', () => navigation.goBack());
     } catch (error) {
-      Alert.alert('Error', 'Failed to update profile');
+      showNotification('Error', 'Failed to update profile', 'destructive');
     } finally {
       setIsSaving(false);
     }
@@ -114,6 +136,15 @@ const EditProfileScreen = () => {
           </Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
+
+      <ConfirmDialog
+        visible={dialogConfig.visible}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        confirmStyle={dialogConfig.confirmStyle}
+        onConfirm={dialogConfig.onConfirm}
+        onCancel={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+      />
     </ScreenContainer>
   );
 };

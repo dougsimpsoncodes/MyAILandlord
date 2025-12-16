@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Clipboard, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Clipboard, Platform, Linking } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import CustomButton from '../../components/shared/CustomButton';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 type InviteTenantNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'InviteTenant'>;
 
@@ -22,6 +23,23 @@ const InviteTenantScreen = () => {
   const { propertyId, propertyName, propertyCode } = route.params as RouteParams;
 
   const [inviteUrl, setInviteUrl] = useState('');
+
+  // Dialog state
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmStyle?: 'default' | 'destructive' | 'info';
+  }>({ visible: false, title: '', message: '' });
+
+  const showNotification = (title: string, msg: string, style: 'default' | 'destructive' | 'info' = 'info') => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message: msg,
+      confirmStyle: style,
+    });
+  };
 
   useEffect(() => {
     generateInviteUrl();
@@ -41,10 +59,10 @@ const InviteTenantScreen = () => {
   const handleCopyLink = async () => {
     try {
       await Clipboard.setString(inviteUrl);
-      Alert.alert('Copied!', 'Invite link copied to clipboard');
+      showNotification('Copied!', 'Invite link copied to clipboard', 'default');
     } catch (error) {
       console.error('Error copying link:', error);
-      Alert.alert('Error', 'Failed to copy link');
+      showNotification('Error', 'Failed to copy link', 'destructive');
     }
   };
 
@@ -79,15 +97,15 @@ const InviteTenantScreen = () => {
           await Clipboard.setString(emailContent);
         }
         
-        Alert.alert(
+        showNotification(
           'Email Content Copied',
           'Unable to open email app. The email content has been copied to your clipboard. You can paste it into any email app.',
-          [{ text: 'OK' }]
+          'info'
         );
       }
     } catch (error) {
       console.error('Error sending email:', error);
-      Alert.alert('Error', 'Failed to open email or copy content. Please try the "Copy Link" button.');
+      showNotification('Error', 'Failed to open email or copy content. Please try the "Copy Link" button.', 'destructive');
     }
   };
 
@@ -161,6 +179,15 @@ const InviteTenantScreen = () => {
             <Text style={styles.stepText}>Tenant can start reporting maintenance issues!</Text>
           </View>
         </View>
+
+        <ConfirmDialog
+          visible={dialogConfig.visible}
+          title={dialogConfig.title}
+          message={dialogConfig.message}
+          confirmStyle={dialogConfig.confirmStyle}
+          onConfirm={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+          onCancel={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+        />
     </ScreenContainer>
   );
 };

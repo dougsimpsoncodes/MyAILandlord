@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Issue – Wizard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="nav">
+      <a class="brand" href="./index.html">MyAILandlord</a>
+      <div class="muted">Tenant / Report Issue</div>
+    </div>
+    <div class="container">
+      <div class="grid">
+        <div class="card" style="grid-column: span 8;">
+          <div class="p stack">
+            <div class="title">Step 1 of 3: Choose Area</div>
+            <div class="row" style="gap:8px; flex-wrap: wrap;">
+              <button class="btn secondary">Kitchen</button>
+              <button class="btn secondary">Bathroom</button>
+              <button class="btn secondary">Bedroom</button>
+              <button class="btn secondary">Living Room</button>
+              <button class="btn secondary">Other</button>
+            </div>
+            <div class="title">Step 2: Describe Issue</div>
+            <textarea class="input" rows="4" placeholder="What happened? Include any details that help."></textarea>
+            <div class="field-row">
+              <select class="input"><option>Priority: Medium</option><option>Low</option><option>High</option><option>Urgent</option></select>
+              <input class="input" placeholder="Asset (optional): e.g., Sink, AC" />
+            </div>
+            <div class="row" style="gap:8px;">
+              <button class="btn">Attach Photo</button>
+              <button class="btn secondary">Record Voice Note</button>
+            </div>
+            <div class="row" style="gap:8px; justify-content: flex-end;">
+              <button class="btn secondary">Back</button>
+              <button class="btn">Submit</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 4;">
+          <div class="p stack">
+            <div class="title">Tips</div>
+            <div class="muted">Photos and a short description help resolve issues faster. You can track status on the home screen.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+  </html>
+

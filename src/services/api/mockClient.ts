@@ -256,6 +256,92 @@ export function createMockApiClient(userId: string): UseApiClientReturn {
       await loadState(userId)
       return properties
     },
+    async createProperty(payload: {
+      name: string;
+      address_jsonb: { line1: string; line2?: string; city: string; state: string; zipCode: string };
+      property_type: string;
+      unit?: string;
+      bedrooms?: number;
+      bathrooms?: number;
+    }) {
+      await loadState(userId)
+      const id = `uuid-prop-${properties.length + 1}`
+      const prop: Property = {
+        id,
+        landlord_id: profile?.id || userId,
+        name: payload.name,
+        address: `${payload.address_jsonb.line1}, ${payload.address_jsonb.city}`,
+        property_type: payload.property_type,
+        bedrooms: payload.bedrooms,
+        bathrooms: payload.bathrooms,
+        property_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
+        allow_tenant_signup: true,
+        code_expires_at: undefined as any,
+        created_at: now(),
+        updated_at: now(),
+      }
+      properties = [...properties, prop]
+      await saveState()
+      return prop
+    },
+    async createPropertyAreas(_areas: Array<{ property_id: string; name: string; area_type: string; photos?: string[] }>) {
+      await loadState(userId)
+      return true
+    },
+    async deleteProperty(propertyId: string) {
+      await loadState(userId)
+      properties = properties.filter(p => p.id !== propertyId)
+      await saveState()
+      return true
+    },
+
+    // Property code methods (tenant linking)
+    async validatePropertyCode(propertyCode: string) {
+      await loadState(userId)
+      const prop = properties.find(p => p.property_code === propertyCode.toUpperCase())
+      if (prop) {
+        return {
+          success: true,
+          property_id: prop.id,
+          property_name: prop.name,
+          property_address: prop.address,
+          is_multi_unit: false,
+          wifi_network: null,
+          wifi_password: null,
+        }
+      }
+      return { success: false, error_message: 'Invalid property code' }
+    },
+    async linkTenantToProperty(_propertyCode: string, _unitNumber?: string) {
+      await loadState(userId)
+      return { success: true }
+    },
+    async getTenantProperties() {
+      await loadState(userId)
+      // Return first property as linked for dev mode
+      if (properties.length > 0) {
+        return [{
+          id: 'link-1',
+          unit_number: null,
+          is_active: true,
+          properties: {
+            id: properties[0].id,
+            name: properties[0].name,
+            address: properties[0].address,
+            landlord_id: properties[0].landlord_id,
+            wifi_network: null,
+            wifi_password: null,
+            emergency_contact: null,
+            emergency_phone: null,
+          },
+        }]
+      }
+      return []
+    },
+    async linkTenantToPropertyById(_propertyId: string, _unitNumber?: string) {
+      await loadState(userId)
+      return true
+    },
 
     // Maintenance
     async getMaintenanceRequests() {

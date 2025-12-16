@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Components & States</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="nav">
+      <a class="brand" href="./index.html">MyAILandlord</a>
+      <div class="muted">Design Tokens • Components • States</div>
+    </div>
+    <div class="container">
+      <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+        <div class="card"><div class="p stack"><div class="title">Buttons</div><div class="row"><button class="btn">Primary</button><button class="btn" disabled>Disabled</button><button class="btn secondary">Secondary</button></div></div></div>
+        <div class="card"><div class="p stack"><div class="title">Tags & Status</div><div class="row" style="gap:8px;"><span class="stat">Stat</span><span class="status green">success</span><span class="status yellow">warning</span><span class="status red">danger</span></div></div></div>
+        <div class="card"><div class="p stack"><div class="title">Inputs</div><input class="input" placeholder="Placeholder" /><div class="muted">Include labels, hints, and errors inline.</div></div></div>
+        <div class="card" style="grid-column: span 3;">
+          <div class="p stack">
+            <div class="title">Skeletons</div>
+            <div class="row" style="gap:12px;">
+              <div class="skeleton" style="width:120px;height:16px;"></div>
+              <div class="skeleton" style="width:240px;height:16px;"></div>
+              <div class="skeleton" style="width:80px;height:16px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+  </html>
+

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tenant • Link</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav">
+          <a href="./index.html">🏁 Getting Started</a>
+          <a href="./property-setup.html">🏠 Your Property</a>
+          <a href="./rent.html">💵 Rent</a>
+          <a class="active" href="./tenant-link.html">🔗 Tenant</a>
+          <a href="./maintenance.html">🛠️ Maintenance</a>
+        </div>
+      </aside>
+      <header class="header"><div class="title">Link your tenant</div><button class="btn" onclick="notify('Invite sent')">Send Invite</button></header>
+      <main class="content grid cols-2">
+        <div class="card"><div class="p stack"><div class="title">Share your code</div><div class="muted">Tenant enters your code in their app to link.</div><div class="row"><span class="chip">Code: ABC123</span><button class="btn" onclick="notify('Copied')">Copy</button><button class="btn ghost" onclick="notify('QR shown')">Show QR</button></div><div class="muted">Expires in 90 days • Signup allowed</div></div></div>
+        <div class="card"><div class="p stack"><div class="title">Send an email invite</div><input class="btn ghost" placeholder="Tenant email" /><button class="btn" onclick="notify('Invite sent')">Send</button><div class="muted">We’ll send your code and instructions.</div></div></div>
+        <div class="card" style="grid-column: 1 / span 2;">
+          <div class="p stack"><div class="title">Recent invites</div><table class="table"><thead><tr><th>Email</th><th>Status</th><th>Sent</th></tr></thead><tbody><tr><td>tenant@example.com</td><td><span class="chip">pending</span></td><td>2h</td></tr></tbody></table></div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Action</div>
+  </body>
+  </html>
+

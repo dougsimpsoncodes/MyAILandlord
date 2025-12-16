@@ -1,36 +1,33 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Dimensions, ActivityIndicator, Image, Linking } from 'react-native';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
+import { useApiClient } from '../../services/api/client';
+import log from '../../lib/log';
 
 type CaseDetailScreenRouteProp = RouteProp<LandlordStackParamList, 'CaseDetail'>;
 type CaseDetailScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'CaseDetail'>;
 
 interface DetailedCase {
   id: string;
+  tenantId: string;
   tenantName: string;
-  tenantUnit: string;
-  tenantPhone: string;
   tenantEmail: string;
-  issueType: string;
+  propertyName: string;
+  propertyAddress: string;
+  title: string;
   description: string;
-  location: string;
-  urgency: 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority';
-  status: 'new' | 'in_progress' | 'resolved';
-  submittedAt: string;
-  duration: string;
-  timing: string;
-  mediaUrls: string[];
-  aiSummary: string;
-  estimatedCost: string;
-  preferredTimeSlots: string[];
-  conversationLog: Array<{
-    question: string;
-    answer: string;
-  }>;
+  area: string;
+  asset: string;
+  issueType: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  createdAt: string;
+  images: string[];
 }
 
 const { width } = Dimensions.get('window');
@@ -38,73 +35,109 @@ const { width } = Dimensions.get('window');
 const CaseDetailScreen = () => {
   const route = useRoute<CaseDetailScreenRouteProp>();
   const navigation = useNavigation<CaseDetailScreenNavigationProp>();
+  const api = useApiClient();
   const { caseId } = route.params;
 
-  const [caseData] = useState<DetailedCase>({
-    id: caseId,
-    tenantName: 'Sarah Johnson',
-    tenantUnit: 'Apt 2B',
-    tenantPhone: '+1 (555) 123-4567',
-    tenantEmail: 'sarah.johnson@email.com',
-    issueType: 'Plumbing',
-    description: 'Kitchen faucet is leaking and making strange noises when turned on. Water pressure seems lower than usual and there\'s a constant drip even when fully closed.',
-    location: 'Kitchen',
-    urgency: 'Moderate',
-    status: 'new',
-    submittedAt: '2 hours ago',
-    duration: 'A few days',
-    timing: 'All the time',
-    mediaUrls: ['photo1.jpg', 'photo2.jpg'],
-    aiSummary: 'Based on the description and photos, this appears to be a worn faucet cartridge or O-ring issue. The constant dripping and reduced water pressure are typical signs. A licensed plumber should be able to fix this within 1-2 hours with standard parts.',
-    estimatedCost: '$150-250',
-    preferredTimeSlots: ['Tomorrow 2:00 PM - 6:00 PM', 'Friday 9:00 AM - 1:00 PM'],
-    conversationLog: [
-      {
-        question: 'Where exactly is this issue located?',
-        answer: 'Kitchen',
-      },
-      {
-        question: 'How long has this problem been occurring?',
-        answer: 'A few days',
-      },
-      {
-        question: 'Does this happen at specific times?',
-        answer: 'All the time',
-      },
-      {
-        question: 'How urgent is this repair?',
-        answer: 'Moderate',
-      },
-    ],
-  });
-
+  const [caseData, setCaseData] = useState<DetailedCase | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState<'overview' | 'details' | 'media'>('overview');
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
+  const loadedRef = useRef(false);
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'Emergency':
+  useEffect(() => {
+    // Prevent re-fetching if already loaded for this caseId
+    if (loadedRef.current) return;
+
+    const loadCaseData = async () => {
+      if (!api) return;
+
+      loadedRef.current = true;
+
+      try {
+        setIsLoading(true);
+        const request = await api.getMaintenanceRequestById(caseId);
+
+        if (!request) {
+          setError('Maintenance request not found');
+          return;
+        }
+
+        // Map API data to UI format
+        const mapped: DetailedCase = {
+          id: request.id,
+          tenantId: request.tenant_id,
+          tenantName: request.profiles?.name || 'Unknown Tenant',
+          tenantEmail: request.profiles?.email || '',
+          propertyName: request.properties?.name || 'Unknown Property',
+          propertyAddress: request.properties?.address || '',
+          title: request.title,
+          description: request.description,
+          area: request.area,
+          asset: request.asset,
+          issueType: request.issue_type,
+          priority: request.priority,
+          status: request.status,
+          createdAt: request.created_at,
+          images: request.images || [],
+        };
+
+        setCaseData(mapped);
+        log.info('Loaded maintenance request', { id: caseId });
+      } catch (err) {
+        log.error('Failed to load maintenance request', { error: String(err) });
+        setError('Failed to load maintenance request');
+        loadedRef.current = false; // Allow retry on error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCaseData();
+  }, [api, caseId]);
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
         return '#E74C3C';
-      case 'Very urgent':
+      case 'high':
         return '#E67E22';
-      case 'Moderate':
+      case 'medium':
         return '#F39C12';
-      case 'Can wait':
+      case 'low':
         return '#27AE60';
-      case 'Low priority':
-        return '#95A5A6';
       default:
         return '#3498DB';
     }
   };
 
+  const getPriorityLabel = (priority: string) => {
+    switch (priority) {
+      case 'urgent':
+        return 'Urgent';
+      case 'high':
+        return 'High Priority';
+      case 'medium':
+        return 'Medium';
+      case 'low':
+        return 'Low Priority';
+      default:
+        return priority;
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'new':
+      case 'pending':
         return '#3498DB';
       case 'in_progress':
         return '#F39C12';
-      case 'resolved':
+      case 'completed':
         return '#27AE60';
+      case 'cancelled':
+        return '#95A5A6';
       default:
         return '#95A5A6';
     }
@@ -112,92 +145,140 @@ const CaseDetailScreen = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'new':
+      case 'pending':
         return 'New';
       case 'in_progress':
         return 'In Progress';
-      case 'resolved':
+      case 'completed':
         return 'Resolved';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status;
     }
   };
 
-  const handleSendToVendor = () => {
-    navigation.navigate('SendToVendor', { caseId });
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffMins > 0) {
+      return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    }
+    return 'Just now';
   };
 
   const handleMarkResolved = () => {
-    Alert.alert(
-      'Mark as Resolved',
-      'Are you sure this issue has been resolved?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Mark Resolved',
-          onPress: () => {
-            Alert.alert('Success', 'Case marked as resolved!');
-            navigation.goBack();
-          },
-        },
-      ]
-    );
+    log.info('handleMarkResolved called', { hasApi: !!api, hasCaseData: !!caseData, caseId });
+
+    if (!api || !caseData) {
+      log.warn('handleMarkResolved: missing api or caseData');
+      return;
+    }
+
+    setShowResolveDialog(true);
   };
 
-  const handleCall = () => {
-    Alert.alert('Call Tenant', `Calling ${caseData.tenantPhone}`);
+  const confirmMarkResolved = async () => {
+    if (!api) return;
+
+    setIsResolving(true);
+    try {
+      log.info('Updating maintenance request status to completed', { caseId });
+      await api.updateMaintenanceRequest(caseId, { status: 'completed' });
+      log.info('Successfully marked as resolved', { caseId });
+      setShowResolveDialog(false);
+      navigation.goBack();
+    } catch (err) {
+      log.error('Failed to mark as resolved', { caseId, error: String(err) });
+      setShowResolveDialog(false);
+      Alert.alert('Error', `Failed to update status: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsResolving(false);
+    }
   };
 
   const handleEmail = () => {
-    Alert.alert('Email Tenant', `Opening email to ${caseData.tenantEmail}`);
+    if (caseData?.tenantEmail) {
+      Linking.openURL(`mailto:${caseData.tenantEmail}`);
+    }
   };
+
+  const handleMessageTenant = () => {
+    if (caseData?.tenantId) {
+      navigation.navigate('LandlordChat', {
+        tenantId: caseData.tenantId,
+        tenantName: caseData.tenantName,
+        tenantEmail: caseData.tenantEmail,
+      });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <ScreenContainer
+        title="Case Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable={false}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={styles.loadingText}>Loading case details...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (error || !caseData) {
+    return (
+      <ScreenContainer
+        title="Case Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable={false}
+      >
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#E74C3C" />
+          <Text style={styles.errorText}>{error || 'Failed to load case'}</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   const renderOverview = () => (
     <View style={styles.tabContent}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>AI Analysis</Text>
-        <View style={styles.aiSummaryCard}>
-          <View style={styles.aiHeader}>
-            <Ionicons name="sparkles" size={24} color="#9B59B6" />
-            <Text style={styles.aiTitle}>AI Summary</Text>
-          </View>
-          <Text style={styles.aiText}>{caseData.aiSummary}</Text>
-          <View style={styles.costEstimate}>
-            <Text style={styles.costLabel}>Estimated Cost:</Text>
-            <Text style={styles.costValue}>{caseData.estimatedCost}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferred Time Slots</Text>
-        <View style={styles.timeSlotsContainer}>
-          {caseData.preferredTimeSlots.map((slot, index) => (
-            <View key={index} style={styles.timeSlot}>
-              <Ionicons name="time" size={16} color="#3498DB" />
-              <Text style={styles.timeSlotText}>{slot}</Text>
-            </View>
-          ))}
+        <Text style={styles.sectionTitle}>Issue Summary</Text>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryText}>{caseData.description}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleCall}>
-            <Ionicons name="call" size={24} color="#3498DB" />
-            <Text style={styles.quickActionText}>Call Tenant</Text>
+          <TouchableOpacity style={styles.quickActionButton} onPress={handleMessageTenant}>
+            <Ionicons name="chatbubble" size={24} color="#9B59B6" />
+            <Text style={styles.quickActionText}>Message Tenant</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.quickActionButton} onPress={handleEmail}>
             <Ionicons name="mail" size={24} color="#3498DB" />
             <Text style={styles.quickActionText}>Email Tenant</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleSendToVendor}>
-            <Ionicons name="business" size={24} color="#F39C12" />
-            <Text style={styles.quickActionText}>Send to Vendor</Text>
+          <TouchableOpacity style={styles.quickActionButton} onPress={handleMarkResolved}>
+            <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
+            <Text style={styles.quickActionText}>Mark Resolved</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -210,89 +291,94 @@ const CaseDetailScreen = () => {
         <Text style={styles.sectionTitle}>Issue Details</Text>
         <View style={styles.detailsCard}>
           <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Title</Text>
+            <Text style={styles.detailValue}>{caseData.title}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Area</Text>
+            <Text style={styles.detailValue}>{caseData.area}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Asset</Text>
+            <Text style={styles.detailValue}>{caseData.asset}</Text>
+          </View>
+          <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Issue Type</Text>
             <Text style={styles.detailValue}>{caseData.issueType}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Location</Text>
-            <Text style={styles.detailValue}>{caseData.location}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Duration</Text>
-            <Text style={styles.detailValue}>{caseData.duration}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Timing</Text>
-            <Text style={styles.detailValue}>{caseData.timing}</Text>
-          </View>
-          <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Submitted</Text>
-            <Text style={styles.detailValue}>{caseData.submittedAt}</Text>
+            <Text style={styles.detailValue}>{formatTimeAgo(caseData.createdAt)}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Q&A Log</Text>
-        <View style={styles.conversationLog}>
-          {caseData.conversationLog.map((item, index) => (
-            <View key={index} style={styles.conversationItem}>
-              <View style={styles.questionContainer}>
-                <Ionicons name="help-circle" size={16} color="#3498DB" />
-                <Text style={styles.questionText}>{item.question}</Text>
-              </View>
-              <View style={styles.answerContainer}>
-                <Ionicons name="chatbubble" size={16} color="#27AE60" />
-                <Text style={styles.answerText}>{item.answer}</Text>
-              </View>
-            </View>
-          ))}
+        <Text style={styles.sectionTitle}>Property</Text>
+        <View style={styles.detailsCard}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Name</Text>
+            <Text style={styles.detailValue}>{caseData.propertyName}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Address</Text>
+            <Text style={styles.detailValue}>{caseData.propertyAddress}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Tenant</Text>
+        <View style={styles.detailsCard}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Name</Text>
+            <Text style={styles.detailValue}>{caseData.tenantName}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Email</Text>
+            <Text style={styles.detailValue}>{caseData.tenantEmail}</Text>
+          </View>
         </View>
       </View>
     </View>
   );
+
+  const handleImageError = (index: number, url: string) => {
+    log.warn('Image failed to load', { index, url });
+    setFailedImages(prev => new Set(prev).add(index));
+  };
 
   const renderMedia = () => (
     <View style={styles.tabContent}>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Attached Media</Text>
-        <View style={styles.mediaGrid}>
-          {caseData.mediaUrls.map((url, index) => (
-            <TouchableOpacity key={index} style={styles.mediaItem}>
-              <View style={styles.mediaPlaceholder}>
-                <Ionicons name="image" size={40} color="#95A5A6" />
-                <Text style={styles.mediaLabel}>Photo {index + 1}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <Text style={styles.mediaNote}>
-          Tap any image to view full size. These photos help vendors understand the issue better.
-        </Text>
+        <Text style={styles.sectionTitle}>Attached Photos ({caseData.images.length})</Text>
+        {caseData.images.length === 0 ? (
+          <View style={styles.noMediaCard}>
+            <Ionicons name="images-outline" size={40} color="#95A5A6" />
+            <Text style={styles.noMediaText}>No photos attached</Text>
+          </View>
+        ) : (
+          <View style={styles.mediaGrid}>
+            {caseData.images.map((url, index) => (
+              <TouchableOpacity key={index} style={styles.mediaItem}>
+                {failedImages.has(index) ? (
+                  <View style={styles.failedImagePlaceholder}>
+                    <Ionicons name="image-outline" size={32} color="#95A5A6" />
+                    <Text style={styles.failedImageText}>Image unavailable</Text>
+                  </View>
+                ) : (
+                  <Image
+                    source={{ uri: url }}
+                    style={styles.mediaImage}
+                    resizeMode="contain"
+                    onError={() => handleImageError(index, url)}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
-    </View>
-  );
-
-  // Footer buttons
-  const footerButtons = (
-    <View style={styles.footer}>
-      <TouchableOpacity
-        style={styles.secondaryButton}
-        onPress={handleSendToVendor}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="mail" size={20} color="#F39C12" />
-        <Text style={styles.secondaryButtonText}>Send to Vendor</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={handleMarkResolved}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-        <Text style={styles.primaryButtonText}>Mark Resolved</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -304,13 +390,12 @@ const CaseDetailScreen = () => {
       userRole="landlord"
       scrollable={false}
       padded={false}
-      bottomContent={footerButtons}
     >
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.tenantInfo}>
-            <Text style={styles.tenantName}>{caseData.tenantName}</Text>
-            <Text style={styles.tenantUnit}>{caseData.tenantUnit}</Text>
+            <Text style={styles.tenantName}>{caseData.propertyAddress || caseData.propertyName}</Text>
+            <Text style={styles.propertyName}>Reported by {caseData.tenantName}</Text>
           </View>
           <View style={styles.statusContainer}>
             <View
@@ -323,24 +408,24 @@ const CaseDetailScreen = () => {
             </View>
             <View
               style={[
-                styles.urgencyBadge,
-                { borderColor: getUrgencyColor(caseData.urgency) },
+                styles.priorityBadge,
+                { borderColor: getPriorityColor(caseData.priority) },
               ]}
             >
               <Text
                 style={[
-                  styles.urgencyText,
-                  { color: getUrgencyColor(caseData.urgency) },
+                  styles.priorityText,
+                  { color: getPriorityColor(caseData.priority) },
                 ]}
               >
-                {caseData.urgency}
+                {getPriorityLabel(caseData.priority)}
               </Text>
             </View>
           </View>
         </View>
-        
-        <Text style={styles.issueDescription} numberOfLines={2}>
-          {caseData.description}
+
+        <Text style={styles.issueTitle} numberOfLines={2}>
+          {caseData.title}
         </Text>
       </View>
 
@@ -380,11 +465,44 @@ const CaseDetailScreen = () => {
         {selectedTab === 'details' && renderDetails()}
         {selectedTab === 'media' && renderMedia()}
       </ScrollView>
+
+      <ConfirmDialog
+        visible={showResolveDialog}
+        title="Mark as Resolved"
+        message="Are you sure this maintenance issue has been resolved? The tenant will be notified."
+        confirmText="Mark Resolved"
+        cancelText="Cancel"
+        onConfirm={confirmMarkResolved}
+        onCancel={() => setShowResolveDialog(false)}
+        isLoading={isResolving}
+      />
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#7F8C8D',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#E74C3C',
+    textAlign: 'center',
+  },
   header: {
     backgroundColor: '#FFFFFF',
     padding: 20,
@@ -404,8 +522,8 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginBottom: 4,
   },
-  tenantUnit: {
-    fontSize: 16,
+  propertyName: {
+    fontSize: 14,
     color: '#7F8C8D',
   },
   statusContainer: {
@@ -422,21 +540,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
   },
-  urgencyBadge: {
+  priorityBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
     backgroundColor: '#FFFFFF',
   },
-  urgencyText: {
+  priorityText: {
     fontSize: 12,
     fontWeight: '600',
   },
-  issueDescription: {
+  issueTitle: {
     fontSize: 16,
     color: '#2C3E50',
     lineHeight: 22,
+    fontWeight: '500',
   },
   tabsContainer: {
     flexDirection: 'row',
@@ -480,65 +599,17 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginBottom: 12,
   },
-  aiSummaryCard: {
-    backgroundColor: '#F8F5FF',
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E8D5FF',
-  },
-  aiHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  aiTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#9B59B6',
-  },
-  aiText: {
-    fontSize: 14,
-    color: '#8E44AD',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  costEstimate: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E8D5FF',
-  },
-  costLabel: {
-    fontSize: 14,
-    color: '#9B59B6',
-    fontWeight: '500',
-  },
-  costValue: {
-    fontSize: 16,
-    color: '#27AE60',
-    fontWeight: 'bold',
-  },
-  timeSlotsContainer: {
-    gap: 8,
-  },
-  timeSlot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
-    borderRadius: 8,
-    gap: 8,
-    borderWidth: 1,
     borderColor: '#E1E8ED',
   },
-  timeSlotText: {
+  summaryText: {
     fontSize: 14,
     color: '#2C3E50',
-    fontWeight: '500',
+    lineHeight: 20,
   },
   quickActions: {
     flexDirection: 'row',
@@ -554,11 +625,6 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    
-    
-    
-    
-    elevation: 2,
   },
   quickActionText: {
     fontSize: 12,
@@ -570,11 +636,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     gap: 12,
-    
-    
-    
-    
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
   },
   detailRow: {
     flexDirection: 'row',
@@ -590,43 +653,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2C3E50',
     fontWeight: '600',
-  },
-  conversationLog: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    gap: 16,
-    
-    
-    
-    
-    elevation: 2,
-  },
-  conversationItem: {
-    gap: 8,
-  },
-  questionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  questionText: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
     flex: 1,
-  },
-  answerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingLeft: 24,
-  },
-  answerText: {
-    fontSize: 14,
-    color: '#27AE60',
-    fontWeight: '600',
-    flex: 1,
+    textAlign: 'right',
   },
   mediaGrid: {
     flexDirection: 'row',
@@ -637,69 +665,38 @@ const styles = StyleSheet.create({
   mediaItem: {
     width: (width - 64) / 2,
   },
-  mediaPlaceholder: {
+  mediaImage: {
     aspectRatio: 1,
-    backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    justifyContent: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  noMediaCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 32,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E1E8ED',
-    gap: 8,
   },
-  mediaLabel: {
-    fontSize: 12,
-    color: '#7F8C8D',
-    fontWeight: '500',
+  noMediaText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#95A5A6',
   },
-  mediaNote: {
+  failedImagePlaceholder: {
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  failedImageText: {
+    marginTop: 8,
     fontSize: 12,
     color: '#95A5A6',
-    fontStyle: 'italic',
     textAlign: 'center',
-  },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E1E8ED',
-    gap: 12,
-  },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#FFF9E6',
-    borderWidth: 1,
-    borderColor: '#F4D03F',
-    gap: 8,
-  },
-  secondaryButtonText: {
-    color: '#F39C12',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  primaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#27AE60',
-    gap: 8,
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-    elevation: 4,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

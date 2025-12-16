@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Photo } from '../../types/photo';
+import ConfirmDialog from '../shared/ConfirmDialog';
 
 interface PhotoPreviewModalProps {
   photo: Photo | null;
@@ -45,28 +46,18 @@ export const PhotoPreviewModal: React.FC<PhotoPreviewModalProps> = ({
 }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   if (!photo) return null;
 
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to delete this photo? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            onDelete();
-            onClose();
-          },
-        },
-      ]
-    );
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    setShowDeleteDialog(false);
+    onDelete();
+    onClose();
   };
 
   const handleReplace = () => {
@@ -254,6 +245,17 @@ export const PhotoPreviewModal: React.FC<PhotoPreviewModalProps> = ({
             </View>
           </SafeAreaView>
         )}
+
+        <ConfirmDialog
+          visible={showDeleteDialog}
+          title="Delete Photo"
+          message="Are you sure you want to delete this photo? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          confirmStyle="destructive"
+          onConfirm={confirmDelete}
+          onCancel={() => setShowDeleteDialog(false)}
+        />
       </View>
     </Modal>
   );

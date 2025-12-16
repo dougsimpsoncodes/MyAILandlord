@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { RoleContext } from '../../context/RoleContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 interface ProfileScreenProps {
   route?: {
@@ -35,31 +36,28 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const { user, signOut } = useAppAuth();
   const { userRole, clearRole } = useContext(RoleContext);
   const role = route?.params?.userRole || userRole;
+  const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const isLandlord = role === 'landlord';
   const accentColor = isLandlord ? '#3498DB' : '#2ECC71';
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await clearRole();
-              await signOut();
-            } catch (error) {
-              console.error('Error signing out:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    setShowSignOutDialog(true);
+  };
+
+  const confirmSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await clearRole();
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+      setShowSignOutDialog(false);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   const accountMenuItems: MenuItem[] = [
@@ -182,6 +180,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
 
         {/* App Version */}
         <Text style={styles.versionText}>MyAI Landlord v1.0.0</Text>
+
+        <ConfirmDialog
+          visible={showSignOutDialog}
+          title="Sign Out"
+          message="Are you sure you want to sign out of your account?"
+          confirmText="Sign Out"
+          cancelText="Cancel"
+          confirmStyle="destructive"
+          onConfirm={confirmSignOut}
+          onCancel={() => setShowSignOutDialog(false)}
+          isLoading={isSigningOut}
+        />
     </ScreenContainer>
   );
 };

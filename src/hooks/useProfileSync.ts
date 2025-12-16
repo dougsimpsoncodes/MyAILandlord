@@ -61,17 +61,18 @@ export function useProfileSync() {
         const ex = await api.getUserProfile()
         
         log.info('🔄 useProfileSync: existing profile:', ex);
-        
-        // If coming from invite (userRole = tenant), always use tenant. Otherwise use existing or default to landlord.
-        const finalRole = userRole === 'tenant' ? 'tenant' : (ex?.role || 'landlord');
-        log.info('🔄 useProfileSync: role determination:', { existingRole: ex?.role, contextRole: userRole, finalRole, isInviteFlow: userRole === 'tenant' });
+
+        // Database role is the source of truth. Only use context role for new users without a DB role.
+        const finalRole = ex?.role || userRole || 'landlord';
+        log.info('🔄 useProfileSync: role determination:', { existingRole: ex?.role, contextRole: userRole, finalRole });
         
         if (!ex) {
           await api.createUserProfile({ email, name, avatarUrl, role: finalRole })
-        } else {
-          // Update role if necessary; set avatar/name if changed
+        } else if (!ex.role) {
+          // Only update role if user doesn't have one set yet
           await api.updateUserProfile({ role: finalRole, name, avatarUrl, email })
         }
+        // If profile exists with a role, don't overwrite it - database is source of truth
         
         log.info('🔄 useProfileSync: profile upserted successfully with role:', finalRole);
         

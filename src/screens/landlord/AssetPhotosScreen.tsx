@@ -458,16 +458,16 @@ const AssetPhotosScreen = () => {
   if (!currentAsset) {
     return (
       <ScreenContainer
-        title="Asset Photos"
+        title="Item Photos"
         showBackButton
         onBackPress={() => navigation.goBack()}
         userRole="landlord"
         scrollable={false}
       >
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ResponsiveTitle>No Assets to Photograph</ResponsiveTitle>
+          <ResponsiveTitle>No Items to Photograph</ResponsiveTitle>
           <ResponsiveBody style={{ marginTop: 16, textAlign: 'center' }}>
-            No assets were configured in the previous step.
+            No items were configured in the previous step.
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
@@ -546,8 +546,8 @@ const AssetPhotosScreen = () => {
 
   return (
     <ScreenContainer
-      title="Asset Photos"
-      subtitle="Document each asset with photos for maintenance records"
+      title="Item Photos"
+      subtitle="Document each item with photos for maintenance records"
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Properties • MyAILandlord</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app" >
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav-group"><div class="nav-label">Main</div><div class="nav-links">
+          <a class="nav-link" href="./index.html">🏠 Dashboard</a>
+          <a class="nav-link active" href="./landlord-properties.html">🏢 Properties</a>
+          <a class="nav-link" href="./maintenance-kanban.html">🛠️ Maintenance</a>
+          <a class="nav-link" href="./tenants.html">👥 Tenants</a>
+        </div></div>
+      </aside>
+
+      <header class="header">
+        <div class="search">🔎 <input placeholder="Search properties…" /></div>
+        <div class="header-actions"><button class="btn ghost" onclick="toggleTheme()">Theme</button><button class="btn">+ Add Property</button><div class="avatar"></div></div>
+      </header>
+
+      <main class="content grid">
+        <div class="card">
+          <div class="p toolbar">
+            <div class="title">Properties</div>
+            <div class="row"><button class="btn ghost">Filter</button><button class="btn ghost">Export</button></div>
+          </div>
+          <div class="p">
+            <table class="table">
+              <thead><tr><th>Name</th><th>Address</th><th>Units</th><th>Open</th><th>Code</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>Sunset Apartments</td><td>123 Main St</td><td>12</td><td>3</td><td><span class="chip">ABC123</span></td><td class="row-actions"><a class="btn ghost" href="./landlord-property-detail.html">Open</a></td></tr>
+                <tr><td>Maple Townhomes</td><td>45 Oak Ave</td><td>6</td><td>1</td><td><span class="chip">DKQ572</span></td><td class="row-actions"><a class="btn ghost" href="./landlord-property-detail.html">Open</a></td></tr>
+                <tr><td>Willow Condo</td><td>9 Lake Rd</td><td>1</td><td>0</td><td><span class="chip">PLM224</span></td><td class="row-actions"><a class="btn ghost" href="./landlord-property-detail.html">Open</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Action completed</div>
+  </body>
+  </html>
+

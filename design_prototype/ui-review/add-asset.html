@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Add Asset – Improved</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script>
+      function simulateSave() {
+        const toast = document.getElementById('toast');
+        toast.classList.add('show');
+        toast.textContent = 'Saved: Fridge (good, Other)';
+        setTimeout(()=> toast.classList.remove('show'), 2000);
+      }
+    </script>
+  </head>
+  <body>
+    <div class="nav">
+      <a class="brand" href="./index.html">MyAILandlord</a>
+      <div class="muted">Shared / Add Asset</div>
+    </div>
+    <div class="container">
+      <div class="grid" style="grid-template-columns: 2fr 1fr; gap: 16px;">
+        <div class="card">
+          <div class="p stack">
+            <div class="title">Add Asset</div>
+            <div class="field-row">
+              <div class="field"><label class="muted">Area</label><select class="input"><option>Kitchen</option><option>Bathroom</option><option>Bedroom</option></select></div>
+              <div class="field"><label class="muted">Asset Name</label><input class="input" placeholder="Fridge" /></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="muted">Type</label><select class="input"><option>appliance</option><option>fixture</option><option>system</option><option>structure</option><option>furniture</option><option selected>other</option></select></div>
+              <div class="field"><label class="muted">Category</label><input class="input" placeholder="Other" /></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label class="muted">Condition</label><select class="input"><option>excellent</option><option selected>good</option><option>fair</option><option>poor</option><option>needs_replacement</option></select></div>
+              <div class="field"><label class="muted">Installation Date</label><input class="input" type="date" /></div>
+            </div>
+            <div class="row" style="gap:8px;">
+              <button class="btn secondary">Add Photo</button>
+              <button class="btn secondary">Scan Barcode</button>
+            </div>
+            <div class="row" style="gap:8px; justify-content: flex-end;">
+              <button class="btn secondary">Cancel</button>
+              <button class="btn" onclick="simulateSave()">Save Asset</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="p stack">
+            <div class="title">Validation & States</div>
+            <div class="empty">Save is enabled when Area + Name are provided. Show inline errors, keep values on error, toast on success.</div>
+            <div class="title">Empty State</div>
+            <div class="empty">No assets yet — Add your first asset to track condition and warranty.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="toast" class="toast">Saved</div>
+  </body>
+  </html>
+

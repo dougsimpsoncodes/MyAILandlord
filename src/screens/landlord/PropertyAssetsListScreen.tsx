@@ -800,7 +800,7 @@ const PropertyAssetsListScreen = () => {
 
   return (
     <ScreenContainer
-      title="Photos & Assets"
+      title="Rooms & Inventory"
       subtitle="Step 3 of 4"
       showBackButton
       onBackPress={() => navigation.goBack()}

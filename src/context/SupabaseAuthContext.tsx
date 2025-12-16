@@ -15,8 +15,9 @@ interface AuthContextValue {
   user: AppUser | null;
   isLoading: boolean;
   isSignedIn: boolean;
-  signOut: () => Promise<void>;
+  signOut: (options?: { scope?: 'global' | 'local' | 'others' }) => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   session: Session | null;
 }
 
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextValue>({
   isSignedIn: false,
   signOut: async () => {},
   updateProfile: async () => {},
+  resetPassword: async () => {},
   session: null,
 });
 
@@ -78,13 +80,31 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
     return () => subscription.unsubscribe();
   }, [authDisabled]);
 
-  const signOut = async () => {
+  const signOut = async (options?: { scope?: 'global' | 'local' | 'others' }) => {
     if (authDisabled) {
       return;
     }
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+    await supabase.auth.signOut(options);
+    // Only clear local state if signing out current session
+    if (!options?.scope || options.scope !== 'others') {
+      setUser(null);
+      setSession(null);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    if (authDisabled) {
+      log.info('Password reset skipped in auth-disabled mode');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'myailandlord://reset-password',
+    });
+    if (error) {
+      log.error('Failed to send password reset email', { error: error.message });
+      throw error;
+    }
+    log.info('Password reset email sent', { email });
   };
 
   const updateProfile = async (data: { name?: string; phone?: string }) => {
@@ -123,6 +143,7 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
     isSignedIn: authDisabled ? true : !!session,
     signOut,
     updateProfile,
+    resetPassword,
     session,
   };
 

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MyAILandlord • Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav-group">
+          <div class="nav-label">Main</div>
+          <div class="nav-links">
+            <a class="nav-link active" href="./index.html">🏠 Dashboard</a>
+            <a class="nav-link" href="./landlord-properties.html">🏢 Properties <span class="badge">12</span></a>
+            <a class="nav-link" href="./maintenance-kanban.html">🛠️ Maintenance <span class="badge">4</span></a>
+            <a class="nav-link" href="./tenants.html">👥 Tenants</a>
+          </div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Tenant Portal</div>
+          <div class="nav-links">
+            <a class="nav-link" href="./tenant-home.html">🏡 Home</a>
+            <a class="nav-link" href="./tenant-requests.html">📨 Requests</a>
+          </div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Other</div>
+          <div class="nav-links">
+            <a class="nav-link" href="./settings.html">⚙️ Settings</a>
+            <a class="nav-link" href="./auth.html">🔐 Auth</a>
+            <a class="nav-link" href="./components.html">🧩 Components</a>
+          </div>
+        </div>
+      </aside>
+
+      <header class="header">
+        <div class="search">
+          🔎 <input placeholder="Search properties, tenants, requests" />
+        </div>
+        <div class="header-actions">
+          <button class="btn ghost" onclick="toggleTheme()">Toggle Theme</button>
+          <button class="btn" onclick="notify('Property created')">+ New Property</button>
+          <div class="avatar"></div>
+        </div>
+      </header>
+
+      <main class="content grid">
+        <div class="grid cols-4">
+          <div class="card"><div class="p kpi"><div><div class="muted">Open Requests</div><div class="value">8</div></div><div class="trend up">+2</div></div></div>
+          <div class="card"><div class="p kpi"><div><div class="muted">Linked Tenants</div><div class="value">34</div></div><div class="trend up">+3</div></div></div>
+          <div class="card"><div class="p kpi"><div><div class="muted">Avg. Resolve</div><div class="value">2.3d</div></div><div class="trend down">-0.4d</div></div></div>
+          <div class="card"><div class="p kpi"><div><div class="muted">Properties</div><div class="value">12</div></div><div class="trend up">+1</div></div></div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="card">
+            <div class="p title-row">
+              <div class="title">Activity</div>
+              <div class="row">
+                <span class="chip">7d</span><span class="chip">30d</span><span class="chip green">YTD</span>
+              </div>
+            </div>
+            <div class="p">
+              <div class="chart">[Chart Placeholder]</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="p title-row">
+              <div class="title">Quick Actions</div>
+              <div class="row"><button class="btn">Invite Tenant</button><button class="btn ghost">Generate Code</button></div>
+            </div>
+            <div class="p stack">
+              <div class="row"><span class="chip">ABC123</span><span class="muted">Expires in 90d</span></div>
+              <div class="row"><button class="btn">Copy</button><button class="btn ghost">Show QR</button></div>
+              <div class="muted">Use property codes to link tenants quickly. Clear states: valid, expired, revoked.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="p title-row">
+            <div class="title">Recent Requests</div>
+            <div class="row"><button class="btn ghost" onclick="location.href='maintenance-kanban.html'">View Kanban</button></div>
+          </div>
+          <div class="p">
+            <table class="table">
+              <thead>
+                <tr><th>Title</th><th>Property</th><th>Tenant</th><th>Status</th><th>Updated</th><th></th></tr>
+              </thead>
+              <tbody>
+                <tr><td>AC not cooling</td><td>Sunset Apts</td><td>J. Smith</td><td><span class="chip red">pending</span></td><td>2h</td><td class="row-actions"><button class="btn ghost">Open</button></td></tr>
+                <tr><td>Leaky sink</td><td>Maple TH</td><td>A. Lee</td><td><span class="chip yellow">in_progress</span></td><td>5h</td><td class="row-actions"><button class="btn ghost">Open</button></td></tr>
+                <tr><td>Smoke alarm</td><td>Willow Condo</td><td>K. Chen</td><td><span class="chip green">completed</span></td><td>1d</td><td class="row-actions"><button class="btn ghost">Open</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Action completed</div>
+  </body>
+  </html>
+

@@ -23,7 +23,6 @@ import InviteAcceptScreen from '../screens/tenant/InviteAcceptScreen';
 import LandlordHomeScreen from '../screens/landlord/LandlordHomeScreen';
 import DashboardScreen from '../screens/landlord/DashboardScreen';
 import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
-import SendToVendorScreen from '../screens/landlord/SendToVendorScreen';
 import LandlordCommunicationScreen from '../screens/landlord/LandlordCommunicationScreen';
 import PropertyManagementScreen from '../screens/landlord/PropertyManagementScreen';
 import PropertyDetailsScreen from '../screens/landlord/PropertyDetailsScreen';
@@ -41,6 +40,7 @@ import AssetDetailsScreen from '../screens/landlord/AssetDetailsScreen';
 import AssetPhotosScreen from '../screens/landlord/AssetPhotosScreen';
 import ReviewSubmitScreen from '../screens/landlord/ReviewSubmitScreen';
 import InviteTenantScreen from '../screens/landlord/InviteTenantScreen';
+import LandlordChatScreen from '../screens/landlord/LandlordChatScreen';
 
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
@@ -82,11 +82,19 @@ export type TenantStackParamList = {
       title: string;
     }
   };
-  SubmissionSuccess: undefined;
+  SubmissionSuccess: {
+    summary?: {
+      title: string;
+      area: string;
+      asset: string;
+      issueType: string;
+      priority: string;
+    };
+  } | undefined;
   FollowUp: { issueId: string };
   ConfirmSubmission: { issueId: string };
   CommunicationHub: undefined;
-  PropertyInfo: undefined;
+  PropertyInfo: { address?: string } | undefined;
   PropertyCodeEntry: undefined;
   PropertyInviteAccept: { propertyId?: string; property?: string };
   UnitSelection: {
@@ -119,7 +127,6 @@ export type LandlordStackParamList = {
   Home: undefined;
   Dashboard: undefined;
   CaseDetail: { caseId: string };
-  SendToVendor: { caseId: string };
   Communications: undefined;
   PropertyManagement: undefined;
   PropertyDetails: { property: { id: string; name: string; address: string; type: string; tenants: number; activeRequests: number; } };
@@ -147,6 +154,11 @@ export type LandlordStackParamList = {
     propertyId: string;
     propertyName: string;
     propertyCode?: string;
+  };
+  LandlordChat: {
+    tenantId: string;
+    tenantName: string;
+    tenantEmail?: string;
   };
 };
 
@@ -180,7 +192,6 @@ const LandlordHomeStackNavigator = () => (
     <LandlordHomeStack.Screen name="LandlordHomeMain" component={LandlordHomeScreen} />
     <LandlordHomeStack.Screen name="Dashboard" component={DashboardScreen} />
     <LandlordHomeStack.Screen name="CaseDetail" component={CaseDetailScreen} />
-    <LandlordHomeStack.Screen name="SendToVendor" component={SendToVendorScreen} />
     <LandlordHomeStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
     <LandlordHomeStack.Screen name="PropertyManagement" component={PropertyManagementScreen} />
     <LandlordHomeStack.Screen name="AddProperty" component={AddPropertyScreen} />
@@ -220,6 +231,7 @@ const LandlordMessagesStack = createNativeStackNavigator();
 const LandlordMessagesStackNavigator = () => (
   <LandlordMessagesStack.Navigator screenOptions={{ headerShown: false }}>
     <LandlordMessagesStack.Screen name="LandlordMessagesMain" component={LandlordCommunicationScreen} />
+    <LandlordMessagesStack.Screen name="LandlordChat" component={LandlordChatScreen} />
   </LandlordMessagesStack.Navigator>
 );
 
@@ -229,7 +241,7 @@ const LandlordRequestsStackNavigator = () => (
   <LandlordRequestsStack.Navigator screenOptions={{ headerShown: false }}>
     <LandlordRequestsStack.Screen name="LandlordRequestsMain" component={DashboardScreen} />
     <LandlordRequestsStack.Screen name="CaseDetail" component={CaseDetailScreen} />
-    <LandlordRequestsStack.Screen name="SendToVendor" component={SendToVendorScreen} />
+    <LandlordRequestsStack.Screen name="LandlordChat" component={LandlordChatScreen} />
   </LandlordRequestsStack.Navigator>
 );
 
@@ -272,7 +284,7 @@ const LandlordNavigator = () => {
         name="LandlordRequests"
         component={LandlordRequestsStackNavigator}
         options={{
-          tabBarLabel: 'Maintenance',
+          tabBarLabel: 'Requests',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="construct" size={size} color={color} />
           ),
@@ -331,6 +343,7 @@ const TenantHomeStackNavigator = () => (
     <TenantHomeStack.Screen name="PropertyWelcome" component={PropertyWelcomeScreen} />
     <TenantHomeStack.Screen name="InviteAccept" component={InviteAcceptScreen} />
     <TenantHomeStack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
+    <TenantHomeStack.Screen name="CommunicationHub" component={CommunicationHubScreen} />
   </TenantHomeStack.Navigator>
 );
 

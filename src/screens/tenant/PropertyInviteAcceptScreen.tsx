@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../navigation/AuthStack';
-import { TenantStackParamList } from '../../navigation/MainStack';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
@@ -15,17 +12,12 @@ import { useRole } from '../../context/RoleContext';
 import * as Linking from 'expo-linking';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
 
-// Union type to handle both AuthStack and TenantStack navigation
-type PropertyInviteAcceptNavigationProp = 
-  | NativeStackNavigationProp<AuthStackParamList, 'PropertyInviteAccept'>
-  | NativeStackNavigationProp<TenantStackParamList, 'PropertyInviteAccept'>;
-
 interface RouteParams {
   propertyId: string;
 }
 
 const PropertyInviteAcceptScreen = () => {
-  const navigation = useNavigation<PropertyInviteAcceptNavigationProp>();
+  const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAppAuth();
   const { supabase } = useSupabaseWithAuth();
@@ -112,7 +104,8 @@ const PropertyInviteAcceptScreen = () => {
   const fetchPropertyDetails = async () => {
     try {
       setLoading(true);
-      
+      setError(''); // Clear any previous errors
+
       // Use the property-invite-preview Edge Function for safe property access
       const { data: propertyData, error } = await supabase.functions.invoke(
         'property-invite-preview',
@@ -155,22 +148,37 @@ const PropertyInviteAcceptScreen = () => {
     log.info('🎯 Accept button clicked!', { hasProperty: !!property, hasUser: !!user });
 
     if (!property) {
-      Alert.alert('Error', 'Property information is missing. Please try again.');
+      // Use window.alert on web, Alert.alert on native
+      const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
+      if (isWeb) {
+        window.alert('Property information is missing. Please try again.');
+      } else {
+        Alert.alert('Error', 'Property information is missing. Please try again.');
+      }
       return;
     }
 
     // If user is not authenticated, save pending invite and redirect to signup
     if (!user) {
       log.info('🔄 Redirecting to signup - user not authenticated');
-      if (propertyId) {
-        await PendingInviteService.savePendingInvite(propertyId);
-        log.info('📥 Saved pending invite before redirect to signup');
+      // Use propertyId from state, or fall back to property.id from the loaded property data
+      const idToSave = propertyId || property?.id;
+      if (idToSave) {
+        await PendingInviteService.savePendingInvite(idToSave);
+        log.info('📥 Saved pending invite before redirect to signup:', idToSave);
+      } else {
+        log.warn('⚠️ No property ID available to save for pending invite');
       }
-      navigation.navigate('SignUp');
+      navigation.dispatch(CommonActions.navigate({ name: 'SignUp' }));
       return;
     }
 
     log.info('🚀 Starting invite acceptance process for authenticated user');
+
+    if (!apiClient) {
+      Alert.alert('Error', 'Unable to connect to services. Please try again.');
+      return;
+    }
 
     try {
       log.info('🔧 Setting loading state...');
@@ -195,7 +203,7 @@ const PropertyInviteAcceptScreen = () => {
             'Already Connected',
             `You're already connected to ${property?.name || 'this property'}`,
             [
-              { text: 'Continue', onPress: () => navigation.navigate('Welcome') }
+              { text: 'Continue', onPress: () => navigation.dispatch(CommonActions.navigate({ name: 'Welcome' })) }
             ]
           );
           return;
@@ -209,9 +217,14 @@ const PropertyInviteAcceptScreen = () => {
       // Clear any error state
       setError('');
       
-      // Navigate to home URL to trigger AppNavigator to show tenant dashboard
-      log.info('🚀 Navigating to home to show tenant dashboard');
-      window.location.href = window.location.origin;
+      // Reset navigation stack to go to tenant home
+      log.info('🚀 Navigating to tenant dashboard');
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'TenantTabs' }],
+        })
+      );
       log.info('✅ Navigation to tenant dashboard initiated');
     } catch (error) {
       log.error('Error accepting invite:', error as any);
@@ -224,7 +237,7 @@ const PropertyInviteAcceptScreen = () => {
 
   const handleDecline = () => {
     // Direct navigation without confirmation - smooth UX
-    navigation.navigate('Welcome');
+    navigation.dispatch(CommonActions.navigate({ name: 'Welcome' }));
   };
 
   if (loading && !property) {
@@ -247,7 +260,7 @@ const PropertyInviteAcceptScreen = () => {
       <ScreenContainer
         title="Invalid Invite"
         showBackButton
-        onBackPress={() => navigation.navigate('Welcome')}
+        onBackPress={() => navigation.dispatch(CommonActions.navigate({ name: 'Welcome' }))}
         userRole="tenant"
       >
         <View style={styles.errorContainer}>
@@ -256,7 +269,7 @@ const PropertyInviteAcceptScreen = () => {
           <Text style={styles.errorMessageText}>{error}</Text>
           <CustomButton
             title="Go to Home"
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => navigation.dispatch(CommonActions.navigate({ name: 'Home' }))}
             style={styles.homeButton}
           />
         </View>

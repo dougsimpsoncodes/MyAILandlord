@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
@@ -63,9 +63,6 @@ const ReportIssueScreen = () => {
   const [selectedDuration, setSelectedDuration] = useState<string>('');
   const [selectedTiming, setSelectedTiming] = useState<string>('');
   const [otherIssueDescription, setOtherIssueDescription] = useState<string>('');
-  
-  // AI insights states
-  const [showQuickTip, setShowQuickTip] = useState<boolean>(false);
   
   const speechRecognitionRef = useRef<object | null>(null);
 
@@ -137,13 +134,21 @@ const ReportIssueScreen = () => {
     description: area.description
   }));
 
-  const assetOptions = selectedArea 
-    ? getAssetsByRoom(selectedArea).map(asset => ({
-        value: asset.name,
-        label: asset.name,
-        icon: getCategoryIcon(asset.category.toLowerCase()),
-        description: asset.category
-      }))
+  const assetOptions = selectedArea
+    ? [
+        ...getAssetsByRoom(selectedArea).map(asset => ({
+          value: asset.name,
+          label: asset.name,
+          icon: getCategoryIcon(asset.category.toLowerCase()),
+          description: asset.category
+        })),
+        {
+          value: 'Other',
+          label: 'Other',
+          icon: 'ellipsis-horizontal',
+          description: 'Something else not listed'
+        }
+      ]
     : [];
 
   const getIssueTypesForAsset = (assetName: string) => {
@@ -242,29 +247,6 @@ const ReportIssueScreen = () => {
   const handleIssueTypeChange = (issueType: string) => {
     setSelectedIssueType(issueType);
     updateTitle(selectedArea, selectedAsset, issueType);
-    
-    // Show AI quick tip if we have enough data and it's not "other"
-    if (selectedArea && selectedAsset && issueType && issueType !== 'other') {
-      setShowQuickTip(true);
-    } else {
-      setShowQuickTip(false);
-    }
-  };
-
-  const getQuickTip = () => {
-    if (!selectedAsset || !selectedIssueType || selectedIssueType === 'other') return '';
-    
-    // Simple AI tips based on common issues
-    const tips: { [key: string]: string } = {
-      'faucet leak': 'Try tightening the packing nut under the handle first.',
-      'drain clog': 'Try using a plunger or drain snake before calling for service.',
-      'toilet running': 'Check if the flapper in the tank is sealing properly.',
-      'garbage disposal not working': 'Try pressing the reset button on the bottom of the unit.',
-      'low water pressure': 'Check if the aerator needs cleaning by unscrewing it from the faucet.',
-      'no hot water': 'Check if the pilot light is on (gas) or circuit breaker (electric).',
-    };
-    
-    return tips[selectedIssueType.toLowerCase()] || 'Check if the issue is intermittent or constant for better diagnosis.';
   };
 
   const updateTitle = (area: string, asset: string, issue: string) => {
@@ -299,20 +281,18 @@ const ReportIssueScreen = () => {
 
   const handleImagePicker = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
     });
 
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      const newMedia: MediaItem = {
-        id: Date.now().toString(),
+    if (!result.canceled && result.assets) {
+      const newMediaItems: MediaItem[] = result.assets.map((asset, index) => ({
+        id: `${Date.now()}-${index}`,
         uri: asset.uri,
-        type: asset.type === 'video' ? 'video' : 'image',
-      };
-      setMediaItems(prev => [...prev, newMedia]);
+        type: 'image' as const,
+      }));
+      setMediaItems(prev => [...prev, ...newMediaItems]);
     }
   };
 
@@ -390,7 +370,7 @@ const ReportIssueScreen = () => {
     console.log('navigation state:', navigation.getState());
     
     // Check if function is even executing
-    window.LAST_HANDLE_SUBMIT = new Date().toISOString();
+    (globalThis as any).LAST_HANDLE_SUBMIT = new Date().toISOString();
     
     if (!selectedProperty) {
       console.log('No property selected - showing alert');
@@ -444,7 +424,8 @@ const ReportIssueScreen = () => {
       console.log('Navigation.navigate() called successfully');
     } catch (error) {
       console.error('Navigation error:', error);
-      Alert.alert('Navigation Error', `Failed to navigate: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Navigation Error', `Failed to navigate: ${errorMessage}`);
     }
   };
 
@@ -601,33 +582,6 @@ const ReportIssueScreen = () => {
           />
         </View>
 
-        {showQuickTip && (
-          <View style={styles.quickTipSection}>
-            <TouchableOpacity 
-              style={styles.quickTipHeader}
-              onPress={() => setShowQuickTip(!showQuickTip)}
-            >
-              <Ionicons name="bulb" size={16} color="#F39C12" />
-              <Text style={styles.quickTipTitle}>Quick tip available</Text>
-              <Ionicons name="chevron-down" size={16} color="#F39C12" />
-            </TouchableOpacity>
-            <View style={styles.quickTipContent}>
-              <Text style={styles.quickTipText}>{getQuickTip()}</Text>
-              <View style={styles.quickTipActions}>
-                <TouchableOpacity style={styles.quickTipButton}>
-                  <Text style={styles.quickTipButtonText}>Mark as Fixed</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.quickTipButton, styles.quickTipContinueButton]}
-                  onPress={() => setShowQuickTip(false)}
-                >
-                  <Text style={[styles.quickTipButtonText, styles.quickTipContinueButtonText]}>Continue Request</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-
         <View style={styles.stepSection}>
           <View style={styles.stepHeader}>
             <View style={styles.stepNumber}>
@@ -719,22 +673,13 @@ const ReportIssueScreen = () => {
               <Text style={styles.previewTitle}>Attached Media ({mediaItems.length})</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {mediaItems.map((item) => (
-                  <View key={item.id} style={styles.mediaItem}>
-                    <View style={styles.mediaPlaceholder}>
-                      <Ionicons 
-                        name={item.type === 'video' ? 'videocam' : 'image'} 
-                        size={40} 
-                        color="#95A5A6" 
-                      />
-                      {item.type === 'video' && (
-                        <Text style={styles.mediaTypeLabel}>Video</Text>
-                      )}
-                    </View>
+                  <View key={item.id} style={styles.photoContainer}>
+                    <Image source={{ uri: item.uri }} style={styles.photoThumbnail} />
                     <TouchableOpacity
-                      style={styles.removeButton}
+                      style={styles.removePhotoButton}
                       onPress={() => removeMediaItem(item.id)}
                     >
-                      <Ionicons name="close-circle" size={24} color="#E74C3C" />
+                      <Ionicons name="close" size={12} color="#FFFFFF" />
                     </TouchableOpacity>
                   </View>
                 ))}
@@ -743,18 +688,6 @@ const ReportIssueScreen = () => {
           )}
         </View>
 
-        <View style={styles.tipSection}>
-          <View style={styles.tipHeader}>
-            <Ionicons name="bulb" size={20} color="#F39C12" />
-            <Text style={styles.tipTitle}>Helpful Tips</Text>
-          </View>
-          <Text style={styles.tipText}>
-            • Be as specific as possible about the location
-            {'\n'}• Include when the problem started
-            {'\n'}• Photos help us understand the issue better
-            {'\n'}• Mention if it's urgent or affecting daily life
-          </Text>
-        </View>
     </ScreenContainer>
   );
 };
@@ -875,53 +808,25 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginBottom: 8,
   },
-  mediaItem: {
-    marginRight: 12,
+  photoContainer: {
     position: 'relative',
+    marginRight: 12,
   },
-  mediaPlaceholder: {
+  photoThumbnail: {
     width: 80,
     height: 80,
-    backgroundColor: '#F8F9FA',
     borderRadius: 8,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#E74C3C',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-  },
-  mediaTypeLabel: {
-    fontSize: 10,
-    color: '#7F8C8D',
-    marginTop: 2,
-  },
-  removeButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-  },
-  tipSection: {
-    backgroundColor: '#FFF9E6',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#F4D03F',
-  },
-  tipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  tipTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F39C12',
-  },
-  tipText: {
-    fontSize: 14,
-    color: '#D68910',
-    lineHeight: 20,
   },
   headerNextButton: {
     width: 40,
@@ -1021,60 +926,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#334155',
-  },
-  quickTipSection: {
-    backgroundColor: '#FFF9E6',
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F4D03F',
-    overflow: 'hidden',
-  },
-  quickTipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    gap: 8,
-  },
-  quickTipTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F39C12',
-    flex: 1,
-  },
-  quickTipContent: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  quickTipText: {
-    fontSize: 14,
-    color: '#D68910',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  quickTipActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  quickTipButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F4D03F',
-    alignItems: 'center',
-  },
-  quickTipButtonText: {
-    fontSize: 12,
-    color: '#D68910',
-    fontWeight: '500',
-  },
-  quickTipContinueButton: {
-    backgroundColor: '#F39C12',
-  },
-  quickTipContinueButtonText: {
-    color: '#FFFFFF',
   },
   otherIssueSection: {
     backgroundColor: '#F8FAFC',

@@ -41,9 +41,31 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "android.permission.CAMERA"
       ],
       "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "myailandlord.app"
+            },
+            {
+              "scheme": "https",
+              "host": "www.myailandlord.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
         {
           "action": "VIEW",
           "autoVerify": true,
@@ -65,7 +87,8 @@
       ],
       "runtimeVersion": {
         "policy": "appVersion"
-      }
+      },
+      "package": "com.example.myailandlord"
     },
     "platforms": [
       "ios",
@@ -74,7 +97,6 @@
     ],
     "scheme": "myailandlord",
     "plugins": [
-      "expo-barcode-scanner",
       "expo-secure-store",
       "expo-font"
     ],

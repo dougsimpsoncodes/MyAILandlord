@@ -18,6 +18,7 @@ import { AddressForm } from '../../components/forms/AddressForm';
 import { validateAddress, migrateAddressData } from '../../utils/addressValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 type AddPropertyNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddPropertyRouteProp = RouteProp<LandlordStackParamList, 'AddProperty'>;
@@ -52,6 +53,8 @@ const AddPropertyScreen = () => {
   const [bedroomSliderValue] = useState(new Animated.Value(1));
   const [bathroomSliderValue] = useState(new Animated.Value(1));
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDeleteDraftDialog, setShowDeleteDraftDialog] = useState(false);
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
 
   // Use draft data if available, otherwise use default values
   let basePropertyData = draftState?.propertyData || {
@@ -236,27 +239,24 @@ const AddPropertyScreen = () => {
     }
   };
 
-  const handleDeleteDraft = async () => {
-    Alert.alert(
-      'Delete Draft',
-      'Are you sure you want to delete this draft? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteDraft();
-              navigation.goBack();
-            } catch (error) {
-              console.error('Failed to delete draft:', error);
-              Alert.alert('Delete Error', 'Failed to delete draft. Please try again.');
-            }
-          }
-        }
-      ]
-    );
+  const handleDeleteDraft = () => {
+    setShowDeleteDraftDialog(true);
+  };
+
+  const confirmDeleteDraft = async () => {
+    setIsDeletingDraft(true);
+    try {
+      await deleteDraft();
+      setShowDeleteDraftDialog(false);
+      navigation.goBack();
+    } catch (error) {
+      console.error('Failed to delete draft:', error);
+      setShowDeleteDraftDialog(false);
+      // Show error - will be handled by remaining alert updates
+      Alert.alert('Delete Error', 'Failed to delete draft. Please try again.');
+    } finally {
+      setIsDeletingDraft(false);
+    }
   };
 
   const isFormValid = () => {
@@ -405,6 +405,18 @@ const AddPropertyScreen = () => {
               </View>
             </View>
           </View>
+
+          <ConfirmDialog
+            visible={showDeleteDraftDialog}
+            title="Delete Draft"
+            message="Are you sure you want to delete this draft? This action cannot be undone."
+            confirmText="Delete"
+            cancelText="Cancel"
+            confirmStyle="destructive"
+            onConfirm={confirmDeleteDraft}
+            onCancel={() => setShowDeleteDraftDialog(false)}
+            isLoading={isDeletingDraft}
+          />
     </ScreenContainer>
   );
 };

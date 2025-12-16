@@ -18,6 +18,7 @@ import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 type RoomSelectionNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'RoomSelection'>;
 
@@ -55,6 +56,17 @@ const PropertyRoomSelectionScreen = () => {
   const [rooms, setRooms] = useState<SelectionRoom[]>(defaultRooms);
   const [customRoomName, setCustomRoomName] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // Dialog state
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmStyle?: 'default' | 'destructive' | 'info';
+    onConfirm: () => void;
+    cancelText?: string | null;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+  const [roomToRemove, setRoomToRemove] = useState<string | null>(null);
   
   // Draft management
   const {
@@ -107,15 +119,23 @@ const PropertyRoomSelectionScreen = () => {
     return () => clearTimeout(timer);
   }, [rooms]);
 
+  const showNotification = (title: string, message: string, style: 'default' | 'destructive' | 'info' = 'info') => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message,
+      confirmStyle: style,
+      onConfirm: () => setDialogConfig(prev => ({ ...prev, visible: false })),
+      cancelText: null,
+    });
+  };
+
   const toggleRoom = (roomId: string) => {
-    setRooms(prevRooms => 
+    setRooms(prevRooms =>
       prevRooms.map(room => {
         if (room.id === roomId) {
           if (room.required && room.selected) {
-            Alert.alert(
-              'Required Room',
-              `${room.name} is required and cannot be deselected.`
-            );
+            showNotification('Required Room', `${room.name} is required and cannot be deselected.`);
             return room;
           }
           return { ...room, selected: !room.selected };
@@ -127,7 +147,7 @@ const PropertyRoomSelectionScreen = () => {
 
   const addCustomRoom = () => {
     if (!customRoomName.trim()) {
-      Alert.alert('Enter Name', 'Please enter a room name.');
+      showNotification('Enter Name', 'Please enter a room name.');
       return;
     }
 
@@ -146,30 +166,21 @@ const PropertyRoomSelectionScreen = () => {
   };
 
   const removeCustomRoom = (roomId: string) => {
-    Alert.alert(
-      'Remove Room',
-      'Are you sure you want to remove this custom room?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            setRooms(rooms.filter(r => r.id !== roomId));
-          },
-        },
-      ]
-    );
+    setRoomToRemove(roomId);
+  };
+
+  const confirmRemoveRoom = () => {
+    if (roomToRemove) {
+      setRooms(rooms.filter(r => r.id !== roomToRemove));
+      setRoomToRemove(null);
+    }
   };
 
   const handleContinue = async () => {
     const selectedRooms = rooms.filter(r => r.selected);
-    
+
     if (selectedRooms.length === 0) {
-      Alert.alert(
-        'Select Rooms',
-        'Please select at least one room to continue.'
-      );
+      showNotification('Select Rooms', 'Please select at least one room to continue.');
       return;
     }
 
@@ -179,9 +190,9 @@ const PropertyRoomSelectionScreen = () => {
       rooms: selectedRooms,
     });
     await saveDraft();
-    
-    navigation.navigate('RoomPhotography', { 
-      propertyData: { ...propertyData, rooms: selectedRooms } 
+
+    navigation.navigate('RoomPhotography', {
+      propertyData: { ...propertyData, rooms: selectedRooms }
     });
   };
 
@@ -553,6 +564,29 @@ const PropertyRoomSelectionScreen = () => {
           </View>
         </View>
       </ResponsiveContainer>
+
+      {/* Notification Dialog */}
+      <ConfirmDialog
+        visible={dialogConfig.visible}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        confirmStyle={dialogConfig.confirmStyle}
+        onConfirm={dialogConfig.onConfirm}
+        onCancel={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+        cancelText={dialogConfig.cancelText}
+      />
+
+      {/* Remove Room Confirmation */}
+      <ConfirmDialog
+        visible={roomToRemove !== null}
+        title="Remove Room"
+        message="Are you sure you want to remove this custom room?"
+        confirmText="Remove"
+        cancelText="Cancel"
+        confirmStyle="destructive"
+        onConfirm={confirmRemoveRoom}
+        onCancel={() => setRoomToRemove(null)}
+      />
     </ScreenContainer>
   );
 };

@@ -10,6 +10,7 @@ import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
 import { log } from '../../lib/log';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { PropertyImage } from '../../components/shared/PropertyImage';
 
 type LandlordHomeNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Home'>;
 
@@ -61,15 +62,55 @@ const LandlordHomeScreen = () => {
         name: p.name,
         address: p.address,
         type: p.property_type || 'house',
-        issueCount: 0, // TODO: Load actual issue counts
+        issueCount: 0,
       }));
       setProperties(propertySummaries);
 
-      // TODO: Load actual maintenance requests from API
-      // For now, show empty state if no properties
-      if (propertySummaries.length > 0) {
-        setActiveRequests([]);
-      }
+      // Load maintenance requests from API
+      const maintenanceData = await api.getMaintenanceRequests({ limit: 20 });
+
+      // Map API data to UI format
+      const mappedRequests: MaintenanceRequest[] = maintenanceData.map((req: any) => {
+        // Calculate time ago
+        const createdAt = new Date(req.created_at);
+        const now = new Date();
+        const diffMs = now.getTime() - createdAt.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        let timeAgo = 'just now';
+        if (diffDays > 0) {
+          timeAgo = `${diffDays}d ago`;
+        } else if (diffHours > 0) {
+          timeAgo = `${diffHours}h ago`;
+        } else if (diffMins > 0) {
+          timeAgo = `${diffMins}m ago`;
+        }
+
+        return {
+          id: req.id,
+          title: req.title || 'Maintenance Request',
+          location: req.area || 'Unknown',
+          propertyId: req.property_id,
+          propertyName: req.properties?.name || 'Unknown Property',
+          priority: req.priority || 'medium',
+          timeAgo,
+        };
+      });
+
+      // Update issue counts on properties
+      const updatedSummaries = propertySummaries.map(p => ({
+        ...p,
+        issueCount: mappedRequests.filter(r => r.propertyId === p.id).length,
+      }));
+      setProperties(updatedSummaries);
+
+      // Only show pending/in_progress requests (not completed)
+      const activeOnly = mappedRequests.filter((r: any) =>
+        maintenanceData.find((m: any) => m.id === r.id)?.status !== 'completed'
+      );
+      setActiveRequests(activeOnly);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -159,10 +200,6 @@ const LandlordHomeScreen = () => {
 
   const handleRespondPress = (request: MaintenanceRequest) => {
     navigation.navigate('CaseDetail', { caseId: request.id });
-  };
-
-  const handleAssignVendorPress = (request: MaintenanceRequest) => {
-    navigation.navigate('SendToVendor', { caseId: request.id });
   };
 
   // Empty state for new users with no properties
@@ -307,9 +344,12 @@ const LandlordHomeScreen = () => {
             onPress={() => handlePropertyPress(property)}
             activeOpacity={0.7}
           >
-            <View style={styles.propertyIcon}>
-              <Ionicons name={getPropertyIcon(property.type)} size={22} color="#3498DB" />
-            </View>
+            <PropertyImage
+              address={property.address}
+              width={60}
+              height={60}
+              borderRadius={10}
+            />
             <View style={styles.propertyInfo}>
               <Text style={styles.propertyName}>{property.name}</Text>
               <Text style={styles.propertyAddress}>{property.address}</Text>
@@ -372,13 +412,7 @@ const LandlordHomeScreen = () => {
                     style={styles.requestBtnPrimary}
                     onPress={() => handleRespondPress(request)}
                   >
-                    <Text style={styles.requestBtnPrimaryText}>Respond</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.requestBtnSecondary}
-                    onPress={() => handleAssignVendorPress(request)}
-                  >
-                    <Text style={styles.requestBtnSecondaryText}>Assign Vendor</Text>
+                    <Text style={styles.requestBtnPrimaryText}>View Details</Text>
                   </TouchableOpacity>
                 </View>
               </View>

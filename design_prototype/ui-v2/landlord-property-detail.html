@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Property • MyAILandlord</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand"><span class="dot"></span> MyAILandlord</div>
+        <div class="nav-group"><div class="nav-label">Main</div><div class="nav-links">
+          <a class="nav-link" href="./index.html">🏠 Dashboard</a>
+          <a class="nav-link active" href="./landlord-properties.html">🏢 Properties</a>
+          <a class="nav-link" href="./maintenance-kanban.html">🛠️ Maintenance</a>
+        </div></div>
+      </aside>
+      <header class="header">
+        <div class="search">🔎 <input placeholder="Search…" /></div>
+        <div class="header-actions"><button class="btn ghost" onclick="toggleTheme()">Theme</button><button class="btn">Invite Tenant</button><div class="avatar"></div></div>
+      </header>
+      <main class="content grid">
+        <div class="card">
+          <div class="p title-row">
+            <div>
+              <div class="title">Sunset Apartments</div>
+              <div class="muted">123 Main St, Anytown</div>
+            </div>
+            <div class="row"><button class="btn">Generate Code</button><button class="btn ghost">Edit</button></div>
+          </div>
+          <div class="p">
+            <div class="row" style="gap:10px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+              <span class="chip">Overview</span><span class="chip">Tenants</span><span class="chip">Maintenance</span><span class="chip">Assets</span><span class="chip">Settings</span>
+            </div>
+          </div>
+          <div class="p grid cols-3">
+            <div class="card"><div class="p stack"><div class="title">Stats</div><div class="row"><span class="chip">Units: 12</span><span class="chip">Tenants: 9</span><span class="chip">Open: 3</span></div></div></div>
+            <div class="card"><div class="p stack"><div class="title">Recent Activity</div><div class="chart">[Sparkline]</div></div></div>
+            <div class="card"><div class="p stack"><div class="title">Code</div><div class="row"><span class="chip">ABC123</span><span class="muted">90d</span></div><div class="row"><button class="btn">Copy</button><button class="btn ghost">Regen</button></div></div></div>
+            <div class="card" style="grid-column: 1 / span 3;">
+              <div class="p stack">
+                <div class="title">Open Maintenance</div>
+                <div class="kanban" style="grid-template-columns: repeat(3, 1fr);">
+                  <div class="kan-col"><div class="col-head"><div>Pending</div><span class="chip red">2</span></div><div class="items"><div class="ticket">AC not cooling</div><div class="ticket">Door lock stuck</div></div></div>
+                  <div class="kan-col"><div class="col-head"><div>In Progress</div><span class="chip yellow">1</span></div><div class="items"><div class="ticket">Leaky sink</div></div></div>
+                  <div class="kan-col"><div class="col-head"><div>Completed</div><span class="chip green">1</span></div><div class="items"><div class="ticket">Smoke alarm</div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div id="toast" class="toast">Action completed</div>
+  </body>
+  </html>
+

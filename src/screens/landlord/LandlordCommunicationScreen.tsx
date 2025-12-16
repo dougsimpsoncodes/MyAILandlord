@@ -16,6 +16,7 @@ import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';
 import { formatRelativeTime } from '../../utils/helpers';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { log } from '../../lib/log';
 
 interface Conversation {
   id: string;
@@ -47,11 +48,83 @@ const LandlordCommunicationScreen = () => {
   const loadConversations = async () => {
     try {
       setLoading(true);
-      
-      // TODO: Load actual conversations from API
-      // No mock data - start with empty state
-      setConversations([]);
+
+      if (!apiClient || !user) {
+        log.warn('LandlordCommunication: No API client or user');
+        setConversations([]);
+        return;
+      }
+
+      // Load messages from API
+      const messages = await apiClient.getMessages();
+      log.info('Landlord loaded messages', { count: messages.length });
+
+      // Group messages by the other party (tenant)
+      const conversationMap = new Map<string, {
+        tenantId: string;
+        tenantName: string;
+        tenantEmail: string;
+        property: string;
+        messages: any[];
+      }>();
+
+      for (const msg of messages) {
+        // Determine who the tenant is (the other party)
+        const tenantId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+
+        if (!conversationMap.has(tenantId)) {
+          // Get tenant info from the message's sender/recipient data
+          const sender = msg.sender as any;
+          const recipient = msg.recipient as any;
+          const tenantInfo = msg.sender_id === user.id ? recipient : sender;
+
+          conversationMap.set(tenantId, {
+            tenantId,
+            tenantName: tenantInfo?.name || tenantInfo?.email || 'Unknown Tenant',
+            tenantEmail: tenantInfo?.email || '',
+            property: 'Property', // TODO: Get actual property name
+            messages: [],
+          });
+        }
+
+        conversationMap.get(tenantId)!.messages.push(msg);
+      }
+
+      // Convert to Conversation array
+      const convos: Conversation[] = [];
+      for (const [tenantId, data] of conversationMap.entries()) {
+        // Sort messages by time to get latest
+        data.messages.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        const latestMsg = data.messages[0];
+        const unreadCount = data.messages.filter(m =>
+          !m.is_read && m.sender_id !== user.id
+        ).length;
+
+        convos.push({
+          id: tenantId,
+          tenantName: data.tenantName,
+          tenantEmail: data.tenantEmail,
+          property: data.property,
+          lastMessage: latestMsg?.content || '',
+          lastMessageTime: latestMsg ? formatRelativeTime(new Date(latestMsg.created_at)) : '',
+          unreadCount,
+          priority: unreadCount > 0 ? 'high' : 'low',
+        });
+      }
+
+      // Sort by most recent message
+      convos.sort((a, b) => {
+        // This is a simplified sort - ideally we'd store actual timestamps
+        return b.unreadCount - a.unreadCount;
+      });
+
+      setConversations(convos);
+      log.info('Landlord conversations loaded', { count: convos.length });
     } catch (error) {
+      log.error('Error loading landlord conversations', { error: String(error) });
       handleApiError(error, 'Loading conversations');
     } finally {
       setLoading(false);
@@ -87,7 +160,11 @@ const LandlordCommunicationScreen = () => {
   };
 
   const handleConversationPress = (conversation: Conversation) => {
-    // TODO: Navigate to conversation detail
+    navigation.navigate('LandlordChat' as never, {
+      tenantId: conversation.id,
+      tenantName: conversation.tenantName,
+      tenantEmail: conversation.tenantEmail,
+    } as never);
   };
 
   const handleNewMessage = () => {
@@ -108,7 +185,7 @@ const LandlordCommunicationScreen = () => {
   return (
     <ErrorBoundary>
       <ScreenContainer
-        title="Communications"
+        title="Messages"
         showBackButton
         onBackPress={() => navigation.goBack()}
         headerRight={headerRight}

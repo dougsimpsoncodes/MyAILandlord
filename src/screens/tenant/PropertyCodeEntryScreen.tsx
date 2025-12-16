@@ -67,25 +67,25 @@ const PropertyCodeEntryScreen = () => {
         // Navigate to unit selection
         navigation.navigate('UnitSelection', {
           propertyCode: propertyCode.trim(),
-          propertyName: validation.property_name,
-          propertyAddress: validation.property_address,
+          propertyName: validation.property_name ?? 'Property',
+          propertyAddress: validation.property_address ?? '',
         });
       } else {
         // Link tenant directly to property
         const linkResult = await apiClient.linkTenantToProperty(propertyCode.trim());
-        
+
         if (linkResult.success) {
           Alert.alert(
             'Success!',
-            `You've been linked to ${validation.property_name}`,
+            `You've been linked to ${validation.property_name ?? 'the property'}`,
             [
               {
                 text: 'Continue',
                 onPress: () => navigation.navigate('PropertyWelcome', {
-                  propertyName: validation.property_name,
-                  propertyAddress: validation.property_address,
-                  wifiNetwork: validation.wifi_network,
-                  wifiPassword: validation.wifi_password,
+                  propertyName: validation.property_name ?? 'Property',
+                  propertyAddress: validation.property_address ?? '',
+                  wifiNetwork: validation.wifi_network ?? undefined,
+                  wifiPassword: validation.wifi_password ?? undefined,
                 })
               }
             ]

@@ -168,8 +168,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   dropdownDisabled: {
-    backgroundColor: '#F8F9FA',
-    opacity: 0.6,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.5,
   },
   dropdownActive: {
     borderColor: '#3498DB',

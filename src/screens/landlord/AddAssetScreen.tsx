@@ -437,7 +437,7 @@ const AddAssetScreen = () => {
   if (!isParamsLoaded && !routePropertyData) {
     return (
       <ScreenContainer
-        title="Add Asset"
+        title="Add Item"
         showBackButton
         onBackPress={() => navigation.goBack()}
         userRole="landlord"
@@ -459,7 +459,7 @@ const AddAssetScreen = () => {
 
   return (
     <ScreenContainer
-      title="Add Asset"
+      title="Add Item"
       subtitle={areaName}
       showBackButton
       onBackPress={() => navigation.goBack()}

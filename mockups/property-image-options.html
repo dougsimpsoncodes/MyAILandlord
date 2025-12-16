@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, maximum-scale=1.0, user-scalable=no">
+  <title>Property Image Display Options - MyAILandlord</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      color: #fff;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: #8b8b9a;
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 16px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+
+    @media (max-width: 1000px) {
+      .options-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+        margin: 0 auto;
+      }
+    }
+
+    .option {
+      background: #16213e;
+      border-radius: 20px;
+      padding: 20px;
+      border: 2px solid #0f3460;
+    }
+
+    .option-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .option-badge {
+      background: #e94560;
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .option-badge.recommended {
+      background: #2ecc71;
+    }
+
+    .option-title {
+      color: #fff;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    /* Phone Frame */
+    .phone-frame {
+      background: #000;
+      border-radius: 30px;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+
+    .phone-screen {
+      background: #F5F7FA;
+      border-radius: 22px;
+      overflow: hidden;
+      min-height: 500px;
+    }
+
+    /* App Header */
+    .app-header {
+      background: #fff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #E9ECEF;
+    }
+
+    .greeting {
+      font-size: 12px;
+      color: #7F8C8D;
+    }
+
+    .user-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #2C3E50;
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #2ECC71;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .content {
+      padding: 16px;
+    }
+
+    /* Property Cards - Different Styles */
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #2C3E50;
+      margin-bottom: 12px;
+    }
+
+    /* ============================================ */
+    /* OPTION A: Banner Style (Full Width on Top) */
+    /* ============================================ */
+    .property-banner {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .property-banner .property-image {
+      width: 100%;
+      height: 120px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background-image: url('https://maps.googleapis.com/maps/api/streetview?size=400x200&location=1600+Amphitheatre+Parkway,+Mountain+View,+CA&key=demo');
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .property-banner .property-image::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.3));
+    }
+
+    .property-banner .property-info {
+      background: #3498DB;
+      padding: 12px 14px;
+    }
+
+    .property-label {
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .property-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 2px;
+    }
+
+    .property-address {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      margin-top: 2px;
+    }
+
+    /* ============================================ */
+    /* OPTION B: Card with Thumbnail (Side by Side) */
+    /* ============================================ */
+    .property-card-thumb {
+      background: #fff;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .property-card-thumb .thumb {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      flex-shrink: 0;
+    }
+
+    .property-card-thumb .details {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .property-card-thumb .property-label {
+      color: #7F8C8D;
+      font-size: 11px;
+    }
+
+    .property-card-thumb .property-name {
+      color: #2C3E50;
+      font-size: 15px;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .property-card-thumb .property-address {
+      color: #7F8C8D;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .property-card-thumb .view-link {
+      color: #3498DB;
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 6px;
+    }
+
+    /* ============================================ */
+    /* OPTION C: Hero Card (Large Featured Image) */
+    /* ============================================ */
+    .property-hero {
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    .property-hero .hero-image {
+      width: 100%;
+      height: 160px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      position: relative;
+    }
+
+    .property-hero .hero-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 500;
+      backdrop-filter: blur(4px);
+    }
+
+    .property-hero .hero-content {
+      padding: 16px;
+    }
+
+    .property-hero .property-name {
+      color: #2C3E50;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .property-hero .property-address {
+      color: #7F8C8D;
+      font-size: 13px;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .property-hero .hero-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .property-hero .action-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .property-hero .action-btn.primary {
+      background: #E74C3C;
+      color: #fff;
+    }
+
+    .property-hero .action-btn.secondary {
+      background: #F1F2F6;
+      color: #2C3E50;
+    }
+
+    /* CTA Button */
+    .cta-button {
+      background: #E74C3C;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    }
+
+    .cta-button span {
+      color: #fff;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .cta-icon {
+      width: 20px;
+      height: 20px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 4px;
+    }
+
+    /* Quick Links */
+    .quick-links {
+      display: flex;
+      gap: 10px;
+    }
+
+    .quick-link {
+      flex: 1;
+      background: #fff;
+      border-radius: 12px;
+      padding: 14px 10px;
+      text-align: center;
+    }
+
+    .quick-link-icon {
+      width: 28px;
+      height: 28px;
+      margin: 0 auto 6px;
+      background: #E8F8F0;
+      border-radius: 8px;
+    }
+
+    .quick-link-label {
+      font-size: 11px;
+      color: #7F8C8D;
+      line-height: 1.3;
+    }
+
+    /* Option description */
+    .option-desc {
+      color: #8b8b9a;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .pros-cons {
+      margin-top: 12px;
+    }
+
+    .pro, .con {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .pro {
+      color: #2ecc71;
+    }
+
+    .con {
+      color: #e74c3c;
+    }
+
+    .pro::before {
+      content: '✓';
+      font-weight: bold;
+    }
+
+    .con::before {
+      content: '✗';
+      font-weight: bold;
+    }
+
+    /* Street View simulation with gradient */
+    .street-view-sim {
+      background: linear-gradient(180deg,
+        #87CEEB 0%,
+        #87CEEB 40%,
+        #228B22 40%,
+        #228B22 45%,
+        #808080 45%,
+        #808080 100%
+      );
+      position: relative;
+    }
+
+    .street-view-sim::before {
+      content: '';
+      position: absolute;
+      bottom: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60%;
+      height: 50%;
+      background: linear-gradient(135deg, #D4A574 0%, #C19A6B 50%, #A0522D 100%);
+      clip-path: polygon(10% 100%, 90% 100%, 70% 0%, 30% 0%);
+    }
+
+    .street-view-sim::after {
+      content: '';
+      position: absolute;
+      bottom: 45%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20%;
+      height: 15%;
+      background: #4A4A4A;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Property Image Display Options</h1>
+    <p class="subtitle">Three design approaches for showing Google Street View images</p>
+
+    <div class="options-grid">
+      <!-- Option A: Banner Style -->
+      <div class="option">
+        <div class="option-header">
+          <span class="option-title">Option A</span>
+          <span class="option-badge recommended">Recommended</span>
+        </div>
+
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="app-header">
+              <div>
+                <div class="greeting">Good afternoon,</div>
+                <div class="user-name">Sarah</div>
+              </div>
+              <div class="avatar">SM</div>
+            </div>
+
+            <div class="content">
+              <!-- Banner Style Property -->
+              <div class="property-banner">
+                <div class="property-image street-view-sim"></div>
+                <div class="property-info">
+                  <div class="property-label">Your Property</div>
+                  <div class="property-name">Sunset Vista Apt 4B</div>
+                  <div class="property-address">123 Main Street, San Francisco</div>
+                </div>
+              </div>
+
+              <div class="cta-button">
+                <div class="cta-icon"></div>
+                <span>Report an Issue</span>
+              </div>
+
+              <div class="section-title">Quick Links</div>
+              <div class="quick-links">
+                <div class="quick-link">
+                  <div class="quick-link-icon"></div>
+                  <div class="quick-link-label">Message<br>Landlord</div>
+                </div>
+                <div class="quick-link">
+                  <div class="quick-link-icon"></div>
+                  <div class="quick-link-label">Property<br>Info</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-desc">
+          <strong>Banner Style</strong> - Full-width image with colored info bar below.
+          <div class="pros-cons">
+            <div class="pro">High visual impact</div>
+            <div class="pro">Clear property identification</div>
+            <div class="pro">Current implementation</div>
+            <div class="con">Takes more vertical space</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Option B: Thumbnail Style -->
+      <div class="option">
+        <div class="option-header">
+          <span class="option-title">Option B</span>
+          <span class="option-badge">Compact</span>
+        </div>
+
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="app-header">
+              <div>
+                <div class="greeting">Good afternoon,</div>
+                <div class="user-name">Sarah</div>
+              </div>
+              <div class="avatar">SM</div>
+            </div>
+
+            <div class="content">
+              <!-- Thumbnail Style Property -->
+              <div class="property-card-thumb">
+                <div class="thumb street-view-sim"></div>
+                <div class="details">
+                  <div class="property-label">Your Property</div>
+                  <div class="property-name">Sunset Vista Apt 4B</div>
+                  <div class="property-address">123 Main Street, San Francisco</div>
+                  <div class="view-link">View Details →</div>
+                </div>
+              </div>
+
+              <div class="cta-button">
+                <div class="cta-icon"></div>
+                <span>Report an Issue</span>
+              </div>
+
+              <div class="section-title">Quick Links</div>
+              <div class="quick-links">
+                <div class="quick-link">
+                  <div class="quick-link-icon"></div>
+                  <div class="quick-link-label">Message<br>Landlord</div>
+                </div>
+                <div class="quick-link">
+                  <div class="quick-link-icon"></div>
+                  <div class="quick-link-label">Property<br>Info</div>
+                </div>
+              </div>
+
+              <div class="section-title" style="margin-top: 16px;">Your Requests</div>
+              <div style="background: #fff; border-radius: 12px; padding: 24px; text-align: center;">
+                <div style="color: #2ECC71; font-size: 32px;">✓</div>
+                <div style="color: #2C3E50; font-weight: 600; margin-top: 8px;">No Active Requests</div>
+                <div style="color: #7F8C8D; font-size: 12px; margin-top: 4px;">Report an issue if something needs fixing</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-desc">
+          <strong>Thumbnail Style</strong> - Small image beside property details.
+          <div class="pros-cons">
+            <div class="pro">Compact layout</div>
+            <div class="pro">More content visible</div>
+            <div class="pro">Familiar list pattern</div>
+            <div class="con">Less visual emphasis</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Option C: Hero Style -->
+      <div class="option">
+        <div class="option-header">
+          <span class="option-title">Option C</span>
+          <span class="option-badge">Premium</span>
+        </div>
+
+        <div class="phone-frame">
+          <div class="phone-screen">
+            <div class="app-header">
+              <div>
+                <div class="greeting">Good afternoon,</div>
+                <div class="user-name">Sarah</div>
+              </div>
+              <div class="avatar">SM</div>
+            </div>
+
+            <div class="content">
+              <!-- Hero Style Property -->
+              <div class="property-hero">
+                <div class="hero-image street-view-sim">
+                  <div class="hero-badge">📍 Your Property</div>
+                </div>
+                <div class="hero-content">
+                  <div class="property-name">Sunset Vista Apt 4B</div>
+                  <div class="property-address">
+                    <span>📍</span> 123 Main Street, San Francisco
+                  </div>
+                  <div class="hero-actions">
+                    <div class="action-btn primary">🔧 Report Issue</div>
+                    <div class="action-btn secondary">💬 Message</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section-title">Quick Links</div>
+              <div class="quick-links">
+                <div class="quick-link">
+                  <div class="quick-link-icon"></div>
+                  <div class="quick-link-label">Property<br>Info</div>
+                </div>
+                <div class="quick-link">
+                  <div class="quick-link-icon"></div>
+                  <div class="quick-link-label">Documents</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-desc">
+          <strong>Hero Card Style</strong> - Large image with integrated actions.
+          <div class="pros-cons">
+            <div class="pro">Premium feel</div>
+            <div class="pro">Actions in context</div>
+            <div class="pro">Modern design</div>
+            <div class="con">Takes most space</div>
+            <div class="con">More complex layout</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

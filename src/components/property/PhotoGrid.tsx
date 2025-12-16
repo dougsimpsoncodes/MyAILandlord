@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
-  Alert,
   FlatList,
   ViewStyle,
   StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Photo } from '../../types/photo';
+import ConfirmDialog from '../shared/ConfirmDialog';
 
 interface PhotoGridProps {
   photos: Photo[];
@@ -41,26 +41,20 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
   numColumns = 2,
   style,
 }) => {
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+
   const itemWidth = (screenWidth - GRID_PADDING * 2 - GRID_GAP * (numColumns - 1)) / numColumns;
   const itemHeight = itemWidth * 0.75; // 4:3 aspect ratio
 
   const handleDeletePress = (index: number) => {
-    const photo = photos[index];
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to delete this photo?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onPhotoDelete(index),
-        },
-      ]
-    );
+    setDeleteIndex(index);
+  };
+
+  const confirmDelete = () => {
+    if (deleteIndex !== null) {
+      onPhotoDelete(deleteIndex);
+      setDeleteIndex(null);
+    }
   };
 
   const renderPhoto = ({ item: photo, index }: { item: Photo; index: number }) => (
@@ -167,6 +161,17 @@ export const PhotoGrid: React.FC<PhotoGridProps> = ({
           </Text>
         </View>
       )}
+
+      <ConfirmDialog
+        visible={deleteIndex !== null}
+        title="Delete Photo"
+        message="Are you sure you want to delete this photo?"
+        confirmText="Delete"
+        cancelText="Cancel"
+        confirmStyle="destructive"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteIndex(null)}
+      />
     </View>
   );
 };

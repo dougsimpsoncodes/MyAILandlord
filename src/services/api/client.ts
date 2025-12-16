@@ -3,7 +3,7 @@ import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupa
 import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { getMaintenanceRequests as getMaintenanceRequestsREST } from '../../lib/maintenanceClient';
+import { getMaintenanceRequests as getMaintenanceRequestsREST, getMaintenanceRequestById as getMaintenanceRequestByIdREST } from '../../lib/maintenanceClient';
 import {
   CreateProfileData,
   UpdateProfileData,
@@ -42,6 +42,9 @@ import { createMockApiClient } from './mockClient';
 const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL || 
   `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
 
+// Cache for SupabaseClient instances to avoid recreating and resetting RLS context
+const supabaseClientCache = new WeakMap<object, SupabaseClient>();
+
 // Hook for use in components - all API logic is contained within this hook
 export function useApiClient(): UseApiClientReturn | null {
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1' || process.env.NODE_ENV === 'test';
@@ -61,9 +64,14 @@ export function useApiClient(): UseApiClientReturn | null {
     return null;
   }
 
-  // Helper to get authenticated Supabase client
+  // Helper to get authenticated Supabase client - cached to avoid RLS context spam
   const getSupabaseClient = () => {
-    return new SupabaseClient(supabaseClient);
+    let cached = supabaseClientCache.get(supabaseClient);
+    if (!cached) {
+      cached = new SupabaseClient(supabaseClient);
+      supabaseClientCache.set(supabaseClient, cached);
+    }
+    return cached;
   };
 
   // ========== USER PROFILE METHODS ==========
@@ -239,6 +247,11 @@ export function useApiClient(): UseApiClientReturn | null {
     return await getMaintenanceRequestsREST({ getToken: async () => await getAccessToken() }, opts || {});
   };
 
+  const getMaintenanceRequestById = async (id: string) => {
+    // Use REST API with injected token provider (works web + native)
+    return await getMaintenanceRequestByIdREST(id, { getToken: async () => await getAccessToken() });
+  };
+
   const createMaintenanceRequest = async (requestData: CreateMaintenanceRequestData) => {
     try {
       // Validate and sanitize input
@@ -293,8 +306,9 @@ export function useApiClient(): UseApiClientReturn | null {
       log.info('Created:', maintenanceRequest);
 
       // If there are images or voice notes, upload them with validation
-      const uploadedImages: string[] = [];
-      const uploadedVoiceNotes: string[] = [];
+      // Store file paths (not signed URLs) to avoid expiration issues
+      const uploadedImagePaths: string[] = [];
+      const uploadedVoiceNotePaths: string[] = [];
 
       if (validatedData.images?.length) {
         for (const image of validatedData.images) {
@@ -312,8 +326,8 @@ export function useApiClient(): UseApiClientReturn | null {
               image,
               `image-${Date.now()}.jpg`
             );
-            const signed = await storageService.getDisplayUrl('maintenance-images', result.path);
-            if (signed) uploadedImages.push(signed);
+            // Store the path, not a signed URL (signed URLs expire)
+            uploadedImagePaths.push(result.path);
           } catch (error) {
             log.error('Error uploading image', { error: getErrorMessage(error) });
             throw new Error(`Failed to upload image: ${getErrorMessage(error)}`);
@@ -337,8 +351,8 @@ export function useApiClient(): UseApiClientReturn | null {
               voiceNote,
               `voice-${Date.now()}.m4a`
             );
-            const signed = await storageService.getDisplayUrl('voice-notes', result.path);
-            if (signed) uploadedVoiceNotes.push(signed);
+            // Store the path, not a signed URL (signed URLs expire)
+            uploadedVoiceNotePaths.push(result.path);
           } catch (error) {
             log.error('Error uploading voice note', { error: getErrorMessage(error) });
             throw new Error(`Failed to upload voice note: ${getErrorMessage(error)}`);
@@ -346,19 +360,19 @@ export function useApiClient(): UseApiClientReturn | null {
         }
       }
 
-      // Update the maintenance request with uploaded file URLs if any
-      if (uploadedImages.length || uploadedVoiceNotes.length) {
+      // Update the maintenance request with uploaded file paths (not signed URLs)
+      if (uploadedImagePaths.length || uploadedVoiceNotePaths.length) {
         const { error: updateError } = await supabaseClient
           .from('maintenance_requests')
           .update({
-            images: uploadedImages.length ? uploadedImages : null,
-            voice_notes: uploadedVoiceNotes.length ? uploadedVoiceNotes : null,
+            images: uploadedImagePaths.length ? uploadedImagePaths : null,
+            voice_notes: uploadedVoiceNotePaths.length ? uploadedVoiceNotePaths : null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', maintenanceRequest.id);
 
         if (updateError) {
-          console.error('Failed to update maintenance request with file URLs:', updateError);
+          console.error('Failed to update maintenance request with file paths:', updateError);
           // Don't throw here - the request was created successfully
         }
       }
@@ -376,9 +390,12 @@ export function useApiClient(): UseApiClientReturn | null {
     updates: UpdateMaintenanceRequestData
   ) => {
     try {
+      log.info('updateMaintenanceRequest called', { requestId, updates });
+
       // Validate input
       const result = validateMaintenanceRequestUpdate(updates);
       if (!result.valid) {
+        log.error('Validation failed', { errors: result.errors });
         throw new Error(result.errors.join(', '));
       }
 
@@ -387,9 +404,12 @@ export function useApiClient(): UseApiClientReturn | null {
       }
 
       const client = getSupabaseClient();
-      return await client.updateMaintenanceRequest(requestId, updates);
+      log.info('Calling supabase client updateMaintenanceRequest');
+      const response = await client.updateMaintenanceRequest(requestId, updates);
+      log.info('updateMaintenanceRequest success', { response });
+      return response;
     } catch (error) {
-      log.error('Error updating maintenance request', { error: getErrorMessage(error) });
+      log.error('Error updating maintenance request', { error: getErrorMessage(error), requestId, updates });
       captureException(error, { op: 'updateMaintenanceRequest', requestId });
       throw new Error(`Failed to update maintenance request: ${getErrorMessage(error)}`);
     }
@@ -630,6 +650,7 @@ export function useApiClient(): UseApiClientReturn | null {
             id,
             name,
             address,
+            landlord_id,
             wifi_network,
             wifi_password,
             emergency_contact,
@@ -676,36 +697,37 @@ export function useApiClient(): UseApiClientReturn | null {
     createUserProfile,
     updateUserProfile,
     setUserRole,
-    
+
     // Property methods
     getUserProperties,
     createProperty,
     createPropertyAreas,
     deleteProperty,
-    
-    // Property code methods  
+
+    // Property code methods
     validatePropertyCode,
     linkTenantToProperty,
     getTenantProperties,
     linkTenantToPropertyById,
-    
+
     // Maintenance request methods
     getMaintenanceRequests,
+    getMaintenanceRequestById,
     createMaintenanceRequest,
     updateMaintenanceRequest,
-    
+
     // Messaging methods
     getMessages,
     sendMessage,
-    
+
     // AI methods
     analyzeMaintenanceRequest,
-    
+
     // Storage methods
     uploadFile,
     getSignedUrl,
     deleteFile,
-    
+
     // Subscriptions
     subscribeToMaintenanceRequests,
     subscribeToMessages,

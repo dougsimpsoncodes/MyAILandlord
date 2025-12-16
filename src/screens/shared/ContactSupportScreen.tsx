@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 type IssueCategory = 'general' | 'bug' | 'billing' | 'feature' | 'account';
 
@@ -24,6 +25,15 @@ const ContactSupportScreen = () => {
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
 
+  // Dialog state
+  const [dialogConfig, setDialogConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmStyle?: 'default' | 'destructive' | 'info';
+    onConfirm: () => void;
+  }>({ visible: false, title: '', message: '', onConfirm: () => {} });
+
   const categories: { id: IssueCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
     { id: 'general', label: 'General', icon: 'help-circle-outline' },
     { id: 'bug', label: 'Bug Report', icon: 'bug-outline' },
@@ -32,17 +42,30 @@ const ContactSupportScreen = () => {
     { id: 'account', label: 'Account', icon: 'person-outline' },
   ];
 
+  const showNotification = (title: string, msg: string, style: 'default' | 'destructive' | 'info' = 'info', onConfirm?: () => void) => {
+    setDialogConfig({
+      visible: true,
+      title,
+      message: msg,
+      confirmStyle: style,
+      onConfirm: () => {
+        setDialogConfig(prev => ({ ...prev, visible: false }));
+        onConfirm?.();
+      },
+    });
+  };
+
   const handleSubmit = async () => {
     if (!selectedCategory) {
-      Alert.alert('Error', 'Please select a category');
+      showNotification('Error', 'Please select a category', 'destructive');
       return;
     }
     if (!subject.trim()) {
-      Alert.alert('Error', 'Please enter a subject');
+      showNotification('Error', 'Please enter a subject', 'destructive');
       return;
     }
     if (!message.trim()) {
-      Alert.alert('Error', 'Please enter your message');
+      showNotification('Error', 'Please enter your message', 'destructive');
       return;
     }
 
@@ -50,13 +73,14 @@ const ContactSupportScreen = () => {
     try {
       // TODO: Implement support ticket API
       await new Promise(resolve => setTimeout(resolve, 1000));
-      Alert.alert(
+      showNotification(
         'Message Sent',
         'Thank you for contacting us. We\'ll get back to you within 24-48 hours.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        'default',
+        () => navigation.goBack()
       );
     } catch (error) {
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      showNotification('Error', 'Failed to send message. Please try again.', 'destructive');
     } finally {
       setIsSending(false);
     }
@@ -161,6 +185,15 @@ const ContactSupportScreen = () => {
           </Text>
         </View>
       </KeyboardAvoidingView>
+
+      <ConfirmDialog
+        visible={dialogConfig.visible}
+        title={dialogConfig.title}
+        message={dialogConfig.message}
+        confirmStyle={dialogConfig.confirmStyle}
+        onConfirm={dialogConfig.onConfirm}
+        onCancel={() => setDialogConfig(prev => ({ ...prev, visible: false }))}
+      />
     </ScreenContainer>
   );
 };
