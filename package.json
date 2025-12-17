@@ -46,7 +46,7 @@
     "expo": "~53.0.25",
     "expo-auth-session": "^6.2.1",
     "expo-crypto": "~14.1.5",
-    "expo-dev-client": "~5.2.4",
+    "expo-dev-client": "~6.0.20",
     "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
     "expo-image-loader": "~5.1.0",
