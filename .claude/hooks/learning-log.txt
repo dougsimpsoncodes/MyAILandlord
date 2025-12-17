@@ -713,3 +713,45 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-16T23:30:25Z] Commit b46264d1843b4db5304a5fb2ed40800f3eba1880 successful
+Message: feat: UI consistency overhaul + terminology updates
+
+Requests Pages:
+- Unified design pattern for landlord and tenant request screens
+- Added tabbed filters (New, In Progress, Completed) to both
+- Consistent status badges, colors, and terminology
+- Removed "View Details" button - cards are now fully tappable
+- Both pages now titled "Requests" with matching tab labels
+
+Status Fixes:
+- Fixed status value mismatches (pending/completed vs new/resolved)
+- Aligned status colors: pending=orange, in_progress=blue, completed=green
+- Capitalized status text consistently
+
+Terminology Updates:
+- "Photos & Assets" → "Rooms & Inventory"
+- "Asset" → "Item" throughout property screens
+- "Maintenance" tab → "Requests" tab for landlord
+
+TypeScript:
+- Added skipLibCheck and esModuleInterop to tsconfig
+- Silenced dependency type errors while maintaining strict mode
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-17T02:11:34Z] Commit daa49b29781a797183b814854fdec90c8a990521 successful
+Message: fix: remove pre_install hook causing EAS build failure
+
+The patch-expo-headers.sh script was failing on EAS build servers.
+Warnings are already suppressed via post_install build settings.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

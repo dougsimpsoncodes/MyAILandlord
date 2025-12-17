@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		075AE1609D9A3C686955BDCA /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FCB65F14B9B2F2159601A68 /* ExpoModulesProvider.swift */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		15448F44C70E81FE044265F8 /* libPods-MyAILandlord.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DD1698B45888EC9BED4D04D /* libPods-MyAILandlord.a */; };
+		24DB0816DBD595C605B6531F /* libPods-MyAILandlord.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1B9C84D07FE015E915030B59 /* libPods-MyAILandlord.a */; };
+		25D293D5F1144A06C1BAF133 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5417107200D7DF9A71483435 /* PrivacyInfo.xcprivacy */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		4B79EA146EF82705AB73C40B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AFE642DE0C82DE7D4621A199 /* PrivacyInfo.xcprivacy */; };
+		8F3133C418B7FDE6600B30C2 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F518308C49ECA9E915570CD0 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		01699E49F9A82A8E7E2AE607 /* Pods-MyAILandlord.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyAILandlord.debug.xcconfig"; path = "Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord.debug.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* MyAILandlord.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyAILandlord.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = MyAILandlord/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = MyAILandlord/Info.plist; sourceTree = "<group>"; };
-		1FCB65F14B9B2F2159601A68 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-MyAILandlord/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		91C8FB643B14B5CE121909F3 /* Pods-MyAILandlord.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyAILandlord.release.xcconfig"; path = "Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord.release.xcconfig"; sourceTree = "<group>"; };
-		9DD1698B45888EC9BED4D04D /* libPods-MyAILandlord.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyAILandlord.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1B9C84D07FE015E915030B59 /* libPods-MyAILandlord.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MyAILandlord.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3A09215CE9E0478FC0002557 /* Pods-MyAILandlord.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyAILandlord.release.xcconfig"; path = "Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord.release.xcconfig"; sourceTree = "<group>"; };
+		5417107200D7DF9A71483435 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = MyAILandlord/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = MyAILandlord/SplashScreen.storyboard; sourceTree = "<group>"; };
-		AFE642DE0C82DE7D4621A199 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = MyAILandlord/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		EBD9113E3585661C2AF90F98 /* Pods-MyAILandlord.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MyAILandlord.debug.xcconfig"; path = "Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = MyAILandlord/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* MyAILandlord-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "MyAILandlord-Bridging-Header.h"; path = "MyAILandlord/MyAILandlord-Bridging-Header.h"; sourceTree = "<group>"; };
+		F518308C49ECA9E915570CD0 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-MyAILandlord/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,13 +37,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				15448F44C70E81FE044265F8 /* libPods-MyAILandlord.a in Frameworks */,
+				24DB0816DBD595C605B6531F /* libPods-MyAILandlord.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0CD7670981658FFC48FC5793 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				32FFF767E35295A2D4CB5922 /* MyAILandlord */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
 		13B07FAE1A68108700A75B9A /* MyAILandlord */ = {
 			isa = PBXGroup;
 			children = (
@@ -53,7 +61,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				AFE642DE0C82DE7D4621A199 /* PrivacyInfo.xcprivacy */,
+				5417107200D7DF9A71483435 /* PrivacyInfo.xcprivacy */,
 			);
 			name = MyAILandlord;
 			sourceTree = "<group>";
@@ -62,26 +70,17 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				9DD1698B45888EC9BED4D04D /* libPods-MyAILandlord.a */,
+				1B9C84D07FE015E915030B59 /* libPods-MyAILandlord.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		6544D929CDAAC65C743282E2 /* MyAILandlord */ = {
+		32FFF767E35295A2D4CB5922 /* MyAILandlord */ = {
 			isa = PBXGroup;
 			children = (
-				1FCB65F14B9B2F2159601A68 /* ExpoModulesProvider.swift */,
+				F518308C49ECA9E915570CD0 /* ExpoModulesProvider.swift */,
 			);
 			name = MyAILandlord;
-			sourceTree = "<group>";
-		};
-		81B0D9AF8622DC654BD76549 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				01699E49F9A82A8E7E2AE607 /* Pods-MyAILandlord.debug.xcconfig */,
-				91C8FB643B14B5CE121909F3 /* Pods-MyAILandlord.release.xcconfig */,
-			);
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -98,8 +97,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				81B0D9AF8622DC654BD76549 /* Pods */,
-				ED3A9D1E80FB80578D590148 /* ExpoModulesProviders */,
+				F02DADEA0BD647103B052575 /* Pods */,
+				0CD7670981658FFC48FC5793 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -123,12 +122,14 @@
 			path = MyAILandlord/Supporting;
 			sourceTree = "<group>";
 		};
-		ED3A9D1E80FB80578D590148 /* ExpoModulesProviders */ = {
+		F02DADEA0BD647103B052575 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				6544D929CDAAC65C743282E2 /* MyAILandlord */,
+				EBD9113E3585661C2AF90F98 /* Pods-MyAILandlord.debug.xcconfig */,
+				3A09215CE9E0478FC0002557 /* Pods-MyAILandlord.release.xcconfig */,
 			);
-			name = ExpoModulesProviders;
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,13 +140,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "MyAILandlord" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				88BAFBC69BD7A925D2C832AB /* [Expo] Configure project */,
+				CE14CDE1279528FFBED3EE1D /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				BC9C7B004EB4F196F2174C1F /* [CP] Embed Pods Frameworks */,
+				C96D00287DCE75FE46BFAF6D /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +196,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				4B79EA146EF82705AB73C40B /* PrivacyInfo.xcprivacy in Resources */,
+				25D293D5F1144A06C1BAF133 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -285,7 +286,25 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		88BAFBC69BD7A925D2C832AB /* [Expo] Configure project */ = {
+		C96D00287DCE75FE46BFAF6D /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		CE14CDE1279528FFBED3EE1D /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -304,24 +323,6 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-MyAILandlord/expo-configure-project.sh\"\n";
 		};
-		BC9C7B004EB4F196F2174C1F /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-MyAILandlord/Pods-MyAILandlord-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -330,7 +331,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				075AE1609D9A3C686955BDCA /* ExpoModulesProvider.swift in Sources */,
+				8F3133C418B7FDE6600B30C2 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -339,13 +340,12 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 01699E49F9A82A8E7E2AE607 /* Pods-MyAILandlord.debug.xcconfig */;
+			baseConfigurationReference = EBD9113E3585661C2AF90F98 /* Pods-MyAILandlord.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = MyAILandlord/MyAILandlord.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8663994F2R;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -376,13 +376,12 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 91C8FB643B14B5CE121909F3 /* Pods-MyAILandlord.release.xcconfig */;
+			baseConfigurationReference = 3A09215CE9E0478FC0002557 /* Pods-MyAILandlord.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = MyAILandlord/MyAILandlord.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8663994F2R;
 				INFOPLIST_FILE = MyAILandlord/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
