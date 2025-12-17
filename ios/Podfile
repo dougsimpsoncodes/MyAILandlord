@@ -13,11 +13,6 @@ install! 'cocoapods',
 
 prepare_react_native_project!
 
-# Patch Expo headers before installation
-pre_install do |installer|
-  system("#{__dir__}/scripts/patch-expo-headers.sh")
-end
-
 target 'MyAILandlord' do
   use_expo_modules!
 
