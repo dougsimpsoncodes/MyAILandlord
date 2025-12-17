@@ -44,7 +44,7 @@
     "@upstash/redis": "^1.35.4",
     "base64-arraybuffer": "^1.0.2",
     "expo": "~53.0.25",
-    "expo-auth-session": "^6.2.1",
+    "expo-auth-session": "^7.0.10",
     "expo-crypto": "~14.1.5",
     "expo-dev-client": "~5.2.4",
     "expo-file-system": "~18.1.11",
