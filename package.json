@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "postinstall": "ios/scripts/patch-expo-headers.sh",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -74,7 +73,7 @@
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.12",
-    "@types/react": "^18.2.74",
+    "@types/react": "^19.2.7",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@typescript-eslint/parser": "^8.40.0",
     "eslint": "^9.34.0",

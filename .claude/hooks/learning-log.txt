@@ -755,3 +755,22 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-17T02:17:00Z] Commit b70400de2d9a9eb3dc4673acbf2d15580d00b051 successful
+Message: fix: regenerate iOS folder and fix app.json duplicates
+
+- Removed duplicate intentFilters in android config
+- Removed duplicate android permissions
+- Removed expo-modules-core direct dependency
+- Regenerated ios folder with expo prebuild
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-17T02:30:16Z] Commit c288e75922698e359d084bff0303a86ca6a50603 successful
+Message: fix: add legacy-peer-deps for EAS build to resolve @types/react conflict
+Guidance Applied: 
+Quality Score: 6
+---

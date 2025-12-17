@@ -14,9 +14,7 @@
     "production": {
       "autoIncrement": true,
       "node": "20.18.0",
-      "env": {
-        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
-      }
+      "installCommand": "npm ci --include=dev --legacy-peer-deps"
     }
   },
   "submit": {
