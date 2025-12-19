@@ -3,7 +3,8 @@
     "name": "My AI Landlord",
     "slug": "MyAILandlord",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "sdkVersion": "54.0.0",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -20,17 +21,19 @@
     ],
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": false,
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to capture photos and videos of maintenance issues.",
         "NSMicrophoneUsageDescription": "This app uses the microphone to record audio with videos of maintenance issues.",
-        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images of maintenance issues."
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images of maintenance issues.",
+        "UIViewControllerBasedStatusBarAppearance": true
       },
       "bundleIdentifier": "com.example.myailandlord",
       "associatedDomains": [
         "applinks:myailandlord.app",
         "applinks:www.myailandlord.app"
       ],
-      "runtimeVersion": "1.0.0"
+      "runtimeVersion": "54.0.0"
     },
     "android": {
       "adaptiveIcon": {
@@ -80,8 +83,7 @@
     "extra": {
       "eas": {
         "projectId": "e0bbde0b-8807-4eca-ab59-987973d4967c"
-      },
-      "geminiApiKey": "${EXPO_PUBLIC_GEMINI_API_KEY}"
+      }
     }
   }
 }
