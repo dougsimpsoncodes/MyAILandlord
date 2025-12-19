@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useProfile } from '../../context/ProfileContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
@@ -11,6 +12,7 @@ import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useRole } from '../../context/RoleContext';
 import * as Linking from 'expo-linking';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
+import { formatAddress } from '../../utils/helpers';
 
 interface RouteParams {
   propertyId: string;
@@ -20,6 +22,7 @@ const PropertyInviteAcceptScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAppAuth();
+  const { profile, refreshProfile } = useProfile();
   const { supabase } = useSupabaseWithAuth();
   
   // Extract propertyId from route params or query parameters
@@ -132,15 +135,16 @@ const PropertyInviteAcceptScreen = () => {
       throw new Error('User not authenticated');
     }
 
-    const existing = await apiClient.getUserProfile();
-    if (!existing) {
+    // Use cached profile from ProfileContext
+    if (!profile) {
       const email = user.email;
       const name = user.name;
       const avatarUrl = user.avatar || '';
       await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
-      log.info('👤 Tenant profile created during invite acceptance');
+      await refreshProfile();
+      log.info('Tenant profile created during invite acceptance');
       await setUserRole('tenant');
-      log.info('✅ Tenant role set in context');
+      log.info('Tenant role set in context');
     }
   };
 
@@ -292,7 +296,7 @@ const PropertyInviteAcceptScreen = () => {
             <Ionicons name="home" size={32} color="#007AFF" />
           </View>
           <Text style={styles.propertyName}>{property.name}</Text>
-          <Text style={styles.propertyAddress}>{property.address}</Text>
+          <Text style={styles.propertyAddress}>{formatAddress(property.address)}</Text>
           {property.unit && (
             <Text style={styles.propertyUnit}>Unit: {property.unit}</Text>
           )}

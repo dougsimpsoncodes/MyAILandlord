@@ -1,9 +1,10 @@
 import { APP_CONSTANTS, ERROR_MESSAGES } from './constants';
-import { 
-  validateEmail, 
-  validateRequired, 
-  validateLength, 
+import {
+  validateEmail,
+  validateRequired,
+  validateLength,
   sanitizeString,
+  sanitizeUrl,
   isValidPriority,
   isValidStatus,
   isValidRole
@@ -281,7 +282,7 @@ export const sanitizeProfileData = (data: {
     email: data.email ? sanitizeString(data.email) : data.email,
     name: data.name ? sanitizeString(data.name) : data.name,
     role: data.role ? sanitizeString(data.role) : data.role,
-    avatarUrl: data.avatarUrl ? sanitizeString(data.avatarUrl) : data.avatarUrl,
+    avatarUrl: data.avatarUrl ? sanitizeUrl(data.avatarUrl) : data.avatarUrl,
   };
 };
 
@@ -320,7 +321,7 @@ export const sanitizeMessageData = (data: {
     recipientId: data.recipientId ? sanitizeString(data.recipientId) : data.recipientId,
     content: data.content ? sanitizeString(data.content) : data.content,
     messageType: data.messageType ? sanitizeString(data.messageType) : data.messageType,
-    attachmentUrl: data.attachmentUrl ? sanitizeString(data.attachmentUrl) : data.attachmentUrl,
+    attachmentUrl: data.attachmentUrl ? sanitizeUrl(data.attachmentUrl) : data.attachmentUrl,
     propertyId: data.propertyId ? sanitizeString(data.propertyId) : data.propertyId,
   };
 };

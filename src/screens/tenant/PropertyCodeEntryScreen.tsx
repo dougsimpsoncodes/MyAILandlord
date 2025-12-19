@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useProfile } from '../../context/ProfileContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
@@ -16,6 +17,7 @@ type PropertyCodeEntryNavigationProp = NativeStackNavigationProp<TenantStackPara
 const PropertyCodeEntryScreen = () => {
   const navigation = useNavigation<PropertyCodeEntryNavigationProp>();
   const { user } = useAppAuth();
+  const { profile, refreshProfile } = useProfile();
   const apiClient = useApiClient();
 
   const [propertyCode, setPropertyCode] = useState('');
@@ -26,12 +28,13 @@ const PropertyCodeEntryScreen = () => {
     if (!user || !apiClient) {
       throw new Error('User not authenticated');
     }
-    const profile = await apiClient.getUserProfile();
+    // Use cached profile from ProfileContext
     if (!profile) {
       const email = user.email;
       const name = user.name;
       const avatarUrl = user.avatar || '';
       await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
+      await refreshProfile();
       log.info('Profile created for tenant via code entry');
     }
   };

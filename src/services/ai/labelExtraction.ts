@@ -1,11 +1,8 @@
 // AI-powered asset label extraction service
-// Uses Google Gemini Vision API to extract asset information from photos
+// Uses Supabase Edge Function to securely call Gemini Vision API
 
-import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
-
-// Get Gemini API key from environment
-const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
+import { supabase } from '../supabase/config';
 
 export interface ExtractedAssetData {
   brand?: string;
@@ -30,18 +27,12 @@ export interface LabelExtractionResult {
 
 /**
  * Extract asset information from a photo of a label, nameplate, or energy guide
- * Uses Google Gemini 1.5 Flash Vision API (free tier)
+ * Uses Supabase Edge Function to securely call Gemini Vision API
  * @param imageUri - Local URI of the image to process
  * @returns Promise containing extracted data or error
  */
 export async function extractAssetDataFromImage(imageUri: string): Promise<LabelExtractionResult> {
   try {
-    // Check if API key is configured
-    if (!GEMINI_API_KEY) {
-      console.warn('Gemini API key not configured, using mock data');
-      return getMockResult();
-    }
-
     // Read image and convert to base64
     let base64Image: string;
     try {
@@ -49,7 +40,6 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
         encoding: FileSystem.EncodingType.Base64,
       });
     } catch {
-      console.error('Failed to read image file');
       return {
         success: false,
         error: 'Failed to read image file. Please try again.'
@@ -59,95 +49,28 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
     // Determine MIME type from URI
     const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
 
-    // Prepare the prompt for Gemini Vision
-    const prompt = `Analyze this image of an appliance label, nameplate, or energy guide.
-Extract all visible information and return a JSON object with these fields (use null for fields you cannot find):
-
-{
-  "brand": "manufacturer name",
-  "model": "model number",
-  "serialNumber": "serial number",
-  "year": "manufacture year or date",
-  "energyRating": "energy rating or certification",
-  "capacity": "capacity with units",
-  "voltage": "voltage rating",
-  "wattage": "power consumption",
-  "dimensions": "size if visible",
-  "weight": "weight if visible",
-  "color": "color/finish if visible",
-  "confidence": 0.0-1.0 based on how clearly you could read the information
-}
-
-Respond ONLY with the JSON object, no other text.`;
-
-    // Call Gemini Vision API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Image
-                }
-              }
-            ]
-          }],
-          generationConfig: {
-            temperature: 0.2,
-            topK: 32,
-            topP: 0.95,
-            maxOutputTokens: 1024,
-          },
-        }),
+    // Call Edge Function (API key is securely stored server-side)
+    const { data, error } = await supabase.functions.invoke('extract-asset-label', {
+      body: {
+        imageBase64: base64Image,
+        mimeType: mimeType
       }
-    );
+    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini Vision API error:', errorText);
-      // Fall back to mock data on API error
+    if (error) {
+      // Fall back to mock data on error (for development/testing)
       return getMockResult();
     }
 
-    const data = await response.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // Parse JSON from response (handle markdown code blocks if present)
-    let jsonStr = responseText;
-    const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1];
-    }
-
-    let extractedData: ExtractedAssetData;
-    try {
-      extractedData = JSON.parse(jsonStr.trim());
-    } catch {
-      console.error('Failed to parse Gemini response:', responseText);
+    if (!data.success) {
       return {
         success: false,
-        error: 'Could not extract clear text from the image. Please ensure the label is well-lit and in focus.'
+        error: data.error || 'Failed to extract label data.'
       };
     }
 
-    // Clean up null values
-    const cleanedData: ExtractedAssetData = {};
-    for (const [key, value] of Object.entries(extractedData)) {
-      if (value !== null && value !== undefined && value !== '') {
-        (cleanedData as Record<string, unknown>)[key] = value;
-      }
-    }
-
     // Validate and enhance with brand patterns
-    const enhancedData = validateAndEnhanceData(cleanedData);
+    const enhancedData = validateAndEnhanceData(data.data);
 
     return {
       success: true,
@@ -155,7 +78,6 @@ Respond ONLY with the JSON object, no other text.`;
     };
 
   } catch (error) {
-    console.error('Label extraction error:', error);
     return {
       success: false,
       error: 'Failed to process image. Please try again.'
@@ -324,47 +246,3 @@ export function getCommonModelsForBrand(brand: string, assetType: string): strin
   return commonModels[brandLower]?.[assetType] || [];
 }
 
-/**
- * Production implementation would integrate with services like:
- * 
- * 1. Google Cloud Vision API:
- *    - Text detection and OCR
- *    - High accuracy for printed text
- *    - Good for nameplates and labels
- * 
- * 2. AWS Textract:
- *    - Form and table extraction
- *    - Excellent for energy guides
- *    - Structured data extraction
- * 
- * 3. Azure Computer Vision:
- *    - Read API for text extraction
- *    - Good integration with Azure ecosystem
- * 
- * 4. OpenAI Vision API:
- *    - Advanced understanding of context
- *    - Can interpret complex labels
- *    - Natural language processing
- * 
- * 5. On-device ML Kit (React Native):
- *    - Offline processing
- *    - Privacy-focused
- *    - Lower accuracy but instant results
- * 
- * Implementation example for Google Vision:
- * 
- * ```typescript
- * import vision from '@google-cloud/vision';
- * 
- * async function extractWithGoogleVision(imageUri: string) {
- *   const client = new vision.ImageAnnotatorClient();
- *   const [result] = await client.textDetection({
- *     image: { content: fs.readFileSync(imageUri) }
- *   });
- *   
- *   const detections = result.textAnnotations;
- *   // Parse and structure the detected text
- *   return parseDetectedText(detections);
- * }
- * ```
- */

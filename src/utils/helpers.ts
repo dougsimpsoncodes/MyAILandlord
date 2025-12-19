@@ -48,13 +48,94 @@ export const validateAudioFile = (file: { size: number; type: string }): { valid
   return { valid: true };
 };
 
-// Input sanitization
+// Input sanitization - comprehensive protection against XSS and injection
 export const sanitizeString = (input: string): string => {
-  return input.trim().replace(/[<>]/g, '');
+  if (!input) return '';
+
+  return input
+    .trim()
+    // Remove null bytes (can bypass filters)
+    .replace(/\0/g, '')
+    // Remove control characters (except newlines and tabs for text areas)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Remove Unicode direction override characters (text spoofing)
+    .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')
+    // Encode HTML special characters
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 };
 
-export const sanitizeHtml = (input: string): string => {
-  return input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+// Sanitize for display (decode safe characters back for UI)
+export const sanitizeForDisplay = (input: string): string => {
+  if (!input) return '';
+
+  return input
+    .trim()
+    // Remove null bytes
+    .replace(/\0/g, '')
+    // Remove control characters (except newlines and tabs)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Remove Unicode direction override characters
+    .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')
+    // Remove HTML tags entirely for display
+    .replace(/<[^>]*>/g, '');
+};
+
+// URL sanitization - prevent javascript: and data: protocol attacks
+export const sanitizeUrl = (url: string): string => {
+  if (!url) return '';
+
+  const trimmed = url.trim();
+
+  // Block dangerous protocols
+  const lowerUrl = trimmed.toLowerCase();
+  if (
+    lowerUrl.startsWith('javascript:') ||
+    lowerUrl.startsWith('data:') ||
+    lowerUrl.startsWith('vbscript:')
+  ) {
+    return '';
+  }
+
+  // Validate URL structure for http/https
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      new URL(trimmed);
+      return trimmed;
+    } catch {
+      return '';
+    }
+  }
+
+  // Allow relative URLs (paths)
+  if (trimmed.startsWith('/')) {
+    // Prevent path traversal
+    if (trimmed.includes('..')) {
+      return '';
+    }
+    return trimmed;
+  }
+
+  return '';
+};
+
+// Path sanitization - prevent directory traversal
+export const sanitizePath = (path: string): string => {
+  if (!path) return '';
+
+  return path
+    .trim()
+    // Remove path traversal attempts
+    .replace(/\.\./g, '')
+    // Remove null bytes
+    .replace(/\0/g, '')
+    // Normalize multiple slashes
+    .replace(/\/+/g, '/')
+    // Remove leading slash for storage paths
+    .replace(/^\/+/, '');
 };
 
 // Formatting helpers
@@ -101,12 +182,18 @@ export const formatRelativeTime = (date: string | Date): string => {
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+export const formatAddress = (address: string): string => {
+  if (!address) return '';
+  // Remove 4-digit zip code extension (e.g., "12345-6789" -> "12345")
+  return address.replace(/(\d{5})-\d{4}/g, '$1');
 };
 
 // Utility functions

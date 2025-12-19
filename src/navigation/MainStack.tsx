@@ -3,6 +3,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, Text, StyleSheet } from 'react-native';
+import { haptics } from '../lib/haptics';
+import { useUnreadMessages } from '../context/UnreadMessagesContext';
+import { usePendingRequests } from '../context/PendingRequestsContext';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 // Tenant Screens
 import HomeScreen from '../screens/tenant/HomeScreen';
@@ -94,7 +98,15 @@ export type TenantStackParamList = {
   FollowUp: { issueId: string };
   ConfirmSubmission: { issueId: string };
   CommunicationHub: undefined;
-  PropertyInfo: { address?: string } | undefined;
+  PropertyInfo: {
+    propertyId?: string;
+    address?: string;
+    name?: string;
+    wifiNetwork?: string;
+    wifiPassword?: string;
+    emergencyContact?: string;
+    emergencyPhone?: string;
+  } | undefined;
   PropertyCodeEntry: undefined;
   PropertyInviteAccept: { propertyId?: string; property?: string };
   UnitSelection: {
@@ -192,6 +204,7 @@ const LandlordHomeStackNavigator = () => (
     <LandlordHomeStack.Screen name="LandlordHomeMain" component={LandlordHomeScreen} />
     <LandlordHomeStack.Screen name="Dashboard" component={DashboardScreen} />
     <LandlordHomeStack.Screen name="CaseDetail" component={CaseDetailScreen} />
+    <LandlordHomeStack.Screen name="LandlordChat" component={LandlordChatScreen} />
     <LandlordHomeStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
     <LandlordHomeStack.Screen name="PropertyManagement" component={PropertyManagementScreen} />
     <LandlordHomeStack.Screen name="AddProperty" component={AddPropertyScreen} />
@@ -263,11 +276,23 @@ const LandlordProfileStackNavigator = () => (
 );
 
 const LandlordNavigator = () => {
+  const { unreadCount } = useUnreadMessages();
+  const { newCount, pendingCount } = usePendingRequests();
+
+  // Badge logic: red for new requests, orange for pending (if no new)
+  const requestBadgeCount = newCount > 0 ? newCount : (pendingCount > 0 ? pendingCount : undefined);
+  const requestBadgeColor = newCount > 0 ? '#E74C3C' : '#F39C12';
+
   return (
     <LandlordTab.Navigator
       screenOptions={{
         headerShown: false,
         ...tabBarStyles,
+      }}
+      screenListeners={{
+        tabPress: () => {
+          haptics.light();
+        },
       }}
     >
       <LandlordTab.Screen
@@ -288,6 +313,15 @@ const LandlordNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="construct" size={size} color={color} />
           ),
+          tabBarBadge: requestBadgeCount,
+          tabBarBadgeStyle: {
+            backgroundColor: requestBadgeColor,
+            fontSize: 11,
+            fontWeight: '600',
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+          },
         }}
       />
       <LandlordTab.Screen
@@ -308,6 +342,15 @@ const LandlordNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#E74C3C',
+            fontSize: 11,
+            fontWeight: '600',
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+          },
         }}
       />
       <LandlordTab.Screen
@@ -386,6 +429,8 @@ interface TenantNavigatorProps {
 }
 
 const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInvitePropertyId }) => {
+  const { unreadCount } = useUnreadMessages();
+
   // For pending invites, we'll handle the initial navigation in the Home stack
   return (
     <TenantTab.Navigator
@@ -393,6 +438,11 @@ const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInviteProperty
         headerShown: false,
         ...tabBarStyles,
         tabBarActiveTintColor: '#2ECC71', // Green for tenant
+      }}
+      screenListeners={{
+        tabPress: () => {
+          haptics.light();
+        },
       }}
     >
       <TenantTab.Screen
@@ -423,6 +473,15 @@ const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInviteProperty
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
+          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: '#E74C3C',
+            fontSize: 11,
+            fontWeight: '600',
+            minWidth: 18,
+            height: 18,
+            borderRadius: 9,
+          },
         }}
       />
       <TenantTab.Screen
@@ -447,6 +506,9 @@ interface MainStackProps {
 }
 
 const MainStack: React.FC<MainStackProps> = ({ userRole, pendingInvitePropertyId }) => {
+  // Register for push notifications (must be inside NavigationContainer)
+  usePushNotifications();
+
   return userRole === 'tenant' ? (
     <TenantNavigator pendingInvitePropertyId={pendingInvitePropertyId} />
   ) : (

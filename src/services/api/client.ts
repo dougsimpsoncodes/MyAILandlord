@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { SupabaseClient } from '../supabase/client';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
 import { supabase } from '../supabase/config';
@@ -32,7 +33,7 @@ import {
   sanitizeMaintenanceRequestData,
   sanitizeMessageData
 } from '../../utils/validation';
-import { validateImageFile, validateAudioFile, getErrorMessage, validateRequired, validateLength, sanitizeString } from '../../utils/helpers';
+import { validateImageFile, validateAudioFile, getErrorMessage, validateRequired, validateLength, sanitizeString, sanitizePath, sanitizeUrl } from '../../utils/helpers';
 import { FileValidation } from '../../types/api';
 import { ENV_CONFIG } from '../../utils/constants';
 import log from '../../lib/log';
@@ -125,7 +126,7 @@ export function useApiClient(): UseApiClientReturn | null {
       }
       
       if (updates.avatarUrl !== undefined) {
-        finalUpdates.avatarUrl = sanitizeString(updates.avatarUrl);
+        finalUpdates.avatarUrl = sanitizeUrl(updates.avatarUrl);
       }
 
       if (updates.email !== undefined) {
@@ -291,7 +292,7 @@ export function useApiClient(): UseApiClientReturn | null {
           area: validatedData.area,
           asset: validatedData.asset,
           issue_type: validatedData.issueType,
-          status: 'pending',
+          status: 'submitted',
         })
         .select()
         .single();
@@ -449,6 +450,31 @@ export function useApiClient(): UseApiClientReturn | null {
     }
   };
 
+  const markMessagesAsRead = async () => {
+    try {
+      const profile = await getUserProfile();
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
+      // Mark all unread messages where user is the recipient as read
+      const { error } = await supabaseClient
+        .from('messages')
+        .update({ is_read: true, updated_at: new Date().toISOString() })
+        .eq('recipient_id', profile.id)
+        .eq('is_read', false);
+
+      if (error) {
+        throw new Error(`Failed to mark messages as read: ${error.message}`);
+      }
+
+      return true;
+    } catch (error) {
+      log.error('Error marking messages as read', { error: getErrorMessage(error) });
+      throw new Error(`Failed to mark messages as read: ${getErrorMessage(error)}`);
+    }
+  };
+
   // ========== AI METHODS (Supabase Edge Functions) ==========
   const analyzeMaintenanceRequest = async (
     description: string,
@@ -496,10 +522,18 @@ export function useApiClient(): UseApiClientReturn | null {
     folder?: string
   ) => {
     try {
+      // Sanitize file name and folder to prevent path traversal
+      const sanitizedFileName = sanitizePath(fileName);
+      const sanitizedFolder = folder ? sanitizePath(folder) : undefined;
+
+      if (!sanitizedFileName) {
+        throw new Error('Invalid file name');
+      }
+
       // Validate file upload parameters
       const fileData = {
         bucket,
-        fileName: sanitizeString(fileName),
+        fileName: sanitizedFileName,
         fileSize: typeof file === 'object' && 'size' in file ? file.size : undefined,
         fileType: typeof file === 'object' && 'type' in file ? file.type : undefined
       };
@@ -512,7 +546,7 @@ export function useApiClient(): UseApiClientReturn | null {
       // Additional file validation if it's a File object
       if (typeof file === 'object' && 'size' in file && 'type' in file) {
         const fileValidation = file as FileValidation;
-        
+
         if (bucket === 'maintenance-images' || bucket === 'property-images') {
           const validation = validateImageFile(fileValidation);
           if (!validation.valid) {
@@ -526,8 +560,8 @@ export function useApiClient(): UseApiClientReturn | null {
         }
       }
 
-      const path = folder 
-        ? storageService.generateFilePath(folder, fileData.fileName)
+      const path = sanitizedFolder
+        ? storageService.generateFilePath(sanitizedFolder, fileData.fileName)
         : fileData.fileName;
 
       return await storageService.uploadFile({
@@ -551,7 +585,10 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('File path is required');
       }
 
-      const sanitizedPath = sanitizeString(path);
+      const sanitizedPath = sanitizePath(path);
+      if (!sanitizedPath) {
+        throw new Error('Invalid file path');
+      }
       return await storageService.getSignedUrl(bucket, sanitizedPath);
     } catch (error) {
       log.error('Error getting signed URL', { error: getErrorMessage(error) });
@@ -569,7 +606,10 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('File path is required');
       }
 
-      const sanitizedPath = sanitizeString(path);
+      const sanitizedPath = sanitizePath(path);
+      if (!sanitizedPath) {
+        throw new Error('Invalid file path');
+      }
       return await storageService.deleteFile(bucket, sanitizedPath);
     } catch (error) {
       log.error('Error deleting file', { error: getErrorMessage(error) });
@@ -597,9 +637,14 @@ export function useApiClient(): UseApiClientReturn | null {
       }
 
       const client = getSupabaseClient();
+      const profile = await client.getProfile(userId);
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
       const { data, error } = await client.client.rpc('validate_property_code', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
-        tenant_id: (await client.getProfile(userId))?.id
+        tenant_id: profile.id
       });
 
       if (error) {
@@ -620,9 +665,14 @@ export function useApiClient(): UseApiClientReturn | null {
       }
 
       const client = getSupabaseClient();
+      const profile = await client.getProfile(userId);
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
       const { data, error } = await client.client.rpc('link_tenant_to_property', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
-        tenant_id: (await client.getProfile(userId))?.id,
+        tenant_id: profile.id,
         unit_number: unitNumber ? sanitizeString(unitNumber) : null
       });
 
@@ -640,6 +690,11 @@ export function useApiClient(): UseApiClientReturn | null {
   const getTenantProperties = async () => {
     try {
       const client = getSupabaseClient();
+      const profile = await client.getProfile(userId);
+      if (!profile) {
+        throw new Error('User profile not found');
+      }
+
       const { data, error } = await client.client
         .from('tenant_property_links')
         .select(`
@@ -657,7 +712,7 @@ export function useApiClient(): UseApiClientReturn | null {
             emergency_phone
           )
         `)
-        .eq('tenant_id', (await client.getProfile(userId))?.id)
+        .eq('tenant_id', profile.id)
         .eq('is_active', true);
 
       if (error) {
@@ -691,7 +746,9 @@ export function useApiClient(): UseApiClientReturn | null {
     return true;
   };
 
-  return {
+  // Memoize the return object to prevent infinite loops in useCallback dependencies
+  // Only recreate when userId or supabaseClient changes (login/logout)
+  return useMemo(() => ({
     // User methods
     getUserProfile,
     createUserProfile,
@@ -719,6 +776,7 @@ export function useApiClient(): UseApiClientReturn | null {
     // Messaging methods
     getMessages,
     sendMessage,
+    markMessagesAsRead,
 
     // AI methods
     analyzeMaintenanceRequest,
@@ -731,5 +789,5 @@ export function useApiClient(): UseApiClientReturn | null {
     // Subscriptions
     subscribeToMaintenanceRequests,
     subscribeToMessages,
-  };
+  }), [userId, supabaseClient]);
 }

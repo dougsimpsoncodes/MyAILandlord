@@ -14,6 +14,7 @@ import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
 import { AreaType } from '../../models/Property';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { formatAddress } from '../../utils/helpers';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
 
@@ -78,48 +79,14 @@ const ReportIssueScreen = () => {
     }
 
     try {
-      console.log('=== LOADING TENANT PROPERTIES ===');
-      
-      // Auth debug removed in Supabase migration
-      
       const properties = await apiClient.getTenantProperties();
-      console.log('API returned properties:', properties);
-      console.log('Properties count:', properties?.length);
-      console.log('Properties data:', JSON.stringify(properties, null, 2));
-      
       setTenantProperties(properties || []);
-      
+
       // Auto-select if only one property
       if (properties && properties.length === 1) {
-        console.log('Auto-selecting single property:', properties[0]);
         setSelectedProperty(properties[0]);
-        console.log('selectedProperty state should now be:', properties[0]);
-      } else if (!properties || properties.length === 0) {
-        // FOR TESTING: Add a temporary property
-        console.log('=== NO PROPERTIES - ADDING TEST PROPERTY ===');
-        const testProperty = {
-          id: 'test-link-1',
-          tenant_id: 'test-tenant-1',
-          unit_number: '2A',
-          is_active: true,
-          properties: {
-            id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-            name: 'Test Apartment Complex',
-            address: '123 Test Street, Test City, TC 12345',
-            wifi_network: 'TestWiFi',
-            wifi_password: 'test123',
-            emergency_contact: 'Test Property Management',
-            emergency_phone: '555-TEST-911'
-          }
-        };
-        
-        setTenantProperties([testProperty]);
-        setSelectedProperty(testProperty);
-        console.log('Test property added:', testProperty);
       }
     } catch (error) {
-      console.error('Error loading tenant properties:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
       Alert.alert('Error', 'Failed to load your properties. Please try again.');
     } finally {
       setLoadingProperties(false);
@@ -250,12 +217,10 @@ const ReportIssueScreen = () => {
   };
 
   const updateTitle = (area: string, asset: string, issue: string) => {
-    if (area && asset && issue) {
-      const areaName = AREA_TEMPLATES.find(a => a.type === area)?.displayName || area;
-      setTitle(`${areaName} ${asset}: ${issue}`);
-    } else if (area && asset) {
-      const areaName = AREA_TEMPLATES.find(a => a.type === area)?.displayName || area;
-      setTitle(`${areaName} ${asset} Issue`);
+    if (asset && issue) {
+      setTitle(`${asset}: ${issue}`);
+    } else if (asset) {
+      setTitle(`${asset} Issue`);
     } else {
       setTitle('');
     }
@@ -363,44 +328,16 @@ const ReportIssueScreen = () => {
   };
 
   const handleSubmit = async () => {
-    console.log('=== handleSubmit called at', new Date().toISOString(), '===');
-    console.log('Button was clicked!');
-    console.log('selectedProperty:', selectedProperty);
-    console.log('navigation object:', navigation);
-    console.log('navigation state:', navigation.getState());
-    
-    // Check if function is even executing
-    (globalThis as any).LAST_HANDLE_SUBMIT = new Date().toISOString();
-    
     if (!selectedProperty) {
-      console.log('No property selected - showing alert');
       Alert.alert('Missing Information', 'Please select a property first.');
       return;
     }
-    
-    console.log('Checking required fields...');
-    console.log('selectedArea:', selectedArea);
-    console.log('selectedAsset:', selectedAsset);
-    console.log('selectedIssueType:', selectedIssueType);
-    console.log('selectedPriority:', selectedPriority);
-    console.log('selectedDuration:', selectedDuration);
-    console.log('selectedTiming:', selectedTiming);
-    
-    if (!selectedArea || !selectedAsset || !selectedIssueType || !selectedPriority || !selectedDuration || !selectedTiming) {
-      console.log('Missing required fields - showing alert');
-      Alert.alert('Missing Information', 'Please complete all required fields (Steps 1-6) to continue.');
-      return;
-    }
-    
+
     if (selectedIssueType === 'other' && !otherIssueDescription.trim()) {
-      console.log('Other issue selected but no description - showing alert');
       Alert.alert('Missing Information', 'Please describe the issue since you selected "Other".');
       return;
     }
 
-    console.log('All validations passed, creating reviewData...');
-    
-    // Navigate to review screen with all collected data
     const reviewData = {
       propertyId: selectedProperty.properties?.id || selectedProperty.id,
       propertyName: selectedProperty.properties?.name || selectedProperty.name,
@@ -415,24 +352,14 @@ const ReportIssueScreen = () => {
       mediaItems: mediaItems.map(item => item.uri),
       title: title.trim()
     };
-    
-    console.log('reviewData created:', JSON.stringify(reviewData, null, 2));
-    
-    try {
-      console.log('Attempting navigation to ReviewIssue...');
-      navigation.navigate('ReviewIssue', { reviewData });
-      console.log('Navigation.navigate() called successfully');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert('Navigation Error', `Failed to navigate: ${errorMessage}`);
-    }
+
+    navigation.navigate('ReviewIssue', { reviewData });
   };
 
   // Check if form is valid for forward navigation
+  // All fields are optional except property
   const isFormValid = () => {
     if (!selectedProperty) return false;
-    if (!selectedArea || !selectedAsset || !selectedIssueType || !selectedPriority || !selectedDuration || !selectedTiming) return false;
     if (selectedIssueType === 'other' && !otherIssueDescription.trim()) return false;
     return true;
   };
@@ -480,7 +407,6 @@ const ReportIssueScreen = () => {
               value={selectedProperty?.properties?.id || selectedProperty?.id || ''}
               onSelect={(value) => {
                 const property = tenantProperties.find(p => p.properties?.id === value || p.id === value);
-                console.log('Property selected:', property);
                 setSelectedProperty(property);
               }}
             />
@@ -495,7 +421,7 @@ const ReportIssueScreen = () => {
               <Text style={styles.propertyName}>{selectedProperty.properties.name}</Text>
             </View>
             <Text style={styles.propertyAddress}>
-              {selectedProperty.properties.address}
+              {formatAddress(selectedProperty.properties.address)}
               {selectedProperty.unit_number && ` • Unit ${selectedProperty.unit_number}`}
             </Text>
           </View>

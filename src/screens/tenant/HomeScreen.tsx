@@ -12,6 +12,8 @@ import { PendingInviteService } from '../../services/storage/PendingInviteServic
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
 import { PropertyImage } from '../../components/shared/PropertyImage';
+import { haptics } from '../../lib/haptics';
+import { formatAddress } from '../../utils/helpers';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'Home'>;
 
@@ -28,6 +30,10 @@ interface LinkedProperty {
   name: string;
   address: string;
   unit?: string;
+  wifiNetwork?: string;
+  wifiPassword?: string;
+  emergencyContact?: string;
+  emergencyPhone?: string;
 }
 
 const HomeScreen = () => {
@@ -102,6 +108,10 @@ const HomeScreen = () => {
             name: property.name,
             address: property.address || '',
             unit: firstLink.unit_number || undefined,
+            wifiNetwork: property.wifi_network || undefined,
+            wifiPassword: property.wifi_password || undefined,
+            emergencyContact: property.emergency_contact || undefined,
+            emergencyPhone: property.emergency_phone || undefined,
           });
         }
       } else {
@@ -198,95 +208,138 @@ const HomeScreen = () => {
 
   return (
     <ScreenContainer
-      title="MyAILandlord"
+      title="My AI Landlord"
       userRole="tenant"
       refreshing={refreshing}
       onRefresh={onRefresh}
+      backgroundColor="#D6E1EA"
       headerRight={
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{getInitials()}</Text>
         </View>
       }
     >
-        {/* Property Banner */}
+        {/* Property Section */}
         {linkedProperty && (
-          <TouchableOpacity
-            style={styles.propertyBanner}
-            onPress={() => navigation.navigate('PropertyInfo', { address: linkedProperty.address })}
-            activeOpacity={0.8}
-          >
-            <PropertyImage
-              address={linkedProperty.address}
-              width={320}
-              height={200}
-              borderRadius={12}
-              style={{ alignSelf: 'center' }}
-            />
-            <Text style={styles.propertyAddress}>{linkedProperty.address}</Text>
-          </TouchableOpacity>
+          <View style={styles.sectionCard}>
+            <TouchableOpacity
+              style={styles.propertyBanner}
+              onPress={() => {
+                haptics.light();
+                navigation.navigate('PropertyInfo', {
+                  propertyId: linkedProperty.id,
+                  address: linkedProperty.address,
+                  name: linkedProperty.name,
+                  wifiNetwork: linkedProperty.wifiNetwork,
+                  wifiPassword: linkedProperty.wifiPassword,
+                  emergencyContact: linkedProperty.emergencyContact,
+                  emergencyPhone: linkedProperty.emergencyPhone,
+                });
+              }}
+              activeOpacity={0.8}
+            >
+              <PropertyImage
+                address={linkedProperty.address}
+                width={320}
+                height={200}
+                borderRadius={12}
+                style={{ alignSelf: 'center' }}
+              />
+              <Text style={styles.propertyAddress}>{formatAddress(linkedProperty.address)}</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* Your Requests Section */}
-        <Text style={styles.sectionTitle}>Your Requests</Text>
-
-        {requests.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Ionicons name="checkmark-circle-outline" size={40} color="#2ECC71" />
-            <Text style={styles.emptyCardTitle}>No Active Requests</Text>
-            <Text style={styles.emptyCardSubtitle}>
-              Report an issue if something needs fixing
-            </Text>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Requests</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('MaintenanceStatus')}>
+              <Text style={styles.sectionLink}>View All</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          requests.map((request) => {
-            const badge = getStatusBadge(request.status);
-            return (
-              <TouchableOpacity
-                key={request.id}
-                style={styles.requestCard}
-                onPress={() => navigation.navigate('FollowUp', { issueId: request.id })}
-                activeOpacity={0.7}
-              >
-                <View style={styles.requestHeader}>
-                  <Text style={styles.requestTitle}>{request.title}</Text>
-                  <View style={badge.style}>
-                    <Text style={[styles.badgeText, badge.style]}>{badge.label}</Text>
+
+          {requests.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="checkmark-circle-outline" size={40} color="#2ECC71" />
+              <Text style={styles.emptyCardTitle}>No Active Requests</Text>
+              <Text style={styles.emptyCardSubtitle}>
+                Report an issue if something needs fixing
+              </Text>
+            </View>
+          ) : (
+            requests.map((request) => {
+              const badge = getStatusBadge(request.status);
+              return (
+                <TouchableOpacity
+                  key={request.id}
+                  style={styles.requestCard}
+                  onPress={() => {
+                    haptics.light();
+                    navigation.navigate('FollowUp', { issueId: request.id });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.requestHeader}>
+                    <Text style={styles.requestTitle}>{request.title}</Text>
+                    <View style={badge.style}>
+                      <Text style={[styles.badgeText, badge.style]}>{badge.label}</Text>
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.requestMeta}>
-                  {request.location} • {request.submittedAt}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
-        )}
+                  <Text style={styles.requestMeta}>
+                    {request.location} • {request.submittedAt}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
 
-        {/* Quick Links */}
-        <Text style={styles.sectionTitle}>Quick Links</Text>
-        <View style={styles.quickLinks}>
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => navigation.navigate('ReportIssue')}
-          >
-            <Ionicons name="construct-outline" size={28} color="#2ECC71" />
-            <Text style={styles.quickLinkLabel}>Report{'\n'}Issue</Text>
-          </TouchableOpacity>
+        {/* Quick Links Section */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Quick Links</Text>
+          <View style={styles.quickLinks}>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => {
+                haptics.medium();
+                navigation.navigate('ReportIssue');
+              }}
+            >
+              <Ionicons name="construct-outline" size={28} color="#2ECC71" />
+              <Text style={styles.quickLinkLabel}>Report{'\n'}Issue</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => navigation.navigate('CommunicationHub')}
-          >
-            <Ionicons name="chatbubbles-outline" size={28} color="#2ECC71" />
-            <Text style={styles.quickLinkLabel}>Message{'\n'}Landlord</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => {
+                haptics.light();
+                navigation.navigate('CommunicationHub');
+              }}
+            >
+              <Ionicons name="chatbubbles-outline" size={28} color="#2ECC71" />
+              <Text style={styles.quickLinkLabel}>Message{'\n'}Landlord</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.quickLink}
-            onPress={() => navigation.navigate('PropertyInfo', { address: linkedProperty?.address })}
-          >
-            <Ionicons name="home-outline" size={28} color="#2ECC71" />
-            <Text style={styles.quickLinkLabel}>Property{'\n'}Info</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickLink}
+              onPress={() => {
+                haptics.light();
+                navigation.navigate('PropertyInfo', {
+                  propertyId: linkedProperty?.id,
+                  address: linkedProperty?.address,
+                  name: linkedProperty?.name,
+                  wifiNetwork: linkedProperty?.wifiNetwork,
+                  wifiPassword: linkedProperty?.wifiPassword,
+                  emergencyContact: linkedProperty?.emergencyContact,
+                  emergencyPhone: linkedProperty?.emergencyPhone,
+                });
+              }}
+            >
+              <Ionicons name="home-outline" size={28} color="#2ECC71" />
+              <Text style={styles.quickLinkLabel}>Property{'\n'}Info</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.bottomSpacer} />
@@ -308,14 +361,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#fff',
   },
+  // Section Card
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionLink: {
+    fontSize: 14,
+    color: '#2ECC71',
+    fontWeight: '500',
+  },
   // Property Banner
   propertyBanner: {
     alignItems: 'center',
-    paddingVertical: 16,
-    marginBottom: 16,
   },
   propertyAddress: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
     color: '#2C3E50',
     marginTop: 12,
@@ -326,15 +395,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#2C3E50',
-    marginBottom: 12,
   },
   // Request Cards
   requestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
     padding: 14,
     paddingHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   requestHeader: {
     flexDirection: 'row',
@@ -375,11 +443,10 @@ const styles = StyleSheet.create({
   },
   // Empty Card
   emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 32,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    padding: 24,
     alignItems: 'center',
-    marginBottom: 20,
   },
   emptyCardTitle: {
     fontSize: 16,
@@ -396,13 +463,14 @@ const styles = StyleSheet.create({
   // Quick Links
   quickLinks: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginTop: 8,
   },
   quickLink: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    padding: 14,
     alignItems: 'center',
   },
   quickLinkLabel: {

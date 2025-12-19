@@ -1,20 +1,21 @@
 import { useEffect, useState, useContext } from 'react'
 import { useAppAuth } from '../context/SupabaseAuthContext'
 import { RoleContext } from '../context/RoleContext'
+import { useProfile } from '../context/ProfileContext'
 import { log } from '../lib/log'
 import { useApiClient } from '../services/api/client'
-import { isTestMode } from '../lib/testMode'
-import { useSupabaseWithAuth } from './useSupabaseWithAuth'
 
 export function useProfileSync() {
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
   const { isSignedIn, isLoading, user } = useAppAuth()
   const { setUserRole, userRole } = useContext(RoleContext)
+  const { profile, isLoading: profileLoading, refreshProfile } = useProfile()
   const [ready, setReady] = useState(false)
   const api = useApiClient()
-  const { supabase } = useSupabaseWithAuth()
+
   useEffect(() => {
     let cancelled = false
+
     async function run() {
       try {
         // In auth-disabled mode, set a default role and exit
@@ -27,21 +28,15 @@ export function useProfileSync() {
           return
         }
 
-        log.info('🔄 useProfileSync starting...', { isLoading, isSignedIn, userId: user?.id });
+        log.info('useProfileSync: starting...', { isLoading, isSignedIn, userId: user?.id })
 
-        if (isLoading || !isSignedIn || !user) {
-          log.info('🔄 useProfileSync: waiting for auth...', { isLoading, isSignedIn, hasUser: !!user });
-          return;
+        if (isLoading || profileLoading || !isSignedIn || !user) {
+          return
         }
 
-        // Test mode only: Ping Supabase to verify connectivity
-        if (isTestMode) {
-          try {
-            const ping = await supabase.from('profiles').select('id').limit(1);
-            console.log('🔍 DEBUG: profiles ping:', ping.error ? { code: (ping.error as any).code, message: ping.error.message } : { count: ping.data?.length || 0 });
-          } catch (e) {
-            console.log('🔍 DEBUG: profiles ping threw:', (e as any)?.message || e);
-          }
+        if (!api) {
+          log.warn('useProfileSync: API not ready yet')
+          return
         }
 
         const userId = user.id
@@ -49,47 +44,46 @@ export function useProfileSync() {
         const name = user.name || ''
         const avatarUrl = user.avatar || ''
 
-        log.info('🔄 useProfileSync: syncing profile for', { userId, email, name });
-
-        log.info('🔍 DEBUG: API client status:', { hasApi: !!api, apiType: typeof api });
-        if (!api) {
-          log.warn('🔄 useProfileSync: API not ready yet')
-          return;
-        }
-
-        log.info('🔍 DEBUG: About to call api.getUserProfile()...');
-        const ex = await api.getUserProfile()
-        
-        log.info('🔄 useProfileSync: existing profile:', ex);
+        // Use cached profile from ProfileContext instead of calling API directly
+        const existingProfile = profile
 
         // Database role is the source of truth. Only use context role for new users without a DB role.
-        const finalRole = ex?.role || userRole || 'landlord';
-        log.info('🔄 useProfileSync: role determination:', { existingRole: ex?.role, contextRole: userRole, finalRole });
-        
-        if (!ex) {
+        const finalRole = existingProfile?.role || userRole || 'landlord'
+        log.info('useProfileSync: role determination:', {
+          existingRole: existingProfile?.role,
+          contextRole: userRole,
+          finalRole
+        })
+
+        if (!existingProfile) {
+          // Create new profile
           await api.createUserProfile({ email, name, avatarUrl, role: finalRole })
-        } else if (!ex.role) {
+          // Refresh the profile cache after creation
+          await refreshProfile()
+        } else if (!existingProfile.role) {
           // Only update role if user doesn't have one set yet
           await api.updateUserProfile({ role: finalRole, name, avatarUrl, email })
+          // Refresh the profile cache after update
+          await refreshProfile()
         }
         // If profile exists with a role, don't overwrite it - database is source of truth
-        
-        log.info('🔄 useProfileSync: profile upserted successfully with role:', finalRole);
-        
-        // CRITICAL: Set the role in context so navigation works
+
+        log.info('useProfileSync: profile synced with role:', finalRole)
+
+        // Set the role in context so navigation works
         if (!cancelled) {
-          await setUserRole(finalRole as 'landlord' | 'tenant');
-          log.info('🔄 useProfileSync: role set in context:', finalRole);
-          setReady(true);
-          log.info('🔄 useProfileSync: ready = true');
+          await setUserRole(finalRole as 'landlord' | 'tenant')
+          setReady(true)
         }
       } catch (error) {
-        log.error('🔄 useProfileSync error:', error as any);
-        // Don't set ready to true on error, but also don't throw
+        log.error('useProfileSync error:', error as any)
+        // Don't set ready to true on error
       }
     }
+
     run()
     return () => { cancelled = true }
-  }, [isLoading, isSignedIn, user, userRole, api])
+  }, [isLoading, profileLoading, isSignedIn, user, userRole, api, profile, refreshProfile, setUserRole, authDisabled])
+
   return { ready }
 }
