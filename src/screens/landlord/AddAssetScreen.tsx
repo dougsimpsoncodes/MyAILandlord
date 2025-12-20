@@ -61,26 +61,22 @@ const AddAssetScreen = () => {
   useEffect(() => {
     const recoverParams = async () => {
       if (!routeAreaId) {
-        console.log('📦 AddAssetScreen: No areaId in route params, cannot recover');
         return;
       }
 
       // If we already have propertyData from route, no need to recover
       if (routePropertyData) {
-        console.log('📦 AddAssetScreen: Using route params directly');
         setIsParamsLoaded(true);
         return;
       }
 
       // Try to recover from AsyncStorage (web scenario)
       const storageKey = `add_asset_params_${routeAreaId}`;
-      console.log('📦 AddAssetScreen: Attempting to recover params from storage:', storageKey);
 
       try {
         const storedParams = await AsyncStorage.getItem(storageKey);
         if (storedParams) {
           const params = JSON.parse(storedParams);
-          console.log('📦 AddAssetScreen: Recovered params from storage:', {
             areaId: params.areaId,
             areaName: params.areaName,
             propertyId: params.propertyId,
@@ -335,16 +331,8 @@ const AddAssetScreen = () => {
 
   const handleSave = async () => {
     // Alert at start to confirm button click is registered
-    console.log('📦 ===== handleSave CALLED =====');
-    console.log('📦 State values:');
-    console.log('📦   propertyId:', propertyId);
-    console.log('📦   draftId:', draftId);
-    console.log('📦   areaId:', areaId);
-    console.log('📦   isParamsLoaded:', isParamsLoaded);
-    console.log('📦   assetName:', assetName);
 
     if (!isParamsLoaded) {
-      console.log('📦 BLOCKED: Params not yet loaded');
       Alert.alert('Please Wait', 'Loading data, please try again in a moment.');
       return;
     }
@@ -356,12 +344,10 @@ const AddAssetScreen = () => {
     }
 
     if (!assetName.trim()) {
-      console.log('📦 BLOCKED: No asset name');
       Alert.alert('Required Field', 'Please enter an asset name.');
       return;
     }
 
-    console.log('📦 All validations passed, starting save...');
     setIsSaving(true);
 
     try {
@@ -383,17 +369,12 @@ const AddAssetScreen = () => {
         isActive: true,
       };
 
-      console.log('📦 Created asset object:', JSON.stringify(newAsset, null, 2));
 
       // For EXISTING properties (propertyId), save directly to database
       if (propertyId) {
-        console.log('📦 MODE: EXISTING PROPERTY - saving to database');
-        console.log('📦 Calling propertyAreasService.addAsset with propertyId:', propertyId);
-        console.log('📦 Using authenticated Supabase client');
         try {
           // Pass the authenticated Supabase client to ensure RLS works correctly
           const savedAsset = await propertyAreasService.addAsset(propertyId, newAsset, supabase);
-          console.log('📦 Asset saved to database successfully:', savedAsset);
           Alert.alert('Success', 'Asset added successfully!', [
             { text: 'OK', onPress: () => navigation.goBack() }
           ]);
@@ -410,9 +391,7 @@ const AddAssetScreen = () => {
 
       // For DRAFTS (draftId), save to AsyncStorage for later
       if (draftId) {
-        console.log('📦 MODE: DRAFT - saving to AsyncStorage');
         await AsyncStorage.setItem(`pending_asset_${draftId}`, JSON.stringify(newAsset));
-        console.log('📦 Saved pending asset to draft storage');
         navigation.goBack();
       } else {
         console.warn('📦 WARNING: No propertyId or draftId - cannot persist asset!');
@@ -425,7 +404,6 @@ const AddAssetScreen = () => {
       Alert.alert('Error', `Failed to save asset: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
-      console.log('📦 ===== handleSave COMPLETE =====');
     }
   };
 

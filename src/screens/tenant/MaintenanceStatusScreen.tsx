@@ -63,43 +63,12 @@ const MaintenanceStatusScreen = () => {
       setRequests(transformedRequests);
     } catch (error) {
       console.error('Error loading maintenance hub:', error);
-      // For now, use mock data if API fails
-      setRequests(getMockRequests());
+      setRequests([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   };
-
-  const getMockRequests = (): MaintenanceRequest[] => [
-    {
-      id: '1',
-      title: 'Kitchen Sink: Faucet leak',
-      status: 'in_progress',
-      priority: 'high',
-      createdAt: new Date('2024-01-15'),
-      location: 'Kitchen',
-      description: 'Faucet is dripping constantly'
-    },
-    {
-      id: '2',
-      title: 'Bathroom Toilet: Running constantly',
-      status: 'pending',
-      priority: 'medium',
-      createdAt: new Date('2024-01-18'),
-      location: 'Bathroom',
-      description: 'Toilet keeps running after flush'
-    },
-    {
-      id: '3',
-      title: 'Living Room Lighting: Not working',
-      status: 'completed',
-      priority: 'low',
-      createdAt: new Date('2024-01-10'),
-      location: 'Living Room',
-      description: 'Overhead light not turning on'
-    }
-  ];
 
   const handleRefresh = () => {
     setIsRefreshing(true);

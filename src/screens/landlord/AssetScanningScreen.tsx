@@ -16,7 +16,6 @@ let BarCodeScanner: typeof import('expo-barcode-scanner').BarCodeScanner | null 
 try {
   BarCodeScanner = require('expo-barcode-scanner').BarCodeScanner;
 } catch (error) {
-  console.log('BarCodeScanner not available in this environment:', error);
 }
 import * as ImagePicker from 'expo-image-picker';
 import { LandlordStackParamList } from '../../navigation/MainStack';

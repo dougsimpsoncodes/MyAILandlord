@@ -88,10 +88,8 @@ const PropertyReviewScreen = () => {
   };
 
   const handleSubmit = async () => {
-    console.log('🚨🚨🚨 handleSubmit called! State:', { isSubmitting, isDraftLoading });
     
     if (isSubmitting || isDraftLoading) {
-      console.log('🚨 Exiting handleSubmit due to loading conditions:', { isSubmitting, isDraftLoading });
       return;
     }
 
@@ -113,9 +111,7 @@ const PropertyReviewScreen = () => {
         bathrooms: propertyData.bathrooms || 0
       };
       
-      console.log('🏠 Submitting property with payload:', propertyPayload);
       const newProperty = await api.createProperty(propertyPayload);
-      console.log('🏠 Property created successfully:', newProperty);
       
       // Save areas and assets to database
       if (areas && areas.length > 0) {
@@ -135,7 +131,6 @@ const PropertyReviewScreen = () => {
         }
       }
       
-      console.log('🏠 Property submission complete');
       
       // Show success state
       setSubmissionSuccess(true);

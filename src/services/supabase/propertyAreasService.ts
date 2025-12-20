@@ -180,20 +180,12 @@ export const propertyAreasService = {
   async getAreasWithAssets(propertyId: string, client?: SupabaseClient): Promise<PropertyArea[]> {
     const supabase = client || defaultSupabase;
     try {
-      // Debug: Check authentication state
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('🔐 propertyAreasService: Current user:', user?.id, user?.email);
-      console.log('🔐 propertyAreasService: Using client:', client ? 'authenticated' : 'default');
-
       // Fetch areas
-      console.log('🔍 propertyAreasService: Fetching areas for property:', propertyId);
       const { data: areasData, error: areasError } = await supabase
         .from('property_areas')
         .select('*')
         .eq('property_id', propertyId)
         .order('created_at', { ascending: true });
-
-      console.log('🔍 propertyAreasService: Query result - data:', areasData?.length || 0, 'error:', areasError?.message || 'none');
 
       if (areasError) {
         log.error('Failed to fetch property areas', { propertyId, error: areasError.message });
@@ -201,7 +193,6 @@ export const propertyAreasService = {
       }
 
       if (!areasData || areasData.length === 0) {
-        console.log('🔍 propertyAreasService: No areas found for property');
         return [];
       }
 
@@ -271,14 +262,6 @@ export const propertyAreasService = {
   async saveAreasAndAssets(propertyId: string, areas: PropertyArea[], client?: SupabaseClient): Promise<void> {
     const supabase = client || defaultSupabase;
 
-    // Detailed logging to debug save issues
-    console.log('🔴 saveAreasAndAssets called:', {
-      propertyId,
-      areasCount: areas?.length || 0,
-      hasClient: !!client,
-      areas: JSON.stringify(areas?.map(a => ({ id: a.id, name: a.name, type: a.type })) || [])
-    });
-
     try {
       // Delete existing areas (cascades to assets due to FK)
       const { error: deleteError } = await supabase
@@ -304,18 +287,11 @@ export const propertyAreasService = {
         areaIdMap[area.id] = dbArea.id;
         return dbArea;
       });
-      console.log('🔴 Attempting to insert areas:', JSON.stringify(areasToInsert, null, 2));
-      console.log('🔴 Area ID mapping:', JSON.stringify(areaIdMap));
 
       const { data: insertedAreas, error: areasInsertError } = await supabase
         .from('property_areas')
         .insert(areasToInsert)
         .select();
-
-      console.log('🔴 Areas insert result:', {
-        insertedCount: insertedAreas?.length || 0,
-        error: areasInsertError?.message || null
-      });
 
       if (areasInsertError) {
         log.error('Failed to insert areas', { propertyId, error: areasInsertError.message });
@@ -440,16 +416,12 @@ export const propertyAreasService = {
     const supabase = client || defaultSupabase;
     try {
       const dbAsset = appAssetToDbAsset(asset, propertyId);
-      console.log('📦 propertyAreasService.addAsset: Using client:', client ? 'authenticated' : 'default');
-      console.log('📦 propertyAreasService.addAsset: Inserting asset:', JSON.stringify(dbAsset, null, 2));
 
       const { data, error } = await supabase
         .from('property_assets')
         .insert(dbAsset)
         .select()
         .single();
-
-      console.log('📦 propertyAreasService.addAsset: Result - data:', data, 'error:', error);
 
       if (error) {
         log.error('Failed to add asset', { propertyId, error: error.message });

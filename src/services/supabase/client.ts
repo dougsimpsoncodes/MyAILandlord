@@ -274,8 +274,6 @@ export class SupabaseClient {
     requestId: string,
     updates: Partial<MaintenanceRequest>
   ): Promise<MaintenanceRequest> {
-    console.log('[SupabaseClient] updateMaintenanceRequest called', { requestId, updates });
-
     const { data, error } = await this.client
       .from('maintenance_requests')
       .update({
@@ -285,8 +283,6 @@ export class SupabaseClient {
       .eq('id', requestId)
       .select()
       .single();
-
-    console.log('[SupabaseClient] updateMaintenanceRequest result', { data, error });
 
     if (error) {
       throw new Error(`Failed to update maintenance request: ${error.message}`);

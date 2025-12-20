@@ -24,14 +24,8 @@ const ConfirmSubmissionScreen = () => {
   const [selectedTimeSlots, setSelectedTimeSlots] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const mockIssue = {
-    description: 'Kitchen faucet is leaking and making strange noises',
-    location: 'Kitchen',
-    duration: 'A few days',
-    timing: 'All the time',
-    urgency: 'Moderate',
-    mediaCount: 2,
-  };
+  // TODO: Fetch real issue data from database using issueId
+  // const issue = await fetchMaintenanceRequest(issueId);
 
   const timeSlots: TimeSlot[] = [
     { id: '1', day: 'Today', time: '2:00 PM - 6:00 PM', available: true },
@@ -125,60 +119,15 @@ const ConfirmSubmissionScreen = () => {
 
         <View style={styles.summaryCard}>
           <Text style={styles.cardTitle}>Issue Summary</Text>
-          
+
+          {/* TODO: Display real issue data fetched from database */}
           <View style={styles.summaryItem}>
             <Ionicons name="document-text" size={20} color="#3498DB" />
             <View style={styles.summaryContent}>
               <Text style={styles.summaryLabel}>Description</Text>
-              <Text style={styles.summaryValue}>{mockIssue.description}</Text>
+              <Text style={styles.summaryValue}>Issue #{issueId}</Text>
             </View>
           </View>
-
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Ionicons name="location" size={20} color="#3498DB" />
-              <View style={styles.summaryContent}>
-                <Text style={styles.summaryLabel}>Location</Text>
-                <Text style={styles.summaryValue}>{mockIssue.location}</Text>
-              </View>
-            </View>
-            <View style={styles.summaryItem}>
-              <Ionicons name="time" size={20} color="#3498DB" />
-              <View style={styles.summaryContent}>
-                <Text style={styles.summaryLabel}>Duration</Text>
-                <Text style={styles.summaryValue}>{mockIssue.duration}</Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Ionicons name="calendar" size={20} color="#3498DB" />
-              <View style={styles.summaryContent}>
-                <Text style={styles.summaryLabel}>Occurs</Text>
-                <Text style={styles.summaryValue}>{mockIssue.timing}</Text>
-              </View>
-            </View>
-            <View style={styles.summaryItem}>
-              <Ionicons name="flag" size={20} color={getUrgencyColor(mockIssue.urgency)} />
-              <View style={styles.summaryContent}>
-                <Text style={styles.summaryLabel}>Priority</Text>
-                <Text style={[styles.summaryValue, { color: getUrgencyColor(mockIssue.urgency) }]}>
-                  {mockIssue.urgency}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {mockIssue.mediaCount > 0 && (
-            <View style={styles.summaryItem}>
-              <Ionicons name="images" size={20} color="#3498DB" />
-              <View style={styles.summaryContent}>
-                <Text style={styles.summaryLabel}>Attachments</Text>
-                <Text style={styles.summaryValue}>{mockIssue.mediaCount} photos attached</Text>
-              </View>
-            </View>
-          )}
         </View>
 
         <View style={styles.timeSlotCard}>

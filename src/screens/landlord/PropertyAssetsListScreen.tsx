@@ -139,14 +139,12 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
                 activeOpacity={0.8}
                 onPress={() => {
                   // TODO: Navigate to photo viewer for full screen view & delete option
-                  console.log('📸 Photo tapped:', area.name, index);
                 }}
               >
                 <Image
                   source={{ uri: photo }}
                   style={styles.photoThumbImage}
                   onError={(e) => console.error(`📸 Image load failed for ${area.name}[${index}]:`, e.nativeEvent.error)}
-                  onLoad={() => console.log(`📸 Image loaded successfully for ${area.name}[${index}]`)}
                 />
               </TouchableOpacity>
             ))}
@@ -257,26 +255,6 @@ const PropertyAssetsListScreen = () => {
   selectedAreasRef.current = selectedAreas;
   draftAreasRef.current = draftState?.areas;
 
-  // Debug: Areas are being received correctly
-  console.log('========================================');
-  console.log('🏠 PropertyAssetsListScreen RENDER');
-  console.log('🏠 Mode:', routePropertyId ? '🟢 EXISTING_PROPERTY (from DB)' : '🟡 DRAFT');
-  console.log('🏠 routePropertyId:', routePropertyId || '(none - draft mode)');
-  console.log('🏠 routeAreas count:', routeAreas?.length || 0);
-  console.log('🏠 selectedAreas count:', selectedAreas.length);
-  console.log('🏠 isInitializing:', isInitializing);
-  console.log('🏠 effectiveDraftId:', effectiveDraftId || '(none)');
-  if (selectedAreas.length > 0) {
-    console.log('🏠 First area:', selectedAreas[0].name, '| photos:', selectedAreas[0].photos?.length || 0);
-  }
-  console.log('========================================');
-
-  // Debug: Log photoPaths for first area with photos
-  const firstAreaWithPhotos = selectedAreas.find(a => a.photos?.length > 0);
-  if (firstAreaWithPhotos) {
-    console.log(`📸 First area with photos (${firstAreaWithPhotos.name}): photos=${firstAreaWithPhotos.photos?.length}, photoPaths=${firstAreaWithPhotos.photoPaths?.length || 0}`);
-  }
-
   // Check for pending assets when screen gains focus (after returning from AddAssetScreen)
   // Using navigation listener is more reliable on web than useFocusEffect
   useEffect(() => {
@@ -284,11 +262,9 @@ const PropertyAssetsListScreen = () => {
       if (!effectiveDraftId) return;
 
       const pendingAssetKey = `pending_asset_${effectiveDraftId}`;
-      console.log('📦 Checking for pending asset with key:', pendingAssetKey);
       const pendingAssetJson = await AsyncStorage.getItem(pendingAssetKey);
 
       if (pendingAssetJson) {
-        console.log('📦 Found pending asset in storage');
         const pendingAsset: InventoryItem = JSON.parse(pendingAssetJson);
 
         // Get current areas - use refs to get latest values
@@ -297,14 +273,12 @@ const PropertyAssetsListScreen = () => {
         const currentAreas = latestAreas.length > 0 ? latestAreas : (latestDraftAreas || []);
 
         if (currentAreas.length === 0) {
-          console.log('📦 No areas available yet, will retry when areas load');
           return;
         }
 
         // Check if already added
         const targetArea = currentAreas.find(a => a.id === pendingAsset.areaId);
         if (targetArea?.assets?.some(a => a.id === pendingAsset.id)) {
-          console.log('📦 Pending asset already added, clearing storage');
           await AsyncStorage.removeItem(pendingAssetKey);
           return;
         }
@@ -313,7 +287,6 @@ const PropertyAssetsListScreen = () => {
         const updatedAreas = currentAreas.map(area => {
           if (area.id === pendingAsset.areaId) {
             const existingAssets = area.assets || [];
-            console.log('📦 Adding pending asset to area:', area.name);
             return {
               ...area,
               assets: [...existingAssets, pendingAsset]
@@ -328,15 +301,11 @@ const PropertyAssetsListScreen = () => {
 
         // Clear the pending asset
         await AsyncStorage.removeItem(pendingAssetKey);
-        console.log('📦 Pending asset added successfully and cleared from storage');
-      } else {
-        console.log('📦 No pending asset found in storage');
       }
     };
 
     // Subscribe to focus events for when navigating back
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('📦 Screen focused - checking for pending assets');
       checkPendingAsset();
     });
 
@@ -349,13 +318,10 @@ const PropertyAssetsListScreen = () => {
   // Handle new asset from AddAssetScreen navigation (legacy route params method)
   useEffect(() => {
     if (routeNewAsset && !processedAssetIds.has(routeNewAsset.id)) {
-      console.log('📦 Received new asset from AddAssetScreen:', routeNewAsset.name, 'for area:', routeNewAsset.areaId);
-
       // Get the current areas - prefer selectedAreas, fall back to draftState
       const currentAreas = selectedAreas.length > 0 ? selectedAreas : (draftState?.areas || []);
 
       if (currentAreas.length === 0) {
-        console.log('📦 No areas found in state or draft yet, waiting for areas to load...');
         // Don't return - let the effect re-run when draftState.areas is populated
         return;
       }
@@ -363,7 +329,6 @@ const PropertyAssetsListScreen = () => {
       // Check if asset already exists to prevent duplicates
       const targetArea = currentAreas.find(a => a.id === routeNewAsset.areaId);
       if (targetArea?.assets?.some(a => a.id === routeNewAsset.id)) {
-        console.log('📦 Asset already exists in area, marking as processed');
         setProcessedAssetIds(prev => new Set(prev).add(routeNewAsset.id));
         return;
       }
@@ -371,7 +336,6 @@ const PropertyAssetsListScreen = () => {
       const updatedAreas = currentAreas.map(area => {
         if (area.id === routeNewAsset.areaId) {
           const existingAssets = area.assets || [];
-          console.log('📦 Adding asset to area:', area.name, '| Total assets after:', existingAssets.length + 1);
           return {
             ...area,
             assets: [...existingAssets, routeNewAsset]
@@ -388,56 +352,31 @@ const PropertyAssetsListScreen = () => {
 
       // Mark this asset as processed to prevent duplicates
       setProcessedAssetIds(prev => new Set(prev).add(routeNewAsset.id));
-
-      console.log('📦 Asset added successfully, updated areas count:', updatedAreas.length);
     }
   }, [routeNewAsset, processedAssetIds, updateAreas, selectedAreas, draftState?.areas]);
 
   // Helper function to regenerate signed URLs for areas with stored paths
   const regeneratePhotoUrls = async (areas: PropertyArea[]): Promise<PropertyArea[]> => {
-    console.log('📸 regeneratePhotoUrls called for', areas.length, 'areas');
-
     const updatedAreas = await Promise.all(
       areas.map(async (area) => {
-        console.log(`📸 Processing area "${area.name}": photos=${area.photos?.length || 0}, photoPaths=${area.photoPaths?.length || 0}`);
-
         // If we have stored paths, regenerate signed URLs
         if (area.photoPaths && area.photoPaths.length > 0) {
-          console.log(`📸 Regenerating signed URLs for ${area.name} from ${area.photoPaths.length} paths`);
           const newUrls = await Promise.all(
-            area.photoPaths.map(async (path, idx) => {
+            area.photoPaths.map(async (path) => {
               try {
-                console.log(`📸 Getting signed URL for path[${idx}]: ${path}`);
                 const url = await storageService.getDisplayUrl('property-images', path);
-                if (url) {
-                  console.log(`📸 ✓ Got URL for ${area.name}[${idx}]: ${url.substring(0, 80)}...`);
-                } else {
-                  console.warn(`📸 ✗ No URL returned for ${area.name}[${idx}], path: ${path}`);
-                }
                 return url || '';
               } catch (e) {
-                console.error(`📸 ✗ Failed to get signed URL for path: ${path}`, e);
                 return '';
               }
             })
           );
           // Filter out empty URLs (failed regenerations)
           const validUrls = newUrls.filter(url => url !== '');
-          console.log(`📸 ${area.name}: ${validUrls.length}/${area.photoPaths.length} URLs regenerated successfully`);
           return {
             ...area,
             photos: validUrls
           };
-        }
-
-        // If photos exist but no photoPaths, log this discrepancy
-        if (area.photos && area.photos.length > 0 && (!area.photoPaths || area.photoPaths.length === 0)) {
-          console.warn(`📸 Area "${area.name}" has ${area.photos.length} photos but no photoPaths - URLs may be stale/local`);
-          // Check if existing photos are valid URLs
-          const validPhotos = area.photos.filter(p => p && p.startsWith('http'));
-          if (validPhotos.length !== area.photos.length) {
-            console.warn(`📸 Area "${area.name}": ${area.photos.length - validPhotos.length} photos are not valid HTTP URLs`);
-          }
         }
 
         return area;
@@ -452,33 +391,26 @@ const PropertyAssetsListScreen = () => {
       // CRITICAL: If we have a propertyId (existing property from database), NEVER load from drafts
       // This property's data comes from the database, even if it has 0 areas
       if (routePropertyId) {
-        console.log('🏠 EXISTING PROPERTY MODE - skipping ALL draft loading, propertyId:', routePropertyId);
-        console.log('🏠 Using route areas (from database):', routeAreas?.length || 0, 'areas');
         setIsInitializing(false);
         return;
       }
 
       // If we already have valid route params for a draft, no need to check storage
       if (routeDraftId && routeAreas && routeAreas.length > 0) {
-        console.log('Using route params for draft, no need to check storage');
         setIsInitializing(false);
         return;
       }
 
       // Check if there's a stored current draft ID for this user
       if (user?.id) {
-        console.log('Checking for stored draft (page refresh scenario)...');
         const storedDraft = await PropertyDraftService.getCurrentDraftId(user.id);
 
         if (storedDraft && storedDraft.step >= 2) {
-          console.log('Found stored draft for refresh recovery:', storedDraft);
           setEffectiveDraftId(storedDraft.draftId);
 
           // Load the draft data
           const draft = await PropertyDraftService.loadDraft(user.id, storedDraft.draftId);
           if (draft) {
-            console.log('Loaded draft data for page refresh:', draft.propertyData?.name);
-
             // Regenerate signed URLs for photos from stored paths
             const areasWithFreshUrls = await regeneratePhotoUrls(draft.areas || []);
 
@@ -486,7 +418,6 @@ const PropertyAssetsListScreen = () => {
             setPropertyData(draft.propertyData);
           }
         } else {
-          console.log('No stored draft found or draft is at earlier step, redirecting to home');
           // No stored draft for this step - redirect to home
           navigation.replace('Home');
           return;
@@ -515,7 +446,6 @@ const PropertyAssetsListScreen = () => {
     const loadDraftAreas = async () => {
       // Skip draft merging for existing properties - their data comes from database
       if (routePropertyId) {
-        console.log('📸 Skipping draft merge - using database data for existing property:', routePropertyId);
         return;
       }
 
@@ -525,7 +455,6 @@ const PropertyAssetsListScreen = () => {
 
       // Case 1: No route areas - use draft areas entirely
       if (!routeAreas || routeAreas.length === 0) {
-        console.log('📸 Using draft areas instead of route params');
         const areasWithFreshUrls = await regeneratePhotoUrls(draftState.areas);
         setSelectedAreas(areasWithFreshUrls);
       }
@@ -538,7 +467,6 @@ const PropertyAssetsListScreen = () => {
 
         if (needsMerge) {
           hasMergedPhotoPaths.current = true;
-          console.log('📸 Merging photoPaths from draft into route areas');
           // Create a map of draft areas by ID for quick lookup
           const draftAreaMap = new Map(draftState.areas.map(a => [a.id, a]));
 
@@ -546,7 +474,6 @@ const PropertyAssetsListScreen = () => {
           const mergedAreas = selectedAreas.map(area => {
             const draftArea = draftAreaMap.get(area.id);
             if (draftArea?.photoPaths && draftArea.photoPaths.length > 0) {
-              console.log(`📸 Merging ${draftArea.photoPaths.length} photoPaths for area: ${area.name}`);
               return {
                 ...area,
                 photoPaths: draftArea.photoPaths
@@ -586,7 +513,6 @@ const PropertyAssetsListScreen = () => {
 
         if (needsRegeneration) {
           hasRegeneratedUrls.current = true;
-          console.log('📸 Regenerating fresh signed URLs for all areas with photoPaths');
           const areasWithFreshUrls = await regeneratePhotoUrls(selectedAreas);
           setSelectedAreas(areasWithFreshUrls);
           // Also update the draft with fresh URLs (only for drafts, not existing properties)
@@ -662,8 +588,6 @@ const PropertyAssetsListScreen = () => {
   };
 
   const handlePhotosUploaded = (areaId: string) => (photos: { path: string; url: string }[]) => {
-    console.log('📸 PropertyAssetsListScreen: Photos uploaded:', photos.length);
-
     if (photos.length > 0) {
       const photoUrls = photos.map(p => p.url);
       const photoPaths = photos.map(p => p.path);
@@ -680,7 +604,6 @@ const PropertyAssetsListScreen = () => {
         return area;
       });
 
-      console.log('📸 PropertyAssetsListScreen: Updating state with', photoUrls.length, 'photos and paths');
       setSelectedAreas(updatedAreas);
       updateAreas(updatedAreas);
 
@@ -705,7 +628,6 @@ const PropertyAssetsListScreen = () => {
     // Store params in AsyncStorage so AddAssetScreen can recover them on web
     const storageKey = `add_asset_params_${areaId}`;
     await AsyncStorage.setItem(storageKey, JSON.stringify(navParams));
-    console.log('📦 Stored AddAsset params for web recovery:', storageKey, '| propertyId:', routePropertyId);
 
     // Navigate to AddAssetScreen
     navigation.navigate('AddAsset', navParams);
@@ -767,7 +689,6 @@ const PropertyAssetsListScreen = () => {
   };
 
   // Show loading screen while initializing after page refresh
-  console.log('📸 Render check - isInitializing:', isInitializing, 'selectedAreas:', selectedAreas.length);
   if (isInitializing) {
     return <LoadingScreen message="Loading your property draft..." />;
   }

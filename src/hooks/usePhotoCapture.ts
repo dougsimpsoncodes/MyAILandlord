@@ -81,12 +81,9 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
   }, [canAddMore, maxPhotos]);
 
   const addPhotos = useCallback((newPhotos: Photo[]) => {
-    console.log('📸 usePhotoCapture: addPhotos called with:', newPhotos.length, 'photos');
-    console.log('📸 usePhotoCapture: Current photos count:', photos.length);
     const remainingSlots = maxPhotos - photos.length;
     const photosToAdd = newPhotos.slice(0, remainingSlots);
-    console.log('📸 usePhotoCapture: Photos to add after limiting:', photosToAdd.length);
-    
+
     if (newPhotos.length > remainingSlots) {
       Alert.alert(
         'Photos Limit',
@@ -114,10 +111,8 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     }
 
     if (validPhotos.length > 0) {
-      console.log('📸 usePhotoCapture: Adding valid photos to state:', validPhotos.length);
       setPhotos(prev => {
         const newPhotos = [...prev, ...validPhotos];
-        console.log('📸 usePhotoCapture: New photos state will have:', newPhotos.length, 'photos');
         return newPhotos;
       });
     }

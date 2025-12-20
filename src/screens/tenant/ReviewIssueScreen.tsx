@@ -23,17 +23,12 @@ interface TimeSlot {
 }
 
 const ReviewIssueScreen = () => {
-  console.log('=== ReviewIssueScreen MOUNTED at', new Date().toISOString(), '===');
   
   const navigation = useNavigation<ReviewIssueScreenNavigationProp>();
   const route = useRoute<ReviewIssueScreenRouteProp>();
   
-  console.log('Route params:', route.params);
-  console.log('Raw route params string:', JSON.stringify(route.params));
   
   const { reviewData } = route.params || {};
-  console.log('ReviewData received:', reviewData);
-  console.log('ReviewData stringified:', JSON.stringify(reviewData));
   
   // Safety check for reviewData
   if (!reviewData || typeof reviewData !== 'object') {
@@ -299,8 +294,6 @@ const ReviewIssueScreen = () => {
         images: reviewData.mediaItems || []
       };
       
-      console.log('=== SUBMITTING MAINTENANCE REQUEST ===');
-      console.log('Request data:', JSON.stringify(maintenanceRequestData, null, 2));
       
       const response = await apiClient.createMaintenanceRequest(maintenanceRequestData);
 

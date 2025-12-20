@@ -49,7 +49,6 @@ const SignUpScreen = () => {
       if (data.session) {
         // User is auto-signed in, no email verification needed
         // The auth context will detect the session change and navigate automatically
-        console.log('User signed up and auto-signed in');
         return;
       }
 

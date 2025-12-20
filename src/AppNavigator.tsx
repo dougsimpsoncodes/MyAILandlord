@@ -108,12 +108,10 @@ const AppNavigator = () => {
     async getInitialURL() {
       // Handle deep link URL manually
       const url = await Linking.getInitialURL();
-      console.log('🔗 getInitialURL called:', url);
       return url;
     },
     subscribe(listener: (url: string) => void) {
       const subscription = Linking.addEventListener('url', ({ url }) => {
-        console.log('🔗 URL event received:', url);
         listener(url);
       });
       return () => subscription?.remove();

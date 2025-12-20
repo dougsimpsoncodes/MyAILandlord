@@ -93,7 +93,6 @@ const AuthScreen = () => {
 
       // Check if user is already confirmed (auto sign-in)
       if (data.session) {
-        console.log('User signed up and auto-signed in');
         return;
       }
 

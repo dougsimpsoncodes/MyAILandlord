@@ -905,12 +905,9 @@ const PropertyAreasScreen = () => {
 
   const processAreaPhoto = async (areaId: string, imageUri: string) => {
     try {
-      console.log('Processing area photo:', { areaId, imageUri });
-      
       // Validate the image
       const validation = await validateImageFile(imageUri);
-      console.log('Image validation result:', validation);
-      
+
       if (!validation.isValid) {
         console.error('Image validation failed:', validation.error);
         Alert.alert('Invalid Image', validation.error || 'Please select a valid image.');
@@ -918,19 +915,17 @@ const PropertyAreasScreen = () => {
         return;
       }
 
-      const updatedAreas = areas.map(area => 
-        area.id === areaId 
+      const updatedAreas = areas.map(area =>
+        area.id === areaId
           ? { ...area, photos: [...area.photos, imageUri] }
           : area
       );
-      
-      console.log('Updated areas:', updatedAreas.find(a => a.id === areaId)?.photos);
+
       setAreas(updatedAreas);
-      
+
       // Update draft with new photo
       const selectedAreaData = updatedAreas.filter(area => selectedAreas.includes(area.id));
       updateAreas(selectedAreaData);
-      console.log('Photo successfully added to area:', areaId);
       
       // Show visual success feedback
       setRecentlyAddedPhoto(areaId);
@@ -953,10 +948,6 @@ const PropertyAreasScreen = () => {
 
       // With counter system, all generated areas are included (no selection)
       const areasToSave = areas;
-
-      // Debug logging
-      console.log('PropertyAreasScreen - areas:', areas);
-      console.log('PropertyAreasScreen - areasToSave:', areasToSave);
 
       if (areasToSave.length === 0) {
         Alert.alert('No Areas', 'Please add at least one area to continue.');

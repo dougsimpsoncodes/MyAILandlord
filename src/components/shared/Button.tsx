@@ -35,7 +35,6 @@ export default function Button({
   const [scaleAnim] = useState(new Animated.Value(1));
   
   const handlePress = (event: GestureResponderEvent) => {
-    console.log('🔘 Button pressed:', title, 'disabled:', disabled, 'loading:', loading);
     if (!disabled && !loading && onPress) {
       // Haptic feedback based on button type
       if (type === 'danger') {

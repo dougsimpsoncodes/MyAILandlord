@@ -22,11 +22,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
     if (!confirmSignOut) return;
 
     try {
-      console.log('[UserProfile] Starting sign out...');
       await clearRole();
-      console.log('[UserProfile] Role cleared');
       await signOut();
-      console.log('[UserProfile] Sign out complete');
     } catch (error) {
       console.error('[UserProfile] Error signing out:', error);
       Alert.alert('Error', 'Failed to sign out. Please try again.');

@@ -195,7 +195,6 @@ const PropertyManagementScreen = () => {
     setIsClearingData(true);
     try {
       const stats = await DataClearer.getStorageStats();
-      console.log('Storage before clear:', stats);
 
       await DataClearer.clearAllData();
       await refreshDrafts(); // Refresh the drafts list

@@ -838,3 +838,56 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-20T17:59:11Z] Commit 46afd115072fa6ab36b2486df903f79544c42889 successful
+Message: feat: complete landlord onboarding flow implementation
+
+- Add comprehensive onboarding screens (welcome, name, account, role selection)
+- Implement landlord-specific onboarding journey with property setup
+- Add OnboardingContext for state management
+- Integrate push notifications infrastructure
+- Add invite functionality for tenant connections
+- Update navigation logic to support onboarding completion detection
+- Enhance UI components for better onboarding experience
+- Add security review documentation
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-20T18:31:54Z] Commit e7ce27e955bef3dcf50de611815f0cd1b143d99f successful
+Message: fix: remove debug banner from PropertyAddressFormSimplified
+
+- Remove red DEBUG banner that was showing during property creation
+- Clean up UI for production testing
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-20T18:34:42Z] Commit 799a339c3a50538bd3b3888cb9d612b5cde91f97 successful
+Message: fix: prevent auto-save on every keystroke in property address form
+
+PROBLEM (Third occurrence):
+- PropertyAddressFormSimplified called onChange on EVERY keystroke
+- This triggered parent setAddressData, causing constant re-renders
+- User experienced laggy typing and premature auto-saves
+
+SOLUTION:
+- Form now manages internal state (localData)
+- onChange updates local state only - no parent notification
+- Parent receives updates only on blur (field exit) or submit
+- Smooth typing experience like OnboardingAccountScreen
+
+Pattern copied from working onboarding screens that use
+local useState without triggering external effects.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
