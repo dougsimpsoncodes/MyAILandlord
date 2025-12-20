@@ -11,7 +11,7 @@ type Props = {
   onUploaded: (photos: { path: string; url: string }[]) => void;
   onCameraPress?: () => void; // Optional camera handler for mobile
   disabled?: boolean;
-  variant?: 'full' | 'compact'; // full = empty state, compact = has photos
+  variant?: 'full' | 'compact' | 'inline'; // full = empty state, compact = has photos, inline = fits in scroll strip
   showCameraOption?: boolean; // Show camera option on mobile
 };
 
@@ -187,6 +187,7 @@ export default function PhotoDropzone({
   const isDisabled = disabled || isUploading;
   const isWeb = Platform.OS === 'web';
   const isCompact = variant === 'compact';
+  const isInline = variant === 'inline';
 
   // Web-specific props for drag & drop
   const webDragProps = isWeb ? {
@@ -194,6 +195,29 @@ export default function PhotoDropzone({
     onDragLeave: handleDragLeave,
     onDrop: handleDrop,
   } : {};
+
+  // Inline variant: compact + button for horizontal scroll strip
+  if (isInline) {
+    if (isUploading) {
+      return (
+        <View style={styles.inlineButton}>
+          <ActivityIndicator size="small" color="#3498DB" />
+        </View>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={[styles.inlineButton, isDragOver && styles.inlineButtonDragOver]}
+        onPress={handleBrowse}
+        disabled={isDisabled}
+        activeOpacity={0.7}
+        {...webDragProps}
+      >
+        <Ionicons name="add" size={28} color="#3498DB" />
+      </TouchableOpacity>
+    );
+  }
 
   if (isUploading) {
     return (
@@ -285,6 +309,24 @@ export default function PhotoDropzone({
 }
 
 const styles = StyleSheet.create({
+  // Inline variant - compact + button for scroll strip
+  inlineButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#3498DB',
+    backgroundColor: '#EBF5FB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlineButtonDragOver: {
+    borderColor: '#2980B9',
+    backgroundColor: '#D4E6F1',
+    borderStyle: 'solid',
+  },
+
   dropzone: {
     borderWidth: 2,
     borderStyle: 'dashed',

@@ -1,4 +1,5 @@
 import { supabase } from './config';
+export { supabase } from './config';
 import { Database } from './types';
 import { SupabaseClient as SupabaseClientType, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { log } from '../../lib/log';
@@ -59,14 +60,18 @@ export class SupabaseClient {
     avatarUrl?: string;
     role?: 'tenant' | 'landlord';
   }): Promise<Profile> {
+    // Use upsert to handle race conditions where profile might already exist
     const { data, error } = await this.client
       .from('profiles')
-      .insert({
+      .upsert({
         id: profileData.userId,
         email: profileData.email,
         name: profileData.name || null,
         avatar_url: profileData.avatarUrl || null,
         role: profileData.role || null,
+      }, {
+        onConflict: 'id',
+        ignoreDuplicates: false,
       })
       .select()
       .single();
@@ -245,7 +250,7 @@ export class SupabaseClient {
         issue_type: requestData.issueType,
         images: requestData.images || null,
         voice_notes: requestData.voiceNotes || null,
-        status: 'pending',
+        status: 'submitted',
       })
       .select()
       .single();

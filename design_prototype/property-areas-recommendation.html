@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Areas Setup - Research & Recommendation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 32px;
+            color: #1F2937;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #6B7280;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h2 {
+            font-size: 24px;
+            color: #1F2937;
+            margin-bottom: 16px;
+            border-bottom: 3px solid #4F46E5;
+            padding-bottom: 12px;
+        }
+
+        h3 {
+            font-size: 18px;
+            color: #4F46E5;
+            margin: 24px 0 12px;
+        }
+
+        p {
+            font-size: 15px;
+            color: #4B5563;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        ul, ol {
+            margin-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            font-size: 15px;
+            color: #4B5563;
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .research-box {
+            background: #DBEAFE;
+            border-left: 4px solid #3B82F6;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+
+        .research-box h4 {
+            font-size: 16px;
+            color: #1E40AF;
+            margin-bottom: 8px;
+        }
+
+        .research-box p, .research-box li {
+            color: #1E3A8A;
+            font-size: 14px;
+        }
+
+        .current-state {
+            background: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+
+        .current-state h4 {
+            font-size: 16px;
+            color: #92400E;
+            margin-bottom: 8px;
+        }
+
+        .current-state p, .current-state li {
+            color: #78350F;
+            font-size: 14px;
+        }
+
+        .recommendation {
+            background: #D1FAE5;
+            border-left: 4px solid #10B981;
+            padding: 24px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+
+        .recommendation h4 {
+            font-size: 18px;
+            color: #065F46;
+            margin-bottom: 12px;
+        }
+
+        .recommendation p, .recommendation li {
+            color: #047857;
+            font-size: 15px;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin: 24px 0;
+        }
+
+        .option {
+            background: #F9FAFB;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .option.recommended {
+            border-color: #10B981;
+            background: #F0FDF4;
+        }
+
+        .option h4 {
+            font-size: 16px;
+            color: #1F2937;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .badge.recommended {
+            background: #10B981;
+            color: white;
+        }
+
+        .badge.not-recommended {
+            background: #EF4444;
+            color: white;
+        }
+
+        .pros-cons {
+            margin-top: 12px;
+        }
+
+        .pros-cons h5 {
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .pros {
+            color: #065F46;
+        }
+
+        .cons {
+            color: #991B1B;
+        }
+
+        .mockup-frame {
+            border: 3px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 20px;
+            background: #FAFAFA;
+            margin: 24px 0;
+        }
+
+        .mockup-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6B7280;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .room-item {
+            background: white;
+            border: 2px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .room-name {
+            font-size: 15px;
+            color: #1F2937;
+            font-weight: 500;
+        }
+
+        .counter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .counter-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid #4F46E5;
+            background: white;
+            color: #4F46E5;
+            font-size: 18px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .counter-btn:hover {
+            background: #4F46E5;
+            color: white;
+        }
+
+        .counter-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .sources {
+            margin-top: 24px;
+            padding: 20px;
+            background: #F9FAFB;
+            border-radius: 8px;
+        }
+
+        .sources h4 {
+            font-size: 16px;
+            color: #1F2937;
+            margin-bottom: 12px;
+        }
+
+        .sources a {
+            display: block;
+            color: #4F46E5;
+            text-decoration: none;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+
+        .sources a:hover {
+            text-decoration: underline;
+        }
+
+        .icon {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 Property Areas Setup - Research & Recommendation</h1>
+        <p class="subtitle">How to handle varied property layouts (multiple kitchens, living rooms, etc.)</p>
+
+        <!-- Research Findings -->
+        <div class="section">
+            <h2>📚 Research Findings</h2>
+
+            <div class="research-box">
+                <h4>How Airbnb Handles Property Areas:</h4>
+                <ul>
+                    <li><strong>AI-Powered Photo Tour:</strong> Recognizes 19 types of rooms/spaces automatically from uploaded photos</li>
+                    <li><strong>Room-by-room details:</strong> Users can edit each room individually to add bed types, amenities, etc.</li>
+                    <li><strong>Amenities, not room counts:</strong> Airbnb focuses on amenities (has kitchen, has laundry) rather than "how many kitchens"</li>
+                    <li><strong>Bedrooms/Bathrooms only:</strong> Only bedrooms and bathrooms have explicit count fields during setup</li>
+                    <li><strong>Multiple rooms at one property:</strong> For complex properties, hosts create separate listings for each rentable space</li>
+                </ul>
+            </div>
+
+            <div class="research-box">
+                <h4>How RentalWise (Property Management Software) Handles It:</h4>
+                <ul>
+                    <li><strong>Bedroom-focused:</strong> Primary focus on configuring individual bedrooms with bed types</li>
+                    <li><strong>No custom room counts:</strong> Documentation doesn't show support for multiple kitchens or custom room quantities</li>
+                    <li><strong>Floor plan uploads:</strong> Users can upload floor plan images for visual clarity</li>
+                    <li><strong>Structured approach:</strong> Form-based configuration for property type, bedrooms, bathrooms, occupancy</li>
+                </ul>
+            </div>
+
+            <div class="research-box">
+                <h4>Industry Pattern:</h4>
+                <p><strong>Key Finding:</strong> Most vacation rental/property management software treats bedrooms and bathrooms as <em>countable units</em>, while other spaces (kitchens, living rooms, laundry rooms) are treated as <em>amenities</em> (yes/no presence) rather than quantities.</p>
+                <p><strong>Reason:</strong> Bedrooms and bathrooms directly affect guest capacity and are critical decision factors. Multiple kitchens or living rooms are edge cases and usually handled through custom room additions or photo descriptions.</p>
+            </div>
+        </div>
+
+        <!-- Current State -->
+        <div class="section">
+            <h2>🔍 Current MyAI Landlord Implementation</h2>
+
+            <div class="current-state">
+                <h4>What PropertyAreasScreen Currently Does:</h4>
+                <ul>
+                    <li><strong>Auto-generates bedrooms:</strong> Creates "Master Bedroom", "Bedroom 2", etc. based on bedroom count from PropertyBasicsScreen</li>
+                    <li><strong>Auto-generates bathrooms:</strong> Creates "Master Bathroom", "Bathroom 2", "Half Bathroom" based on bathroom count (supports 2.5, 3.5, etc.)</li>
+                    <li><strong>Pre-populates common areas:</strong> Automatically adds Kitchen and Living Room as essential areas</li>
+                    <li><strong>Property-type aware:</strong> Shows different optional areas for apartments (Balcony, Laundry) vs houses (Garage, Yard)</li>
+                    <li><strong>"Add Custom Room" button:</strong> Already exists! Users can add custom rooms with custom names</li>
+                    <li><strong>Checkbox selection:</strong> Users select which areas to include in their property</li>
+                </ul>
+            </div>
+
+            <div class="current-state">
+                <h4>❌ Current Limitation:</h4>
+                <p><strong>Problem:</strong> If a property has 2 kitchens or 2 living rooms, users must:</p>
+                <ol>
+                    <li>Keep the auto-generated "Kitchen" or "Living Room"</li>
+                    <li>Click "Add Custom Room"</li>
+                    <li>Type "Second Kitchen" or "Kitchen 2"</li>
+                </ol>
+                <p>This is <strong>manual and clunky</strong> for edge cases like multi-kitchen homes.</p>
+            </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="section">
+            <h2>💡 Recommendation: Hybrid Approach</h2>
+
+            <div class="recommendation">
+                <h4>✅ Recommended Solution: Add +/- Counters for Common Areas</h4>
+                <p>Extend the +/- counter UI (currently used for bedrooms/bathrooms in PropertyBasicsScreen) to ALL room types in PropertyAreasScreen.</p>
+
+                <h5 style="margin-top: 16px; margin-bottom: 8px;">Implementation Details:</h5>
+                <ol>
+                    <li><strong>PropertyAreasScreen</strong> shows all room types with +/- counters</li>
+                    <li>Default: Kitchen (1), Living Room (1), auto-generated Bedrooms/Bathrooms</li>
+                    <li>Users can increase: Kitchen (2), Living Room (2), add Garage (1), etc.</li>
+                    <li>System auto-names: "Kitchen", "Kitchen 2" OR "Main Kitchen", "Second Kitchen"</li>
+                    <li>Keep "Add Custom Room" for truly unique spaces (e.g., "Wine Cellar", "Home Theater")</li>
+                </ol>
+
+                <h5 style="margin-top: 16px; margin-bottom: 8px;">Why This Works:</h5>
+                <ul>
+                    <li>Handles edge cases (2 kitchens, 2 living rooms) without manual custom room creation</li>
+                    <li>Maintains simplicity for typical properties (most will keep counts at 1)</li>
+                    <li>Consistent with bedroom/bathroom pattern users already understand</li>
+                    <li>Flexible for unique properties without complex UI</li>
+                </ul>
+            </div>
+
+            <div class="comparison">
+                <div class="option">
+                    <h4><span class="icon">❌</span> Option 1: Keep Current Approach <span class="badge not-recommended">NOT RECOMMENDED</span></h4>
+                    <div class="pros-cons">
+                        <h5 class="pros">✅ Pros:</h5>
+                        <ul>
+                            <li>No code changes needed</li>
+                            <li>Works for 95% of properties</li>
+                        </ul>
+                        <h5 class="cons" style="margin-top: 12px;">❌ Cons:</h5>
+                        <ul>
+                            <li>Clunky for edge cases (2 kitchens, 2 living rooms)</li>
+                            <li>Users must manually create "Kitchen 2"</li>
+                            <li>Inconsistent (bedrooms get auto-generated, kitchens don't)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="option recommended">
+                    <h4><span class="icon">✅</span> Option 2: Add +/- Counters <span class="badge recommended">RECOMMENDED</span></h4>
+                    <div class="pros-cons">
+                        <h5 class="pros">✅ Pros:</h5>
+                        <ul>
+                            <li>Handles ALL property layouts gracefully</li>
+                            <li>Consistent with bedroom/bathroom UX</li>
+                            <li>Auto-naming eliminates manual typing</li>
+                            <li>Simple for typical properties, powerful for complex ones</li>
+                        </ul>
+                        <h5 class="cons" style="margin-top: 12px;">❌ Cons:</h5>
+                        <ul>
+                            <li>Requires modest UI/UX changes</li>
+                            <li>Slightly more complex initial screen</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visual Mockup -->
+        <div class="section">
+            <h2>🎨 Proposed UI Mockup</h2>
+
+            <div class="mockup-frame">
+                <div class="mockup-title">Property Areas Screen - With +/- Counters</div>
+
+                <h4 style="font-size: 14px; color: #6B7280; margin-bottom: 12px;">Essential Areas</h4>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🍳 Kitchen</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-btn">−</div>
+                        <div class="counter-value">1</div>
+                        <div class="counter-btn">+</div>
+                    </div>
+                </div>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🛋️ Living Room</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-btn">−</div>
+                        <div class="counter-value">1</div>
+                        <div class="counter-btn">+</div>
+                    </div>
+                </div>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🛏️ Bedroom</div>
+                        <div style="font-size: 12px; color: #6B7280;">Auto-generated from property basics</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-value" style="color: #6B7280;">4</div>
+                    </div>
+                </div>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🚿 Bathroom</div>
+                        <div style="font-size: 12px; color: #6B7280;">Auto-generated from property basics</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-value" style="color: #6B7280;">2.5</div>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 14px; color: #6B7280; margin: 20px 0 12px;">Optional Areas</h4>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🚗 Garage</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-btn">−</div>
+                        <div class="counter-value">0</div>
+                        <div class="counter-btn">+</div>
+                    </div>
+                </div>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🌳 Yard</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-btn">−</div>
+                        <div class="counter-value">1</div>
+                        <div class="counter-btn">+</div>
+                    </div>
+                </div>
+
+                <div class="room-item">
+                    <div>
+                        <div class="room-name">🧺 Laundry Room</div>
+                    </div>
+                    <div class="counter">
+                        <div class="counter-btn">−</div>
+                        <div class="counter-value">0</div>
+                        <div class="counter-btn">+</div>
+                    </div>
+                </div>
+
+                <div class="room-item" style="border-color: #3B82F6; background: #EFF6FF;">
+                    <div>
+                        <div class="room-name" style="color: #3B82F6;">➕ Add Custom Room</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; padding: 12px; background: #FEFCE8; border-radius: 8px; font-size: 13px; color: #854D0E;">
+                    💡 Tip: Set to 2+ for areas like "Kitchen" and we'll create "Main Kitchen" and "Second Kitchen" for you
+                </div>
+            </div>
+        </div>
+
+        <!-- Implementation Notes -->
+        <div class="section">
+            <h2>🔧 Implementation Notes</h2>
+
+            <h3>Changes Required:</h3>
+            <ol>
+                <li><strong>Update PropertyAreasScreen UI:</strong>
+                    <ul>
+                        <li>Replace checkboxes with +/- counter controls for each room type</li>
+                        <li>Add state management for room counts (kitchen: 1, living_room: 1, garage: 0, etc.)</li>
+                        <li>Keep "Add Custom Room" button for truly unique spaces</li>
+                    </ul>
+                </li>
+                <li><strong>Auto-naming logic:</strong>
+                    <ul>
+                        <li>If count = 1: "Kitchen", "Living Room", "Garage"</li>
+                        <li>If count = 2: "Main Kitchen", "Second Kitchen" OR "Kitchen", "Kitchen 2"</li>
+                        <li>If count = 3+: "Kitchen", "Kitchen 2", "Kitchen 3", etc.</li>
+                    </ul>
+                </li>
+                <li><strong>Bedrooms/Bathrooms:</strong>
+                    <ul>
+                        <li>Keep current behavior - auto-generated from PropertyBasicsScreen</li>
+                        <li>Show count as read-only (can't change in PropertyAreasScreen)</li>
+                        <li>Users must go back to PropertyBasicsScreen to change bedroom/bathroom counts</li>
+                    </ul>
+                </li>
+                <li><strong>Maintain backward compatibility:</strong>
+                    <ul>
+                        <li>Existing properties with custom "Kitchen 2" rooms should continue to work</li>
+                        <li>New properties use the +/- counter system</li>
+                    </ul>
+                </li>
+            </ol>
+
+            <h3>Edge Cases to Handle:</h3>
+            <ul>
+                <li>What if user creates "Kitchen 2" via custom room, then increases Kitchen counter? → Warn of duplicate</li>
+                <li>What if user decreases count from 2 to 1? → Ask which one to keep (Main Kitchen vs Second Kitchen)</li>
+                <li>What if user has photos assigned to "Kitchen 2" and deletes it? → Warn that photos will be orphaned</li>
+            </ul>
+        </div>
+
+        <!-- Sources -->
+        <div class="section">
+            <div class="sources">
+                <h4>📚 Research Sources:</h4>
+                <a href="https://www.airbnb.com/resources/hosting-homes/a/how-to-set-up-your-room-listing-614" target="_blank">How to set up your room listing - Airbnb Resource Center</a>
+                <a href="https://www.airbnb.com/help/article/289" target="_blank">Listing multiple rooms - Airbnb Help Center</a>
+                <a href="https://www.airbnb.com/help/article/586" target="_blank">Add amenities to a listing - Airbnb Help Center</a>
+                <a href="https://www.rentalwise.com/support/property-management-system/property-room-configuration" target="_blank">Adding & Editing Property Room Configuration - RentalWise</a>
+                <a href="https://hospitable.com/airbnb-amenities" target="_blank">Airbnb Amenities to Help You Attract More Guests - Hospitable</a>
+                <a href="https://turno.com/blog/airbnb-amenities/" target="_blank">Airbnb Amenities: Most-Searched Airbnb Essentials and Extras - Turno</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -56,17 +56,9 @@ export function useApiClient(): UseApiClientReturn | null {
   // Set the storage client to use the authenticated Supabase instance
   setStorageSupabaseClient(supabaseClient);
 
-  if (authDisabled) {
-    return createMockApiClient('dev_user_1');
-  }
-
-  if (!userId) {
-    // Return null instead of throwing when user is not authenticated
-    return null;
-  }
-
   // Helper to get authenticated Supabase client - cached to avoid RLS context spam
   const getSupabaseClient = () => {
+    if (!supabaseClient) return null;
     let cached = supabaseClientCache.get(supabaseClient);
     if (!cached) {
       cached = new SupabaseClient(supabaseClient);
@@ -747,47 +739,61 @@ export function useApiClient(): UseApiClientReturn | null {
   };
 
   // Memoize the return object to prevent infinite loops in useCallback dependencies
-  // Only recreate when userId or supabaseClient changes (login/logout)
-  return useMemo(() => ({
-    // User methods
-    getUserProfile,
-    createUserProfile,
-    updateUserProfile,
-    setUserRole,
+  // MUST be called unconditionally to satisfy React's rules of hooks
+  // Only recreate when userId, supabaseClient, or authDisabled changes
+  return useMemo(() => {
+    // Return mock client for auth-disabled mode
+    if (authDisabled) {
+      return createMockApiClient('dev_user_1');
+    }
 
-    // Property methods
-    getUserProperties,
-    createProperty,
-    createPropertyAreas,
-    deleteProperty,
+    // Return null if not authenticated
+    if (!userId) {
+      return null;
+    }
 
-    // Property code methods
-    validatePropertyCode,
-    linkTenantToProperty,
-    getTenantProperties,
-    linkTenantToPropertyById,
+    // Return the full API client
+    return {
+      // User methods
+      getUserProfile,
+      createUserProfile,
+      updateUserProfile,
+      setUserRole,
 
-    // Maintenance request methods
-    getMaintenanceRequests,
-    getMaintenanceRequestById,
-    createMaintenanceRequest,
-    updateMaintenanceRequest,
+      // Property methods
+      getUserProperties,
+      createProperty,
+      createPropertyAreas,
+      deleteProperty,
 
-    // Messaging methods
-    getMessages,
-    sendMessage,
-    markMessagesAsRead,
+      // Property code methods
+      validatePropertyCode,
+      linkTenantToProperty,
+      getTenantProperties,
+      linkTenantToPropertyById,
 
-    // AI methods
-    analyzeMaintenanceRequest,
+      // Maintenance request methods
+      getMaintenanceRequests,
+      getMaintenanceRequestById,
+      createMaintenanceRequest,
+      updateMaintenanceRequest,
 
-    // Storage methods
-    uploadFile,
-    getSignedUrl,
-    deleteFile,
+      // Messaging methods
+      getMessages,
+      sendMessage,
+      markMessagesAsRead,
 
-    // Subscriptions
-    subscribeToMaintenanceRequests,
-    subscribeToMessages,
-  }), [userId, supabaseClient]);
+      // AI methods
+      analyzeMaintenanceRequest,
+
+      // Storage methods
+      uploadFile,
+      getSignedUrl,
+      deleteFile,
+
+      // Subscriptions
+      subscribeToMaintenanceRequests,
+      subscribeToMessages,
+    };
+  }, [userId, supabaseClient, authDisabled]);
 }

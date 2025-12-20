@@ -6,9 +6,54 @@ import AuthCallbackScreen from '../screens/AuthCallbackScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
 import { log } from '../lib/log';
 
+// New onboarding screens
+import {
+  OnboardingWelcomeScreen,
+  OnboardingNameScreen,
+  OnboardingAccountScreen,
+  OnboardingRoleScreen,
+  LandlordOnboardingWelcomeScreen,
+  LandlordPropertyIntroScreen,
+  LandlordTenantInviteScreen,
+  LandlordOnboardingSuccessScreen,
+  TenantOnboardingWelcomeScreen,
+  TenantPropertyCodeScreen,
+  TenantPropertyConfirmScreen,
+  TenantOnboardingSuccessScreen,
+} from '../screens/onboarding';
+
+// Existing property setup screens (reused in onboarding)
+import PropertyBasicsScreen from '../screens/landlord/PropertyBasicsScreen';
+import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
+
 export type AuthStackParamList = {
+  // Legacy screen for backwards compatibility
   Welcome: undefined;
-  Auth: undefined;
+  // New onboarding flow
+  OnboardingWelcome: undefined;
+  OnboardingName: undefined;
+  OnboardingAccount: { firstName: string };
+  OnboardingRole: { firstName: string; userId: string };
+  // Landlord onboarding path
+  LandlordOnboardingWelcome: { firstName: string; role: 'landlord' };
+  LandlordPropertyIntro: { firstName: string };
+  PropertyBasics: { firstName?: string; isOnboarding?: boolean };
+  PropertyAreas: {
+    propertyData: any; // PropertyData type
+    draftId?: string;
+    propertyId?: string;
+    existingAreas?: any[]; // PropertyArea[] type
+    isOnboarding?: boolean;
+  };
+  LandlordTenantInvite: { firstName: string; propertyId: string; propertyName: string };
+  LandlordOnboardingSuccess: { firstName: string };
+  // Tenant onboarding path
+  TenantOnboardingWelcome: { firstName: string; role: 'tenant' };
+  TenantPropertyCode: { firstName: string };
+  TenantPropertyConfirm: { firstName: string; propertyId: string; propertyName: string; landlordName: string };
+  TenantOnboardingSuccess: { firstName: string };
+  // Existing auth screens
+  Auth: { mode?: 'login' | 'signup' };
   // Keep legacy routes for backwards compatibility
   Login: undefined;
   SignUp: undefined;
@@ -18,15 +63,45 @@ export type AuthStackParamList = {
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-interface AuthStackProps {
-  initialInvite?: boolean;
+interface ContinuationProps {
+  firstName: string;
+  role: 'landlord' | 'tenant' | null;
 }
 
-const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false }) => {
-  // Choose initial route based on deep link context
-  const initialRouteName = initialInvite ? 'PropertyInviteAccept' : 'Welcome';
+interface AuthStackProps {
+  initialInvite?: boolean;
+  /** For existing authenticated users who need to complete onboarding */
+  continuation?: ContinuationProps;
+}
 
-  log.info('AuthStack initialized with:', { initialInvite, initialRouteName });
+const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuation }) => {
+  // Determine initial route based on context:
+  // 1. Deep link invite → PropertyInviteAccept
+  // 2. Continuation for existing landlord → LandlordPropertyIntro
+  // 3. Continuation for existing tenant → TenantPropertyCode
+  // 4. New user → OnboardingWelcome
+  let initialRouteName: keyof AuthStackParamList = 'OnboardingWelcome';
+  let initialParams: Record<string, unknown> | undefined;
+
+  if (initialInvite) {
+    initialRouteName = 'PropertyInviteAccept';
+  } else if (continuation) {
+    if (continuation.role === 'landlord') {
+      initialRouteName = 'LandlordPropertyIntro';
+      initialParams = { firstName: continuation.firstName };
+    } else if (continuation.role === 'tenant') {
+      initialRouteName = 'TenantPropertyCode';
+      initialParams = { firstName: continuation.firstName };
+    }
+    // If no role, fall back to OnboardingWelcome
+  }
+
+  log.info('AuthStack initialized with:', {
+    initialInvite,
+    continuation,
+    initialRouteName,
+    initialParams,
+  });
 
   return (
     <Stack.Navigator
@@ -36,7 +111,39 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false }) => {
         animation: 'slide_from_right',
       }}
     >
+      {/* Legacy screen for backwards compatibility */}
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
+
+      {/* New onboarding flow - shared screens */}
+      <Stack.Screen name="OnboardingWelcome" component={OnboardingWelcomeScreen} />
+      <Stack.Screen name="OnboardingName" component={OnboardingNameScreen} />
+      <Stack.Screen name="OnboardingAccount" component={OnboardingAccountScreen} />
+      <Stack.Screen name="OnboardingRole" component={OnboardingRoleScreen} />
+
+      {/* Landlord onboarding path */}
+      <Stack.Screen name="LandlordOnboardingWelcome" component={LandlordOnboardingWelcomeScreen} />
+      <Stack.Screen
+        name="LandlordPropertyIntro"
+        component={LandlordPropertyIntroScreen}
+        initialParams={continuation?.role === 'landlord' ? { firstName: continuation.firstName } : undefined}
+      />
+      {/* Reuse existing property setup screens */}
+      <Stack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
+      <Stack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
+      <Stack.Screen name="LandlordTenantInvite" component={LandlordTenantInviteScreen} />
+      <Stack.Screen name="LandlordOnboardingSuccess" component={LandlordOnboardingSuccessScreen} />
+
+      {/* Tenant onboarding path */}
+      <Stack.Screen name="TenantOnboardingWelcome" component={TenantOnboardingWelcomeScreen} />
+      <Stack.Screen
+        name="TenantPropertyCode"
+        component={TenantPropertyCodeScreen}
+        initialParams={continuation?.role === 'tenant' ? { firstName: continuation.firstName } : undefined}
+      />
+      <Stack.Screen name="TenantPropertyConfirm" component={TenantPropertyConfirmScreen} />
+      <Stack.Screen name="TenantOnboardingSuccess" component={TenantOnboardingSuccessScreen} />
+
+      {/* Existing auth screens */}
       <Stack.Screen name="Auth" component={AuthScreen} />
       {/* Legacy screens redirect to unified Auth screen */}
       <Stack.Screen name="Login" component={AuthScreen} />

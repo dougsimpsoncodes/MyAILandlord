@@ -8,11 +8,13 @@ const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 
 export function useSupabaseWithAuth() {
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
+  const useTestClient = authDisabled || isTestMode
   const { session, isSignedIn, isLoading } = useAppAuth()
 
-  // In auth-disabled or test mode, use basic Supabase client
-  if (authDisabled || isTestMode) {
-    const supabase = useMemo(() => {
+  // Always call useMemo unconditionally to satisfy React's rules of hooks
+  const supabase = useMemo(() => {
+    if (useTestClient) {
+      // Test/auth-disabled mode: basic client
       return createClient(url, anon, {
         auth: {
           autoRefreshToken: false,
@@ -20,14 +22,8 @@ export function useSupabaseWithAuth() {
           detectSessionInUrl: false,
         },
       })
-    }, [])
-
-    const getAccessToken = async () => (isTestMode ? 'test-jwt-token' : null)
-    return { supabase, getAccessToken, isLoaded: true, isSignedIn: authDisabled || isTestMode }
-  }
-
-  // Create Supabase client with access token from session
-  const supabase = useMemo(() => {
+    }
+    // Normal mode: authenticated client
     return createClient(url, anon, {
       global: {
         headers: session?.access_token
@@ -40,10 +36,17 @@ export function useSupabaseWithAuth() {
         detectSessionInUrl: true,
       },
     })
-  }, [session?.access_token])
+  }, [useTestClient, session?.access_token])
 
   const getAccessToken = async () => {
+    if (useTestClient) {
+      return isTestMode ? 'test-jwt-token' : null
+    }
     return session?.access_token || null
+  }
+
+  if (useTestClient) {
+    return { supabase, getAccessToken, isLoaded: true, isSignedIn: true }
   }
 
   return { supabase, getAccessToken, isLoaded: !isLoading, isSignedIn }

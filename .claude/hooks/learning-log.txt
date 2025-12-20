@@ -787,3 +787,54 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-17T02:45:24Z] Commit f2f94eeb48dd9e3b18d7c86dacff27f18784ec4d successful
+Message: fix: align package versions to Expo SDK 53 recommendations
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-17T02:48:35Z] Commit 795ca954cd361c32fab64e1842377d74d5df3e0a successful
+Message: fix: use .npmrc for legacy-peer-deps instead of invalid installCommand
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-17T05:38:01Z] Commit 5fbfeff8b2b37206cd3b9db30986eca839bb3157 successful
+Message: feat: add MAIL house app icon
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-17T05:48:14Z] Commit be9addc2f32bbc119efef13d9501602722aed0eb successful
+Message: chore: add App Store Connect ID to eas.json for auto-submit
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-19T16:46:50Z] Commit 3320616143c25efef55ba2475fd9c15456e3b7e8 successful
+Message: security: fix API key exposure, strengthen sanitization, add profile caching
+
+- Move Gemini Vision API calls to Edge Function (extract-asset-label)
+  to prevent API key extraction from client bundle
+- Strengthen sanitizeString with null byte, control char, Unicode
+  direction override, and full HTML entity encoding
+- Add sanitizeUrl (blocks javascript:/data:/vbscript: protocols)
+- Add sanitizePath (prevents directory traversal attacks)
+- Create ProfileContext for centralized profile caching (5-min TTL)
+- Remove test property injection and hardcoded demo data
+- Clean up ~60 obsolete documentation and mockup files
+
+🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-19T17:12:57Z] Commit 168a971d0b55fa6b3653466b6d639bb95404992d successful
+Message: security: remove EXPO_PUBLIC_GEMINI_API_KEY from client config
+
+Gemini API key is now exclusively server-side in Supabase secrets.
+Removes any path to accidental client-side exposure.
+
+🤖 Generated with [Claude Code](https://claude.ai/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

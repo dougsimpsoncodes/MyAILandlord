@@ -8,6 +8,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
+import { usePendingRequests } from '../../context/PendingRequestsContext';
 
 type CaseDetailScreenRouteProp = RouteProp<LandlordStackParamList, 'CaseDetail'>;
 type CaseDetailScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'CaseDetail'>;
@@ -25,7 +26,7 @@ interface DetailedCase {
   asset: string;
   issueType: string;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
   createdAt: string;
   images: string[];
 }
@@ -36,6 +37,7 @@ const CaseDetailScreen = () => {
   const route = useRoute<CaseDetailScreenRouteProp>();
   const navigation = useNavigation<CaseDetailScreenNavigationProp>();
   const api = useApiClient();
+  const { refreshPendingCount } = usePendingRequests();
   const { caseId } = route.params;
 
   const [caseData, setCaseData] = useState<DetailedCase | null>(null);
@@ -86,6 +88,21 @@ const CaseDetailScreen = () => {
 
         setCaseData(mapped);
         log.info('Loaded maintenance request', { id: caseId });
+
+        // Mark as "pending" if this is a new "submitted" request (landlord has now seen it)
+        if (request.status === 'submitted') {
+          try {
+            await api.updateMaintenanceRequest(caseId, { status: 'pending' });
+            log.info('Marked request as viewed (submitted -> pending)', { id: caseId });
+            // Update local state to reflect the change
+            mapped.status = 'pending';
+            setCaseData({ ...mapped });
+            // Refresh the badge count
+            refreshPendingCount();
+          } catch (updateErr) {
+            log.error('Failed to mark request as viewed', { error: String(updateErr) });
+          }
+        }
       } catch (err) {
         log.error('Failed to load maintenance request', { error: String(err) });
         setError('Failed to load maintenance request');

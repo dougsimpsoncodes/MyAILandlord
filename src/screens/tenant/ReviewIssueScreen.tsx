@@ -175,7 +175,7 @@ const ReviewIssueScreen = () => {
       }
     };
 
-    const key = reviewData.issueType.toLowerCase();
+    const key = (reviewData.issueType || '').toLowerCase();
     const analysis = analysisMap[key] || {
       what: 'Issue requires professional assessment to determine exact cause.',
       timeline: 'Repair timeline depends on diagnosis and parts availability.',
@@ -219,20 +219,22 @@ const ReviewIssueScreen = () => {
     setIsSubmitting(true);
 
     try {
-      const areaName = AREA_TEMPLATES.find((a: {type: string, displayName?: string}) => a.type === reviewData.area)?.displayName || reviewData.area;
+      const areaName = AREA_TEMPLATES.find((a: {type: string, displayName?: string}) => a.type === reviewData.area)?.displayName || reviewData.area || 'General';
       // const assetTemplate = null; // ASSET_TEMPLATES integration disabled
+      const priorityValue = reviewData.priority || 'medium';
 
-      // Build comprehensive description
-      const structuredDescription = `Location: ${areaName}
-Asset: ${reviewData.asset} (${'General'})
-Issue Type: ${reviewData.issueType}
-Priority: ${reviewData.priority.charAt(0).toUpperCase() + reviewData.priority.slice(1)}
-Duration: ${reviewData.duration}
-Timing: ${reviewData.timing}${reviewData.additionalDetails ? `
+      // Build comprehensive description - only include fields that have values
+      const descriptionParts: string[] = [];
+      if (reviewData.area) descriptionParts.push(`Location: ${areaName}`);
+      if (reviewData.asset) descriptionParts.push(`Asset: ${reviewData.asset}`);
+      if (reviewData.issueType) descriptionParts.push(`Issue Type: ${reviewData.issueType}`);
+      descriptionParts.push(`Priority: ${priorityValue.charAt(0).toUpperCase() + priorityValue.slice(1)}`);
+      if (reviewData.duration) descriptionParts.push(`Duration: ${reviewData.duration}`);
+      if (reviewData.timing) descriptionParts.push(`Timing: ${reviewData.timing}`);
+      if (reviewData.additionalDetails) descriptionParts.push(`\nAdditional Details: ${reviewData.additionalDetails}`);
+      if (vendorComment) descriptionParts.push(`\nVendor Instructions: ${vendorComment}`);
 
-Additional Details: ${reviewData.additionalDetails}` : ''}${vendorComment ? `
-
-Vendor Instructions: ${vendorComment}` : ''}`;
+      const structuredDescription = descriptionParts.join('\n');
 
       // Format selected time slots
       const availableSlots = timeSlots
@@ -246,27 +248,27 @@ Vendor Instructions: ${vendorComment}` : ''}`;
 
       // Create case data
       const caseData = {
-        title: reviewData.title || `${areaName} ${reviewData.asset}: ${reviewData.issueType}`,
+        title: reviewData.title || reviewData.issueType || reviewData.asset || 'Maintenance Request',
         description: structuredDescription,
         category: 'General'?.toLowerCase().replace(/\s+/g, '_') || 'other',
-        priority: reviewData.priority,
+        priority: priorityValue,
         propertyAddress: 'Default Property Address',
-        location: reviewData.area,
-        
+        location: reviewData.area || 'general',
+
         structuredData: {
-          area: reviewData.area,
+          area: reviewData.area || 'general',
           areaDisplayName: areaName,
-          asset: reviewData.asset,
-          issueType: reviewData.issueType,
-          priority: reviewData.priority,
-          duration: reviewData.duration,
-          timing: reviewData.timing,
+          asset: reviewData.asset || 'General',
+          issueType: reviewData.issueType || 'needs attention',
+          priority: priorityValue,
+          duration: reviewData.duration || 'unknown',
+          timing: reviewData.timing || 'unknown',
           assetCategory: 'General',
           vendorType: 'specialist',
           additionalDetails: reviewData.additionalDetails || null,
           availableTimeSlots: availableSlots
         },
-        
+
         images: []
       };
 
@@ -288,12 +290,12 @@ Vendor Instructions: ${vendorComment}` : ''}`;
 
       const maintenanceRequestData = {
         propertyId: reviewData.propertyId,
-        title: reviewData.title || reviewData.issueType,
+        title: reviewData.title || reviewData.issueType || reviewData.asset || 'Maintenance Request',
         description: structuredDescription,
-        priority: reviewData.priority as 'low' | 'medium' | 'high' | 'urgent',
-        area: reviewData.area,
-        asset: reviewData.asset,
-        issueType: reviewData.issueType,
+        priority: (reviewData.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+        area: reviewData.area || 'general',
+        asset: reviewData.asset || 'General',
+        issueType: reviewData.issueType || 'needs attention',
         images: reviewData.mediaItems || []
       };
       
@@ -305,11 +307,11 @@ Vendor Instructions: ${vendorComment}` : ''}`;
       // Navigate to success screen with summary data
       navigation.navigate('SubmissionSuccess', {
         summary: {
-          title: reviewData.title || reviewData.issueType,
-          area: areaName,
-          asset: reviewData.asset,
-          issueType: reviewData.issueType,
-          priority: reviewData.priority,
+          title: reviewData.title || reviewData.issueType || reviewData.asset || 'Maintenance Request',
+          area: areaName || 'General',
+          asset: reviewData.asset || 'General',
+          issueType: reviewData.issueType || 'Needs attention',
+          priority: reviewData.priority || 'medium',
         }
       });
     } catch (error) {
@@ -331,8 +333,8 @@ Vendor Instructions: ${vendorComment}` : ''}`;
   };
 
   const analysis = getAIAnalysis();
-  const areaName = AREA_TEMPLATES.find(a => a.type === reviewData.area)?.displayName || reviewData.area;
-  const priorityDisplay = formatPriorityDisplay(reviewData.priority);
+  const areaName = AREA_TEMPLATES.find(a => a.type === reviewData.area)?.displayName || reviewData.area || 'General';
+  const priorityDisplay = formatPriorityDisplay(reviewData.priority || 'medium');
 
   // Header right with Submit button
   const headerRight = (
@@ -369,23 +371,31 @@ Vendor Instructions: ${vendorComment}` : ''}`;
           </View>
           
           <View style={styles.summaryContent}>
-            <Text style={styles.requestTitle}>{reviewData.title}</Text>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Location:</Text>
-              <Text style={styles.detailValue}>{areaName}</Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Item:</Text>
-              <Text style={styles.detailValue}>{reviewData.asset}</Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Issue:</Text>
-              <Text style={styles.detailValue}>{reviewData.issueType}</Text>
-            </View>
-            
+            {reviewData.title && (
+              <Text style={styles.requestTitle}>{reviewData.title}</Text>
+            )}
+
+            {reviewData.area && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Location:</Text>
+                <Text style={styles.detailValue}>{areaName}</Text>
+              </View>
+            )}
+
+            {reviewData.asset && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Item:</Text>
+                <Text style={styles.detailValue}>{reviewData.asset}</Text>
+              </View>
+            )}
+
+            {reviewData.issueType && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Issue:</Text>
+                <Text style={styles.detailValue}>{reviewData.issueType}</Text>
+              </View>
+            )}
+
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Priority:</Text>
               <View style={[styles.priorityBadge, { backgroundColor: priorityDisplay.color + '20' }]}>
@@ -394,17 +404,21 @@ Vendor Instructions: ${vendorComment}` : ''}`;
                 </Text>
               </View>
             </View>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Duration:</Text>
-              <Text style={styles.detailValue}>{reviewData.duration.replace('_', ' ')}</Text>
-            </View>
-            
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Timing:</Text>
-              <Text style={styles.detailValue}>{reviewData.timing.replace('_', ' ')}</Text>
-            </View>
-            
+
+            {reviewData.duration && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Duration:</Text>
+                <Text style={styles.detailValue}>{reviewData.duration.replace('_', ' ')}</Text>
+              </View>
+            )}
+
+            {reviewData.timing && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Timing:</Text>
+                <Text style={styles.detailValue}>{reviewData.timing.replace('_', ' ')}</Text>
+              </View>
+            )}
+
             {reviewData.additionalDetails && (
               <View style={styles.detailRow}>
                 <Text style={styles.detailLabel}>Additional Details:</Text>

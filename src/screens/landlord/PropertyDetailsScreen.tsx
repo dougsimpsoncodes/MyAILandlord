@@ -18,6 +18,7 @@ import { PropertyArea, PropertyData } from '../../types/property';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import log from '../../lib/log';
+import { formatAddress } from '../../utils/helpers';
 
 type PropertyDetailsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyDetails'>;
 type PropertyDetailsRouteProp = RouteProp<LandlordStackParamList, 'PropertyDetails'>;
@@ -113,7 +114,7 @@ const PropertyDetailsScreen = () => {
             height={200}
             borderRadius={12}
           />
-          <Text style={styles.propertyAddress}>{property.address}</Text>
+          <Text style={styles.propertyAddress}>{formatAddress(property.address)}</Text>
         </View>
 
         {/* Quick Actions */}
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   propertyAddress: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500',
     color: '#2C3E50',
     marginTop: 12,

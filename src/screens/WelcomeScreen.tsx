@@ -30,7 +30,7 @@ const WelcomeScreen = () => {
     }
 
     // User not authenticated or no role, go to unified Auth screen
-    navigation.navigate('Auth');
+    navigation.navigate('Auth', { mode: 'signup' });
   };
 
   return (
@@ -76,7 +76,7 @@ const WelcomeScreen = () => {
 
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={() => navigation.navigate('Auth')}
+          onPress={() => navigation.navigate('Auth', { mode: 'login' })}
           activeOpacity={0.8}
         >
           <Text style={styles.loginButtonText}>Already have an account? Sign In</Text>

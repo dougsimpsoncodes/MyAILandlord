@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnreadMessages } from '../../context/UnreadMessagesContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';
@@ -33,17 +34,38 @@ const LandlordCommunicationScreen = () => {
   const navigation = useNavigation();
   const apiClient = useApiClient();
   const { user } = useAppAuth();
+  const { refreshUnreadCount } = useUnreadMessages();
   const { handleApiError } = useApiErrorHandling();
-  
+
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'urgent'>('all');
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
+  // Mark messages as read when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const markAsRead = async () => {
+        if (apiClient) {
+          try {
+            await apiClient.markMessagesAsRead();
+            await refreshUnreadCount();
+          } catch (error) {
+            log.error('Error marking messages as read', { error: String(error) });
+          }
+        }
+      };
+      markAsRead();
+    }, [apiClient, refreshUnreadCount])
+  );
+
+  // Reload conversations when screen gets focus (like tenant screen)
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations();
+    }, [])
+  );
 
   const loadConversations = async () => {
     try {

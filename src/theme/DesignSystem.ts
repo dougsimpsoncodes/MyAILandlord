@@ -105,6 +105,65 @@ export const DesignSystem = {
   }
 };
 
+// Named exports for convenient imports
+// These provide a more structured API for colors, spacing, and typography
+
+export const colors = {
+  primary: {
+    default: '#007AFF',
+    light: '#4DA3FF',
+    dark: '#0056B3',
+  },
+  background: {
+    primary: '#FFFFFF',
+    secondary: '#F8F9FA',
+    tertiary: '#F0F2F5',
+  },
+  text: {
+    primary: '#2C3E50',
+    secondary: '#7F8C8D',
+    tertiary: '#95A5A6',
+    inverse: '#FFFFFF',
+  },
+  border: {
+    default: '#E9ECEF',
+    light: '#F8F9FA',
+  },
+  status: {
+    success: '#2ECC71',
+    error: '#E74C3C',
+    warning: '#F39C12',
+    info: '#3498DB',
+  },
+};
+
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+  xxxl: 32,
+};
+
+export const typography = {
+  sizes: {
+    xs: 12,
+    sm: 14,
+    md: 16,
+    lg: 18,
+    xl: 20,
+    xxl: 24,
+  },
+  weights: {
+    regular: '400' as const,
+    medium: '500' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
+  },
+};
+
 // Helper functions for consistent styling
 export const createButtonStyle = (type: 'primary' | 'secondary' | 'danger' | 'success' | 'warning') => {
   const colorMap = {

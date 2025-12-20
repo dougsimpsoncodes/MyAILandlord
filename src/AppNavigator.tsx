@@ -5,6 +5,7 @@ import AuthStack from './navigation/AuthStack';
 import MainStack from './navigation/MainStack';
 import { useAppAuth } from './context/SupabaseAuthContext';
 import { RoleContext } from './context/RoleContext';
+import { useOnboarding } from './context/OnboardingContext';
 import { useProfileSync } from './hooks/useProfileSync';
 import { LoadingScreen } from './components/LoadingSpinner';
 import { log } from './lib/log';
@@ -18,8 +19,26 @@ const AppNavigator = () => {
   const [isReady, setIsReady] = useState(false);
   const [pendingInvitePropertyId, setPendingInvitePropertyId] = useState<string | null>(null);
 
+  // Check if authenticated user needs to complete onboarding
+  const {
+    needsOnboarding,
+    isLoading: onboardingLoading,
+    userFirstName,
+    userRole: onboardingRole,
+  } = useOnboarding();
+
   // Debug logging (centralized)
-  log.info('🧭 AppNavigator state:', { isSignedIn, userRole, isLoading, roleLoading, hasUser: !!user });
+  log.info('🧭 AppNavigator state:', {
+    isSignedIn,
+    userRole,
+    isLoading,
+    roleLoading,
+    hasUser: !!user,
+    needsOnboarding,
+    onboardingLoading,
+    userFirstName,
+    onboardingRole,
+  });
 
   // Sync user with Supabase profile
   useProfileSync();
@@ -57,22 +76,26 @@ const AppNavigator = () => {
     getInitialURL();
   }, []);
 
-  // Show loading while checking both auth and initial URL
-  if (isLoading || roleLoading || !isReady) {
+  // Show loading while checking auth, role, onboarding status, and initial URL
+  if (isLoading || roleLoading || onboardingLoading || !isReady) {
     return <LoadingScreen message="Checking authentication..." />;
   }
 
   // Determine if we should force AuthStack for deep link invite
   const isInviteLink = initialUrl && initialUrl.includes('/invite');
-  // Show MainStack if user is fully authenticated, even if they came from invite
-  const shouldShowMainStack = authDisabled ? true : (isSignedIn && user && userRole);
-  
-  log.info('🧭 Navigation decision:', { 
-    shouldShowMainStack, 
-    isInviteLink, 
-    isSignedIn, 
+
+  // Show MainStack only if user is fully authenticated AND has completed onboarding
+  // If user is authenticated but needs onboarding, show AuthStack with continuation props
+  const isFullyAuthenticated = isSignedIn && user && userRole;
+  const shouldShowMainStack = authDisabled ? true : (isFullyAuthenticated && !needsOnboarding);
+
+  log.info('🧭 Navigation decision:', {
+    shouldShowMainStack,
+    isInviteLink,
+    isSignedIn,
     hasRole: !!userRole,
-    initialUrl 
+    needsOnboarding,
+    initialUrl,
   });
 
   // Configure deep linking
@@ -211,7 +234,13 @@ const AppNavigator = () => {
       {shouldShowMainStack ? (
         <MainStack userRole={userRole as 'tenant' | 'landlord'} pendingInvitePropertyId={pendingInvitePropertyId} />
       ) : (
-        <AuthStack initialInvite={!!isInviteLink} />
+        <AuthStack
+          initialInvite={!!isInviteLink}
+          continuation={isFullyAuthenticated && needsOnboarding ? {
+            firstName: userFirstName || 'there',
+            role: onboardingRole,
+          } : undefined}
+        />
       )}
     </NavigationContainer>
   );

@@ -225,6 +225,7 @@ export interface UseApiClientReturn {
   // Messaging methods
   getMessages: (otherUserId?: string) => Promise<Message[]>;
   sendMessage: (data: Omit<CreateMessageData, 'senderId'>) => Promise<Message>;
+  markMessagesAsRead: () => Promise<boolean>;
 
   // AI methods
   analyzeMaintenanceRequest: (description: string, images?: string[]) => Promise<{

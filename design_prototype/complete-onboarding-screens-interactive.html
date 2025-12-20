@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Landlord Onboarding Flow - Interactive Mockup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .phone-frame {
+            width: 375px;
+            height: 812px;
+            background: #fff;
+            border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 44px;
+            background: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .screen {
+            display: none;
+            height: calc(100% - 44px);
+            overflow-y: auto;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .content {
+            padding: 20px;
+            background: #FAFAFA;
+            min-height: 100%;
+        }
+
+        /* Progress indicators */
+        .progress-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .progress-dot {
+            flex: 1;
+            height: 4px;
+            background: #E5E7EB;
+            border-radius: 2px;
+        }
+
+        .progress-dot.completed {
+            background: #22C55E;
+        }
+
+        .progress-dot.active {
+            background: #4F46E5;
+        }
+
+        .step-indicator {
+            font-size: 12px;
+            color: #9CA3AF;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        /* Common elements */
+        .hero-icon {
+            font-size: 50px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1F2937;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #6B7280;
+            line-height: 22px;
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        /* Buttons */
+        .primary-button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        .primary-button:hover {
+            background: #4338CA;
+        }
+
+        .secondary-button {
+            background: #F3F4F6;
+            color: #1F2937;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .skip-button {
+            background: transparent;
+            border: none;
+            color: #9CA3AF;
+            font-size: 14px;
+            padding: 8px;
+            cursor: pointer;
+            text-align: center;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        /* Input fields */
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6B7280;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .input {
+            width: 100%;
+            background: #fff;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 16px;
+            color: #1F2937;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: #4F46E5;
+        }
+
+        /* Role cards */
+        .role-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .role-card {
+            background: #F3F4F6;
+            border: 2px solid #E5E7EB;
+            border-radius: 14px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .role-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .role-card.selected {
+            background: #F0F4FF;
+            border-color: #4F46E5;
+        }
+
+        .role-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .role-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1F2937;
+            margin-bottom: 4px;
+        }
+
+        .role-card.selected .role-title {
+            color: #4F46E5;
+        }
+
+        .role-desc {
+            font-size: 14px;
+            color: #6B7280;
+            line-height: 1.5;
+        }
+
+        /* Property type cards */
+        .type-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .type-card {
+            background: #F3F4F6;
+            border: 2px solid #E5E7EB;
+            border-radius: 14px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .type-card.selected {
+            background: #F0F4FF;
+            border-color: #4F46E5;
+        }
+
+        .type-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .type-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1F2937;
+        }
+
+        .type-card.selected .type-label {
+            color: #4F46E5;
+        }
+
+        /* Areas grid */
+        .areas-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .area-item {
+            background: #F3F4F6;
+            border: 2px solid #E5E7EB;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .area-item.default {
+            background: #F0F4FF;
+            border-color: #4F46E5;
+        }
+
+        .area-item.optional {
+            opacity: 0.6;
+        }
+
+        .area-icon {
+            font-size: 24px;
+        }
+
+        .area-info {
+            flex: 1;
+        }
+
+        .area-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1F2937;
+        }
+
+        .area-item.default .area-name {
+            color: #4F46E5;
+        }
+
+        .area-badge {
+            font-size: 11px;
+            color: #6B7280;
+        }
+
+        .area-item.default .area-badge {
+            color: #4F46E5;
+        }
+
+        /* Invite section */
+        .code-card {
+            background: #F0F4FF;
+            border: 2px solid #4F46E5;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .code-label {
+            font-size: 12px;
+            color: #6B7280;
+            margin-bottom: 8px;
+        }
+
+        .code-text {
+            font-size: 14px;
+            color: #4F46E5;
+            word-break: break-all;
+        }
+
+        .code-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .action-button {
+            flex: 1;
+            background: #F3F4F6;
+            border: 1px solid #E5E7EB;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Info cards */
+        .info-card {
+            display: flex;
+            align-items: center;
+            background: #FEFCE8;
+            padding: 12px;
+            border-radius: 12px;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .info-icon {
+            font-size: 18px;
+        }
+
+        .info-text {
+            flex: 1;
+            font-size: 14px;
+            color: #854D0E;
+            line-height: 1.5;
+        }
+
+        /* Success elements */
+        .success-icon {
+            font-size: 80px;
+            text-align: center;
+            margin: 32px 0;
+        }
+
+        .success-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1F2937;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .success-text {
+            font-size: 16px;
+            color: #6B7280;
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        /* Navigation */
+        .nav-buttons {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            background: rgba(0,0,0,0.8);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .nav-btn:hover {
+            background: rgba(0,0,0,0.9);
+        }
+
+        .screen-label {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            z-index: 1000;
+        }
+
+        .badge-new {
+            background: #22C55E;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        .badge-existing {
+            background: #3B82F6;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        /* Number input styling */
+        .number-input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .password-container {
+            position: relative;
+        }
+
+        .show-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #E5E7EB;
+            border-radius: 6px;
+            flex-shrink: 0;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+
+        .checkbox.checked {
+            background: #4F46E5;
+            border-color: #4F46E5;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .checkbox-label {
+            font-size: 14px;
+            color: #6B7280;
+            line-height: 1.5;
+        }
+
+        .link {
+            color: #4F46E5;
+            font-weight: 600;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="screen-label" id="screenLabel">Screen 1 of 10: Welcome</div>
+
+    <div class="phone-frame">
+        <div class="status-bar">
+            <span>9:41</span>
+            <span>📶 📡 🔋</span>
+        </div>
+
+        <!-- Screen 1: Welcome -->
+        <div class="screen active" id="screen1">
+            <div class="content" style="display: flex; flex-direction: column; padding-top: 60px;">
+                <div style="flex: 1;">
+                    <div class="hero-icon">🏠</div>
+                    <h1 class="title">Welcome to<br>MyAI Landlord</h1>
+                    <p class="subtitle">Property management made simple with AI-powered tools</p>
+
+                    <div style="margin: 32px 0;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+                            <span style="font-size: 24px;">✨</span>
+                            <div>
+                                <div style="font-weight: 600; color: #1F2937; margin-bottom: 4px;">Smart Maintenance</div>
+                                <div style="font-size: 14px; color: #6B7280;">Track issues with photos and AI labels</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 16px;">
+                            <span style="font-size: 24px;">💬</span>
+                            <div>
+                                <div style="font-weight: 600; color: #1F2937; margin-bottom: 4px;">Easy Communication</div>
+                                <div style="font-size: 14px; color: #6B7280;">Stay connected with tenants</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <span style="font-size: 24px;">📊</span>
+                            <div>
+                                <div style="font-weight: 600; color: #1F2937; margin-bottom: 4px;">Property Inventory</div>
+                                <div style="font-size: 14px; color: #6B7280;">Keep detailed records of all assets</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Get Started</button>
+            </div>
+        </div>
+
+        <!-- Screen 2: Name Entry -->
+        <div class="screen" id="screen2">
+            <div class="content">
+                <div class="progress-container">
+                    <div class="progress-dot active"></div>
+                    <div class="progress-dot"></div>
+                    <div class="progress-dot"></div>
+                    <div class="progress-dot"></div>
+                </div>
+                <div class="step-indicator">Step 1 of 4</div>
+
+                <div class="hero-icon">👋</div>
+                <h1 class="title">What's your name?</h1>
+                <p class="subtitle">Let's personalize your experience</p>
+
+                <div class="input-group">
+                    <label class="input-label">First Name</label>
+                    <input type="text" class="input" placeholder="Doug" value="Doug">
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Continue</button>
+            </div>
+        </div>
+
+        <!-- Screen 3: Account Creation -->
+        <div class="screen" id="screen3">
+            <div class="content">
+                <div class="progress-container">
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot active"></div>
+                    <div class="progress-dot"></div>
+                    <div class="progress-dot"></div>
+                </div>
+                <div class="step-indicator">Step 2 of 4</div>
+
+                <div class="hero-icon">🔐</div>
+                <h1 class="title">Nice to meet you, Doug!</h1>
+                <p class="subtitle">Let's secure your account</p>
+
+                <div class="input-group">
+                    <label class="input-label">Email</label>
+                    <input type="email" class="input" placeholder="you@example.com" value="goblue12@aol.com">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Password</label>
+                    <div class="password-container">
+                        <input type="password" class="input" placeholder="At least 8 characters" value="MyPassword123!">
+                        <span class="show-password">👁️</span>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Confirm Password</label>
+                    <div class="password-container">
+                        <input type="password" class="input" placeholder="Re-enter your password" value="MyPassword123!">
+                        <span class="show-password">👁️</span>
+                    </div>
+                </div>
+
+                <div class="checkbox-container">
+                    <div class="checkbox checked">✓</div>
+                    <label class="checkbox-label">
+                        I agree to the <a href="#" class="link">Terms of Service</a> and <a href="#" class="link">Privacy Policy</a>
+                    </label>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Create Account</button>
+            </div>
+        </div>
+
+        <!-- Screen 4: Role Selection -->
+        <div class="screen" id="screen4">
+            <div class="content">
+                <div class="progress-container">
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot active"></div>
+                    <div class="progress-dot"></div>
+                </div>
+                <div class="step-indicator">Step 3 of 4</div>
+
+                <div class="hero-icon">🤔</div>
+                <h1 class="title">I am a...</h1>
+                <p class="subtitle">This helps us customize your experience</p>
+
+                <div class="role-cards">
+                    <div class="role-card selected">
+                        <div class="role-icon">🏠</div>
+                        <div class="role-title">Landlord</div>
+                        <div class="role-desc">I own or manage rental properties</div>
+                    </div>
+                    <div class="role-card">
+                        <div class="role-icon">👤</div>
+                        <div class="role-title">Tenant</div>
+                        <div class="role-desc">I rent a property</div>
+                    </div>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Continue</button>
+            </div>
+        </div>
+
+        <!-- Screen 5: Landlord Welcome -->
+        <div class="screen" id="screen5">
+            <div class="content" style="display: flex; flex-direction: column;">
+                <div class="progress-container">
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot active"></div>
+                </div>
+                <div class="step-indicator">Step 4 of 4</div>
+
+                <div style="flex: 1;">
+                    <div class="hero-icon">🎉</div>
+                    <h1 class="title">Welcome, Doug!</h1>
+                    <p class="subtitle">You're all set as a landlord. Let's add your first property.</p>
+
+                    <div style="background: #F0F4FF; border-radius: 12px; padding: 16px; margin: 24px 0;">
+                        <div style="font-weight: 600; color: #4F46E5; margin-bottom: 8px;">What's Next?</div>
+                        <ul style="margin-left: 20px; color: #4F46E5;">
+                            <li style="margin-bottom: 4px;">Add your property details</li>
+                            <li style="margin-bottom: 4px;">Set up property areas</li>
+                            <li>Invite your tenant (optional)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Add My Property</button>
+            </div>
+        </div>
+
+        <!-- Screen 6: Property Intro -->
+        <div class="screen" id="screen6">
+            <div class="content" style="display: flex; flex-direction: column;">
+                <div style="flex: 1;">
+                    <div class="hero-icon">🏡</div>
+                    <h1 class="title">Let's add your property</h1>
+                    <p class="subtitle">This will only take a few minutes. You can always add more details later.</p>
+
+                    <div style="margin: 32px 0;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <div style="width: 32px; height: 32px; background: #4F46E5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">1</div>
+                            <div>
+                                <div style="font-weight: 600; color: #1F2937;">Property Details</div>
+                                <div style="font-size: 14px; color: #6B7280;">Address, type, size</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                            <div style="width: 32px; height: 32px; background: #4F46E5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">2</div>
+                            <div>
+                                <div style="font-weight: 600; color: #1F2937;">Property Areas</div>
+                                <div style="font-size: 14px; color: #6B7280;">Rooms and spaces</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 32px; height: 32px; background: #4F46E5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">3</div>
+                            <div>
+                                <div style="font-weight: 600; color: #1F2937;">Invite Tenant</div>
+                                <div style="font-size: 14px; color: #6B7280;">Connect with your tenant</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Let's Go</button>
+            </div>
+        </div>
+
+        <!-- Screen 7: PropertyBasicsScreen (EXISTING) -->
+        <div class="screen" id="screen7">
+            <div class="content">
+                <div class="progress-container">
+                    <div class="progress-dot active"></div>
+                    <div class="progress-dot"></div>
+                    <div class="progress-dot"></div>
+                </div>
+                <div class="step-indicator">Property Setup • Step 1 of 3 <span class="badge-existing">EXISTING SCREEN</span></div>
+
+                <div class="hero-icon">📋</div>
+                <h1 class="title">Property Basics</h1>
+                <p class="subtitle">Tell us about your property</p>
+
+                <div class="input-group">
+                    <label class="input-label">Property Name</label>
+                    <input type="text" class="input" placeholder="e.g., Vista Drive Property" value="Vista Drive Property">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Street Address</label>
+                    <input type="text" class="input" placeholder="123 Main Street" value="3101 Vista Drive">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Unit / Apt # (Optional)</label>
+                    <input type="text" class="input" placeholder="Apt 4B, Unit 2, etc.">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">City</label>
+                    <input type="text" class="input" placeholder="San Francisco" value="Manhattan Beach">
+                </div>
+
+                <div class="number-input-row">
+                    <div class="input-group">
+                        <label class="input-label">State</label>
+                        <input type="text" class="input" placeholder="CA" value="CA" maxlength="2">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">ZIP Code</label>
+                        <input type="text" class="input" placeholder="94102" value="90266">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Property Type</label>
+                    <div class="type-grid">
+                        <div class="type-card selected">
+                            <div class="type-icon">🏠</div>
+                            <div class="type-label">House</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-icon">🏢</div>
+                            <div class="type-label">Apartment</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-icon">🏙️</div>
+                            <div class="type-label">Condo</div>
+                        </div>
+                        <div class="type-card">
+                            <div class="type-icon">🏘️</div>
+                            <div class="type-label">Townhouse</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="number-input-row">
+                    <div class="input-group">
+                        <label class="input-label">Bedrooms</label>
+                        <input type="number" class="input" value="4" min="0">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Bathrooms</label>
+                        <input type="number" class="input" value="2.5" step="0.5" min="0">
+                    </div>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Continue</button>
+            </div>
+        </div>
+
+        <!-- Screen 8: PropertyAreasScreen (EXISTING) -->
+        <div class="screen" id="screen8">
+            <div class="content">
+                <div class="progress-container">
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot active"></div>
+                    <div class="progress-dot"></div>
+                </div>
+                <div class="step-indicator">Property Setup • Step 2 of 3 <span class="badge-existing">EXISTING SCREEN</span></div>
+
+                <div class="hero-icon">🏠</div>
+                <h1 class="title">Property Areas</h1>
+                <p class="subtitle">We've set up areas based on your property. Tap to add photos or customize.</p>
+
+                <div style="font-size: 14px; font-weight: 600; color: #1F2937; margin-bottom: 8px;">Essential Areas</div>
+                <div class="areas-grid">
+                    <div class="area-item default">
+                        <span class="area-icon">🍳</span>
+                        <div class="area-info">
+                            <div class="area-name">Kitchen</div>
+                            <div class="area-badge">Essential</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🛋️</span>
+                        <div class="area-info">
+                            <div class="area-name">Living Room</div>
+                            <div class="area-badge">Essential</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🛏️</span>
+                        <div class="area-info">
+                            <div class="area-name">Master Bedroom</div>
+                            <div class="area-badge">Bedroom 1 of 4</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🛏️</span>
+                        <div class="area-info">
+                            <div class="area-name">Bedroom 2</div>
+                            <div class="area-badge">Bedroom 2 of 4</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🛏️</span>
+                        <div class="area-info">
+                            <div class="area-name">Bedroom 3</div>
+                            <div class="area-badge">Bedroom 3 of 4</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🛏️</span>
+                        <div class="area-info">
+                            <div class="area-name">Bedroom 4</div>
+                            <div class="area-badge">Bedroom 4 of 4</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🚿</span>
+                        <div class="area-info">
+                            <div class="area-name">Master Bathroom</div>
+                            <div class="area-badge">Bathroom 1 of 2</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🚿</span>
+                        <div class="area-info">
+                            <div class="area-name">Bathroom 2</div>
+                            <div class="area-badge">Bathroom 2 of 2</div>
+                        </div>
+                    </div>
+                    <div class="area-item default">
+                        <span class="area-icon">🚿</span>
+                        <div class="area-info">
+                            <div class="area-name">Half Bathroom</div>
+                            <div class="area-badge">Half Bath</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="font-size: 14px; font-weight: 600; color: #1F2937; margin: 16px 0 8px;">Optional Areas (tap to add)</div>
+                <div class="areas-grid">
+                    <div class="area-item optional">
+                        <span class="area-icon">🚗</span>
+                        <div class="area-info">
+                            <div class="area-name">Garage</div>
+                            <div class="area-badge">Optional</div>
+                        </div>
+                    </div>
+                    <div class="area-item optional">
+                        <span class="area-icon">🌳</span>
+                        <div class="area-info">
+                            <div class="area-name">Yard</div>
+                            <div class="area-badge">Optional</div>
+                        </div>
+                    </div>
+                    <div class="area-item optional">
+                        <span class="area-icon">🧺</span>
+                        <div class="area-info">
+                            <div class="area-name">Laundry Room</div>
+                            <div class="area-badge">Optional</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <span class="info-icon">💡</span>
+                    <p class="info-text">You can add photos and assets to each area later from your property dashboard.</p>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Continue</button>
+                <button class="skip-button" onclick="nextScreen()">Skip for now</button>
+            </div>
+        </div>
+
+        <!-- Screen 9: Tenant Invite -->
+        <div class="screen" id="screen9">
+            <div class="content">
+                <div class="progress-container">
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot completed"></div>
+                    <div class="progress-dot active"></div>
+                </div>
+                <div class="step-indicator">Property Setup • Step 3 of 3 <span class="badge-new">NEW</span></div>
+
+                <div class="hero-icon">🔗</div>
+                <h1 class="title">Invite your tenant</h1>
+                <p class="subtitle">Share this link with your tenant so they can connect to Vista Drive Property</p>
+
+                <div class="code-card">
+                    <div class="code-label">Invite Link</div>
+                    <div class="code-text">myailandlord://invite?property=abc123</div>
+                </div>
+
+                <div class="code-actions">
+                    <button class="action-button">📋 Copy Link</button>
+                    <button class="action-button">📤 Share</button>
+                </div>
+
+                <div class="info-card">
+                    <span class="info-icon">💡</span>
+                    <p class="info-text">When your tenant clicks this link, they'll be automatically connected to Vista Drive Property.</p>
+                </div>
+
+                <button class="primary-button" onclick="nextScreen()">Continue</button>
+                <button class="skip-button" onclick="nextScreen()">I'll invite them later</button>
+            </div>
+        </div>
+
+        <!-- Screen 10: Success -->
+        <div class="screen" id="screen10">
+            <div class="content" style="display: flex; flex-direction: column; padding-top: 60px;">
+                <div style="flex: 1;">
+                    <div class="success-icon">🎉</div>
+                    <h1 class="success-title">You're all set!</h1>
+                    <p class="success-text">Your property has been added successfully. You can now manage everything from your dashboard.</p>
+
+                    <div style="background: #F0F4FF; border-radius: 12px; padding: 16px; margin: 24px 0;">
+                        <div style="font-weight: 600; color: #4F46E5; margin-bottom: 12px;">Next Steps:</div>
+                        <ul style="margin-left: 20px; color: #4F46E5;">
+                            <li style="margin-bottom: 8px;">Add photos to your property areas</li>
+                            <li style="margin-bottom: 8px;">Create an inventory of assets</li>
+                            <li style="margin-bottom: 8px;">Customize property details</li>
+                            <li>Invite your tenant to connect</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="primary-button" onclick="alert('Would navigate to landlord dashboard')">Go to Dashboard</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-buttons">
+        <button class="nav-btn" onclick="prevScreen()" id="prevBtn">← Previous</button>
+        <button class="nav-btn" onclick="nextScreen()" id="nextBtn">Next →</button>
+    </div>
+
+    <script>
+        let currentScreen = 1;
+        const totalScreens = 10;
+
+        const screenLabels = [
+            "Screen 1 of 10: Welcome (NEW)",
+            "Screen 2 of 10: Name Entry (NEW)",
+            "Screen 3 of 10: Account Creation (NEW)",
+            "Screen 4 of 10: Role Selection (NEW)",
+            "Screen 5 of 10: Landlord Welcome (NEW)",
+            "Screen 6 of 10: Property Intro (NEW)",
+            "Screen 7 of 10: Property Basics (EXISTING)",
+            "Screen 8 of 10: Property Areas (EXISTING)",
+            "Screen 9 of 10: Tenant Invite (NEW)",
+            "Screen 10 of 10: Success (NEW)"
+        ];
+
+        function updateScreen() {
+            // Hide all screens
+            for (let i = 1; i <= totalScreens; i++) {
+                document.getElementById('screen' + i).classList.remove('active');
+            }
+
+            // Show current screen
+            document.getElementById('screen' + currentScreen).classList.add('active');
+
+            // Update label
+            document.getElementById('screenLabel').textContent = screenLabels[currentScreen - 1];
+
+            // Update button states
+            document.getElementById('prevBtn').disabled = currentScreen === 1;
+            document.getElementById('nextBtn').disabled = currentScreen === totalScreens;
+        }
+
+        function nextScreen() {
+            if (currentScreen < totalScreens) {
+                currentScreen++;
+                updateScreen();
+            }
+        }
+
+        function prevScreen() {
+            if (currentScreen > 1) {
+                currentScreen--;
+                updateScreen();
+            }
+        }
+
+        // Initialize
+        updateScreen();
+    </script>
+</body>
+</html>

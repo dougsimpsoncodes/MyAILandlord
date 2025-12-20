@@ -115,40 +115,51 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
         />
       </TouchableOpacity>
 
-      {/* Photos Section - Always Visible */}
+      {/* Photos Section - Horizontal Scroll Strip */}
       <View style={styles.areaContent}>
         <View style={styles.contentSection}>
-          <Text style={styles.sectionTitle}>Photos</Text>
-
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Photos</Text>
             {photoCount > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.photoScroll}
-              >
-                {validPhotos.map((photo, index) => (
-                  <Image
-                    key={index}
-                    source={{ uri: photo }}
-                    style={[
-                      styles.photoThumbnail,
-                      { width: responsive.select({ mobile: 80, desktop: 100, default: 80 }) }
-                    ]}
-                    onError={(e) => console.error(`📸 Image load failed for ${area.name}[${index}]:`, e.nativeEvent.error, 'URL:', photo?.substring(0, 100))}
-                    onLoad={() => console.log(`📸 Image loaded successfully for ${area.name}[${index}]`)}
-                  />
-                ))}
-              </ScrollView>
+              <Text style={styles.photoCountBadge}>{photoCount}</Text>
             )}
-            <View style={photoCount > 0 ? styles.dropzoneWrapper : undefined}>
-              <PhotoDropzone
-                propertyId={propertyId}
-                areaId={area.id}
-                onUploaded={onPhotosUploaded}
-                onCameraPress={onAddPhoto}
-                variant="compact"
-              />
-            </View>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.photoStrip}
+            contentContainerStyle={styles.photoStripContent}
+          >
+            {/* Existing Photos */}
+            {validPhotos.map((photo, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.photoThumbWrapper}
+                activeOpacity={0.8}
+                onPress={() => {
+                  // TODO: Navigate to photo viewer for full screen view & delete option
+                  console.log('📸 Photo tapped:', area.name, index);
+                }}
+              >
+                <Image
+                  source={{ uri: photo }}
+                  style={styles.photoThumbImage}
+                  onError={(e) => console.error(`📸 Image load failed for ${area.name}[${index}]:`, e.nativeEvent.error)}
+                  onLoad={() => console.log(`📸 Image loaded successfully for ${area.name}[${index}]`)}
+                />
+              </TouchableOpacity>
+            ))}
+
+            {/* Inline Add Button */}
+            <PhotoDropzone
+              propertyId={propertyId}
+              areaId={area.id}
+              onUploaded={onPhotosUploaded}
+              onCameraPress={onAddPhoto}
+              variant="inline"
+            />
+          </ScrollView>
         </View>
       </View>
 
@@ -1135,16 +1146,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C3E50',
   },
-  dropzoneWrapper: {
+  // Photo Strip Styles (Option 2 - Horizontal Scroll)
+  photoStrip: {
+    marginHorizontal: -4,
     marginTop: 8,
   },
-  photoScroll: {
-    marginHorizontal: -4,
+  photoStripContent: {
+    paddingHorizontal: 4,
+    gap: 8,
+    alignItems: 'center',
   },
-  photoThumbnail: {
-    height: 70,
-    borderRadius: 6,
-    marginHorizontal: 3,
+  photoThumbWrapper: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F0F0F0',
+  },
+  photoThumbImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoCountBadge: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    fontWeight: '500',
   },
   assetsList: {
     gap: 6,

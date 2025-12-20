@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   Alert,
   ActivityIndicator
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnreadMessages } from '../../context/UnreadMessagesContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
@@ -38,13 +39,13 @@ const LandlordChatScreen = () => {
   const { tenantId, tenantName, tenantEmail } = route.params;
   const { user } = useAppAuth();
   const apiClient = useApiClient();
+  const { refreshUnreadCount } = useUnreadMessages();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [messageText, setMessageText] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loadState, setLoadState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+  const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const hasLoadedRef = useRef(false);
 
   const showAlert = (title: string, message: string) => {
     if (typeof window !== 'undefined' && typeof window.alert === 'function') {
@@ -54,63 +55,71 @@ const LandlordChatScreen = () => {
     }
   };
 
-  // Load messages on mount - single effect, runs once when dependencies are ready
-  useEffect(() => {
-    // Skip if already loaded or currently loading
-    if (hasLoadedRef.current) {
-      return;
+  // Load messages function - matches tenant pattern
+  const loadMessages = useCallback(async () => {
+    if (!apiClient || !user) return;
+
+    try {
+      const dbMessages = await apiClient.getMessages();
+
+      // Filter messages for this specific conversation
+      const conversationMessages = dbMessages.filter((msg: any) =>
+        (msg.sender_id === tenantId && msg.recipient_id === user.id) ||
+        (msg.sender_id === user.id && msg.recipient_id === tenantId)
+      );
+
+      // Map database messages to local format
+      const mappedMessages: Message[] = conversationMessages.map((msg: any) => ({
+        id: msg.id,
+        text: msg.content,
+        sender: msg.sender_id === user.id ? 'landlord' : 'tenant',
+        timestamp: new Date(msg.created_at),
+        read: msg.is_read || false,
+      }));
+
+      // Deduplicate by ID (in case of race conditions)
+      const uniqueMessages = mappedMessages.filter(
+        (msg, index, self) => index === self.findIndex(m => m.id === msg.id)
+      );
+
+      // Sort by timestamp (oldest first)
+      uniqueMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      setMessages(uniqueMessages);
+
+      // Scroll to bottom after loading
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      }, 100);
+    } catch (error) {
+      log.error('LandlordChat: Error loading messages', { error: String(error) });
+    } finally {
+      setIsLoading(false);
     }
+  }, [apiClient, user?.id, tenantId]);
 
-    if (!apiClient || !user) {
-      log.info('LandlordChat: Waiting for apiClient or user', { hasApiClient: !!apiClient, hasUser: !!user });
-      return;
-    }
+  // Load messages when screen gets focus - matches tenant pattern
+  useFocusEffect(
+    useCallback(() => {
+      loadMessages();
+    }, [loadMessages])
+  );
 
-    // Mark as loading immediately to prevent duplicate calls
-    hasLoadedRef.current = true;
-    setLoadState('loading');
-    log.info('LandlordChat: Starting to load messages', { tenantId, tenantName });
-
-    apiClient.getMessages()
-      .then((dbMessages) => {
-        // Filter messages for this specific conversation
-        const conversationMessages = dbMessages.filter((msg: any) =>
-          (msg.sender_id === tenantId && msg.recipient_id === user.id) ||
-          (msg.sender_id === user.id && msg.recipient_id === tenantId)
-        );
-
-        log.info('LandlordChat: Loaded messages', {
-          totalMessages: dbMessages.length,
-          conversationMessages: conversationMessages.length
-        });
-
-        // Map database messages to local format
-        const mappedMessages: Message[] = conversationMessages.map((msg: any) => ({
-          id: msg.id,
-          text: msg.content,
-          sender: msg.sender_id === user.id ? 'landlord' : 'tenant',
-          timestamp: new Date(msg.created_at),
-          read: msg.is_read || false,
-        }));
-
-        // Sort by timestamp (oldest first)
-        mappedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-        setMessages(mappedMessages);
-        setLoadState('loaded');
-        log.info('LandlordChat: State set to loaded');
-
-        // Scroll to bottom after loading
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: false });
-        }, 100);
-      })
-      .catch((error) => {
-        log.error('LandlordChat: Error loading messages', { error: String(error) });
-        setLoadState('error');
-        hasLoadedRef.current = false; // Allow retry on error
-      });
-  }, [apiClient, user, tenantId, tenantName]);
+  // Mark messages as read when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const markAsRead = async () => {
+        if (apiClient) {
+          try {
+            await apiClient.markMessagesAsRead();
+            await refreshUnreadCount();
+          } catch (error) {
+            log.error('Error marking messages as read', { error: String(error) });
+          }
+        }
+      };
+      markAsRead();
+    }, [apiClient, refreshUnreadCount])
+  );
 
   const formatTimestamp = (date: Date) => {
     const now = new Date();
@@ -145,7 +154,7 @@ const LandlordChatScreen = () => {
       });
       log.info('Message sent successfully', { messageId: sentMessage.id });
 
-      // Add to local state immediately
+      // Add to local state immediately (only if not already present)
       const newMessage: Message = {
         id: sentMessage.id,
         text: messageText.trim(),
@@ -154,7 +163,13 @@ const LandlordChatScreen = () => {
         read: true,
       };
 
-      setMessages(prev => [...prev, newMessage]);
+      setMessages(prev => {
+        // Check if message already exists (race condition prevention)
+        if (prev.some(m => m.id === newMessage.id)) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
       setMessageText('');
 
       // Scroll to bottom
@@ -170,22 +185,11 @@ const LandlordChatScreen = () => {
     }
   };
 
-  // Header with tenant info
-  const headerRight = (
-    <TouchableOpacity style={styles.headerAction} onPress={() => {
-      // TODO: Show tenant info modal or navigate to tenant profile
-      showAlert('Tenant Info', `${tenantName}\n${tenantEmail || ''}`);
-    }}>
-      <Ionicons name="information-circle-outline" size={24} color="#3498DB" />
-    </TouchableOpacity>
-  );
-
   return (
     <ScreenContainer
-      title={tenantName}
+      title="Messages"
       showBackButton
       onBackPress={() => navigation.goBack()}
-      headerRight={headerRight}
       userRole="landlord"
       scrollable={false}
       keyboardAware
@@ -198,18 +202,10 @@ const LandlordChatScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.messagesContent}
       >
-        {(loadState === 'idle' || loadState === 'loading') ? (
+        {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#34495E" />
             <Text style={styles.loadingText}>Loading messages...</Text>
-          </View>
-        ) : loadState === 'error' ? (
-          <View style={styles.emptyMessagesContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color="#E74C3C" />
-            <Text style={styles.emptyMessagesText}>Error loading messages</Text>
-            <Text style={styles.emptyMessagesSubtext}>
-              Please try again later
-            </Text>
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyMessagesContainer}>
@@ -277,9 +273,6 @@ const LandlordChatScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  headerAction: {
-    padding: 8,
-  },
   messagesContainer: {
     flex: 1,
     backgroundColor: '#F5F7FA',

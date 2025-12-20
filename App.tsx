@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SupabaseAuthProvider } from './src/context/SupabaseAuthContext';
 import { RoleProvider } from './src/context/RoleContext';
 import { ProfileProvider } from './src/context/ProfileContext';
+import { OnboardingProvider } from './src/context/OnboardingContext';
 import { UnreadMessagesProvider } from './src/context/UnreadMessagesContext';
 import { PendingRequestsProvider } from './src/context/PendingRequestsContext';
 import AppNavigator from './src/AppNavigator';
@@ -21,12 +22,14 @@ export default function App() {
       <SupabaseAuthProvider>
         <RoleProvider>
           <ProfileProvider>
-            <UnreadMessagesProvider>
-              <PendingRequestsProvider>
-                <AppNavigator />
-                <StatusBar style="auto" />
-              </PendingRequestsProvider>
-            </UnreadMessagesProvider>
+            <OnboardingProvider>
+              <UnreadMessagesProvider>
+                <PendingRequestsProvider>
+                  <AppNavigator />
+                  <StatusBar style="auto" />
+                </PendingRequestsProvider>
+              </UnreadMessagesProvider>
+            </OnboardingProvider>
           </ProfileProvider>
         </RoleProvider>
       </SupabaseAuthProvider>

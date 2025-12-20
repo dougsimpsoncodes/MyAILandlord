@@ -1,0 +1,30 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="180" fill="url(#bgGradient)"/>
+
+  <!-- M letter -->
+  <text x="148" y="640" font-family="Arial Black, Arial, sans-serif" font-size="320" font-weight="900" fill="white">M</text>
+
+  <!-- House as A -->
+  <g transform="translate(362, 320)">
+    <!-- House roof (triangle) -->
+    <polygon points="100,0 0,160 200,160" fill="white"/>
+    <!-- House body -->
+    <rect x="15" y="160" width="170" height="160" fill="white"/>
+    <!-- Crossbar of A (window/door line) -->
+    <rect x="40" y="220" width="120" height="25" fill="#764ba2"/>
+  </g>
+
+  <!-- I letter -->
+  <text x="572" y="640" font-family="Arial Black, Arial, sans-serif" font-size="320" font-weight="900" fill="white">I</text>
+
+  <!-- L letter -->
+  <text x="672" y="640" font-family="Arial Black, Arial, sans-serif" font-size="320" font-weight="900" fill="white">L</text>
+</svg>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TouchableOpacity, Text, View, ActivityIndicator, Platform, Pressable, Animated, Easing, GestureResponderEvent } from 'react-native';
 import { DesignSystem } from '../../theme/DesignSystem';
+import { haptics } from '../../lib/haptics';
 
 export interface ButtonProps {
   title: string;
@@ -36,6 +37,14 @@ export default function Button({
   const handlePress = (event: GestureResponderEvent) => {
     console.log('🔘 Button pressed:', title, 'disabled:', disabled, 'loading:', loading);
     if (!disabled && !loading && onPress) {
+      // Haptic feedback based on button type
+      if (type === 'danger') {
+        haptics.warning();
+      } else if (type === 'success') {
+        haptics.success();
+      } else {
+        haptics.medium();
+      }
       onPress(event);
     }
   };

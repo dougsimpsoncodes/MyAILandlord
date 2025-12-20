@@ -18,6 +18,7 @@ import { DataClearer } from '../../utils/dataClearer';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { Property as DbProperty } from '../../types/api';
+import { formatAddress } from '../../utils/helpers';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { PropertyImage } from '../../components/shared/PropertyImage';
@@ -403,7 +404,7 @@ const PropertyManagementScreen = () => {
                 <View style={styles.propertyInfoContent}>
                   <Text style={styles.propertyName}>{property.name}</Text>
                   <Text style={styles.propertyAddress} numberOfLines={1}>
-                    {property.address}
+                    {formatAddress(property.address)}
                   </Text>
                   <View style={styles.propertyStats}>
                     <View style={styles.statItem}>

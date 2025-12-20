@@ -358,7 +358,7 @@ export function createMockApiClient(userId: string): UseApiClientReturn {
         title: data.title,
         description: data.description,
         priority: data.priority,
-        status: 'pending',
+        status: 'submitted',
         area: data.area,
         asset: data.asset,
         issue_type: data.issueType,

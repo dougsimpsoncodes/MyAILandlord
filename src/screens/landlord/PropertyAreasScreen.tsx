@@ -134,6 +134,7 @@ const PropertyAreasScreen = () => {
   const draftId = route.params.draftId;
   const propertyId = route.params.propertyId; // For existing properties from database
   const existingAreas = route.params.existingAreas; // Areas loaded from database
+  const isOnboarding = (route.params as any)?.isOnboarding || false; // Check if in onboarding mode
 
   // Initialize draft management
   const {
@@ -190,6 +191,15 @@ const PropertyAreasScreen = () => {
   const [newRoomType, setNewRoomType] = useState<PropertyArea['type']>('other');
   const [customRoomName, setCustomRoomName] = useState('');
   const [showRoomTypeDropdown, setShowRoomTypeDropdown] = useState(false);
+
+  // Room counts for +/- counter UI
+  const [roomCounts, setRoomCounts] = useState<Record<string, number>>({
+    kitchen: 1,
+    living_room: 1,
+    garage: 0,
+    outdoor: 0,
+    laundry: 0,
+  });
   
   // Use draft photos if available, otherwise use route params
   const currentPropertyData = draftState?.propertyData || propertyData;
@@ -371,9 +381,341 @@ const PropertyAreasScreen = () => {
     );
   };
 
+  // Generate room name based on type and count
+  const generateRoomName = (type: string, count: number, index: number): string => {
+    const typeNames: Record<string, string> = {
+      kitchen: 'Kitchen',
+      living_room: 'Living Room',
+      garage: 'Garage',
+      outdoor: 'Yard',
+      laundry: 'Laundry Room',
+    };
+
+    const baseName = typeNames[type] || 'Room';
+
+    if (count === 1) return baseName;
+    if (index === 0) return `Main ${baseName}`;
+    return `${baseName} ${index + 1}`;
+  };
+
+  // Generate areas from room counts
+  const generateAreasFromCounts = (): PropertyArea[] => {
+    const generatedAreas: PropertyArea[] = [];
+
+    // Add bedrooms and bathrooms as read-only (from PropertyBasicsScreen)
+    const bedrooms = propertyData?.bedrooms || 0;
+    const bathrooms = propertyData?.bathrooms || 0;
+
+    for (let i = 1; i <= bedrooms; i++) {
+      const isFirst = i === 1;
+      const bedroomName = bedrooms === 1 ? 'Bedroom' :
+                         isFirst ? 'Master Bedroom' :
+                         `Bedroom ${i}`;
+
+      generatedAreas.push({
+        id: `bedroom${i}`,
+        name: bedroomName,
+        type: 'bedroom',
+        icon: 'bed',
+        isDefault: true,
+        photos: [],
+        inventoryComplete: false,
+        condition: AssetCondition.GOOD,
+        assets: []
+      });
+    }
+
+    const fullBathrooms = Math.floor(bathrooms);
+    const hasHalfBath = bathrooms % 1 !== 0;
+
+    for (let i = 1; i <= fullBathrooms; i++) {
+      const isFirst = i === 1;
+      const bathroomName = fullBathrooms === 1 ? 'Bathroom' :
+                          isFirst ? 'Master Bathroom' :
+                          `Bathroom ${i}`;
+
+      generatedAreas.push({
+        id: `bathroom${i}`,
+        name: bathroomName,
+        type: 'bathroom',
+        icon: 'water',
+        isDefault: true,
+        photos: [],
+        inventoryComplete: false,
+        condition: AssetCondition.GOOD,
+        assets: []
+      });
+    }
+
+    if (hasHalfBath) {
+      generatedAreas.push({
+        id: 'half-bathroom',
+        name: 'Half Bathroom',
+        type: 'bathroom',
+        icon: 'water',
+        isDefault: true,
+        photos: [],
+        inventoryComplete: false,
+        condition: AssetCondition.GOOD,
+        assets: []
+      });
+    }
+
+    // Generate rooms from counters
+    Object.entries(roomCounts).forEach(([type, count]) => {
+      for (let i = 0; i < count; i++) {
+        const icon = getIconForRoomType(type as PropertyArea['type']);
+        generatedAreas.push({
+          id: `${type}${i + 1}`,
+          name: generateRoomName(type, count, i),
+          type: type as PropertyArea['type'],
+          icon,
+          isDefault: false,
+          photos: [],
+          inventoryComplete: false,
+          condition: AssetCondition.GOOD,
+          assets: []
+        });
+      }
+    });
+
+    return generatedAreas;
+  };
+
+  // Increment room count
+  const incrementRoom = (type: string) => {
+    const maxCounts: Record<string, number> = {
+      kitchen: 4,
+      living_room: 4,
+      garage: 2,
+      outdoor: 4,
+      laundry: 2,
+    };
+
+    const max = maxCounts[type] || 4;
+    const current = roomCounts[type] || 0;
+
+    if (current < max) {
+      setRoomCounts(prev => {
+        const newCounts = { ...prev, [type]: current + 1 };
+
+        // Generate new areas based on updated counts - need to do it in callback
+        setTimeout(() => {
+          const generatedAreas: PropertyArea[] = [];
+
+          // Add bedrooms and bathrooms as read-only (from PropertyBasicsScreen)
+          const bedrooms = propertyData?.bedrooms || 0;
+          const bathrooms = propertyData?.bathrooms || 0;
+
+          for (let i = 1; i <= bedrooms; i++) {
+            const isFirst = i === 1;
+            const bedroomName = bedrooms === 1 ? 'Bedroom' :
+                               isFirst ? 'Master Bedroom' :
+                               `Bedroom ${i}`;
+
+            generatedAreas.push({
+              id: `bedroom${i}`,
+              name: bedroomName,
+              type: 'bedroom',
+              icon: 'bed',
+              isDefault: true,
+              photos: [],
+              inventoryComplete: false,
+              condition: AssetCondition.GOOD,
+              assets: []
+            });
+          }
+
+          const fullBathrooms = Math.floor(bathrooms);
+          const hasHalfBath = bathrooms % 1 !== 0;
+
+          for (let i = 1; i <= fullBathrooms; i++) {
+            const isFirst = i === 1;
+            const bathroomName = fullBathrooms === 1 ? 'Bathroom' :
+                                isFirst ? 'Master Bathroom' :
+                                `Bathroom ${i}`;
+
+            generatedAreas.push({
+              id: `bathroom${i}`,
+              name: bathroomName,
+              type: 'bathroom',
+              icon: 'water',
+              isDefault: true,
+              photos: [],
+              inventoryComplete: false,
+              condition: AssetCondition.GOOD,
+              assets: []
+            });
+          }
+
+          if (hasHalfBath) {
+            generatedAreas.push({
+              id: 'half-bathroom',
+              name: 'Half Bathroom',
+              type: 'bathroom',
+              icon: 'water',
+              isDefault: true,
+              photos: [],
+              inventoryComplete: false,
+              condition: AssetCondition.GOOD,
+              assets: []
+            });
+          }
+
+          // Generate rooms from counters
+          Object.entries(newCounts).forEach(([roomType, count]) => {
+            for (let i = 0; i < count; i++) {
+              const icon = getIconForRoomType(roomType as PropertyArea['type']);
+              const typeNames: Record<string, string> = {
+                kitchen: 'Kitchen',
+                living_room: 'Living Room',
+                garage: 'Garage',
+                outdoor: 'Yard',
+                laundry: 'Laundry Room',
+              };
+              const baseName = typeNames[roomType] || 'Room';
+              let roomName = baseName;
+              if (count > 1) {
+                roomName = i === 0 ? `Main ${baseName}` : `${baseName} ${i + 1}`;
+              }
+
+              generatedAreas.push({
+                id: `${roomType}${i + 1}`,
+                name: roomName,
+                type: roomType as PropertyArea['type'],
+                icon,
+                isDefault: false,
+                photos: [],
+                inventoryComplete: false,
+                condition: AssetCondition.GOOD,
+                assets: []
+              });
+            }
+          });
+
+          setAreas(generatedAreas);
+          updateAreas(generatedAreas);
+        }, 0);
+
+        return newCounts;
+      });
+    }
+  };
+
+  // Decrement room count
+  const decrementRoom = (type: string) => {
+    const current = roomCounts[type] || 0;
+
+    if (current > 0) {
+      setRoomCounts(prev => {
+        const newCounts = { ...prev, [type]: current - 1 };
+
+        // Generate new areas based on updated counts - need to do it in callback
+        setTimeout(() => {
+          const generatedAreas: PropertyArea[] = [];
+
+          // Add bedrooms and bathrooms as read-only (from PropertyBasicsScreen)
+          const bedrooms = propertyData?.bedrooms || 0;
+          const bathrooms = propertyData?.bathrooms || 0;
+
+          for (let i = 1; i <= bedrooms; i++) {
+            const isFirst = i === 1;
+            const bedroomName = bedrooms === 1 ? 'Bedroom' :
+                               isFirst ? 'Master Bedroom' :
+                               `Bedroom ${i}`;
+
+            generatedAreas.push({
+              id: `bedroom${i}`,
+              name: bedroomName,
+              type: 'bedroom',
+              icon: 'bed',
+              isDefault: true,
+              photos: [],
+              inventoryComplete: false,
+              condition: AssetCondition.GOOD,
+              assets: []
+            });
+          }
+
+          const fullBathrooms = Math.floor(bathrooms);
+          const hasHalfBath = bathrooms % 1 !== 0;
+
+          for (let i = 1; i <= fullBathrooms; i++) {
+            const isFirst = i === 1;
+            const bathroomName = fullBathrooms === 1 ? 'Bathroom' :
+                                isFirst ? 'Master Bathroom' :
+                                `Bathroom ${i}`;
+
+            generatedAreas.push({
+              id: `bathroom${i}`,
+              name: bathroomName,
+              type: 'bathroom',
+              icon: 'water',
+              isDefault: true,
+              photos: [],
+              inventoryComplete: false,
+              condition: AssetCondition.GOOD,
+              assets: []
+            });
+          }
+
+          if (hasHalfBath) {
+            generatedAreas.push({
+              id: 'half-bathroom',
+              name: 'Half Bathroom',
+              type: 'bathroom',
+              icon: 'water',
+              isDefault: true,
+              photos: [],
+              inventoryComplete: false,
+              condition: AssetCondition.GOOD,
+              assets: []
+            });
+          }
+
+          // Generate rooms from counters
+          Object.entries(newCounts).forEach(([roomType, count]) => {
+            for (let i = 0; i < count; i++) {
+              const icon = getIconForRoomType(roomType as PropertyArea['type']);
+              const typeNames: Record<string, string> = {
+                kitchen: 'Kitchen',
+                living_room: 'Living Room',
+                garage: 'Garage',
+                outdoor: 'Yard',
+                laundry: 'Laundry Room',
+              };
+              const baseName = typeNames[roomType] || 'Room';
+              let roomName = baseName;
+              if (count > 1) {
+                roomName = i === 0 ? `Main ${baseName}` : `${baseName} ${i + 1}`;
+              }
+
+              generatedAreas.push({
+                id: `${roomType}${i + 1}`,
+                name: roomName,
+                type: roomType as PropertyArea['type'],
+                icon,
+                isDefault: false,
+                photos: [],
+                inventoryComplete: false,
+                condition: AssetCondition.GOOD,
+                assets: []
+              });
+            }
+          });
+
+          setAreas(generatedAreas);
+          updateAreas(generatedAreas);
+        }, 0);
+
+        return newCounts;
+      });
+    }
+  };
+
   const toggleArea = (areaId: string) => {
     const area = areas.find(a => a.id === areaId);
-    
+
     // Prevent deselecting essential areas
     if (area?.isDefault && selectedAreas.includes(areaId)) {
       Alert.alert(
@@ -383,16 +725,16 @@ const PropertyAreasScreen = () => {
       );
       return;
     }
-    
+
     let updatedSelectedAreas: string[];
     if (selectedAreas.includes(areaId)) {
       updatedSelectedAreas = selectedAreas.filter(id => id !== areaId);
     } else {
       updatedSelectedAreas = [...selectedAreas, areaId];
     }
-    
+
     setSelectedAreas(updatedSelectedAreas);
-    
+
     // Update draft with selected areas
     const selectedAreaData = areas.filter(area => updatedSelectedAreas.includes(area.id));
     updateAreas(selectedAreaData);
@@ -605,22 +947,22 @@ const PropertyAreasScreen = () => {
 
   const handleNext = async () => {
     if (isSubmitting || isDraftLoading) return;
-    
+
     try {
       setIsSubmitting(true);
-      
-      const selectedAreaData = areas.filter(area => selectedAreas.includes(area.id));
-      
+
+      // With counter system, all generated areas are included (no selection)
+      const areasToSave = areas;
+
       // Debug logging
       console.log('PropertyAreasScreen - areas:', areas);
-      console.log('PropertyAreasScreen - selectedAreas:', selectedAreas);
-      console.log('PropertyAreasScreen - selectedAreaData:', selectedAreaData);
-      
-      if (selectedAreaData.length === 0) {
-        Alert.alert('No Areas Selected', 'Please select at least one area to continue.');
+      console.log('PropertyAreasScreen - areasToSave:', areasToSave);
+
+      if (areasToSave.length === 0) {
+        Alert.alert('No Areas', 'Please add at least one area to continue.');
         return;
       }
-      
+
       // Save current progress before navigating
       if (draftState) {
         try {
@@ -630,7 +972,7 @@ const PropertyAreasScreen = () => {
           // Continue anyway - user can manually save later
         }
       }
-      
+
       // Use draft property data if available, otherwise use route data
       const currentData = draftState?.propertyData || propertyData;
       const updatedPropertyData = {
@@ -643,12 +985,41 @@ const PropertyAreasScreen = () => {
         await PropertyDraftService.setCurrentDraftId(user.id, draftState.id, 2);
       }
 
-      navigation.navigate('PropertyAssets', {
-        propertyData: updatedPropertyData,
-        areas: selectedAreaData,
-        draftId: draftState?.id,
-        propertyId, // Pass property ID for existing properties
-      });
+      // Navigate based on context
+      if (isOnboarding) {
+        // In onboarding mode, save property to database and go to Tenant Invite
+        try {
+          // Import the service
+          const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
+
+          // Save property and areas to database
+          const savedPropertyId = await propertyAreasService.saveAreasAndAssets(
+            updatedPropertyData,
+            areasToSave,
+            user?.id || '',
+            propertyId // Will be undefined for new properties
+          );
+
+          // Navigate to Tenant Invite with property details
+          (navigation as any).navigate('LandlordTenantInvite', {
+            firstName: (route.params as any)?.firstName || 'there',
+            propertyId: savedPropertyId,
+            propertyName: updatedPropertyData.name || 'Your Property',
+          });
+        } catch (error) {
+          console.error('Error saving property:', error);
+          Alert.alert('Error', 'Failed to save property. Please try again.');
+          return;
+        }
+      } else {
+        // Regular flow - go to PropertyAssets
+        navigation.navigate('PropertyAssets', {
+          propertyData: updatedPropertyData,
+          areas: areasToSave,
+          draftId: draftState?.id,
+          propertyId, // Pass property ID for existing properties
+        });
+      }
     } catch (error) {
       console.error('Error proceeding to next step:', error);
       Alert.alert('Error', 'Failed to proceed. Please try again.');
@@ -689,11 +1060,11 @@ const PropertyAreasScreen = () => {
         </View>
       )}
       <TouchableOpacity
-        style={[styles.headerNextButton, (selectedAreas.length === 0 || isSubmitting || isDraftLoading) && styles.headerNextButtonDisabled]}
+        style={[styles.headerNextButton, (areas.length === 0 || isSubmitting || isDraftLoading) && styles.headerNextButtonDisabled]}
         onPress={handleNext}
-        disabled={selectedAreas.length === 0 || isSubmitting || isDraftLoading}
+        disabled={areas.length === 0 || isSubmitting || isDraftLoading}
       >
-        <Ionicons name="arrow-forward" size={24} color={(selectedAreas.length === 0 || isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'} />
+        <Ionicons name="arrow-forward" size={24} color={(areas.length === 0 || isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'} />
       </TouchableOpacity>
     </View>
   );
@@ -708,166 +1079,219 @@ const PropertyAreasScreen = () => {
       userRole="landlord"
       scrollable
     >
-        {/* Areas Section */}
+        {/* Header Section */}
         <View style={styles.section}>
           <View style={styles.headerSection}>
-            <Text style={styles.title}>Select Property Areas</Text>
+            <Text style={styles.title}>Property Areas</Text>
           </View>
           <Text style={styles.subtitle}>
-            Choose which areas of your property you want to document.
+            Add the areas in your property. Properties with varied layouts are supported.
           </Text>
         </View>
 
-        {/* Interior Areas Section */}
-        {areas.filter(area => ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).length > 0 && (
-          <View style={styles.categorySection}>
-            <View style={styles.categoryHeader}>
-              <Ionicons name="home" size={20} color="#2ECC71" />
-              <Text style={styles.categoryTitle}>Interior Areas</Text>
-              <Text style={styles.categoryCount}>
-                {areas.filter(area => selectedAreas.includes(area.id) && ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).length} of {areas.filter(area => ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).length} selected
-              </Text>
-            </View>
-            
-            <View style={styles.areasGrid}>
-              {areas.filter(area => ['kitchen', 'living_room', 'bedroom', 'bathroom', 'laundry', 'other'].includes(area.type)).map((area) => {
-                const isSelected = selectedAreas.includes(area.id);
-                const hasPhotos = area.photos.length > 0;
-                
-                return (
-                  <View key={area.id} style={styles.areaWrapper}>
-                    <TouchableOpacity
-                      style={[
-                        styles.areaCard,
-                        isSelected && styles.areaCardSelected,
-                        hasPhotos && styles.areaCardWithPhotos,
-                        recentlyAddedPhoto === area.id && styles.areaCardPhotoSuccess, // Success animation
-                      ]}
-                      onPress={() => toggleArea(area.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                        {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                      </View>
-                      
-                      <Ionicons
-                        name={area.icon as keyof typeof Ionicons.glyphMap}
-                        size={24}
-                        color={isSelected ? '#3498DB' : '#7F8C8D'}
-                        style={styles.areaIcon}
-                      />
-                      
-                      <Text style={[styles.areaName, isSelected && styles.areaNameSelected]}>
-                        {area.name}
-                      </Text>
-                      
-                      <View style={styles.areaIndicators}>
-                        {hasPhotos && (
-                          <View style={[
-                            styles.photoIndicator,
-                            recentlyAddedPhoto === area.id && styles.photoIndicatorSuccess
-                          ]}>
-                            <Ionicons 
-                              name={recentlyAddedPhoto === area.id ? "checkmark-circle" : "image"} 
-                              size={12} 
-                              color="#FFFFFF" 
-                            />
-                            <Text style={styles.photoCount}>{area.photos.length}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                    
-                    {/* Camera button removed - Photos will be added in Step 2 */}
-                  </View>
-                );
-              })}
-              
-              {/* Add Room Button at the bottom of interior areas */}
-              <View style={styles.areaWrapper}>
-                <TouchableOpacity
-                  style={styles.addRoomCard}
-                  onPress={() => setShowAddRoomModal(true)}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.checkbox, { borderColor: '#3498DB' }]}>
-                    <Ionicons name="add" size={16} color="#3498DB" />
-                  </View>
-                  <Ionicons name="add-circle-outline" size={24} color="#3498DB" style={styles.areaIcon} />
-                  <Text style={[styles.areaName, { color: '#3498DB' }]}>Add Custom Room</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+        {/* Read-Only: Bedrooms & Bathrooms from PropertyBasicsScreen */}
+        <View style={styles.categorySection}>
+          <View style={styles.categoryHeader}>
+            <Ionicons name="bed" size={20} color="#9CA3AF" />
+            <Text style={styles.categoryTitle}>From Property Basics</Text>
           </View>
-        )}
 
-        {/* Exterior Areas Section */}
-        {areas.filter(area => ['garage', 'outdoor'].includes(area.type)).length > 0 && (
-          <View style={styles.categorySection}>
-            <View style={styles.categoryHeader}>
-              <Ionicons name="leaf" size={20} color="#2ECC71" />
-              <Text style={styles.categoryTitle}>Exterior Areas</Text>
-              <Text style={styles.categoryCount}>
-                {areas.filter(area => selectedAreas.includes(area.id) && ['garage', 'outdoor'].includes(area.type)).length} of {areas.filter(area => ['garage', 'outdoor'].includes(area.type)).length} selected
-              </Text>
+          {/* Bedrooms - Read Only */}
+          <View style={styles.readOnlyRow}>
+            <View style={styles.readOnlyIconContainer}>
+              <Ionicons name="bed" size={24} color="#7F8C8D" />
             </View>
-            
-            <View style={styles.areasGrid}>
-              {areas.filter(area => ['garage', 'outdoor'].includes(area.type)).map((area) => {
-                const isSelected = selectedAreas.includes(area.id);
-                const hasPhotos = area.photos.length > 0;
-                
-                return (
-                  <View key={area.id} style={styles.areaWrapper}>
-                    <TouchableOpacity
-                      style={[
-                        styles.areaCard,
-                        isSelected && styles.areaCardSelected,
-                        hasPhotos && styles.areaCardWithPhotos,
-                        recentlyAddedPhoto === area.id && styles.areaCardPhotoSuccess, // Success animation
-                      ]}
-                      onPress={() => toggleArea(area.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                        {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                      </View>
-                      
-                      <Ionicons
-                        name={area.icon as keyof typeof Ionicons.glyphMap}
-                        size={24}
-                        color={isSelected ? '#3498DB' : '#7F8C8D'}
-                        style={styles.areaIcon}
-                      />
-                      
-                      <Text style={[styles.areaName, isSelected && styles.areaNameSelected]}>
-                        {area.name}
-                      </Text>
-                      
-                      <View style={styles.areaIndicators}>
-                        {hasPhotos && (
-                          <View style={[
-                            styles.photoIndicator,
-                            recentlyAddedPhoto === area.id && styles.photoIndicatorSuccess
-                          ]}>
-                            <Ionicons 
-                              name={recentlyAddedPhoto === area.id ? "checkmark-circle" : "image"} 
-                              size={12} 
-                              color="#FFFFFF" 
-                            />
-                            <Text style={styles.photoCount}>{area.photos.length}</Text>
-                          </View>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                    
-                    {/* Camera button removed - Photos will be added in Step 2 */}
-                  </View>
-                );
-              })}
+            <Text style={styles.readOnlyLabel}>Bedrooms</Text>
+            <View style={styles.readOnlyBadge}>
+              <Text style={styles.readOnlyCount}>{propertyData?.bedrooms || 0}</Text>
             </View>
           </View>
-        )}
+
+          {/* Bathrooms - Read Only */}
+          <View style={styles.readOnlyRow}>
+            <View style={styles.readOnlyIconContainer}>
+              <Ionicons name="water" size={24} color="#7F8C8D" />
+            </View>
+            <Text style={styles.readOnlyLabel}>Bathrooms</Text>
+            <View style={styles.readOnlyBadge}>
+              <Text style={styles.readOnlyCount}>{propertyData?.bathrooms || 0}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Counter Section: Other Rooms */}
+        <View style={styles.categorySection}>
+          <View style={styles.categoryHeader}>
+            <Ionicons name="home" size={20} color="#2ECC71" />
+            <Text style={styles.categoryTitle}>Additional Areas</Text>
+          </View>
+          <Text style={styles.counterHelp}>
+            Use +/− to add multiple instances (e.g., 2 kitchens)
+          </Text>
+
+          {/* Kitchen Counter */}
+          <View style={styles.counterRow}>
+            <View style={styles.counterLeft}>
+              <View style={styles.counterIconContainer}>
+                <Ionicons name="restaurant" size={24} color="#3498DB" />
+              </View>
+              <Text style={styles.counterLabel}>Kitchen</Text>
+            </View>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.kitchen === 0 && styles.counterButtonDisabled]}
+                onPress={() => decrementRoom('kitchen')}
+                disabled={roomCounts.kitchen === 0}
+              >
+                <Ionicons name="remove" size={20} color={roomCounts.kitchen === 0 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+              <View style={styles.counterDisplay}>
+                <Text style={styles.counterNumber}>{roomCounts.kitchen}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.kitchen === 4 && styles.counterButtonDisabled]}
+                onPress={() => incrementRoom('kitchen')}
+                disabled={roomCounts.kitchen === 4}
+              >
+                <Ionicons name="add" size={20} color={roomCounts.kitchen === 4 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Living Room Counter */}
+          <View style={styles.counterRow}>
+            <View style={styles.counterLeft}>
+              <View style={styles.counterIconContainer}>
+                <Ionicons name="tv" size={24} color="#3498DB" />
+              </View>
+              <Text style={styles.counterLabel}>Living Room</Text>
+            </View>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.living_room === 0 && styles.counterButtonDisabled]}
+                onPress={() => decrementRoom('living_room')}
+                disabled={roomCounts.living_room === 0}
+              >
+                <Ionicons name="remove" size={20} color={roomCounts.living_room === 0 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+              <View style={styles.counterDisplay}>
+                <Text style={styles.counterNumber}>{roomCounts.living_room}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.living_room === 4 && styles.counterButtonDisabled]}
+                onPress={() => incrementRoom('living_room')}
+                disabled={roomCounts.living_room === 4}
+              >
+                <Ionicons name="add" size={20} color={roomCounts.living_room === 4 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Laundry Counter */}
+          <View style={styles.counterRow}>
+            <View style={styles.counterLeft}>
+              <View style={styles.counterIconContainer}>
+                <Ionicons name="shirt" size={24} color="#3498DB" />
+              </View>
+              <Text style={styles.counterLabel}>Laundry Room</Text>
+            </View>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.laundry === 0 && styles.counterButtonDisabled]}
+                onPress={() => decrementRoom('laundry')}
+                disabled={roomCounts.laundry === 0}
+              >
+                <Ionicons name="remove" size={20} color={roomCounts.laundry === 0 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+              <View style={styles.counterDisplay}>
+                <Text style={styles.counterNumber}>{roomCounts.laundry}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.laundry === 2 && styles.counterButtonDisabled]}
+                onPress={() => incrementRoom('laundry')}
+                disabled={roomCounts.laundry === 2}
+              >
+                <Ionicons name="add" size={20} color={roomCounts.laundry === 2 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Garage Counter */}
+          <View style={styles.counterRow}>
+            <View style={styles.counterLeft}>
+              <View style={styles.counterIconContainer}>
+                <Ionicons name="car" size={24} color="#3498DB" />
+              </View>
+              <Text style={styles.counterLabel}>Garage</Text>
+            </View>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.garage === 0 && styles.counterButtonDisabled]}
+                onPress={() => decrementRoom('garage')}
+                disabled={roomCounts.garage === 0}
+              >
+                <Ionicons name="remove" size={20} color={roomCounts.garage === 0 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+              <View style={styles.counterDisplay}>
+                <Text style={styles.counterNumber}>{roomCounts.garage}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.garage === 2 && styles.counterButtonDisabled]}
+                onPress={() => incrementRoom('garage')}
+                disabled={roomCounts.garage === 2}
+              >
+                <Ionicons name="add" size={20} color={roomCounts.garage === 2 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Outdoor/Yard Counter */}
+          <View style={styles.counterRow}>
+            <View style={styles.counterLeft}>
+              <View style={styles.counterIconContainer}>
+                <Ionicons name="leaf" size={24} color="#3498DB" />
+              </View>
+              <Text style={styles.counterLabel}>Yard/Outdoor</Text>
+            </View>
+            <View style={styles.counterControls}>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.outdoor === 0 && styles.counterButtonDisabled]}
+                onPress={() => decrementRoom('outdoor')}
+                disabled={roomCounts.outdoor === 0}
+              >
+                <Ionicons name="remove" size={20} color={roomCounts.outdoor === 0 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+              <View style={styles.counterDisplay}>
+                <Text style={styles.counterNumber}>{roomCounts.outdoor}</Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.counterButton, roomCounts.outdoor === 4 && styles.counterButtonDisabled]}
+                onPress={() => incrementRoom('outdoor')}
+                disabled={roomCounts.outdoor === 4}
+              >
+                <Ionicons name="add" size={20} color={roomCounts.outdoor === 4 ? '#BDC3C7' : '#3498DB'} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Add Custom Room Button */}
+          <TouchableOpacity
+            style={styles.addCustomRoomButton}
+            onPress={() => setShowAddRoomModal(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle-outline" size={24} color="#3498DB" />
+            <Text style={styles.addCustomRoomText}>Add Custom Room</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Info Card */}
+        <View style={styles.infoCardCounter}>
+          <Ionicons name="information-circle" size={20} color="#3498DB" />
+          <Text style={styles.infoTextCounter}>
+            Total areas: {areas.length} ({propertyData?.bedrooms || 0} bedrooms, {propertyData?.bathrooms || 0} bathrooms, {Object.values(roomCounts).reduce((a, b) => a + b, 0)} other areas)
+          </Text>
+        </View>
 
 
         {/* Photo Summary */}
@@ -1682,6 +2106,139 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#34495E',
     flex: 1,
+  },
+  // New Counter UI Styles
+  readOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  readOnlyIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E9ECEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  readOnlyLabel: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  readOnlyBadge: {
+    backgroundColor: '#E9ECEF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  readOnlyCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  counterHelp: {
+    fontSize: 14,
+    color: '#7F8C8D',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  counterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  counterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  counterIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F4FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  counterLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2C3E50',
+  },
+  counterControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  counterButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E8F4FD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  counterButtonDisabled: {
+    backgroundColor: '#F8F9FA',
+    opacity: 0.5,
+  },
+  counterDisplay: {
+    minWidth: 32,
+    alignItems: 'center',
+  },
+  counterNumber: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  addCustomRoomButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#3498DB',
+    borderStyle: 'dashed',
+  },
+  addCustomRoomText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#3498DB',
+    marginLeft: 8,
+  },
+  infoCardCounter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F4FD',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  infoTextCounter: {
+    flex: 1,
+    fontSize: 14,
+    color: '#3498DB',
+    lineHeight: 20,
   },
 });
 

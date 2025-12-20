@@ -7,10 +7,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
+import { useUnreadMessages } from '../../context/UnreadMessagesContext';
 import { log } from '../../lib/log';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { PropertyImage } from '../../components/shared/PropertyImage';
+import { haptics } from '../../lib/haptics';
+import { formatAddress } from '../../utils/helpers';
 
 type LandlordHomeNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Home'>;
 
@@ -21,6 +24,7 @@ interface MaintenanceRequest {
   propertyId: string;
   propertyName: string;
   priority: 'urgent' | 'medium' | 'low';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed';
   timeAgo: string;
 }
 
@@ -37,6 +41,7 @@ const LandlordHomeScreen = () => {
   const { user } = useAppAuth();
   const api = useApiClient();
   const { drafts, isLoading: isDraftsLoading } = usePropertyDrafts();
+  const { unreadCount } = useUnreadMessages();
 
   const [selectedProperty, setSelectedProperty] = useState<string>('all');
   const [properties, setProperties] = useState<PropertySummary[]>([]);
@@ -55,18 +60,8 @@ const LandlordHomeScreen = () => {
     try {
       if (!api) return;
 
-      // Load properties
+      // Load properties and maintenance requests together
       const userProperties = await api.getUserProperties();
-      const propertySummaries: PropertySummary[] = userProperties.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        address: p.address,
-        type: p.property_type || 'house',
-        issueCount: 0,
-      }));
-      setProperties(propertySummaries);
-
-      // Load maintenance requests from API
       const maintenanceData = await api.getMaintenanceRequests({ limit: 20 });
 
       // Map API data to UI format
@@ -95,22 +90,27 @@ const LandlordHomeScreen = () => {
           propertyId: req.property_id,
           propertyName: req.properties?.name || 'Unknown Property',
           priority: req.priority || 'medium',
+          status: req.status || 'pending',
           timeAgo,
         };
       });
 
-      // Update issue counts on properties
-      const updatedSummaries = propertySummaries.map(p => ({
-        ...p,
-        issueCount: mappedRequests.filter(r => r.propertyId === p.id).length,
-      }));
-      setProperties(updatedSummaries);
+      // Filter to only active requests (not completed/cancelled)
+      const filteredActiveRequests = mappedRequests.filter((r: any) => {
+        const originalReq = maintenanceData.find((m: any) => m.id === r.id);
+        return originalReq?.status !== 'completed' && originalReq?.status !== 'cancelled';
+      });
 
-      // Only show pending/in_progress requests (not completed)
-      const activeOnly = mappedRequests.filter((r: any) =>
-        maintenanceData.find((m: any) => m.id === r.id)?.status !== 'completed'
-      );
-      setActiveRequests(activeOnly);
+      // Create property summaries with ACTIVE issue counts only
+      const summaries: PropertySummary[] = userProperties.map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        address: p.address,
+        type: p.property_type || 'house',
+        issueCount: filteredActiveRequests.filter(r => r.propertyId === p.id).length,
+      }));
+      setProperties(summaries);
+      setActiveRequests(filteredActiveRequests);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -182,6 +182,7 @@ const LandlordHomeScreen = () => {
   };
 
   const handlePropertyPress = (property: PropertySummary) => {
+    haptics.light();
     navigation.navigate('PropertyDetails', {
       property: {
         id: property.id,
@@ -195,10 +196,7 @@ const LandlordHomeScreen = () => {
   };
 
   const handleRequestPress = (request: MaintenanceRequest) => {
-    navigation.navigate('CaseDetail', { caseId: request.id });
-  };
-
-  const handleRespondPress = (request: MaintenanceRequest) => {
+    haptics.light();
     navigation.navigate('CaseDetail', { caseId: request.id });
   };
 
@@ -206,7 +204,7 @@ const LandlordHomeScreen = () => {
   if (!isLoading && properties.length === 0) {
     return (
       <ScreenContainer
-        title="MyAILandlord"
+        title="My AI Landlord"
         userRole="landlord"
         scrollable={false}
       >
@@ -217,7 +215,10 @@ const LandlordHomeScreen = () => {
             <Text style={styles.emptySubtitle}>Add your first property to get started</Text>
             <TouchableOpacity
               style={styles.addPropertyBtn}
-              onPress={() => navigation.navigate('AddProperty')}
+              onPress={() => {
+                haptics.medium();
+                navigation.navigate('AddProperty');
+              }}
               testID="add-property-button"
             >
               <Ionicons name="add" size={20} color="#fff" />
@@ -231,28 +232,12 @@ const LandlordHomeScreen = () => {
 
   return (
     <ScreenContainer
-      title="MyAILandlord"
+      title="My AI Landlord"
       userRole="landlord"
       refreshing={refreshing}
       onRefresh={onRefresh}
-      backgroundColor="#F5F7FA"
+      backgroundColor="#D6E1EA"
     >
-        {/* Property Selector */}
-        {properties.length > 1 && (
-          <TouchableOpacity
-            style={styles.propertySelector}
-            activeOpacity={0.8}
-            onPress={() => setShowPropertyPicker(true)}
-          >
-            <View style={styles.propertySelectorInfo}>
-              <Text style={styles.propertySelectorLabel}>VIEWING</Text>
-              <Text style={styles.propertySelectorName}>
-                {selectedProperty === 'all' ? 'All Properties' : properties.find(p => p.id === selectedProperty)?.name}
-              </Text>
-            </View>
-            <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.8)" />
-          </TouchableOpacity>
-        )}
 
         {/* Property Picker Modal */}
         <Modal
@@ -281,6 +266,7 @@ const LandlordHomeScreen = () => {
                   selectedProperty === 'all' && styles.propertyOptionSelected
                 ]}
                 onPress={() => {
+                  haptics.selection();
                   setSelectedProperty('all');
                   setShowPropertyPicker(false);
                 }}
@@ -308,6 +294,7 @@ const LandlordHomeScreen = () => {
                       selectedProperty === item.id && styles.propertyOptionSelected
                     ]}
                     onPress={() => {
+                      haptics.selection();
                       setSelectedProperty(item.id);
                       setShowPropertyPicker(false);
                     }}
@@ -317,7 +304,7 @@ const LandlordHomeScreen = () => {
                     </View>
                     <View style={styles.propertyOptionInfo}>
                       <Text style={styles.propertyOptionName}>{item.name}</Text>
-                      <Text style={styles.propertyOptionAddress}>{item.address}</Text>
+                      <Text style={styles.propertyOptionAddress}>{formatAddress(item.address)}</Text>
                     </View>
                     {selectedProperty === item.id && (
                       <Ionicons name="checkmark-circle" size={22} color="#3498DB" />
@@ -329,15 +316,27 @@ const LandlordHomeScreen = () => {
           </TouchableOpacity>
         </Modal>
 
-        {/* Properties Section - Now First */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Properties ({properties.length})</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('PropertyManagement')}>
-            <Text style={styles.sectionLink}>Manage</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Properties Section */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Properties ({properties.length})</Text>
+            {properties.length > 1 && (
+              <TouchableOpacity
+                style={styles.filterButton}
+                onPress={() => {
+                  haptics.light();
+                  setShowPropertyPicker(true);
+                }}
+              >
+                <Text style={styles.filterText}>
+                  {selectedProperty === 'all' ? 'All' : properties.find(p => p.id === selectedProperty)?.name}
+                </Text>
+                <Ionicons name="chevron-down" size={14} color="#3498DB" />
+              </TouchableOpacity>
+            )}
+          </View>
 
-        {properties.map((property) => (
+          {properties.map((property) => (
           <TouchableOpacity
             key={property.id}
             style={styles.propertyItem}
@@ -352,33 +351,24 @@ const LandlordHomeScreen = () => {
             />
             <View style={styles.propertyInfo}>
               <Text style={styles.propertyName}>{property.name}</Text>
-              <Text style={styles.propertyAddress}>{property.address}</Text>
+              <Text style={styles.propertyAddress}>{formatAddress(property.address)}</Text>
             </View>
             <View style={[
               styles.statusDot,
               { backgroundColor: property.issueCount === 0 ? '#2ECC71' : property.issueCount <= 2 ? '#F1C40F' : '#E74C3C' }
             ]} />
           </TouchableOpacity>
-        ))}
-
-        {/* Add Property Button */}
-        <TouchableOpacity
-          style={styles.addPropertyListBtn}
-          onPress={() => navigation.navigate('AddProperty')}
-        >
-          <Ionicons name="add-circle-outline" size={20} color="#3498DB" />
-          <Text style={styles.addPropertyListBtnText}>Add Another Property</Text>
-        </TouchableOpacity>
+          ))}
+        </View>
 
         {/* Maintenance Requests Section */}
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-          <Text style={styles.sectionTitle}>
-            Maintenance ({filteredRequests.length})
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
-            <Text style={styles.sectionLink}>View All</Text>
-          </TouchableOpacity>
-        </View>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Maintenance ({filteredRequests.length})</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Dashboard')}>
+              <Text style={styles.sectionLink}>View All</Text>
+            </TouchableOpacity>
+          </View>
 
         {filteredRequests.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -398,45 +388,56 @@ const LandlordHomeScreen = () => {
               onPress={() => handleRequestPress(request)}
               activeOpacity={0.7}
             >
-              <View style={[styles.requestPriority, { backgroundColor: getPriorityColor(request.priority) }]} />
-              <View style={styles.requestContent}>
-                <View style={styles.requestHeader}>
-                  <Text style={styles.requestTitle}>{request.title}</Text>
-                  <Text style={styles.requestTime}>{request.timeAgo}</Text>
-                </View>
-                <Text style={styles.requestLocation}>
-                  {request.location} • {request.propertyName}
-                </Text>
-                <View style={styles.requestActions}>
-                  <TouchableOpacity
-                    style={styles.requestBtnPrimary}
-                    onPress={() => handleRespondPress(request)}
-                  >
-                    <Text style={styles.requestBtnPrimaryText}>View Details</Text>
-                  </TouchableOpacity>
+              <View style={styles.requestHeader}>
+                <Text style={styles.requestTitle}>{request.title}</Text>
+                <View style={styles.requestHeaderRight}>
+                  {request.status === 'submitted' && (
+                    <Text style={styles.requestTime}>{request.timeAgo}</Text>
+                  )}
+                  <View style={[
+                    styles.statusDot,
+                    { backgroundColor: request.status === 'submitted' ? '#E74C3C' : '#F39C12' }
+                  ]} />
                 </View>
               </View>
+              <Text style={styles.requestLocation}>
+                {request.location} • {request.propertyName}
+              </Text>
             </TouchableOpacity>
           ))
         )}
-
-        {/* Messages Section */}
-        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
-          <Text style={styles.sectionTitle}>Messages (0)</Text>
-          <TouchableOpacity onPress={() => navigation.getParent()?.navigate('LandlordMessages')}>
-            <Text style={styles.sectionLink}>View All</Text>
-          </TouchableOpacity>
         </View>
 
+        {/* Messages Section */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Messages ({unreadCount})</Text>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('LandlordMessages')}>
+              <Text style={styles.sectionLink}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
         <TouchableOpacity
-          style={styles.emptyCard}
+          style={[styles.emptyCard, unreadCount > 0 && styles.highlightCard]}
           onPress={() => navigation.getParent()?.navigate('LandlordMessages')}
           activeOpacity={0.7}
         >
-          <Ionicons name="chatbubbles-outline" size={40} color="#3498DB" />
-          <Text style={styles.emptyCardTitle}>No New Messages</Text>
-          <Text style={styles.emptyCardSubtitle}>View and respond to tenant communications</Text>
+          <View style={unreadCount > 0 ? styles.badgeContainer : undefined}>
+            <Ionicons name="chatbubbles-outline" size={40} color={unreadCount > 0 ? '#2ECC71' : '#3498DB'} />
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.emptyCardTitle}>
+            {unreadCount > 0 ? `${unreadCount} New Message${unreadCount > 1 ? 's' : ''}` : 'No New Messages'}
+          </Text>
+          <Text style={styles.emptyCardSubtitle}>
+            {unreadCount > 0 ? 'Tap to view and respond' : 'View and respond to tenant communications'}
+          </Text>
         </TouchableOpacity>
+        </View>
 
         <View style={styles.bottomSpacer} />
     </ScreenContainer>
@@ -444,30 +445,27 @@ const LandlordHomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // Property Selector
-  propertySelector: {
-    backgroundColor: '#3498DB',
-    borderRadius: 12,
-    padding: 14,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+  // Filter Button (in section header)
+  filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
+    backgroundColor: '#EBF5FB',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
   },
-  propertySelectorInfo: {
-    flex: 1,
+  filterText: {
+    fontSize: 13,
+    color: '#3498DB',
+    fontWeight: '500',
   },
-  propertySelectorLabel: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    letterSpacing: 0.5,
-  },
-  propertySelectorName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 2,
+  // Section Card
+  sectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
   // Section Header
   sectionHeader: {
@@ -482,29 +480,16 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
   },
   sectionLink: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#3498DB',
     fontWeight: '500',
   },
   // Request Cards
   requestCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
     padding: 14,
-    paddingLeft: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  requestPriority: {
-    width: 4,
-    borderRadius: 2,
-    alignSelf: 'stretch',
-    minHeight: 48,
-  },
-  requestContent: {
-    flex: 1,
+    marginBottom: 8,
   },
   requestHeader: {
     flexDirection: 'row',
@@ -513,7 +498,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   requestTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#2C3E50',
     flex: 1,
@@ -522,42 +507,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#95A5A6',
   },
-  requestLocation: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginBottom: 10,
-  },
-  requestActions: {
+  requestHeaderRight: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  requestBtnPrimary: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  requestBtnPrimaryText: {
+  requestLocation: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  requestBtnSecondary: {
-    backgroundColor: '#F5F7FA',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  requestBtnSecondaryText: {
-    fontSize: 12,
-    fontWeight: '600',
     color: '#7F8C8D',
   },
   // Empty State Card
   emptyCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 32,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    padding: 24,
     alignItems: 'center',
   },
   emptyCardTitle: {
@@ -571,16 +534,44 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7F8C8D',
   },
+  highlightCard: {
+    backgroundColor: '#FFF5F5',
+    marginHorizontal: -16,
+    marginBottom: -16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  badgeContainer: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -10,
+    backgroundColor: '#E74C3C',
+    borderRadius: 12,
+    minWidth: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   // Property Items
   propertyItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    paddingHorizontal: 16,
-    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
+    backgroundColor: '#F5F7FA',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
   },
   propertyIcon: {
     width: 44,
@@ -599,7 +590,7 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
   },
   propertyAddress: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#7F8C8D',
     marginTop: 2,
   },
@@ -607,20 +598,6 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-  },
-  // Add Property Button
-  addPropertyListBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    padding: 14,
-    marginTop: 4,
-  },
-  addPropertyListBtnText: {
-    fontSize: 14,
-    color: '#3498DB',
-    fontWeight: '500',
   },
   // Empty State for No Properties
   emptyStateContainer: {

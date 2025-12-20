@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnreadMessages } from '../../context/UnreadMessagesContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
@@ -41,6 +42,7 @@ const CommunicationHubScreen = () => {
   const navigation = useNavigation<CommunicationHubNavigationProp>();
   const { user } = useAppAuth();
   const apiClient = useApiClient();
+  const { refreshUnreadCount } = useUnreadMessages();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [activeTab, setActiveTab] = useState<'messages' | 'announcements'>('messages');
@@ -51,6 +53,23 @@ const CommunicationHubScreen = () => {
   const [isSending, setIsSending] = useState(false);
   const [landlordId, setLandlordId] = useState<string | null>(null);
   const [propertyId, setPropertyId] = useState<string | null>(null);
+
+  // Mark messages as read when screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      const markAsRead = async () => {
+        if (apiClient) {
+          try {
+            await apiClient.markMessagesAsRead();
+            await refreshUnreadCount();
+          } catch (error) {
+            log.error('Error marking messages as read', { error: String(error) });
+          }
+        }
+      };
+      markAsRead();
+    }, [apiClient, refreshUnreadCount])
+  );
 
   // Load messages and property info on mount
   const loadMessages = useCallback(async () => {
@@ -87,6 +106,11 @@ const CommunicationHubScreen = () => {
       // Sort by timestamp
       mappedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       setMessages(mappedMessages);
+
+      // Scroll to bottom after loading messages
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      }, 100);
     } catch (error) {
       log.error('Error loading messages', { error: String(error) });
     } finally {
@@ -201,7 +225,7 @@ const CommunicationHubScreen = () => {
 
   return (
     <ScreenContainer
-      title="Communication Hub"
+      title="Messages"
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="tenant"
@@ -262,9 +286,9 @@ const CommunicationHubScreen = () => {
                   </Text>
                 </View>
               ) : (
-                messages.map((message) => (
+                messages.map((message, index) => (
                   <View
-                    key={message.id}
+                    key={`${message.id}-${index}`}
                     style={[
                       styles.messageBubble,
                       message.sender === 'tenant' ? styles.tenantMessage : styles.landlordMessage

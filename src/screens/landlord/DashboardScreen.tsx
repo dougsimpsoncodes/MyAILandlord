@@ -18,7 +18,7 @@ interface CaseFile {
   description: string;
   location: string;
   urgency: 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority';
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed';
   submittedAt: string;
   mediaCount: number;
   estimatedCost?: string;
@@ -30,7 +30,7 @@ interface MaintenanceRequestResponse {
   description: string;
   area: string;
   priority: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed';
   created_at: string;
   estimated_cost?: number;
   images?: string[];
@@ -43,7 +43,7 @@ const DashboardScreen = () => {
   const navigation = useNavigation<DashboardScreenNavigationProp>();
   const apiClient = useApiClient();
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'pending' | 'in_progress' | 'completed'>('pending');
+  const [selectedFilter, setSelectedFilter] = useState<'new' | 'in_progress' | 'completed'>('new');
   const [cases, setCases] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -120,8 +120,10 @@ const DashboardScreen = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'submitted':
+        return '#E74C3C'; // Red for new/submitted
       case 'pending':
-        return '#F39C12';
+        return '#F39C12'; // Orange for pending
       case 'in_progress':
         return '#3498DB';
       case 'completed':
@@ -133,6 +135,8 @@ const DashboardScreen = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
+      case 'submitted':
+        return 'New';
       case 'pending':
         return 'Pending';
       case 'in_progress':
@@ -144,10 +148,15 @@ const DashboardScreen = () => {
     }
   };
 
-  const filteredCases = cases.filter(case_ => case_.status === selectedFilter);
+  // Filter cases based on selected tab
+  const filteredCases = selectedFilter === 'new'
+    ? cases.filter(case_ => case_.status === 'submitted')
+    : selectedFilter === 'in_progress'
+    ? cases.filter(case_ => case_.status === 'pending' || case_.status === 'in_progress')
+    : cases.filter(case_ => case_.status === 'completed');
 
-  const newCasesCount = cases.filter(case_ => case_.status === 'pending').length;
-  const inProgressCount = cases.filter(case_ => case_.status === 'in_progress').length;
+  const newCasesCount = cases.filter(case_ => case_.status === 'submitted').length;
+  const inProgressCount = cases.filter(case_ => case_.status === 'pending' || case_.status === 'in_progress').length;
   const completedCount = cases.filter(case_ => case_.status === 'completed').length;
 
   const handleCasePress = (caseId: string) => {
@@ -156,10 +165,10 @@ const DashboardScreen = () => {
 
   const getEmptyStateMessage = () => {
     switch (selectedFilter) {
-      case 'pending':
+      case 'new':
         return { title: 'No New Requests', subtitle: 'New maintenance requests will appear here' };
       case 'in_progress':
-        return { title: 'No Requests In Progress', subtitle: 'Requests being worked on will appear here' };
+        return { title: 'No Pending Requests', subtitle: 'Requests awaiting action will appear here' };
       case 'completed':
         return { title: 'No Completed Requests', subtitle: 'Completed requests will appear here' };
       default:
@@ -181,15 +190,15 @@ const DashboardScreen = () => {
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
-          style={[styles.filterButton, selectedFilter === 'pending' && styles.filterButtonActive]}
-          onPress={() => setSelectedFilter('pending')}
+          style={[styles.filterButton, selectedFilter === 'new' && styles.filterButtonActive]}
+          onPress={() => setSelectedFilter('new')}
         >
-          <Text style={[styles.filterText, selectedFilter === 'pending' && styles.filterTextActive]}>
+          <Text style={[styles.filterText, selectedFilter === 'new' && styles.filterTextActive]}>
             New
           </Text>
           {newCasesCount > 0 && (
-            <View style={[styles.filterBadge, selectedFilter === 'pending' && styles.filterBadgeActive]}>
-              <Text style={[styles.filterBadgeText, selectedFilter === 'pending' && styles.filterBadgeTextActive]}>
+            <View style={[styles.filterBadge, selectedFilter === 'new' && styles.filterBadgeActive]}>
+              <Text style={[styles.filterBadgeText, selectedFilter === 'new' && styles.filterBadgeTextActive]}>
                 {newCasesCount}
               </Text>
             </View>
@@ -201,7 +210,7 @@ const DashboardScreen = () => {
           onPress={() => setSelectedFilter('in_progress')}
         >
           <Text style={[styles.filterText, selectedFilter === 'in_progress' && styles.filterTextActive]}>
-            In Progress
+            Pending
           </Text>
           {inProgressCount > 0 && (
             <View style={[styles.filterBadge, selectedFilter === 'in_progress' && styles.filterBadgeActive]}>
@@ -217,7 +226,7 @@ const DashboardScreen = () => {
           onPress={() => setSelectedFilter('completed')}
         >
           <Text style={[styles.filterText, selectedFilter === 'completed' && styles.filterTextActive]}>
-            Completed
+            Complete
           </Text>
           {completedCount > 0 && (
             <View style={[styles.filterBadge, selectedFilter === 'completed' && styles.filterBadgeActive]}>
@@ -253,7 +262,7 @@ const DashboardScreen = () => {
             key={case_.id}
             style={[
               styles.requestCard,
-              selectedFilter === 'completed' && styles.resolvedCard
+              case_.status === 'completed' && styles.resolvedCard
             ]}
             onPress={() => handleCasePress(case_.id)}
             activeOpacity={0.7}
@@ -261,7 +270,7 @@ const DashboardScreen = () => {
             <View style={styles.requestHeader}>
               <Text style={[
                 styles.requestTitle,
-                selectedFilter === 'completed' && styles.resolvedTitle
+                case_.status === 'completed' && styles.resolvedTitle
               ]}>
                 {case_.issueType}
               </Text>
@@ -274,19 +283,19 @@ const DashboardScreen = () => {
 
             <Text style={[
               styles.requestMeta,
-              selectedFilter === 'completed' && styles.resolvedText
+              case_.status === 'completed' && styles.resolvedText
             ]}>
               {case_.location} • {case_.tenantName}
             </Text>
 
             <Text style={[
               styles.requestTime,
-              selectedFilter === 'completed' && styles.resolvedText
+              case_.status === 'completed' && styles.resolvedText
             ]}>
-              {selectedFilter === 'completed' ? 'Completed ' : ''}{case_.submittedAt}
+              {case_.status === 'completed' ? 'Completed ' : ''}{case_.submittedAt}
             </Text>
 
-            {case_.description && selectedFilter !== 'completed' && (
+            {case_.description && case_.status !== 'completed' && (
               <Text style={styles.requestDescription} numberOfLines={2}>
                 {case_.description}
               </Text>

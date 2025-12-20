@@ -75,7 +75,11 @@ const propertyTypes: PropertyTypeOption[] = [
 
 const PropertyBasicsScreen = () => {
   const navigation = useNavigation<PropertyBasicsNavigationProp>();
+  const route = useRoute();
   const responsive = useResponsive();
+
+  // Check if we're in onboarding mode
+  const isOnboarding = (route.params as any)?.isOnboarding || false;
   
   // Form state
   const [addressData, setAddressData] = useState<Address>({
@@ -99,7 +103,7 @@ const PropertyBasicsScreen = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidating, setIsValidating] = useState(false);
 
-  // Draft management
+  // Draft management (disable auto-save for better performance, we handle it manually)
   const {
     draftState,
     updatePropertyData,
@@ -107,7 +111,9 @@ const PropertyBasicsScreen = () => {
     isLoading: isDraftLoading,
     lastSaved,
     saveDraft,
-  } = usePropertyDraft();
+  } = usePropertyDraft({
+    enableAutoSave: false, // Disable auto-save for better typing performance
+  });
 
   // Load existing draft data
   useEffect(() => {
@@ -132,33 +138,7 @@ const PropertyBasicsScreen = () => {
     }
   }, [draftState]);
 
-  // Auto-save on changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (addressData.propertyName || addressData.addressLine1 || selectedType) {
-        const propertyData: Partial<PropertyData> = {
-          name: addressData.propertyName,
-          address: {
-            line1: addressData.addressLine1,
-            line2: addressData.addressLine2,
-            city: addressData.city,
-            state: addressData.state,
-            zipCode: addressData.postalCode,
-            country: addressData.country || 'US'
-          },
-          type: selectedType || 'house',
-          unit: '', // Unit is not part of new form
-          bedrooms,
-          bathrooms,
-          photos: draftState?.propertyData?.photos || [],
-        };
-        updatePropertyData(propertyData);
-        updateCurrentStep(0); // First step
-      }
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [addressData, selectedType, bedrooms, bathrooms]);
+  // Removed auto-save for better performance - data is saved when user clicks Continue
 
   // Validation for property type only (address validation is handled by the form component)
   const validateType = () => {
@@ -208,9 +188,20 @@ const PropertyBasicsScreen = () => {
       
       await updatePropertyData(propertyData);
       await saveDraft();
-      
-      // Navigate to next step
-      navigation.navigate('PropertyPhotos', { propertyData });
+
+      // Navigate to next step based on context
+      if (isOnboarding) {
+        // In onboarding, go to PropertyAreas next
+        (navigation as any).navigate('PropertyAreas', {
+          propertyData,
+          draftId: draftState?.id,
+          isOnboarding: true,
+          firstName: (route.params as any)?.firstName, // Pass firstName through
+        });
+      } else {
+        // In regular flow, go to PropertyPhotos
+        navigation.navigate('PropertyPhotos', { propertyData });
+      }
     } else {
       Alert.alert(
         'Please Complete Required Fields',
