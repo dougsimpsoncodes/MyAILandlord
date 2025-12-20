@@ -31,6 +31,7 @@ const Field = ({
   label,
   value,
   onChangeText,
+  onBlur,
   placeholder,
   id,
   autoComplete,
@@ -47,6 +48,7 @@ const Field = ({
   label: string;
   value: string;
   onChangeText: (t: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   id: string;
   autoComplete: string;
@@ -79,6 +81,7 @@ const Field = ({
         nativeID={id}
         value={value}
         onChangeText={onChangeText}
+        onBlur={onBlur}
         placeholder={placeholder}
         autoComplete={autoComplete as any}
         textContentType={textContentType}
@@ -111,50 +114,58 @@ export default function PropertyAddressFormSimplified({
   loading,
   disabled
 }: Props) {
+  // Internal state - manages form data locally
+  const [localData, setLocalData] = useState<Address>(value);
   const [errors, setErrors] = useState<Partial<Record<keyof Address,string>>>({});
   const section = useMemo(() => `section-${sectionId}`, [sectionId]);
   const scrollRef = useRef<ScrollView>(null);
 
+  // Initialize from prop value only on mount or when value.propertyName changes (indicates new form)
   useEffect(() => {
-    const e: Partial<Record<keyof Address,string>> = {};
-    requiredKeys.forEach(k => {
-      const v = (value[k] ?? '') as string;
-      if (!v || String(v).trim().length === 0) e[k] = e[k] || '';
-    });
-    setErrors(e);
-  }, []); 
+    setLocalData(value);
+  }, [value.propertyName]); // Only reset when starting fresh with a new property
 
+  // Local state setter - NO parent notification on every keystroke!
   const set = (k: keyof Address) => (t: string) => {
     let v = t;
     if (k === 'state') v = normalizeState(t);
     if (k === 'postalCode') v = normalizePostal(t);
     if (k === 'email') v = normalizeEmail(t);
     if (k === 'phone') v = normalizePhone(t);
-    onChange({ ...value, [k]: v });
+
+    // Update local state only
+    setLocalData(prev => ({ ...prev, [k]: v }));
+  };
+
+  // Notify parent on blur - user finished with this field
+  const handleBlur = () => {
+    onChange(localData);
   };
 
   const validate = () => {
     const e: Partial<Record<keyof Address,string>> = {};
     requiredKeys.forEach(k => {
-      const v = (value[k] ?? '') as string;
+      const v = (localData[k] ?? '') as string;
       if (!v || String(v).trim().length === 0) e[k] = 'Required';
     });
-    if (value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) e.email = 'Invalid email';
-    if (value.postalCode && value.postalCode.length < 3) e.postalCode = e.postalCode || 'Invalid postal code';
-    if (value.phone && value.phone.replace(/\D/g,'').length > 0 && value.phone.replace(/\D/g,'').length < 7) e.phone = 'Invalid phone';
+    if (localData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(localData.email)) e.email = 'Invalid email';
+    if (localData.postalCode && localData.postalCode.length < 3) e.postalCode = e.postalCode || 'Invalid postal code';
+    if (localData.phone && localData.phone.replace(/\D/g,'').length > 0 && localData.phone.replace(/\D/g,'').length < 7) e.phone = 'Invalid phone';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const submit = () => {
     if (!validate()) {
-      const firstKey = (Object.keys(errors).find(k => (errors as any)[k]) as keyof Address) || requiredKeys.find(k => !value[k] || String(value[k]||'').trim()==='');
+      const firstKey = (Object.keys(errors).find(k => (errors as any)[k]) as keyof Address) || requiredKeys.find(k => !localData[k] || String(localData[k]||'').trim()==='');
       if (firstKey) {
         setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 0);
       }
       return;
     }
-    onSubmit(value);
+    // Notify parent with final data
+    onChange(localData);
+    onSubmit(localData);
   };
 
   const FormWrapper: React.ComponentType<{ children: React.ReactNode }> =
@@ -179,8 +190,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Property Name"
           id={`${section}-property-name`}
-          value={value.propertyName || ''}
+          value={localData.propertyName || ''}
           onChangeText={set('propertyName')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete="off"
           textContentType={Platform.OS === 'ios' ? 'none' : undefined}
@@ -193,8 +205,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Full Name"
           id={`${section}-name`}
-          value={value.fullName || ''}
+          value={localData.fullName || ''}
           onChangeText={set('fullName')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} name`}
           textContentType={Platform.OS === 'ios' ? 'name' : undefined}
@@ -206,8 +219,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Organization"
           id={`${section}-organization`}
-          value={value.organization || ''}
+          value={localData.organization || ''}
           onChangeText={set('organization')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} organization`}
           textContentType={Platform.OS === 'ios' ? 'organizationName' : undefined}
@@ -218,8 +232,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Address Line 1"
           id={`${section}-address-line1`}
-          value={value.addressLine1 || ''}
+          value={localData.addressLine1 || ''}
           onChangeText={set('addressLine1')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} address-line1`}
           textContentType={Platform.OS === 'ios' ? 'fullStreetAddress' : undefined}
@@ -231,8 +246,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Address Line 2"
           id={`${section}-address-line2`}
-          value={value.addressLine2 || ''}
+          value={localData.addressLine2 || ''}
           onChangeText={set('addressLine2')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} address-line2`}
           textContentType={Platform.OS === 'ios' ? 'streetAddressLine2' : undefined}
@@ -243,8 +259,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="City"
           id={`${section}-address-city`}
-          value={value.city || ''}
+          value={localData.city || ''}
           onChangeText={set('city')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} address-level2`}
           textContentType={Platform.OS === 'ios' ? 'addressCity' : undefined}
@@ -256,8 +273,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="State/Region"
           id={`${section}-address-state`}
-          value={value.state || ''}
+          value={localData.state || ''}
           onChangeText={set('state')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} address-level1`}
           textContentType={Platform.OS === 'ios' ? 'addressState' : undefined}
@@ -269,8 +287,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Postal Code"
           id={`${section}-postal-code`}
-          value={value.postalCode || ''}
+          value={localData.postalCode || ''}
           onChangeText={set('postalCode')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} postal-code`}
           textContentType={Platform.OS === 'ios' ? 'postalCode' : undefined}
@@ -283,8 +302,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Country"
           id={`${section}-country`}
-          value={value.country || ''}
+          value={localData.country || ''}
           onChangeText={set('country')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} country`}
           textContentType={Platform.OS === 'ios' ? 'countryName' : undefined}
@@ -296,8 +316,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Email"
           id={`${section}-email`}
-          value={value.email || ''}
+          value={localData.email || ''}
           onChangeText={set('email')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} email`}
           textContentType={Platform.OS === 'ios' ? 'emailAddress' : undefined}
@@ -309,8 +330,9 @@ export default function PropertyAddressFormSimplified({
         <Field
           label="Phone"
           id={`${section}-tel`}
-          value={value.phone || ''}
+          value={localData.phone || ''}
           onChangeText={set('phone')}
+          onBlur={handleBlur}
           placeholder=""
           autoComplete={`${section} tel`}
           textContentType={Platform.OS === 'ios' ? 'telephoneNumber' : undefined}
