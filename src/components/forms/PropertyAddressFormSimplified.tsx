@@ -175,9 +175,6 @@ export default function PropertyAddressFormSimplified({
 
   return (
     <ScrollView ref={scrollRef} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: DesignSystem.spacing.lg }}>
-      <View style={{ backgroundColor: 'red', padding: 10, marginBottom: 20 }}>
-        <Text style={{ color: 'white', fontWeight: 'bold' }}>DEBUG: PropertyAddressFormSimplified IS RENDERING</Text>
-      </View>
       <FormWrapper>
         <Field
           label="Property Name"
