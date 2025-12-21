@@ -317,6 +317,7 @@ const PropertyBasicsScreen = () => {
                 onChange={setAddressData}
                 onSubmit={() => {}} // No submit needed here
                 sectionId="property"
+                showSubmitButton={false}
               />
             </View>
       </ResponsiveContainer>

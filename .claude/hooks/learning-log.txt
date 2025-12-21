@@ -1040,3 +1040,42 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-21T06:36:18Z] Commit 4a55b49c35e406f3b27917bdc992bbfe61e87b1b successful
+Message: refactor: split add property into two screens to eliminate scrolling
+
+Split the "Add New Property" page into two separate screens for better UX:
+
+Screen 1 - Property Address (PropertyBasicsScreen):
+- Property Name
+- Street Address
+- Unit / Apt / Suite
+- City
+- State
+- Postal Code
+- Country
+
+Screen 2 - Property Details (PropertyAttributesScreen - NEW):
+- Property Type (house, apartment, condo, townhouse)
+- Bedrooms
+- Bathrooms (with 0.5 increments)
+
+Benefits:
+- No scrolling required on either screen
+- Cleaner, more focused user experience
+- Each screen fits on one viewport
+- Better mobile UX
+
+Changes:
+1. Created PropertyAttributesScreen.tsx for property type/bedrooms/bathrooms
+2. Simplified PropertyBasicsScreen to only handle address fields
+3. Updated navigation flow: PropertyBasics → PropertyAttributes → PropertyAreas
+4. Added PropertyAttributes to LandlordStackParamList
+5. Registered PropertyAttributesScreen in navigation stack
+6. Updated screen titles/subtitles to be more specific
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

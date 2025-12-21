@@ -21,6 +21,7 @@ type Props = {
   submitLabel?: string;
   loading?: boolean;
   disabled?: boolean;
+  showSubmitButton?: boolean;
 };
 
 // IMPORTANT: Field component MUST be outside to prevent re-creation on every render
@@ -125,7 +126,8 @@ export default function PropertyAddressFormSimplified({
   sectionId = 'property',
   submitLabel = 'Save Address',
   loading,
-  disabled
+  disabled,
+  showSubmitButton = true
 }: Props) {
   // Use parent state directly - no local state complexity
   const [errors, setErrors] = useState<Partial<Record<keyof Address,string>>>({});
@@ -257,9 +259,11 @@ export default function PropertyAddressFormSimplified({
           required
           error={errors.country}
         />
-        <View style={{ marginTop: DesignSystem.spacing.lg }}>
-          <Button title={submitLabel} onPress={submit} type="primary" fullWidth disabled={disabled} loading={loading} />
-        </View>
+        {showSubmitButton && (
+          <View style={{ marginTop: DesignSystem.spacing.lg }}>
+            <Button title={submitLabel} onPress={submit} type="primary" fullWidth disabled={disabled} loading={loading} />
+          </View>
+        )}
       </FormWrapper>
     </View>
   );
