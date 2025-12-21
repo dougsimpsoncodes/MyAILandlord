@@ -5,16 +5,12 @@ import { DesignSystem } from '../../theme/DesignSystem';
 
 type Address = {
   propertyName: string;
-  fullName: string;
-  organization?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
   state: string;
   postalCode: string;
   country: string;
-  email?: string;
-  phone?: string;
 };
 
 type Props = {
@@ -101,10 +97,8 @@ const Field = ({
 
 const normalizeState = (v: string) => v.replace(/[^A-Za-z]/g,'').toUpperCase().slice(0, 30);
 const normalizePostal = (v: string) => v.replace(/[^0-9A-Za-z -]/g,'').slice(0, 12);
-const normalizeEmail = (v: string) => v.trim();
-const normalizePhone = (v: string) => v.replace(/[^\d+(). -]/g,'').slice(0, 20);
 
-const requiredKeys: (keyof Address)[] = ['fullName','addressLine1','city','state','postalCode','country'];
+const requiredKeys: (keyof Address)[] = ['propertyName','addressLine1','city','state','postalCode','country'];
 
 // CRITICAL: FormWrapper components MUST be outside to prevent input focus loss
 const WebFormWrapper = ({ children, onSubmit }: { children: React.ReactNode; onSubmit: () => void }) => (
@@ -142,8 +136,6 @@ export default function PropertyAddressFormSimplified({
     let v = t;
     if (k === 'state') v = normalizeState(t);
     if (k === 'postalCode') v = normalizePostal(t);
-    if (k === 'email') v = normalizeEmail(t);
-    if (k === 'phone') v = normalizePhone(t);
 
     // Update parent state directly
     onChange({ ...value, [k]: v });
@@ -155,9 +147,7 @@ export default function PropertyAddressFormSimplified({
       const v = (value[k] ?? '') as string;
       if (!v || String(v).trim().length === 0) e[k] = 'Required';
     });
-    if (value.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.email)) e.email = 'Invalid email';
     if (value.postalCode && value.postalCode.length < 3) e.postalCode = e.postalCode || 'Invalid postal code';
-    if (value.phone && value.phone.replace(/\D/g,'').length > 0 && value.phone.replace(/\D/g,'').length < 7) e.phone = 'Invalid phone';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -179,46 +169,22 @@ export default function PropertyAddressFormSimplified({
           id={`${section}-property-name`}
           value={value.propertyName || ''}
           onChangeText={set('propertyName')}
-          placeholder=""
+          placeholder="e.g., 123 Main St Apartment"
           autoComplete="off"
           textContentType={Platform.OS === 'ios' ? 'none' : undefined}
           importantForAutofill="no"
           autoCorrect={false}
+          autoCapitalize="words"
           nameAttr="ignore-property-name"
-          required={false}
-          error={undefined}
-        />
-        <Field
-          label="Full Name"
-          id={`${section}-name`}
-          value={value.fullName || ''}
-          onChangeText={set('fullName')}
-          placeholder=""
-          autoComplete={`${section} name`}
-          textContentType={Platform.OS === 'ios' ? 'name' : undefined}
-          autoCapitalize="words"
-          importantForAutofill="yes"
           required
-          error={errors.fullName}
+          error={errors.propertyName}
         />
         <Field
-          label="Organization"
-          id={`${section}-organization`}
-          value={value.organization || ''}
-          onChangeText={set('organization')}
-          placeholder=""
-          autoComplete={`${section} organization`}
-          textContentType={Platform.OS === 'ios' ? 'organizationName' : undefined}
-          autoCapitalize="words"
-          importantForAutofill="yes"
-          error={errors.organization}
-        />
-        <Field
-          label="Address Line 1"
+          label="Street Address"
           id={`${section}-address-line1`}
           value={value.addressLine1 || ''}
           onChangeText={set('addressLine1')}
-          placeholder=""
+          placeholder="123 Main St"
           autoComplete={`${section} address-line1`}
           textContentType={Platform.OS === 'ios' ? 'fullStreetAddress' : undefined}
           autoCapitalize="words"
@@ -227,11 +193,11 @@ export default function PropertyAddressFormSimplified({
           error={errors.addressLine1}
         />
         <Field
-          label="Address Line 2"
+          label="Unit / Apt / Suite (Optional)"
           id={`${section}-address-line2`}
           value={value.addressLine2 || ''}
           onChangeText={set('addressLine2')}
-          placeholder=""
+          placeholder="Apt 4B"
           autoComplete={`${section} address-line2`}
           textContentType={Platform.OS === 'ios' ? 'streetAddressLine2' : undefined}
           autoCapitalize="words"
@@ -283,39 +249,13 @@ export default function PropertyAddressFormSimplified({
           id={`${section}-country`}
           value={value.country || ''}
           onChangeText={set('country')}
-          placeholder=""
+          placeholder="United States"
           autoComplete={`${section} country`}
           textContentType={Platform.OS === 'ios' ? 'countryName' : undefined}
           autoCapitalize="words"
           importantForAutofill="yes"
           required
           error={errors.country}
-        />
-        <Field
-          label="Email"
-          id={`${section}-email`}
-          value={value.email || ''}
-          onChangeText={set('email')}
-          placeholder=""
-          autoComplete={`${section} email`}
-          textContentType={Platform.OS === 'ios' ? 'emailAddress' : undefined}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          importantForAutofill="yes"
-          error={errors.email}
-        />
-        <Field
-          label="Phone"
-          id={`${section}-tel`}
-          value={value.phone || ''}
-          onChangeText={set('phone')}
-          placeholder=""
-          autoComplete={`${section} tel`}
-          textContentType={Platform.OS === 'ios' ? 'telephoneNumber' : undefined}
-          keyboardType="phone-pad"
-          autoCapitalize="none"
-          importantForAutofill="yes"
-          error={errors.phone}
         />
         <View style={{ marginTop: DesignSystem.spacing.lg }}>
           <Button title={submitLabel} onPress={submit} type="primary" fullWidth disabled={disabled} loading={loading} />

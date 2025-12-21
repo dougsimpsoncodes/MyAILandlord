@@ -25,16 +25,12 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 // Address type for the form
 type Address = {
   propertyName: string;
-  fullName: string;
-  organization?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
   state: string;
   postalCode: string;
   country: string;
-  email?: string;
-  phone?: string;
 };
 
 type PropertyBasicsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyBasics'>;
@@ -84,16 +80,12 @@ const PropertyBasicsScreen = () => {
   // Form state
   const [addressData, setAddressData] = useState<Address>({
     propertyName: '',
-    fullName: '',
-    organization: '',
     addressLine1: '',
     addressLine2: '',
     city: '',
     state: '',
     postalCode: '',
-    country: 'US',
-    email: '',
-    phone: ''
+    country: 'US'
   });
   const [selectedType, setSelectedType] = useState<PropertyType | null>(null);
   const [bedrooms, setBedrooms] = useState<number>(1);
@@ -121,16 +113,12 @@ const PropertyBasicsScreen = () => {
       const data = draftState.propertyData;
       setAddressData({
         propertyName: data.name || '',
-        fullName: '',
-        organization: '',
         addressLine1: data.address?.line1 || '',
         addressLine2: data.address?.line2 || '',
         city: data.address?.city || '',
         state: data.address?.state || '',
         postalCode: data.address?.zipCode || '',
-        country: 'US',
-        email: '',
-        phone: ''
+        country: 'US'
       });
       setSelectedType(data.type || null);
       setBedrooms(data.bedrooms || 1);
