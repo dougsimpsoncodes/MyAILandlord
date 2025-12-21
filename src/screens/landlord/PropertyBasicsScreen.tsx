@@ -115,9 +115,9 @@ const PropertyBasicsScreen = () => {
     enableAutoSave: false, // Disable auto-save for better typing performance
   });
 
-  // Load existing draft data
+  // Load existing draft data ONCE on mount only
   useEffect(() => {
-    if (draftState?.propertyData) {
+    if (draftState?.propertyData && !addressData.propertyName) {
       const data = draftState.propertyData;
       setAddressData({
         propertyName: data.name || '',
@@ -136,7 +136,8 @@ const PropertyBasicsScreen = () => {
       setBedrooms(data.bedrooms || 1);
       setBathrooms(data.bathrooms || 1);
     }
-  }, [draftState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftState?.propertyData]); // Only react to propertyData changes, and only if form is empty
 
   // Removed auto-save for better performance - data is saved when user clicks Continue
 

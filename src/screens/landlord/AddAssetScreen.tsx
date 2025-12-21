@@ -77,12 +77,6 @@ const AddAssetScreen = () => {
         const storedParams = await AsyncStorage.getItem(storageKey);
         if (storedParams) {
           const params = JSON.parse(storedParams);
-            areaId: params.areaId,
-            areaName: params.areaName,
-            propertyId: params.propertyId,
-            draftId: params.draftId,
-            hasPropertyData: !!params.propertyData
-          });
 
           setAreaId(params.areaId || routeAreaId);
           setAreaName(params.areaName || routeAreaName || '');

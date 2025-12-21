@@ -30,8 +30,8 @@ export default function OnboardingWelcomeScreen() {
       <View style={styles.content}>
         <View style={styles.heroSection}>
           <Text style={styles.logoIcon}>🏠</Text>
-          <Text style={styles.appName}>MyAI Landlord</Text>
-          <Text style={styles.tagline}>Property management,{'\n'}simplified.</Text>
+          <Text style={styles.appName}>My AI Landlord</Text>
+          <Text style={styles.tagline}>Property management, simplified</Text>
         </View>
 
         <View style={styles.buttonSection}>

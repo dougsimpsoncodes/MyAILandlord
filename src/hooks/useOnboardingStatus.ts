@@ -24,13 +24,16 @@ interface OnboardingStatus {
  */
 export function useOnboardingStatus(): OnboardingStatus {
   const { user, isSignedIn, isLoading: authLoading } = useAppAuth();
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(true); // Start as true to prevent flash
   const [isLoading, setIsLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<'landlord' | 'tenant' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const checkOnboardingStatus = useCallback(async () => {
+    // Set loading true at the start to prevent premature navigation
+    setIsLoading(true);
+
     // Not signed in - no onboarding check needed
     if (!isSignedIn || !user) {
       setNeedsOnboarding(false);
