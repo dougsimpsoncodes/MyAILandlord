@@ -169,7 +169,7 @@ export default function PropertyAddressFormSimplified({
           id={`${section}-property-name`}
           value={value.propertyName || ''}
           onChangeText={set('propertyName')}
-          placeholder="e.g., 123 Main St Apartment"
+          placeholder=""
           autoComplete="off"
           textContentType={Platform.OS === 'ios' ? 'none' : undefined}
           importantForAutofill="no"
@@ -184,7 +184,7 @@ export default function PropertyAddressFormSimplified({
           id={`${section}-address-line1`}
           value={value.addressLine1 || ''}
           onChangeText={set('addressLine1')}
-          placeholder="123 Main St"
+          placeholder=""
           autoComplete={`${section} address-line1`}
           textContentType={Platform.OS === 'ios' ? 'fullStreetAddress' : undefined}
           autoCapitalize="words"
@@ -197,7 +197,7 @@ export default function PropertyAddressFormSimplified({
           id={`${section}-address-line2`}
           value={value.addressLine2 || ''}
           onChangeText={set('addressLine2')}
-          placeholder="Apt 4B"
+          placeholder=""
           autoComplete={`${section} address-line2`}
           textContentType={Platform.OS === 'ios' ? 'streetAddressLine2' : undefined}
           autoCapitalize="words"
