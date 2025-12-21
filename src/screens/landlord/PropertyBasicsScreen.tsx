@@ -207,6 +207,15 @@ const PropertyBasicsScreen = () => {
     if (current > min) setter(current - 1);
   };
 
+  // Bathroom-specific increment/decrement by 0.5
+  const incrementBathrooms = () => {
+    if (bathrooms < 10) setBathrooms(bathrooms + 0.5);
+  };
+
+  const decrementBathrooms = () => {
+    if (bathrooms > 0.5) setBathrooms(bathrooms - 0.5);
+  };
+
 
   const canContinue = () => {
     return addressData.propertyName.trim() && 
@@ -500,21 +509,21 @@ const PropertyBasicsScreen = () => {
                       styles.numberButton,
                       bathrooms > 0.5 ? styles.numberButtonEnabled : styles.numberButtonDisabled
                     ]}
-                    onPress={() => decrementValue(setBathrooms, bathrooms, 0.5)}
+                    onPress={decrementBathrooms}
                     disabled={bathrooms <= 0.5}
                     activeOpacity={0.7}
                   >
                     <Ionicons name="remove" size={20} color={bathrooms > 0.5 ? '#343A40' : '#DEE2E6'} />
                   </TouchableOpacity>
-                  
+
                   <Text style={styles.numberDisplay}>{bathrooms}</Text>
-                  
+
                   <TouchableOpacity
                     style={[
                       styles.numberButton,
                       bathrooms < 10 ? styles.numberButtonEnabled : styles.numberButtonDisabled
                     ]}
-                    onPress={() => incrementValue(setBathrooms, bathrooms, 10)}
+                    onPress={incrementBathrooms}
                     disabled={bathrooms >= 10}
                     activeOpacity={0.7}
                   >
