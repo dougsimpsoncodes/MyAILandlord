@@ -891,3 +891,152 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-20T22:56:18Z] Commit 832efd463226e081be41a19d296d74785ab29385 successful
+Message: chore: remove all debug logging and mock data from production code
+
+Comprehensive cleanup of testing and debug code across the entire codebase:
+
+## Debug Logging Removed
+- propertyAreasService.ts: Removed auth state, fetch, save, and insert debug logging
+- PropertyAssetsListScreen.tsx: Removed 47+ console.log statements for render state, photo handling, draft loading
+- usePhotoCapture.ts: Removed photo addition and validation logging
+- client.ts: Removed maintenance request update logging
+- PropertyAreasScreen.tsx: Removed photo processing and save logging
+- AppNavigator.tsx: Removed deep link URL logging
+- ReviewIssueScreen.tsx: Removed mount and submission logging
+- PropertyReviewScreen.tsx: Removed submit state logging
+- AddAssetScreen.tsx: Removed params recovery and save logging
+- PropertyManagementScreen.tsx: Removed all debug logging
+- AssetScanningScreen.tsx: Removed all debug logging
+- AuthScreen.tsx: Removed all debug logging
+- SignUpScreen.tsx: Removed all debug logging
+- PhotoCapture.tsx: Removed all debug logging
+- UserProfile.tsx: Removed all debug logging
+- Button.tsx: Removed all debug logging
+
+## Mock Data Removed
+- ConfirmSubmissionScreen.tsx: Removed mockIssue object and all references, replaced with TODO for real data fetching
+- MaintenanceStatusScreen.tsx: Removed getMockRequests function and fallback, now returns empty array on error
+
+## Impact
+- Cleaner console output in production
+- Smaller bundle size
+- Better performance (removed unnecessary logging overhead)
+- Clear TODOs where real implementations are needed
+
+Note: Test files, scripts, and logging utility libraries (src/lib/log.ts, etc.) were intentionally preserved as they serve legitimate purposes.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-21T04:59:10Z] Commit 4c38398028042dbecff3b61a11001972982bdebc successful
+Message: fix: resolve input focus loss in property forms
+
+CRITICAL FIX: Input fields were losing focus after each keystroke, requiring
+users to click back into the field to continue typing. This affected both web
+and mobile platforms.
+
+Root Cause:
+- FormWrapper component was defined inside PropertyAddressFormSimplified's
+  render function, causing React to treat it as a new component type on every
+  render
+- This triggered complete remounting of all child inputs, destroying focus
+
+Changes Made:
+1. PropertyAddressFormSimplified.tsx:
+   - Move FormWrapper definitions outside component (WebFormWrapper, NativeFormWrapper)
+   - Use stable component references to prevent remounting
+   - Remove local state complexity - use parent state directly
+   - Fix useEffect dependency to prevent unnecessary form resets
+
+2. PropertyBasicsScreen.tsx:
+   - Update useEffect to only load draft data when form is empty
+   - Prevent draft state changes from resetting user input mid-typing
+   - Remove debug logging
+
+3. useOnboardingStatus.ts:
+   - Set isLoading=true at start of checkOnboardingStatus to prevent
+     premature navigation decisions during async checks
+   - Default needsOnboarding=true to prevent UI flash
+
+4. OnboardingWelcomeScreen.tsx:
+   - Minor text updates ("MyAI" → "My AI", simplified tagline)
+
+5. AddAssetScreen.tsx:
+   - Remove dead code from params recovery
+
+Impact:
+- Users can now type continuously without focus interruption
+- Smooth typing experience on both web and mobile
+- No more keyboard dismissal on every keystroke
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-21T05:04:21Z] Commit 0bf65c5e109df1ee4f59dfb339d4b6b97cb27e68 successful
+Message: refactor: simplify property form fields to essentials only
+
+Removed unnecessary billing/contact fields that were incorrectly added:
+- ❌ Full Name
+- ❌ Organization
+- ❌ Email
+- ❌ Phone
+
+Property form now only contains property-specific fields:
+- ✅ Property Name (with helpful placeholder)
+- ✅ Street Address (renamed from "Address Line 1")
+- ✅ Unit / Apt / Suite (clearly marked as optional)
+- ✅ City
+- ✅ State
+- ✅ Postal Code
+- ✅ Country
+
+Changes:
+- Updated Address type to remove non-property fields
+- Removed email/phone normalization functions
+- Updated requiredKeys to include propertyName (was incorrectly fullName)
+- Added helpful placeholders to guide users
+- Improved field labels for clarity
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-21T05:23:56Z] Commit d53147f59af1cda7ec9846cccba8175d4a1dff7d successful
+Message: fix: allow half-bathroom increments (0.5) for bathroom count
+
+Bathrooms now increment/decrement by 0.5 instead of 1.0 to support
+half-bathrooms (powder rooms). This is standard for real estate since
+many homes have 1.5, 2.5, or 3.5 bathrooms.
+
+Changes:
+- Add incrementBathrooms() and decrementBathrooms() functions
+- Increment/decrement by 0.5 instead of 1
+- Minimum value remains 0.5
+- Maximum value remains 10
+
+Example: Can now select 1, 1.5, 2, 2.5, 3, etc.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-21T05:48:11Z] Commit 932974712e48a7f8080065536f1761f2259f3536 successful
+Message: chore: remove placeholder text from first 3 property form fields
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

@@ -1,24 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 import { LandlordStackParamList } from '../../navigation/MainStack';
-import { PropertyData, PropertyType } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import Button from '../../components/shared/Button';
-import Card from '../../components/shared/Card';
-import { DesignSystem } from '../../theme/DesignSystem';
 import PropertyAddressFormSimplified from '../../components/forms/PropertyAddressFormSimplified';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -34,40 +26,6 @@ type Address = {
 };
 
 type PropertyBasicsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyBasics'>;
-
-interface PropertyTypeOption {
-  id: PropertyType;
-  label: string;
-  icon: string;
-  description: string;
-}
-
-const propertyTypes: PropertyTypeOption[] = [
-  {
-    id: 'house',
-    label: 'House',
-    icon: 'home',
-    description: 'Single-family home'
-  },
-  {
-    id: 'apartment',
-    label: 'Apartment',
-    icon: 'business',
-    description: 'Unit in building'
-  },
-  {
-    id: 'condo',
-    label: 'Condo',
-    icon: 'location',
-    description: 'Owned unit'
-  },
-  {
-    id: 'townhouse',
-    label: 'Townhouse',
-    icon: 'home-outline',
-    description: 'Attached home'
-  },
-];
 
 const PropertyBasicsScreen = () => {
   const navigation = useNavigation<PropertyBasicsNavigationProp>();
@@ -87,12 +45,8 @@ const PropertyBasicsScreen = () => {
     postalCode: '',
     country: 'US'
   });
-  const [selectedType, setSelectedType] = useState<PropertyType | null>(null);
-  const [bedrooms, setBedrooms] = useState<number>(1);
-  const [bathrooms, setBathrooms] = useState<number>(1);
 
   // UI state
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidating, setIsValidating] = useState(false);
 
   // Draft management (disable auto-save for better performance, we handle it manually)
@@ -120,110 +74,43 @@ const PropertyBasicsScreen = () => {
         postalCode: data.address?.zipCode || '',
         country: 'US'
       });
-      setSelectedType(data.type || null);
-      setBedrooms(data.bedrooms || 1);
-      setBathrooms(data.bathrooms || 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftState?.propertyData]); // Only react to propertyData changes, and only if form is empty
 
-  // Removed auto-save for better performance - data is saved when user clicks Continue
-
-  // Validation for property type only (address validation is handled by the form component)
-  const validateType = () => {
-    const newErrors = { ...errors };
-    if (!selectedType) {
-      newErrors.type = 'Property type is required';
-    } else {
-      delete newErrors.type;
-    }
-    setErrors(newErrors);
-    return !newErrors.type;
-  };
-
-  const handleContinue = async () => {
+  const handleContinue = () => {
     setIsValidating(true);
 
-    // Validate property type
-    const isTypeValid = validateType();
-    
-    // Basic validation - the form component handles its own validation
-    const hasRequiredFields = addressData.propertyName.trim() && 
-                             addressData.addressLine1.trim() && 
-                             addressData.city.trim() && 
-                             addressData.state.trim() && 
+    // Basic validation - check required address fields
+    const hasRequiredFields = addressData.propertyName.trim() &&
+                             addressData.addressLine1.trim() &&
+                             addressData.city.trim() &&
+                             addressData.state.trim() &&
                              addressData.postalCode.trim();
 
     setIsValidating(false);
 
-    if (isTypeValid && hasRequiredFields) {
-      // Save final data and navigate
-      const propertyData: PropertyData = {
-        name: addressData.propertyName,
-        address: {
-          line1: addressData.addressLine1,
-          line2: addressData.addressLine2,
-          city: addressData.city,
-          state: addressData.state,
-          zipCode: addressData.postalCode,
-          country: addressData.country || 'US'
-        },
-        type: selectedType!,
-        unit: '', // No longer using unit field
-        bedrooms,
-        bathrooms,
-        photos: draftState?.propertyData?.photos || [],
-      };
-      
-      await updatePropertyData(propertyData);
-      await saveDraft();
-
-      // Navigate to next step based on context
-      if (isOnboarding) {
-        // In onboarding, go to PropertyAreas next
-        (navigation as any).navigate('PropertyAreas', {
-          propertyData,
-          draftId: draftState?.id,
-          isOnboarding: true,
-          firstName: (route.params as any)?.firstName, // Pass firstName through
-        });
-      } else {
-        // In regular flow, go to PropertyPhotos
-        navigation.navigate('PropertyPhotos', { propertyData });
-      }
+    if (hasRequiredFields) {
+      // Navigate to Property Attributes screen (type, bedrooms, bathrooms)
+      navigation.navigate('PropertyAttributes', {
+        addressData,
+        isOnboarding,
+        firstName: (route.params as any)?.firstName,
+      });
     } else {
       Alert.alert(
         'Please Complete Required Fields',
-        'Make sure all required information is filled out correctly.'
+        'Make sure all required address information is filled out correctly.'
       );
     }
   };
 
-  const incrementValue = (setter: (value: number) => void, current: number, max: number = 10) => {
-    if (current < max) setter(current + 1);
-  };
-
-  const decrementValue = (setter: (value: number) => void, current: number, min: number = 0) => {
-    if (current > min) setter(current - 1);
-  };
-
-  // Bathroom-specific increment/decrement by 0.5
-  const incrementBathrooms = () => {
-    if (bathrooms < 10) setBathrooms(bathrooms + 0.5);
-  };
-
-  const decrementBathrooms = () => {
-    if (bathrooms > 0.5) setBathrooms(bathrooms - 0.5);
-  };
-
-
   const canContinue = () => {
-    return addressData.propertyName.trim() && 
-           addressData.addressLine1.trim() && 
-           addressData.city.trim() && 
-           addressData.state && 
-           selectedType &&
-           Object.keys(errors).length === 0;
+    return addressData.propertyName.trim() &&
+           addressData.addressLine1.trim() &&
+           addressData.city.trim() &&
+           addressData.state.trim() &&
+           addressData.postalCode.trim();
   };
 
   const styles = StyleSheet.create({
@@ -413,8 +300,8 @@ const PropertyBasicsScreen = () => {
 
   return (
     <ScreenContainer
-      title="Add New Property"
-      subtitle="Let's start with the basics. This should take about 2 minutes."
+      title="Property Address"
+      subtitle="Where is this property located?"
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"
@@ -431,106 +318,6 @@ const PropertyBasicsScreen = () => {
                 onSubmit={() => {}} // No submit needed here
                 sectionId="property"
               />
-
-              {/* Property Type */}
-              <Card style={styles.section}>
-                <Text style={styles.requiredLabel}>Property Type *</Text>
-                <View style={styles.typeGrid}>
-                  {propertyTypes.map((type) => (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[
-                        styles.typeOption,
-                        selectedType === type.id && styles.typeOptionSelected
-                      ]}
-                      onPress={() => {
-                        setSelectedType(type.id);
-                        // Clear type error when selecting
-                        const newErrors = { ...errors };
-                        delete newErrors.type;
-                        setErrors(newErrors);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons 
-                        name={type.icon as any} 
-                        size={32} 
-                        color={selectedType === type.id ? '#28A745' : '#6C757D'} 
-                        style={styles.typeIcon}
-                      />
-                      <Text style={styles.typeLabel}>{type.label}</Text>
-                      <Text style={styles.typeDescription}>{type.description}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {errors.type && (
-                  <Text style={styles.errorText}>{errors.type}</Text>
-                )}
-              </Card>
-
-              {/* Bedrooms */}
-              <Card style={styles.inputGroup}>
-                <Text style={styles.label}>Bedrooms</Text>
-                <View style={styles.numberInputContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.numberButton,
-                      bedrooms > 0 ? styles.numberButtonEnabled : styles.numberButtonDisabled
-                    ]}
-                    onPress={() => decrementValue(setBedrooms, bedrooms, 0)}
-                    disabled={bedrooms <= 0}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="remove" size={20} color={bedrooms > 0 ? '#343A40' : '#DEE2E6'} />
-                  </TouchableOpacity>
-                  
-                  <Text style={styles.numberDisplay}>{bedrooms}</Text>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.numberButton,
-                      bedrooms < 10 ? styles.numberButtonEnabled : styles.numberButtonDisabled
-                    ]}
-                    onPress={() => incrementValue(setBedrooms, bedrooms, 10)}
-                    disabled={bedrooms >= 10}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="add" size={20} color={bedrooms < 10 ? '#343A40' : '#DEE2E6'} />
-                  </TouchableOpacity>
-                </View>
-              </Card>
-
-              {/* Bathrooms */}
-              <Card style={styles.inputGroup}>
-                <Text style={styles.label}>Bathrooms</Text>
-                <View style={styles.numberInputContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.numberButton,
-                      bathrooms > 0.5 ? styles.numberButtonEnabled : styles.numberButtonDisabled
-                    ]}
-                    onPress={decrementBathrooms}
-                    disabled={bathrooms <= 0.5}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="remove" size={20} color={bathrooms > 0.5 ? '#343A40' : '#DEE2E6'} />
-                  </TouchableOpacity>
-
-                  <Text style={styles.numberDisplay}>{bathrooms}</Text>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.numberButton,
-                      bathrooms < 10 ? styles.numberButtonEnabled : styles.numberButtonDisabled
-                    ]}
-                    onPress={incrementBathrooms}
-                    disabled={bathrooms >= 10}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="add" size={20} color={bathrooms < 10 ? '#343A40' : '#DEE2E6'} />
-                  </TouchableOpacity>
-                </View>
-              </Card>
             </View>
       </ResponsiveContainer>
     </ScreenContainer>

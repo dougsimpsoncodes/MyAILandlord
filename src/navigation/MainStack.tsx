@@ -36,6 +36,7 @@ import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScre
 import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
 import AddAssetScreen from '../screens/landlord/AddAssetScreen';
 import PropertyBasicsScreen from '../screens/landlord/PropertyBasicsScreen';
+import PropertyAttributesScreen from '../screens/landlord/PropertyAttributesScreen';
 import PropertyPhotosScreen from '../screens/landlord/PropertyPhotosScreen';
 import RoomSelectionScreen from '../screens/landlord/RoomSelectionScreen';
 import RoomPhotographyScreen from '../screens/landlord/RoomPhotographyScreen';
@@ -144,6 +145,7 @@ export type LandlordStackParamList = {
   PropertyDetails: { property: { id: string; name: string; address: string; type: string; tenants: number; activeRequests: number; } };
   AddProperty: { draftId?: string } | undefined;
   PropertyBasics: { draftId?: string } | undefined;
+  PropertyAttributes: { addressData: any; isOnboarding?: boolean; firstName?: string };
   PropertyPhotos: { propertyData: PropertyData };
   RoomSelection: { propertyData: PropertyData };
   RoomPhotography: { propertyData: PropertyData };
@@ -224,6 +226,7 @@ const LandlordPropertiesStackNavigator = () => (
     <LandlordPropertiesStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
     <LandlordPropertiesStack.Screen name="AddProperty" component={AddPropertyScreen} />
     <LandlordPropertiesStack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
+    <LandlordPropertiesStack.Screen name="PropertyAttributes" component={PropertyAttributesScreen} />
     <LandlordPropertiesStack.Screen name="PropertyPhotos" component={PropertyPhotosScreen} />
     <LandlordPropertiesStack.Screen name="RoomSelection" component={RoomSelectionScreen} />
     <LandlordPropertiesStack.Screen name="RoomPhotography" component={RoomPhotographyScreen} />
