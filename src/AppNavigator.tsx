@@ -18,6 +18,7 @@ const AppNavigator = () => {
   const [initialUrl, setInitialUrl] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [pendingInvitePropertyId, setPendingInvitePropertyId] = useState<string | null>(null);
+  const [onboardingFlowActive, setOnboardingFlowActive] = useState(false);
 
   // Check if authenticated user needs to complete onboarding
   const {
@@ -47,10 +48,17 @@ const AppNavigator = () => {
   useEffect(() => {
     const checkPendingInvite = async () => {
       if (isSignedIn && user && userRole) {
-        const pendingPropertyId = await PendingInviteService.getPendingInvite();
-        if (pendingPropertyId) {
-          log.info('📥 Found pending invite after auth, redirecting to property:', pendingPropertyId);
-          setPendingInvitePropertyId(pendingPropertyId);
+        const pendingInvite = await PendingInviteService.getPendingInvite();
+        if (pendingInvite) {
+          if (pendingInvite.type === 'token') {
+            log.info('📥 Found pending token invite after auth:', pendingInvite.value);
+            // For tokens, we redirect to PropertyInviteAccept with token parameter
+            // The MainStack/AuthStack linking config will handle routing
+            setPendingInvitePropertyId(`token:${pendingInvite.value}`);
+          } else {
+            log.info('📥 Found pending legacy invite after auth:', pendingInvite.value);
+            setPendingInvitePropertyId(pendingInvite.value);
+          }
           // Clear it so we don't redirect again
           await PendingInviteService.clearPendingInvite();
         }
@@ -59,13 +67,20 @@ const AppNavigator = () => {
     checkPendingInvite();
   }, [isSignedIn, user, userRole]);
 
-  // Get initial URL for deep link handling
+  // Get initial URL for deep link handling (ONE-TIME ONLY)
   useEffect(() => {
     const getInitialURL = async () => {
       try {
         const url = await Linking.getInitialURL();
-        log.info('🔗 Initial URL detected:', url);
+        log.info('🔗 Initial URL detected (one-time):', url);
         setInitialUrl(url);
+        // Clear it after capture to prevent replay
+        setTimeout(() => {
+          if (url) {
+            log.info('🔗 Clearing initial URL to prevent replay');
+            setInitialUrl(null);
+          }
+        }, 1000);
       } catch (error) {
         log.warn('🔗 Could not get initial URL:', error);
       } finally {
@@ -76,6 +91,19 @@ const AppNavigator = () => {
     getInitialURL();
   }, []);
 
+  // Activate onboarding flow freeze when user enters onboarding
+  useEffect(() => {
+    if (isSignedIn && needsOnboarding && userRole === 'landlord' && !onboardingFlowActive) {
+      log.info('🚀 Activating onboarding flow freeze');
+      setOnboardingFlowActive(true);
+    }
+    // Clear freeze when onboarding is complete
+    if (!needsOnboarding && onboardingFlowActive) {
+      log.info('✅ Onboarding complete - clearing freeze');
+      setOnboardingFlowActive(false);
+    }
+  }, [isSignedIn, needsOnboarding, userRole, onboardingFlowActive]);
+
   // Show loading while checking auth, role, onboarding status, and initial URL
   if (isLoading || roleLoading || onboardingLoading || !isReady) {
     return <LoadingScreen message="Checking authentication..." />;
@@ -84,10 +112,13 @@ const AppNavigator = () => {
   // Determine if we should force AuthStack for deep link invite
   const isInviteLink = initialUrl && initialUrl.includes('/invite');
 
-  // Show MainStack only if user is fully authenticated AND has completed onboarding
-  // If user is authenticated but needs onboarding, show AuthStack with continuation props
+  // Show MainStack for all authenticated users with a role
+  // MainStack will handle onboarding routing internally via LandlordNavigator
   const isFullyAuthenticated = isSignedIn && user && userRole;
-  const shouldShowMainStack = authDisabled ? true : (isFullyAuthenticated && !needsOnboarding);
+  const shouldShowMainStack = authDisabled ? true : isFullyAuthenticated;
+
+  // Use frozen onboarding state during active flow to prevent re-checks
+  const effectiveNeedsOnboarding = onboardingFlowActive ? true : needsOnboarding;
 
   log.info('🧭 Navigation decision:', {
     shouldShowMainStack,
@@ -95,6 +126,8 @@ const AppNavigator = () => {
     isSignedIn,
     hasRole: !!userRole,
     needsOnboarding,
+    effectiveNeedsOnboarding,
+    onboardingFlowActive,
     initialUrl,
   });
 
@@ -122,7 +155,8 @@ const AppNavigator = () => {
         PropertyInviteAccept: {
           path: 'invite',
           parse: {
-            property: (property: string) => property,
+            property: (property: string) => property,  // Legacy propertyId flow (deprecated)
+            token: (token: string) => token,           // NEW tokenized flow (production)
           }
         },
         // Auth screens
@@ -230,11 +264,16 @@ const AppNavigator = () => {
   return (
     <NavigationContainer linking={linking}>
       {shouldShowMainStack ? (
-        <MainStack userRole={userRole as 'tenant' | 'landlord'} pendingInvitePropertyId={pendingInvitePropertyId} />
+        <MainStack
+          userRole={userRole as 'tenant' | 'landlord'}
+          pendingInvitePropertyId={pendingInvitePropertyId}
+          needsOnboarding={effectiveNeedsOnboarding}
+          userFirstName={userFirstName}
+        />
       ) : (
         <AuthStack
           initialInvite={!!isInviteLink}
-          continuation={isFullyAuthenticated && needsOnboarding ? {
+          continuation={isFullyAuthenticated && effectiveNeedsOnboarding ? {
             firstName: userFirstName || 'there',
             role: onboardingRole,
           } : undefined}

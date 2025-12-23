@@ -47,37 +47,50 @@ const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Check for pending property invite on initial load and auto-link
+  // Check for pending property invite on initial load and route appropriately
   useEffect(() => {
     const checkAndProcessPendingInvite = async () => {
       if (pendingInviteChecked.current || !apiClient) return;
       pendingInviteChecked.current = true;
 
-      const pendingPropertyId = await PendingInviteService.getPendingInvite();
-      if (pendingPropertyId) {
-        log.info('📥 Processing pending invite for property:', pendingPropertyId);
+      const pendingInvite = await PendingInviteService.getPendingInvite();
+      if (pendingInvite) {
+        log.info('📥 Processing pending invite:', { type: pendingInvite.type, value: pendingInvite.value });
 
-        try {
-          // Directly link the tenant to the property
-          await apiClient.linkTenantToPropertyById(pendingPropertyId);
-          log.info('✅ Tenant successfully linked to property via pending invite');
+        if (pendingInvite.type === 'token') {
+          // NEW: Tokenized invite - redirect to PropertyInviteAcceptScreen
+          // The screen will validate the token and complete the acceptance flow
+          log.info('🎟️ Redirecting to PropertyInviteAcceptScreen for token:', pendingInvite.value);
 
-          // Clear the pending invite
-          await PendingInviteService.clearPendingInvite();
+          // Navigate to PropertyInviteAcceptScreen with token
+          // @ts-ignore - PropertyInviteAccept is in tenant stack but types might not be perfect
+          navigation.navigate('PropertyInviteAccept', { token: pendingInvite.value });
+        } else {
+          // LEGACY: Direct property linking (deprecated but supported)
+          log.info('🔗 Processing legacy invite for property:', pendingInvite.value);
 
-          // Reload data to show the linked property
-          loadData();
-        } catch (linkError: unknown) {
-          const message = linkError instanceof Error ? linkError.message : '';
-          // If already linked, just clear and continue
-          if (message.includes('duplicate') || message.includes('23505')) {
-            log.warn('⚠️ Tenant already linked to this property');
+          try {
+            // Directly link the tenant to the property using propertyId
+            await apiClient.linkTenantToPropertyById(pendingInvite.value);
+            log.info('✅ Tenant successfully linked to property via pending invite');
+
+            // Clear the pending invite
             await PendingInviteService.clearPendingInvite();
+
+            // Reload data to show the linked property
             loadData();
-          } else {
-            log.error('Failed to auto-link tenant to property:', linkError as any);
-            // Still clear the invite to prevent infinite loops
-            await PendingInviteService.clearPendingInvite();
+          } catch (linkError: unknown) {
+            const message = linkError instanceof Error ? linkError.message : '';
+            // If already linked, just clear and continue
+            if (message.includes('duplicate') || message.includes('23505')) {
+              log.warn('⚠️ Tenant already linked to this property');
+              await PendingInviteService.clearPendingInvite();
+              loadData();
+            } else {
+              log.error('Failed to auto-link tenant to property:', linkError as any);
+              // Still clear the invite to prevent infinite loops
+              await PendingInviteService.clearPendingInvite();
+            }
           }
         }
       }

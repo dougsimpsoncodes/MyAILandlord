@@ -15,7 +15,15 @@ import { PendingInviteService } from '../../services/storage/PendingInviteServic
 import { formatAddress } from '../../utils/helpers';
 
 interface RouteParams {
-  propertyId: string;
+  propertyId?: string;
+  property?: string;
+  token?: string;
+}
+
+interface InviteData {
+  type: 'token' | 'legacy';
+  value: string;  // token value or propertyId
+  propertyId?: string;  // Only set after token validation
 }
 
 const PropertyInviteAcceptScreen = () => {
@@ -24,68 +32,93 @@ const PropertyInviteAcceptScreen = () => {
   const { user } = useAppAuth();
   const { profile, refreshProfile } = useProfile();
   const { supabase } = useSupabaseWithAuth();
-  
-  // Extract propertyId from route params or query parameters
-  const getPropertyId = async () => {
+
+  // Extract invite data from route params or query parameters
+  const getInviteData = async (): Promise<InviteData | null> => {
     const params = route.params as any;
     log.info('🔗 PropertyInviteAcceptScreen route params:', params);
     log.info('🔗 PropertyInviteAcceptScreen route:', route);
-    
-    // Try route params first (for direct navigation)
+
+    // PRIORITY 1: Check for tokenized invite (NEW production flow)
+    if (params?.token) {
+      log.info('🎟️ Found invite token in route params (tokenized flow)');
+      return { type: 'token', value: params.token };
+    }
+
+    // PRIORITY 2: Check for legacy propertyId (route params)
     if (params?.propertyId) {
-      log.info('🔗 Found propertyId in route params:', params.propertyId);
-      return params.propertyId;
+      log.info('🔗 Found propertyId in route params (legacy flow)');
+      return { type: 'legacy', value: params.propertyId, propertyId: params.propertyId };
     }
-    // Try query parameters (for deep linking)
+
+    // PRIORITY 3: Check for legacy property query parameter (deep linking)
     if (params?.property) {
-      log.info('🔗 Found property in route params:', params.property);
-      return params.property;
+      log.info('🔗 Found property in route params (legacy flow)');
+      return { type: 'legacy', value: params.property, propertyId: params.property };
     }
-    
-    // Fallback: extract from initial URL directly
+
+    // PRIORITY 4: Fallback - extract from initial URL directly
     try {
       const url = await Linking.getInitialURL();
-      log.info('🔗 Checking initial URL for property ID:', url);
-      if (url && url.includes('property=')) {
-        const match = url.match(/property=([^&]+)/);
-        if (match) {
-          log.info('🔗 Extracted property ID from URL:', match[1]);
-          return match[1];
+      log.info('🔗 Checking initial URL:', url);
+
+      if (url) {
+        // Check for token parameter
+        const tokenMatch = url.match(/[?&]token=([^&]+)/);
+        if (tokenMatch) {
+          log.info('🎟️ Extracted token from URL (tokenized flow)');
+          return { type: 'token', value: tokenMatch[1] };
+        }
+
+        // Check for legacy property parameter
+        const propertyMatch = url.match(/[?&]property=([^&]+)/);
+        if (propertyMatch) {
+          log.info('🔗 Extracted property ID from URL (legacy flow)');
+          return { type: 'legacy', value: propertyMatch[1], propertyId: propertyMatch[1] };
         }
       }
     } catch (error) {
       log.error('🔗 Error getting initial URL:', error as any);
     }
-    
-    log.info('🔗 No property ID found anywhere');
+
+    log.info('🔗 No invite data found anywhere');
     return null;
   };
-  
+
   const apiClient = useApiClient();
   const { setUserRole } = useRole();
-  
+
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<any>(null);
   const [error, setError] = useState('');
+  const [inviteData, setInviteData] = useState<InviteData | null>(null);
   const [propertyId, setPropertyId] = useState<string | null>(null);
 
-  // Extract propertyId on component mount
+  // Extract invite data on component mount
   useEffect(() => {
-    const extractPropertyId = async () => {
-      const id = await getPropertyId();
-      setPropertyId(id);
+    const extractInvite = async () => {
+      const data = await getInviteData();
+      setInviteData(data);
     };
-    extractPropertyId();
+    extractInvite();
   }, []);
 
+  // Validate token or fetch property details based on invite type
   useEffect(() => {
-    if (!propertyId) {
-      setError('Invalid invite link. Property ID is missing.');
+    if (!inviteData) {
+      setError('Invalid invite link. Missing invitation data.');
       setLoading(false);
       return;
     }
-    fetchPropertyDetails();
-  }, [propertyId]);
+
+    if (inviteData.type === 'token') {
+      validateTokenAndFetchProperty();
+    } else {
+      // Legacy flow: we already have propertyId
+      setPropertyId(inviteData.propertyId!);
+      fetchPropertyDetails(inviteData.propertyId!);
+    }
+  }, [inviteData]);
 
   // Set tenant role as soon as user is authenticated via invite link
   useEffect(() => {
@@ -104,7 +137,81 @@ const PropertyInviteAcceptScreen = () => {
     setTenantRoleOnAuth();
   }, [user]);
 
-  const fetchPropertyDetails = async () => {
+  // Validate tokenized invite and fetch property details
+  const validateTokenAndFetchProperty = async () => {
+    if (!inviteData || inviteData.type !== 'token') return;
+
+    try {
+      setLoading(true);
+      setError('');
+
+      const token = inviteData.value;
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase configuration missing');
+      }
+
+      log.info('🎟️ Validating invite token via Edge Function...');
+
+      // Call validate-invite-token Edge Function
+      const response = await fetch(`${supabaseUrl}/functions/v1/validate-invite-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`
+        },
+        body: JSON.stringify({ token })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Token validation failed');
+      }
+
+      const result = await response.json();
+      log.info('🎟️ Token validation result:', result);
+
+      if (!result.valid) {
+        throw new Error(result.error || 'Invalid invite token');
+      }
+
+      if (!result.property) {
+        throw new Error('Property not found for this invite');
+      }
+
+      // Token is valid - set property data
+      setProperty(result.property);
+      setPropertyId(result.property.id);
+
+      // Update inviteData with propertyId for acceptance flow
+      setInviteData({
+        ...inviteData,
+        propertyId: result.property.id
+      });
+
+      log.info('✅ Token validated successfully, property loaded');
+    } catch (err) {
+      log.error('Error validating token:', err as any);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+
+      // User-friendly error messages
+      if (errorMessage.includes('expired')) {
+        setError('This invite link has expired. Please ask your landlord for a new one.');
+      } else if (errorMessage.includes('revoked')) {
+        setError('This invite link has been cancelled. Please contact your landlord.');
+      } else if (errorMessage.includes('used')) {
+        setError('This invite link has already been used.');
+      } else {
+        setError('Unable to validate invite. The link may be invalid or expired.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPropertyDetails = async (propId: string) => {
     try {
       setLoading(true);
       setError(''); // Clear any previous errors
@@ -113,7 +220,7 @@ const PropertyInviteAcceptScreen = () => {
       const { data: propertyData, error } = await supabase.functions.invoke(
         'property-invite-preview',
         {
-          body: { propertyId }
+          body: { propertyId: propId }
         }
       );
 
@@ -149,9 +256,9 @@ const PropertyInviteAcceptScreen = () => {
   };
 
   const handleAcceptInvite = async () => {
-    log.info('🎯 Accept button clicked!', { hasProperty: !!property, hasUser: !!user });
+    log.info('🎯 Accept button clicked!', { hasProperty: !!property, hasUser: !!user, inviteType: inviteData?.type });
 
-    if (!property) {
+    if (!property || !inviteData) {
       // Use window.alert on web, Alert.alert on native
       const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
       if (isWeb) {
@@ -165,14 +272,19 @@ const PropertyInviteAcceptScreen = () => {
     // If user is not authenticated, save pending invite and redirect to signup
     if (!user) {
       log.info('🔄 Redirecting to signup - user not authenticated');
-      // Use propertyId from state, or fall back to property.id from the loaded property data
-      const idToSave = propertyId || property?.id;
-      if (idToSave) {
-        await PendingInviteService.savePendingInvite(idToSave);
-        log.info('📥 Saved pending invite before redirect to signup:', idToSave);
+
+      // Save pending invite data (token or propertyId)
+      if (inviteData.type === 'token') {
+        // For tokens, save the token itself for post-auth acceptance
+        await PendingInviteService.savePendingInvite(inviteData.value, 'token');
+        log.info('📥 Saved pending token before redirect to signup');
+      } else if (inviteData.propertyId) {
+        await PendingInviteService.savePendingInvite(inviteData.propertyId, 'legacy');
+        log.info('📥 Saved pending propertyId before redirect to signup');
       } else {
-        log.warn('⚠️ No property ID available to save for pending invite');
+        log.warn('⚠️ No invite data available to save for pending invite');
       }
+
       navigation.dispatch(CommonActions.navigate({ name: 'SignUp' }));
       return;
     }
@@ -193,34 +305,23 @@ const PropertyInviteAcceptScreen = () => {
       await ensureProfileExists();
       log.info('✅ Profile exists confirmed');
 
-      // Get the user's profile ID
-      // Link tenant to property via unified API
-      try {
-        await apiClient.linkTenantToPropertyById(propertyId!, property?.unit || undefined);
-        log.info('✅ Tenant property link created successfully');
-      } catch (linkError: unknown) {
-        // Check if already linked (unique violation)
-        const message = linkError instanceof Error ? linkError.message : '';
-        if (message.includes('duplicate') || message.includes('23505')) {
-          log.warn('⚠️ Already connected - showing alert');
-          Alert.alert(
-            'Already Connected',
-            `You're already connected to ${property?.name || 'this property'}`,
-            [
-              { text: 'Continue', onPress: () => navigation.dispatch(CommonActions.navigate({ name: 'Welcome' })) }
-            ]
-          );
-          return;
-        }
-        throw linkError;
+      // Choose acceptance flow based on invite type
+      if (inviteData.type === 'token') {
+        // NEW: Tokenized invite acceptance via Edge Function
+        log.info('🎟️ Accepting invite via tokenized flow...');
+        await acceptTokenizedInvite();
+      } else {
+        // LEGACY: Direct property link via API client
+        log.info('🔗 Accepting invite via legacy flow...');
+        await acceptLegacyInvite();
       }
 
       // Success! Property connected - navigate to home to trigger AppNavigator
       log.info('🎉 Success! Tenant connected to property');
-      
+
       // Clear any error state
       setError('');
-      
+
       // Reset navigation stack to go to tenant home
       log.info('🚀 Navigating to tenant dashboard');
       navigation.dispatch(
@@ -236,6 +337,92 @@ const PropertyInviteAcceptScreen = () => {
       setError('Failed to connect to property. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Accept tokenized invite via Edge Function
+  const acceptTokenizedInvite = async () => {
+    if (!inviteData || inviteData.type !== 'token' || !user) {
+      throw new Error('Invalid state for tokenized invite acceptance');
+    }
+
+    const token = inviteData.value;
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+
+    if (!supabaseUrl) {
+      throw new Error('Supabase configuration missing');
+    }
+
+    // Get user's access token for authenticated Edge Function call
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      throw new Error('User session not found');
+    }
+
+    log.info('🎟️ Calling accept-invite-token Edge Function...');
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/accept-invite-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ token })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Token acceptance failed');
+    }
+
+    const result = await response.json();
+    log.info('🎟️ Token acceptance result:', result);
+
+    if (!result.success) {
+      // Check if already linked (idempotent success)
+      if (result.already_linked) {
+        log.warn('⚠️ Already connected - showing alert');
+        Alert.alert(
+          'Already Connected',
+          `You're already connected to ${property?.name || 'this property'}`,
+          [
+            { text: 'Continue', onPress: () => navigation.dispatch(CommonActions.navigate({ name: 'TenantTabs' })) }
+          ]
+        );
+        return;
+      }
+
+      throw new Error(result.error || 'Failed to accept invite');
+    }
+
+    log.info('✅ Tokenized invite accepted successfully');
+  };
+
+  // Accept legacy invite via API client (old flow)
+  const acceptLegacyInvite = async () => {
+    if (!inviteData || inviteData.type !== 'legacy' || !inviteData.propertyId) {
+      throw new Error('Invalid state for legacy invite acceptance');
+    }
+
+    try {
+      await apiClient.linkTenantToPropertyById(inviteData.propertyId, property?.unit || undefined);
+      log.info('✅ Legacy tenant property link created successfully');
+    } catch (linkError: unknown) {
+      // Check if already linked (unique violation)
+      const message = linkError instanceof Error ? linkError.message : '';
+      if (message.includes('duplicate') || message.includes('23505')) {
+        log.warn('⚠️ Already connected - showing alert');
+        Alert.alert(
+          'Already Connected',
+          `You're already connected to ${property?.name || 'this property'}`,
+          [
+            { text: 'Continue', onPress: () => navigation.dispatch(CommonActions.navigate({ name: 'TenantTabs' })) }
+          ]
+        );
+        return;
+      }
+      throw linkError;
     }
   };
 
