@@ -47,6 +47,14 @@ import ReviewSubmitScreen from '../screens/landlord/ReviewSubmitScreen';
 import InviteTenantScreen from '../screens/landlord/InviteTenantScreen';
 import LandlordChatScreen from '../screens/landlord/LandlordChatScreen';
 
+// Landlord Onboarding Screens
+import {
+  LandlordOnboardingWelcomeScreen,
+  LandlordPropertyIntroScreen,
+  LandlordTenantInviteScreen,
+  LandlordOnboardingSuccessScreen,
+} from '../screens/onboarding';
+
 // Shared Screens
 import ProfileScreen from '../screens/shared/ProfileScreen';
 import EditProfileScreen from '../screens/shared/EditProfileScreen';
@@ -278,7 +286,8 @@ const LandlordProfileStackNavigator = () => (
   </LandlordProfileStack.Navigator>
 );
 
-const LandlordNavigator = () => {
+// Landlord Tabs (the main app once onboarding is complete)
+const LandlordTabsNavigator = () => {
   const { unreadCount } = useUnreadMessages();
   const { newCount, pendingCount } = usePendingRequests();
 
@@ -367,6 +376,67 @@ const LandlordNavigator = () => {
         }}
       />
     </LandlordTab.Navigator>
+  );
+};
+
+// Root Landlord Navigator (includes both onboarding and main app)
+const LandlordRootStack = createNativeStackNavigator();
+
+interface LandlordNavigatorProps {
+  needsOnboarding?: boolean;
+  userFirstName?: string | null;
+}
+
+const LandlordNavigator: React.FC<LandlordNavigatorProps> = ({ needsOnboarding, userFirstName }) => {
+  // ONE-TIME decision on mount: capture initial route and NEVER recalculate
+  // Use useRef to ensure this value is set once and persists across re-renders
+  const initialRouteRef = React.useRef<'LandlordPropertyIntro' | 'LandlordTabs'>(
+    needsOnboarding ? 'LandlordPropertyIntro' : 'LandlordTabs'
+  );
+
+  return (
+    <LandlordRootStack.Navigator
+      initialRouteName={initialRouteRef.current}
+      screenOptions={{ headerShown: false }}
+    >
+      {/* Main App (Tabs) */}
+      <LandlordRootStack.Screen name="LandlordTabs" component={LandlordTabsNavigator} />
+
+      {/* Onboarding Screens - accessible when needsOnboarding */}
+      <LandlordRootStack.Screen
+        name="LandlordPropertyIntro"
+        component={LandlordPropertyIntroScreen}
+        initialParams={{ firstName: userFirstName || 'there' }}
+      />
+      <LandlordRootStack.Screen
+        name="PropertyBasics"
+        component={PropertyBasicsScreen}
+      />
+      <LandlordRootStack.Screen
+        name="PropertyAttributes"
+        component={PropertyAttributesScreen}
+      />
+      <LandlordRootStack.Screen
+        name="PropertyAreas"
+        component={PropertyAreasScreen}
+      />
+      <LandlordRootStack.Screen
+        name="PropertyAssets"
+        component={PropertyAssetsListScreen}
+      />
+      <LandlordRootStack.Screen
+        name="AddAsset"
+        component={AddAssetScreen}
+      />
+      <LandlordRootStack.Screen
+        name="LandlordTenantInvite"
+        component={LandlordTenantInviteScreen}
+      />
+      <LandlordRootStack.Screen
+        name="LandlordOnboardingSuccess"
+        component={LandlordOnboardingSuccessScreen}
+      />
+    </LandlordRootStack.Navigator>
   );
 };
 
@@ -506,16 +576,23 @@ const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInviteProperty
 interface MainStackProps {
   userRole: 'tenant' | 'landlord';
   pendingInvitePropertyId?: string | null;
+  needsOnboarding?: boolean;
+  userFirstName?: string | null;
 }
 
-const MainStack: React.FC<MainStackProps> = ({ userRole, pendingInvitePropertyId }) => {
+const MainStack: React.FC<MainStackProps> = ({
+  userRole,
+  pendingInvitePropertyId,
+  needsOnboarding,
+  userFirstName
+}) => {
   // Register for push notifications (must be inside NavigationContainer)
   usePushNotifications();
 
   return userRole === 'tenant' ? (
     <TenantNavigator pendingInvitePropertyId={pendingInvitePropertyId} />
   ) : (
-    <LandlordNavigator />
+    <LandlordNavigator needsOnboarding={needsOnboarding} userFirstName={userFirstName} />
   );
 };
 

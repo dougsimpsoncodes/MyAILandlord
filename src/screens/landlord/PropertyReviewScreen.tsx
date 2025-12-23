@@ -225,33 +225,34 @@ const PropertyReviewScreen = () => {
     </View>
   );
 
-  const headerRight = (
-    <View style={styles.headerRightContainer}>
-      {(isSaving || lastSaved) && (
-        <View style={styles.saveStatus}>
-          {isSaving ? (
-            <>
-              <Ionicons name="sync" size={12} color="#3498DB" />
-              <Text style={styles.saveStatusText}>Saving...</Text>
-            </>
-          ) : lastSaved ? (
-            <>
-              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-              <Text style={styles.saveStatusText}>Saved</Text>
-            </>
-          ) : null}
-        </View>
-      )}
-      <TouchableOpacity
-        style={[styles.headerSubmitButton, (isSubmitting || isDraftLoading) && styles.headerSubmitButtonDisabled]}
-        onPress={handleSubmit}
-        disabled={isSubmitting || isDraftLoading}
-      >
-        <Text style={[styles.headerSubmitButtonText, (isSubmitting || isDraftLoading) && styles.headerSubmitButtonTextDisabled]}>
-          {isSubmitting ? 'Submitting...' : 'Submit'}
-        </Text>
-      </TouchableOpacity>
+  // Save status indicator for header (no button)
+  const headerRight = (isSaving || lastSaved) ? (
+    <View style={styles.saveStatus}>
+      {isSaving ? (
+        <>
+          <Ionicons name="sync" size={12} color="#3498DB" />
+          <Text style={styles.saveStatusText}>Saving...</Text>
+        </>
+      ) : lastSaved ? (
+        <>
+          <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+          <Text style={styles.saveStatusText}>Saved</Text>
+        </>
+      ) : null}
     </View>
+  ) : null;
+
+  // Bottom navigation button
+  const bottomContent = (
+    <Button
+      title={isSubmitting ? "Submitting..." : "Submit Property"}
+      onPress={handleSubmit}
+      type="primary"
+      size="lg"
+      fullWidth
+      disabled={isSubmitting || isDraftLoading}
+      loading={isSubmitting}
+    />
   );
 
   return (
@@ -263,6 +264,7 @@ const PropertyReviewScreen = () => {
       headerRight={headerRight}
       userRole="landlord"
       scrollable
+      bottomContent={bottomContent}
     >
         {/* Property Information Section */}
         <View style={styles.section}>
@@ -402,11 +404,6 @@ const PropertyReviewScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  headerRightContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
   saveStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,27 +416,6 @@ const styles = StyleSheet.create({
   saveStatusText: {
     fontSize: 11,
     color: '#7F8C8D',
-  },
-  headerSubmitButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#3498DB',
-  },
-  headerSubmitButtonDisabled: {
-    backgroundColor: '#BDC3C7',
-  },
-  headerSubmitButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  headerSubmitButtonTextDisabled: {
-    color: '#FFFFFF',
-  },
-  cancelText: {
-    fontSize: 16,
-    color: '#E74C3C',
   },
   section: {
     marginVertical: 16,

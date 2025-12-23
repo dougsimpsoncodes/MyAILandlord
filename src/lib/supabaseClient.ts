@@ -18,7 +18,10 @@ function createSupabaseClient() {
 
 // Singleton Supabase client
 export const supabase = globalThis.__sb || createSupabaseClient()
-if (!globalThis.__sb) globalThis.__sb = supabase
+if (!globalThis.__sb) {
+  globalThis.__sb = supabase
+  console.log('✅ Supabase singleton client created (this should only appear ONCE per tab)')
+}
 
 export const authenticatedClient = {
   getClient: () => supabase,

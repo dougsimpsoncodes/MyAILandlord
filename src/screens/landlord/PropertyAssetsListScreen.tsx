@@ -24,6 +24,7 @@ import { useAppAuth } from '../../context/SupabaseAuthContext';
 import PhotoDropzone from '../../components/media/PhotoDropzone';
 import { storageService } from '../../services/supabase/storage';
 import { useResponsive } from '../../hooks/useResponsive';
+import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import ResponsiveGrid from '../../components/shared/ResponsiveGrid';
@@ -83,6 +84,9 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
         style={[styles.areaHeader, expanded && styles.areaHeaderExpanded]}
         onPress={toggleExpanded}
         activeOpacity={0.7}
+        testID={`area-card-${area.name.toLowerCase().replace(/\s+/g, '-')}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${area.name} area card with ${photoCount} photos and ${assetCount} assets`}
       >
         <View style={styles.areaHeaderLeft}>
           <View style={[styles.areaStatusIndicator, isComplete && styles.areaStatusComplete]} />
@@ -171,6 +175,9 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
                 style={styles.addButton}
                 onPress={onAddAsset}
                 activeOpacity={0.7}
+                testID={`add-asset-${area.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Add asset to ${area.name}`}
               >
                 <Ionicons name="add-circle" size={20} color="#3498DB" />
                 <Text style={styles.addButtonText}>Add Asset</Text>
@@ -218,6 +225,8 @@ const PropertyAssetsListScreen = () => {
   const routeDraftId = route.params?.draftId;
   const routeNewAsset = route.params?.newAsset;
   const routePropertyId = route.params?.propertyId; // For existing properties from database
+  const isOnboarding = (route.params as any)?.isOnboarding || false; // Check if in onboarding mode
+  const firstName = (route.params as any)?.firstName || 'there'; // For onboarding flow
 
   // State for handling page refresh/direct URL access
   // For existing properties (routePropertyId), never initialize from drafts - even if areas are empty
@@ -304,13 +313,32 @@ const PropertyAssetsListScreen = () => {
       }
     };
 
+    const refetchPropertyAreas = async () => {
+      // For existing properties (not drafts), refetch areas from database when returning
+      if (!routePropertyId || effectiveDraftId) return;
+
+      try {
+        const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
+        const freshAreas = await propertyAreasService.getAreasWithAssets(routePropertyId);
+
+        if (freshAreas && freshAreas.length > 0) {
+          console.log('✅ Refetched property areas with assets:', freshAreas.length);
+          setSelectedAreas(freshAreas);
+        }
+      } catch (error) {
+        console.error('Error refetching property areas:', error);
+      }
+    };
+
     // Subscribe to focus events for when navigating back
     const unsubscribe = navigation.addListener('focus', () => {
       checkPendingAsset();
+      refetchPropertyAreas();
     });
 
     // Also check immediately on mount
     checkPendingAsset();
+    refetchPropertyAreas();
 
     return unsubscribe;
   }, [navigation, effectiveDraftId, updateAreas]);
@@ -622,7 +650,8 @@ const PropertyAssetsListScreen = () => {
       template: null,
       propertyData,
       draftId: effectiveDraftId,
-      propertyId: routePropertyId // Pass propertyId for existing properties (saves to DB)
+      propertyId: routePropertyId, // Pass propertyId for existing properties (saves to DB)
+      userId: user?.id // FALLBACK: Pass userId explicitly for context timing issues
     };
 
     // Store params in AsyncStorage so AddAssetScreen can recover them on web
@@ -633,39 +662,51 @@ const PropertyAssetsListScreen = () => {
     navigation.navigate('AddAsset', navParams);
   };
 
-  const handleRemoveAsset = (areaId: string, assetId: string) => {
-    Alert.alert(
-      'Remove Asset',
-      'Are you sure you want to remove this asset?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            const updatedAreas = selectedAreas.map(area => {
-              if (area.id === areaId) {
-                return {
-                  ...area,
-                  assets: (area.assets || []).filter(asset => asset.id !== assetId)
-                };
-              }
-              return area;
-            });
-            setSelectedAreas(updatedAreas);
-            updateAreas(updatedAreas);
-          }
+  const handleRemoveAsset = async (areaId: string, assetId: string) => {
+    // Use window.confirm for web compatibility (Alert.alert callbacks don't work on web)
+    const confirmed = window.confirm('Are you sure you want to remove this asset?');
+    if (!confirmed) return;
+
+    try {
+      // For existing properties, delete from database
+      if (routePropertyId) {
+        console.log('🗑️ Deleting asset from database:', assetId);
+        const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
+        await propertyAreasService.deleteAsset(assetId);
+        console.log('✅ Asset deleted from database');
+
+        // Refetch to update UI
+        const freshAreas = await propertyAreasService.getAreasWithAssets(routePropertyId);
+        if (freshAreas && freshAreas.length > 0) {
+          setSelectedAreas(freshAreas);
+          console.log('✅ Refetched areas after delete');
         }
-      ]
-    );
+      } else {
+        // For drafts, just update local state
+        const updatedAreas = selectedAreas.map(area => {
+          if (area.id === areaId) {
+            return {
+              ...area,
+              assets: (area.assets || []).filter(asset => asset.id !== assetId)
+            };
+          }
+          return area;
+        });
+        setSelectedAreas(updatedAreas);
+        updateAreas(updatedAreas);
+      }
+    } catch (error) {
+      console.error('Error deleting asset:', error);
+      window.alert(`Failed to delete asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleNext = async () => {
     if (isSubmitting || isDraftLoading || !propertyData) return;
 
-    try {
-      setIsSubmitting(true);
+    setIsSubmitting(true);
 
+    try {
       // Save current progress
       if (draftState) {
         await saveDraft();
@@ -675,17 +716,29 @@ const PropertyAssetsListScreen = () => {
       if (user?.id && effectiveDraftId) {
         await PropertyDraftService.setCurrentDraftId(user.id, effectiveDraftId, 3);
       }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      // Continue anyway - navigation can work without draft save
+    }
 
+    // Navigate based on context
+    if (isOnboarding) {
+      // In onboarding mode, skip review and go directly to Tenant Invite
+      (navigation as any).navigate('LandlordTenantInvite', {
+        firstName,
+        propertyId: routePropertyId,
+        propertyName: propertyData.name || 'Your Property',
+      });
+    } else {
+      // Regular flow - go to PropertyReview
       navigation.navigate('PropertyReview', {
         propertyData,
         areas: selectedAreas,
         draftId: effectiveDraftId
       });
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save progress. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
+
+    setIsSubmitting(false);
   };
 
   // Show loading screen while initializing after page refresh
@@ -693,42 +746,36 @@ const PropertyAssetsListScreen = () => {
     return <LoadingScreen message="Loading your property draft..." />;
   }
 
-  const headerRight = (
-    <View style={styles.headerRightContainer}>
-      {/* Auto-save status indicator */}
-      {(isSaving || lastSaved) && (
-        <View style={styles.saveStatus}>
-          {isSaving ? (
-            <>
-              <Ionicons name="sync" size={12} color="#3498DB" />
-              <Text style={styles.saveStatusText}>Saving...</Text>
-            </>
-          ) : lastSaved ? (
-            <>
-              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-              <Text style={styles.saveStatusText}>Saved</Text>
-            </>
-          ) : null}
-        </View>
-      )}
-      {/* Review button */}
-      <TouchableOpacity
-        style={[
-          styles.headerReviewButton,
-          (isSubmitting || isDraftLoading) && styles.headerReviewButtonDisabled
-        ]}
-        onPress={handleNext}
-        disabled={isSubmitting || isDraftLoading}
-        activeOpacity={0.7}
-      >
-        <Ionicons
-          name="arrow-forward"
-          size={24}
-          color={(isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'}
-        />
-      </TouchableOpacity>
+  // Save status indicator for header (no button)
+  const headerRight = (isSaving || lastSaved) ? (
+    <View style={styles.saveStatus}>
+      {isSaving ? (
+        <>
+          <Ionicons name="sync" size={12} color="#3498DB" />
+          <Text style={styles.saveStatusText}>Saving...</Text>
+        </>
+      ) : lastSaved ? (
+        <>
+          <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+          <Text style={styles.saveStatusText}>Saved</Text>
+        </>
+      ) : null}
     </View>
-  );
+  ) : null;
+
+  // Bottom navigation button
+  const bottomContent = selectedAreas.length > 0 ? (
+    <Button
+      title={isOnboarding ? "Continue" : "Continue to Review"}
+      onPress={handleNext}
+      type="primary"
+      size="lg"
+      fullWidth
+      disabled={isSubmitting || isDraftLoading}
+      loading={isSubmitting}
+      testID="property-assets-continue-button"
+    />
+  ) : null;
 
   return (
     <ScreenContainer
@@ -739,6 +786,7 @@ const PropertyAssetsListScreen = () => {
       headerRight={headerRight}
       userRole="landlord"
       scrollable={true}
+      bottomContent={bottomContent}
     >
       <ResponsiveContainer maxWidth={responsive.isLargeScreen() ? 'large' : 'desktop'} style={{ flex: 1 }}>
         {selectedAreas.length === 0 ? (
@@ -815,11 +863,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2C3E50',
   },
-  headerRightContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
   saveStatus: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -828,28 +871,6 @@ const styles = StyleSheet.create({
   saveStatusText: {
     fontSize: 11,
     color: '#7F8C8D',
-  },
-  headerReviewButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerReviewButtonDisabled: {
-    opacity: 0.4,
-  },
-  headerReviewButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3498DB',
-  },
-  headerReviewButtonTextDisabled: {
-    color: '#BDC3C7',
-  },
-  cancelText: {
-    fontSize: 16,
-    color: '#E74C3C',
   },
   stepCounterContainer: {
     backgroundColor: '#FFFFFF',

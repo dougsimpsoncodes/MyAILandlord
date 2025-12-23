@@ -102,6 +102,8 @@ const PropertyAttributesScreen = () => {
   };
 
   const handleContinue = async () => {
+    console.log('🔍 PropertyAttributesScreen - handleContinue starting', { isOnboarding, selectedType, bedrooms, bathrooms });
+
     setIsValidating(true);
     const isTypeValid = validateType();
     setIsValidating(false);
@@ -124,16 +126,34 @@ const PropertyAttributesScreen = () => {
         photos: draftState?.propertyData?.photos || [],
       };
 
-      await updatePropertyData(propertyData);
-      await saveDraft();
+      console.log('🔍 PropertyAttributesScreen - Property data created:', { name: propertyData.name, type: propertyData.type });
+
+      try {
+        await updatePropertyData(propertyData);
+        await saveDraft();
+        console.log('🔍 PropertyAttributesScreen - Draft saved successfully');
+      } catch (error) {
+        console.error('🔍 PropertyAttributesScreen - Error saving property draft:', error);
+        // Continue anyway - navigation can work without draft
+      }
+
+      const navParams = {
+        propertyData,
+        draftId: draftState?.id,
+        isOnboarding: true,
+        firstName,
+      };
+
+      console.log('🔍 PropertyAttributesScreen - About to navigate', {
+        isOnboarding,
+        navigateTo: isOnboarding ? 'PropertyAreas' : 'PropertyPhotos',
+        params: navParams
+      });
 
       if (isOnboarding) {
-        (navigation as any).navigate('PropertyAreas', {
-          propertyData,
-          draftId: draftState?.id,
-          isOnboarding: true,
-          firstName,
-        });
+        console.log('🔍 PropertyAttributesScreen - Calling navigation.navigate to PropertyAreas');
+        (navigation as any).navigate('PropertyAreas', navParams);
+        console.log('🔍 PropertyAttributesScreen - Navigation call completed');
       } else {
         navigation.navigate('PropertyPhotos', { propertyData });
       }
@@ -160,6 +180,7 @@ const PropertyAttributesScreen = () => {
       keyboardAware={false}
       bottomContent={
         <Button
+          testID="continue-button"
           title="Continue"
           onPress={handleContinue}
           type="primary"
@@ -204,6 +225,9 @@ const PropertyAttributesScreen = () => {
           <Text style={styles.label}>Bedrooms</Text>
           <View style={styles.numberInputContainer}>
             <TouchableOpacity
+              testID="bedrooms-decrement"
+              accessibilityRole="button"
+              accessibilityLabel="Decrease bedrooms"
               style={[
                 styles.numberButton,
                 bedrooms > 0 ? styles.numberButtonEnabled : styles.numberButtonDisabled
@@ -214,8 +238,11 @@ const PropertyAttributesScreen = () => {
             >
               <Ionicons name="remove" size={20} color={bedrooms > 0 ? '#343A40' : '#DEE2E6'} />
             </TouchableOpacity>
-            <Text style={styles.numberDisplay}>{bedrooms}</Text>
+            <Text style={styles.numberDisplay} testID="bedrooms-value">{bedrooms}</Text>
             <TouchableOpacity
+              testID="bedrooms-increment"
+              accessibilityRole="button"
+              accessibilityLabel="Increase bedrooms"
               style={[
                 styles.numberButton,
                 bedrooms < 10 ? styles.numberButtonEnabled : styles.numberButtonDisabled
@@ -234,6 +261,9 @@ const PropertyAttributesScreen = () => {
           <Text style={styles.label}>Bathrooms</Text>
           <View style={styles.numberInputContainer}>
             <TouchableOpacity
+              testID="bathrooms-decrement"
+              accessibilityRole="button"
+              accessibilityLabel="Decrease bathrooms"
               style={[
                 styles.numberButton,
                 bathrooms > 0.5 ? styles.numberButtonEnabled : styles.numberButtonDisabled
@@ -245,9 +275,12 @@ const PropertyAttributesScreen = () => {
               <Ionicons name="remove" size={20} color={bathrooms > 0.5 ? '#343A40' : '#DEE2E6'} />
             </TouchableOpacity>
 
-            <Text style={styles.numberDisplay}>{bathrooms}</Text>
+            <Text style={styles.numberDisplay} testID="bathrooms-value">{bathrooms}</Text>
 
             <TouchableOpacity
+              testID="bathrooms-increment"
+              accessibilityRole="button"
+              accessibilityLabel="Increase bathrooms"
               style={[
                 styles.numberButton,
                 bathrooms < 10 ? styles.numberButtonEnabled : styles.numberButtonDisabled

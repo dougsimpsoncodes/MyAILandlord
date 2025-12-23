@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppAuth } from '../context/SupabaseAuthContext';
 import { supabase } from '../services/supabase/client';
 import { log } from '../lib/log';
+
+const ONBOARDING_IN_PROGRESS_KEY = '@onboarding_in_progress';
 
 interface OnboardingStatus {
   needsOnboarding: boolean;
@@ -22,6 +25,24 @@ interface OnboardingStatus {
  * This is used to route existing users who created accounts but never
  * completed the property setup flow.
  */
+/**
+ * Mark that user has started the onboarding flow.
+ * This prevents navigation stack resets during onboarding.
+ */
+export async function markOnboardingStarted() {
+  await AsyncStorage.setItem(ONBOARDING_IN_PROGRESS_KEY, 'true');
+  log.info('✅ Onboarding marked as started');
+}
+
+/**
+ * Clear the onboarding in-progress flag.
+ * Call this when onboarding is complete OR cancelled.
+ */
+export async function clearOnboardingInProgress() {
+  await AsyncStorage.removeItem(ONBOARDING_IN_PROGRESS_KEY);
+  log.info('✅ Onboarding in-progress flag cleared');
+}
+
 export function useOnboardingStatus(): OnboardingStatus {
   const { user, isSignedIn, isLoading: authLoading } = useAppAuth();
   const [needsOnboarding, setNeedsOnboarding] = useState(true); // Start as true to prevent flash
@@ -70,6 +91,16 @@ export function useOnboardingStatus(): OnboardingStatus {
       const firstName = profile.name?.split(' ')[0] || null;
       setUserFirstName(firstName);
       setUserRole(profile.role);
+
+      // Check if onboarding is currently in progress
+      // If so, keep needsOnboarding true but skip property count check
+      const onboardingInProgress = await AsyncStorage.getItem(ONBOARDING_IN_PROGRESS_KEY);
+      if (onboardingInProgress === 'true') {
+        log.info('useOnboardingStatus: Onboarding in progress, keeping needsOnboarding true');
+        setNeedsOnboarding(true);
+        setIsLoading(false);
+        return;
+      }
 
       if (profile.role === 'landlord') {
         // Check if landlord has any properties

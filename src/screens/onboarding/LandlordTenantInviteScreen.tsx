@@ -8,10 +8,15 @@ import {
   Share,
   Alert,
   Clipboard,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
+import { shouldUseTokenizedInvites } from '../../config/featureFlags';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { log } from '../../lib/log';
 
 type LandlordOnboardingStackParamList = {
   LandlordOnboardingWelcome: { firstName: string };
@@ -29,21 +34,127 @@ export default function LandlordTenantInviteScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<InviteRouteProp>();
   const { firstName, propertyId, propertyName } = route.params;
+  const { user } = useAppAuth();
+  const { supabase } = useSupabaseWithAuth();
 
   const [inviteUrl, setInviteUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [useTokenizedFlow, setUseTokenizedFlow] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Log diagnostics for E2E debugging (DEV only)
+    if (__DEV__) {
+      console.log('[INVITES] 🔍 Screen mounted with:', {
+        userId: user?.id,
+        propertyId,
+        propertyName,
+        firstName,
+        userExists: !!user,
+        platform: Platform.OS,
+      });
+    }
+
     generateInviteUrl();
   }, []);
 
-  const generateInviteUrl = () => {
-    // Use custom URL scheme for development, HTTPS for production
-    const isDevelopment = __DEV__;
-    const url = isDevelopment
-      ? `myailandlord://invite?property=${propertyId}`
-      : `https://myailandlord.app/invite?property=${propertyId}`;
-    setInviteUrl(url);
+  const generateInviteUrl = async () => {
+    setIsGenerating(true);
+
+    try {
+      const isWeb = Platform.OS === 'web';
+      let url: string;
+
+      // Check if we should use tokenized invites
+      const useTokens = user?.id ? shouldUseTokenizedInvites(user.id) : false;
+
+      // DIAGNOSTIC LOGGING (DEV only)
+      if (__DEV__) {
+        console.log('[INVITES] 🎟️ Feature flag check:', {
+          userId: user?.id,
+          useTokens,
+          envFlag: process.env.EXPO_PUBLIC_TOKENIZED_INVITES,
+          rolloutPercent: process.env.EXPO_PUBLIC_TOKEN_ROLLOUT_PERCENT,
+          propertyId,
+        });
+      }
+
+      setUseTokenizedFlow(useTokens);
+
+      if (useTokens) {
+        // NEW: Generate tokenized invite via RPC function
+        if (__DEV__) console.log('[INVITES] 🎟️ Generating tokenized invite for property:', propertyId);
+        log.info('🎟️ Generating tokenized invite for property:', propertyId);
+        url = await generateTokenizedInvite(propertyId, isWeb);
+        if (__DEV__) console.log('[INVITES] ✅ Tokenized invite generated:', url);
+      } else {
+        // LEGACY: Direct property link
+        if (__DEV__) console.log('[INVITES] 🔗 Using legacy invite link for property:', propertyId);
+        log.info('🔗 Generating legacy invite link for property:', propertyId);
+        if (isWeb) {
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+          url = `${origin}/invite?property=${propertyId}`;
+        } else {
+          url = `myailandlord://invite?property=${propertyId}`;
+        }
+        if (__DEV__) console.log('[INVITES] 🔗 Legacy URL:', url);
+      }
+
+      setInviteUrl(url);
+      setGenerationError(null); // Clear any previous errors
+      if (__DEV__) console.log('[INVITES] ✅ Invite URL set in state:', url);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate invite link';
+      console.error('[INVITES] ❌ Error generating invite URL:', error);
+      log.error('Error generating invite URL:', error as Error);
+      setGenerationError(errorMessage);
+      Alert.alert('Error', 'Failed to generate invite link. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const generateTokenizedInvite = async (propId: string, isWeb: boolean): Promise<string> => {
+    if (__DEV__) {
+      console.log('[INVITES] 🔄 Calling RPC generate_invite_token with:', {
+        p_property_id: propId,
+        p_max_uses: 1,
+        p_expires_in_days: 7
+      });
+    }
+
+    // Call generate_invite_token RPC function
+    const { data, error } = await supabase.rpc('generate_invite_token', {
+      p_property_id: propId,
+      p_max_uses: 1,       // Single-use token by default
+      p_expires_in_days: 7 // 7-day expiry by default
+    });
+
+    if (__DEV__) console.log('[INVITES] 🎟️ RPC response:', { data, error, propId });
+
+    if (error) {
+      if (__DEV__) console.error('[INVITES] ❌ RPC error details:', JSON.stringify(error, null, 2));
+      log.error('RPC error generating token:', error);
+      throw new Error('Failed to generate invite token');
+    }
+
+    if (!data || !data.token) {
+      if (__DEV__) console.error('[INVITES] ❌ No token in response:', data);
+      throw new Error('No token returned from server');
+    }
+
+    const token = data.token;
+    if (__DEV__) console.log('[INVITES] ✅ Token generated:', { token, token_id: data.token_id });
+    log.info('✅ Generated tokenized invite:', { token_id: data.token_id });
+
+    // Build URL with token parameter
+    if (isWeb) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+      return `${origin}/invite?token=${token}`;
+    } else {
+      return `myailandlord://invite?token=${token}`;
+    }
   };
 
   const handleCopyLink = async () => {
@@ -113,7 +224,33 @@ export default function LandlordTenantInviteScreen() {
         <View style={styles.codeSection}>
           <View style={styles.codeCard}>
             <Text style={styles.codeLabel}>Invite Link</Text>
-            <Text style={styles.linkText} numberOfLines={2}>{inviteUrl}</Text>
+            <Text
+              style={styles.linkText}
+              numberOfLines={2}
+              testID="invite-url"
+              accessibilityLabel="Invite URL"
+            >
+              {inviteUrl || (isGenerating ? 'Generating invite link...' : '')}
+            </Text>
+            {/* Hidden testable state for E2E tests (DEV only) */}
+            {__DEV__ && (
+              <Text
+                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                testID="use-tokenized-flow"
+                accessibilityLabel={`Using tokenized flow: ${useTokenizedFlow}`}
+              >
+                {useTokenizedFlow ? 'true' : 'false'}
+              </Text>
+            )}
+            {generationError && (
+              <Text
+                style={styles.errorText}
+                testID="invite-error"
+                accessibilityLabel="Invite generation error"
+              >
+                Error: {generationError}
+              </Text>
+            )}
           </View>
 
           <View style={styles.codeActions}>
@@ -142,11 +279,23 @@ export default function LandlordTenantInviteScreen() {
 
         {/* Button Section */}
         <View style={styles.buttonSection}>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={handleContinue}
+            testID="invite-continue-button"
+            accessibilityRole="button"
+            accessibilityLabel="Continue to success screen"
+          >
             <Text style={styles.primaryButtonText}>Continue</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleSkip}
+            testID="invite-skip-button"
+            accessibilityRole="button"
+            accessibilityLabel="Skip and invite tenant later"
+          >
             <Text style={styles.skipButtonText}>I'll invite them later</Text>
           </TouchableOpacity>
         </View>
@@ -233,6 +382,12 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     color: colors.primary.default,
     textAlign: 'center',
+  },
+  errorText: {
+    fontSize: typography.sizes.sm,
+    color: colors.status.error,
+    textAlign: 'center',
+    marginTop: spacing.sm,
   },
   codeActions: {
     flexDirection: 'row',

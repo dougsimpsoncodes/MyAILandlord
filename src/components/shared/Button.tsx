@@ -16,6 +16,7 @@ export interface ButtonProps {
   fullWidth?: boolean;
   style?: object;
   textStyle?: object;
+  testID?: string;
 }
 
 export default function Button({
@@ -30,7 +31,8 @@ export default function Button({
   disabled = false,
   fullWidth = false,
   style = {},
-  textStyle = {}
+  textStyle = {},
+  testID
 }: ButtonProps) {
   const [scaleAnim] = useState(new Animated.Value(1));
   
@@ -163,6 +165,7 @@ export default function Button({
         accessibilityLabel={accessibilityLabel || title}
         accessibilityHint={accessibilityHint}
         accessibilityRole="button"
+        testID={testID}
       >
         <ButtonContent />
       </Pressable>
@@ -170,9 +173,9 @@ export default function Button({
   }
 
   return (
-    <Animated.View style={{ 
-      transform: [{ scale: scaleAnim }], 
-      width: fullWidth ? '100%' : undefined 
+    <Animated.View style={{
+      transform: [{ scale: scaleAnim }],
+      width: fullWidth ? '100%' : undefined
     }}>
       <TouchableOpacity
         activeOpacity={type === 'primary' ? 0.8 : 0.7}
@@ -184,6 +187,7 @@ export default function Button({
         accessibilityLabel={accessibilityLabel || title}
         accessibilityHint={accessibilityHint}
         accessibilityRole="button"
+        testID={testID}
       >
         <ButtonContent />
       </TouchableOpacity>

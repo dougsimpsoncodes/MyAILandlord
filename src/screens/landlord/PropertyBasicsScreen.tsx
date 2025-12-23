@@ -10,6 +10,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
+import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
 import Button from '../../components/shared/Button';
 import PropertyAddressFormSimplified from '../../components/forms/PropertyAddressFormSimplified';
 import ScreenContainer from '../../components/shared/ScreenContainer';
@@ -60,6 +61,13 @@ const PropertyBasicsScreen = () => {
   } = usePropertyDraft({
     enableAutoSave: false, // Disable auto-save for better typing performance
   });
+
+  // Mark onboarding as started when entering this screen in onboarding mode
+  useEffect(() => {
+    if (isOnboarding) {
+      markOnboardingStarted();
+    }
+  }, [isOnboarding]);
 
   // Load existing draft data ONCE on mount only
   useEffect(() => {
@@ -288,7 +296,7 @@ const PropertyBasicsScreen = () => {
 
   const bottomActions = (
     <Button
-      title={isValidating ? 'Validating...' : 'Continue to Photos'}
+      title={isValidating ? 'Validating...' : 'Continue'}
       onPress={handleContinue}
       type="primary"
       size="lg"

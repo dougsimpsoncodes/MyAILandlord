@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID.com.myailandlord.app"
+        ],
+        "components": [
+          {
+            "/": "/invite",
+            "?": {
+              "token": "?*",
+              "property": "?*"
+            },
+            "comment": "Matches /invite?token=* or /invite?property=* for tenant invite flow"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAMID.com.myailandlord.app"
+    ]
+  }
+}

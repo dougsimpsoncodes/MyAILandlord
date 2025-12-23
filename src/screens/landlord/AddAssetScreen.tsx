@@ -29,6 +29,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
 
 type AddAssetNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddAssetRouteProp = RouteProp<LandlordStackParamList, 'AddAsset'>;
@@ -40,6 +41,10 @@ const AddAssetScreen = () => {
   const route = useRoute<AddAssetRouteProp>();
   const { supabase } = useSupabaseWithAuth();
 
+  // SAFE: Get auth context but don't destructure immediately
+  const authContext = useAppAuth();
+  const user = authContext?.user;
+
   // Route params (may be incomplete on web due to URL serialization)
   const routeAreaId = route.params?.areaId;
   const routeAreaName = route.params?.areaName;
@@ -47,6 +52,10 @@ const AddAssetScreen = () => {
   const routePropertyData = route.params?.propertyData;
   const routeDraftId = route.params?.draftId;
   const routePropertyId = route.params?.propertyId;
+  const routeUserId = route.params?.userId; // FALLBACK: passed explicitly if context fails
+
+  // Compute effective userId (prefer context, fallback to route param)
+  const effectiveUserId = user?.id || routeUserId;
 
   // Effective params (recovered from storage on web if needed)
   const [areaId, setAreaId] = useState(routeAreaId || '');
@@ -117,6 +126,8 @@ const AddAssetScreen = () => {
   const [customBrand, setCustomBrand] = useState('');
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const dropdownRef = useRef<View>(null);
   const webFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -324,21 +335,44 @@ const AddAssetScreen = () => {
   };
 
   const handleSave = async () => {
-    // Alert at start to confirm button click is registered
+    // Clear previous errors
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    if (__DEV__) {
+      console.log('📦 ===== ASSET SAVE ATTEMPT =====');
+      console.log('📦 User from context:', !!user);
+      console.log('📦 Effective User ID:', effectiveUserId || 'NO_USER');
+      console.log('📦 Property ID:', propertyId || 'NO_PROPERTY_ID');
+      console.log('📦 Area ID:', areaId || 'NO_AREA_ID');
+      console.log('📦 Draft ID:', draftId || 'NO_DRAFT_ID');
+      console.log('📦 Is Params Loaded:', isParamsLoaded);
+    }
+
+    if (!effectiveUserId) {
+      const error = 'User not authenticated. Please sign in again.';
+      console.error('📦 CRITICAL: No user ID available (neither context nor route)');
+      setSaveError(error);
+      return;
+    }
 
     if (!isParamsLoaded) {
-      Alert.alert('Please Wait', 'Loading data, please try again in a moment.');
+      const error = 'Loading data, please try again in a moment.';
+      setSaveError(error);
+      console.error('📦 ERROR:', error);
       return;
     }
 
     if (!areaId) {
+      const error = 'Area information is missing. Please go back and try again.';
       console.error('📦 BLOCKED: No areaId available');
-      Alert.alert('Error', 'Area information is missing. Please go back and try again.');
+      setSaveError(error);
       return;
     }
 
     if (!assetName.trim()) {
-      Alert.alert('Required Field', 'Please enter an asset name.');
+      const error = 'Please enter an asset name.';
+      setSaveError(error);
       return;
     }
 
@@ -366,19 +400,34 @@ const AddAssetScreen = () => {
 
       // For EXISTING properties (propertyId), save directly to database
       if (propertyId) {
+        if (__DEV__) {
+          console.log('📦 Saving asset to database for property:', propertyId);
+          console.log('📦 Asset data:', JSON.stringify(newAsset, null, 2));
+        }
+
         try {
           // Pass the authenticated Supabase client to ensure RLS works correctly
+          if (__DEV__) console.log('📦 Calling propertyAreasService.addAsset...');
           const savedAsset = await propertyAreasService.addAsset(propertyId, newAsset, supabase);
-          Alert.alert('Success', 'Asset added successfully!', [
-            { text: 'OK', onPress: () => navigation.goBack() }
-          ]);
+
+          if (__DEV__) console.log('📦 ✅ Asset saved successfully:', savedAsset);
+          setSaveSuccess(true);
+
+          // Navigate back after a short delay to show success message
+          setTimeout(() => {
+            navigation.goBack();
+          }, 1500);
         } catch (dbError: any) {
-          console.error('📦 DATABASE ERROR:', dbError);
+          console.error('📦 ❌ DATABASE ERROR:', dbError);
           console.error('📦 Error name:', dbError?.name);
           console.error('📦 Error message:', dbError?.message);
           console.error('📦 Error code:', dbError?.code);
+          console.error('📦 Error details:', dbError?.details);
+          console.error('📦 Error hint:', dbError?.hint);
           console.error('📦 Full error:', JSON.stringify(dbError, null, 2));
-          Alert.alert('Database Error', `Failed to save asset to database: ${dbError?.message || 'Unknown error'}`);
+
+          const errorMsg = `Failed to save asset: ${dbError?.message || dbError?.details || 'Unknown error'}`;
+          setSaveError(errorMsg);
         }
         return;
       }
@@ -423,6 +472,27 @@ const AddAssetScreen = () => {
     );
   }
 
+  // GUARD: Wait for user context to load (unless we have fallback userId from route)
+  if (!user && !routeUserId) {
+    return (
+      <ScreenContainer
+        title="Add Item"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable={false}
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={{ marginTop: 16, color: '#7F8C8D' }}>Authenticating...</Text>
+          <Text testID="waiting-for-auth" style={{ marginTop: 8, fontSize: 12, color: '#95A5A6' }}>
+            Waiting for user context
+          </Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   const headerRight = (
     <TouchableOpacity onPress={() => navigation.goBack()}>
       <Text style={styles.cancelText}>Cancel</Text>
@@ -444,6 +514,9 @@ const AddAssetScreen = () => {
           style={[styles.saveButton, (isSaving || !assetName.trim()) && styles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={isSaving || !assetName.trim()}
+          testID="save-asset-button"
+          accessibilityRole="button"
+          accessibilityLabel="Save asset"
         >
           {isSaving ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
@@ -453,6 +526,38 @@ const AddAssetScreen = () => {
         </TouchableOpacity>
       }
     >
+        {/* DIAGNOSTIC: Show IDs for E2E testing */}
+        {__DEV__ && (
+          <View style={{ padding: 8, backgroundColor: '#f0f0f0', marginBottom: 8 }}>
+            <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-user-id">
+              User: {effectiveUserId || 'NO_USER'} {routeUserId ? '(from route)' : '(from context)'}
+            </Text>
+            <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-property-id">
+              Property: {propertyId || 'NO_PROPERTY_ID'}
+            </Text>
+            <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-area-id">
+              Area: {areaId || 'NO_AREA_ID'}
+            </Text>
+            <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-draft-id">
+              Draft: {draftId || 'NO_DRAFT_ID'}
+            </Text>
+          </View>
+        )}
+
+        {/* Error/Success Messages */}
+        {saveError && (
+          <View style={{ padding: 12, backgroundColor: '#fee', marginBottom: 12, borderRadius: 8, borderWidth: 1, borderColor: '#fcc' }} testID="asset-error">
+            <Text style={{ color: '#c00', fontSize: 14, fontWeight: '600' }}>❌ Error</Text>
+            <Text style={{ color: '#c00', fontSize: 12, marginTop: 4 }}>{saveError}</Text>
+          </View>
+        )}
+
+        {saveSuccess && (
+          <View style={{ padding: 12, backgroundColor: '#efe', marginBottom: 12, borderRadius: 8, borderWidth: 1, borderColor: '#cfc' }} testID="asset-success">
+            <Text style={{ color: '#0a0', fontSize: 14, fontWeight: '600' }}>✅ Success</Text>
+            <Text style={{ color: '#0a0', fontSize: 12, marginTop: 4 }}>Asset saved successfully! Returning to list...</Text>
+          </View>
+        )}
 
         {/* AI Scan Section */}
         <View style={styles.section}>
@@ -492,6 +597,7 @@ const AddAssetScreen = () => {
               textContentType="name"
               autoCorrect={false}
               autoCapitalize="words"
+              testID="asset-name-input"
             />
           </View>
 
@@ -754,6 +860,7 @@ const AddAssetScreen = () => {
               autoComplete="off"
               autoCorrect={true}
               autoCapitalize="sentences"
+              testID="asset-notes-input"
             />
           </View>
         </View>

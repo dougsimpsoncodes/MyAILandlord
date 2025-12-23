@@ -1,41 +1,20 @@
 import { useAppAuth } from '../context/SupabaseAuthContext'
-import { createClient } from '@supabase/supabase-js'
-import { useMemo } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { useEffect } from 'react'
 import { isTestMode } from '../lib/testMode'
-
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL as string
-const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 
 export function useSupabaseWithAuth() {
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
   const useTestClient = authDisabled || isTestMode
   const { session, isSignedIn, isLoading } = useAppAuth()
 
-  // Always call useMemo unconditionally to satisfy React's rules of hooks
-  const supabase = useMemo(() => {
-    if (useTestClient) {
-      // Test/auth-disabled mode: basic client
-      return createClient(url, anon, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-          detectSessionInUrl: false,
-        },
-      })
+  // Use the singleton Supabase client - DO NOT create new clients!
+  // The singleton already handles auth tokens automatically via Supabase Auth
+  useEffect(() => {
+    if (!useTestClient && session?.access_token) {
+      // The singleton client automatically includes auth headers
+      // No need to manually set them
     }
-    // Normal mode: authenticated client
-    return createClient(url, anon, {
-      global: {
-        headers: session?.access_token
-          ? { Authorization: `Bearer ${session.access_token}` }
-          : {},
-      },
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-      },
-    })
   }, [useTestClient, session?.access_token])
 
   const getAccessToken = async () => {
@@ -45,9 +24,11 @@ export function useSupabaseWithAuth() {
     return session?.access_token || null
   }
 
-  if (useTestClient) {
-    return { supabase, getAccessToken, isLoaded: true, isSignedIn: true }
+  // Always return the singleton client - no more creating multiple instances!
+  return {
+    supabase, // Singleton client from lib/supabaseClient
+    getAccessToken,
+    isLoaded: useTestClient ? true : !isLoading,
+    isSignedIn: useTestClient ? true : isSignedIn
   }
-
-  return { supabase, getAccessToken, isLoaded: !isLoading, isSignedIn }
 }

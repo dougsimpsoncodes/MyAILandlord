@@ -1079,3 +1079,81 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2025-12-21T14:11:39Z] Commit 14dc468b92781754ca77bc3f6fbb71a6b7bdaca0 successful
+Message: fix: remove duplicate submit button from property address form
+
+Hide the form's internal submit button when PropertyBasicsScreen has its own
+Continue button in the bottom button area.
+
+Changes:
+- Add showSubmitButton prop to PropertyAddressFormSimplified (default: true)
+- Set showSubmitButton={false} in PropertyBasicsScreen
+- Form now only shows Continue button in bottomContent, not duplicate in form
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2025-12-23T22:36:02Z] Commit c96dbd6af0badac4345c2f19bca2509e5a1bf2fd successful
+Message: feat: complete tokenized invite tenant acceptance flow
+
+Implement full support for tokenized invites on the tenant side,
+enabling seamless invite acceptance via secure Edge Function calls
+while maintaining backward compatibility with legacy propertyId invites.
+
+**Changes:**
+
+1. **PropertyInviteAcceptScreen** - Dual invite flow support:
+   - New `validateTokenAndFetchProperty()` calls Edge Function to validate tokens
+   - New `acceptTokenizedInvite()` calls Edge Function to create tenant link
+   - Legacy `acceptLegacyInvite()` maintains old direct linking
+   - Updated `getInviteData()` checks token param first, then propertyId
+   - Extracts from route params or deep linking URLs
+   - Displays property details from validated token response
+
+2. **PendingInviteService** - Cross-platform invite persistence:
+   - Changed interface to support `{ type: 'token' | 'legacy', value, timestamp }`
+   - Platform-aware storage (localStorage on web, AsyncStorage on native)
+   - Backward compatibility migration for old format (just propertyId string)
+   - Deprecated `getPendingPropertyId()` kept for compatibility
+   - 1-hour expiration for pending invites
+
+3. **TenantHomeScreen** - Pending invite router:
+   - Checks pending invite type after auth
+   - For tokenized invites: redirects to PropertyInviteAcceptScreen with token
+   - For legacy invites: uses old direct linking API call
+   - Handles both flows gracefully with proper error handling
+
+4. **AppNavigator** - Deep linking and pending invite orchestration:
+   - Added `token` parameter to deep linking config (alongside legacy `property`)
+   - Handles pending tokenized invites with `token:` prefix
+   - Clears pending invite after processing to prevent replay
+   - Added onboarding flow freeze to prevent re-checks during landlord setup
+
+**Flow:**
+1. User clicks invite link → PropertyInviteAcceptScreen
+2. If not authenticated → save pending invite (token or propertyId)
+3. User signs up/logs in → AppNavigator detects pending invite
+4. TenantHomeScreen checks type and routes appropriately:
+   - Token: → PropertyInviteAcceptScreen (validates + accepts)
+   - Legacy: → Direct API link
+
+**Security:**
+- Tokens validated server-side via Edge Function
+- User session required for acceptance (authenticated Edge Function call)
+- RLS policies enforced in database
+- Idempotent acceptance (already_linked handled gracefully)
+
+**Backward Compatibility:**
+- Legacy propertyId invites still work
+- Old pending invite format migrated automatically
+- Deprecated methods kept with warnings
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

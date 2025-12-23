@@ -22,6 +22,9 @@ import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { useApiClient } from '../../services/api/client';
+import { clearOnboardingInProgress } from '../../hooks/useOnboardingStatus';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import Button from '../../components/shared/Button';
@@ -130,6 +133,8 @@ const PropertyAreasScreen = () => {
   const route = useRoute<PropertyAreasRouteProp>();
   const responsive = useResponsive();
   const { user } = useAppAuth();
+  const { supabase } = useSupabaseWithAuth();
+  const api = useApiClient();
   const propertyData = route.params.propertyData;
   const draftId = route.params.draftId;
   const propertyId = route.params.propertyId; // For existing properties from database
@@ -978,28 +983,51 @@ const PropertyAreasScreen = () => {
 
       // Navigate based on context
       if (isOnboarding) {
-        // In onboarding mode, save property to database and go to Tenant Invite
+        // In onboarding mode, create property and save areas to database, then go to PropertyAssets (photos/inventory)
         try {
-          // Import the service
-          const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
+          // Ensure API is ready
+          if (!api) {
+            throw new Error('Authentication required');
+          }
 
-          // Save property and areas to database
-          const savedPropertyId = await propertyAreasService.saveAreasAndAssets(
-            updatedPropertyData,
-            areasToSave,
-            user?.id || '',
-            propertyId // Will be undefined for new properties
-          );
+          // Create the property first
+          const propertyPayload = {
+            name: updatedPropertyData.name,
+            address_jsonb: updatedPropertyData.address,
+            property_type: updatedPropertyData.type,
+            unit: updatedPropertyData.unit || '',
+            bedrooms: updatedPropertyData.bedrooms || 0,
+            bathrooms: updatedPropertyData.bathrooms || 0
+          };
 
-          // Navigate to Tenant Invite with property details
-          (navigation as any).navigate('LandlordTenantInvite', {
-            firstName: (route.params as any)?.firstName || 'there',
-            propertyId: savedPropertyId,
-            propertyName: updatedPropertyData.name || 'Your Property',
+          const newProperty = await api.createProperty(propertyPayload);
+
+          // Save areas and assets to the new property
+          let savedAreas = areasToSave;
+          if (areasToSave.length > 0) {
+            const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
+            await propertyAreasService.saveAreasAndAssets(newProperty.id, areasToSave, supabase);
+
+            // Fetch the saved areas from database to get proper UUIDs
+            savedAreas = await propertyAreasService.getAreasWithAssets(newProperty.id, supabase);
+          }
+
+          // Clear onboarding in-progress flag since property is now created
+          await clearOnboardingInProgress();
+
+          // Navigate to PropertyAssets for photos and inventory during onboarding
+          navigation.navigate('PropertyAssets', {
+            propertyData: updatedPropertyData,
+            areas: savedAreas, // Use areas with proper UUIDs from database
+            draftId: draftState?.id,
+            propertyId: newProperty.id,
+            isOnboarding: true, // Pass onboarding flag
+            firstName: (route.params as any)?.firstName || 'there', // Pass for final screen
           });
         } catch (error) {
-          console.error('Error saving property:', error);
-          Alert.alert('Error', 'Failed to save property. Please try again.');
+          console.error('Error in onboarding save:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          Alert.alert('Error', `Failed to save property: ${errorMessage}`);
           return;
         }
       } else {
@@ -1033,31 +1061,33 @@ const PropertyAreasScreen = () => {
     return areas.filter(area => selectedAreas.includes(area.id) && area.photos.length > 0).length;
   };
 
-  const headerRight = (
-    <View style={styles.headerRightContainer}>
-      {(isSaving || lastSaved) && (
-        <View style={styles.saveStatus}>
-          {isSaving ? (
-            <>
-              <Ionicons name="sync" size={12} color="#3498DB" />
-              <Text style={styles.saveStatusText}>Saving...</Text>
-            </>
-          ) : lastSaved ? (
-            <>
-              <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
-              <Text style={styles.saveStatusText}>Saved</Text>
-            </>
-          ) : null}
-        </View>
-      )}
-      <TouchableOpacity
-        style={[styles.headerNextButton, (areas.length === 0 || isSubmitting || isDraftLoading) && styles.headerNextButtonDisabled]}
-        onPress={handleNext}
-        disabled={areas.length === 0 || isSubmitting || isDraftLoading}
-      >
-        <Ionicons name="arrow-forward" size={24} color={(areas.length === 0 || isSubmitting || isDraftLoading) ? '#BDC3C7' : '#2C3E50'} />
-      </TouchableOpacity>
+  // Save status indicator for header (no button)
+  const headerRight = (isSaving || lastSaved) ? (
+    <View style={styles.saveStatus}>
+      {isSaving ? (
+        <>
+          <Ionicons name="sync" size={12} color="#3498DB" />
+          <Text style={styles.saveStatusText}>Saving...</Text>
+        </>
+      ) : lastSaved ? (
+        <>
+          <Ionicons name="checkmark-circle" size={12} color="#2ECC71" />
+          <Text style={styles.saveStatusText}>Saved</Text>
+        </>
+      ) : null}
     </View>
+  ) : null;
+
+  // Bottom navigation button
+  const bottomContent = (
+    <Button
+      title="Continue"
+      onPress={handleNext}
+      type="primary"
+      size="lg"
+      fullWidth
+      disabled={areas.length === 0 || isSubmitting || isDraftLoading}
+    />
   );
 
   return (
@@ -1069,6 +1099,7 @@ const PropertyAreasScreen = () => {
       headerRight={headerRight}
       userRole="landlord"
       scrollable
+      bottomContent={bottomContent}
     >
         {/* Header Section */}
         <View style={styles.section}>
@@ -1265,6 +1296,44 @@ const PropertyAreasScreen = () => {
             </View>
           </View>
 
+          {/* Custom Rooms List */}
+          {areas.filter(area => area.id.startsWith('custom_')).map((customRoom) => (
+            <View key={customRoom.id} style={styles.customRoomRow}>
+              <View style={styles.counterLeft}>
+                <View style={styles.counterIconContainer}>
+                  <Ionicons name={customRoom.icon as any} size={24} color="#3498DB" />
+                </View>
+                <Text style={styles.counterLabel}>{customRoom.name}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.removeCustomRoomButton}
+                onPress={() => {
+                  Alert.alert(
+                    'Remove Room',
+                    `Remove "${customRoom.name}"?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Remove',
+                        style: 'destructive',
+                        onPress: () => {
+                          const updatedAreas = areas.filter(area => area.id !== customRoom.id);
+                          const updatedSelectedAreas = selectedAreas.filter(id => id !== customRoom.id);
+                          setAreas(updatedAreas);
+                          setSelectedAreas(updatedSelectedAreas);
+                          const selectedAreaData = updatedAreas.filter(area => updatedSelectedAreas.includes(area.id));
+                          updateAreas(selectedAreaData);
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
+                <Ionicons name="close-circle" size={24} color="#E74C3C" />
+              </TouchableOpacity>
+            </View>
+          ))}
+
           {/* Add Custom Room Button */}
           <TouchableOpacity
             style={styles.addCustomRoomButton}
@@ -1302,7 +1371,7 @@ const PropertyAreasScreen = () => {
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowAddRoomModal(false)}
               activeOpacity={0.7}
               style={styles.modalHeaderButton}
@@ -1310,13 +1379,7 @@ const PropertyAreasScreen = () => {
               <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Add Room</Text>
-            <TouchableOpacity 
-              onPress={handleAddCustomRoom}
-              activeOpacity={0.7}
-              style={styles.modalHeaderButton}
-            >
-              <Text style={styles.modalSaveText}>Add</Text>
-            </TouchableOpacity>
+            <View style={styles.modalHeaderButton} />
           </View>
 
           <View style={styles.modalContent}>
@@ -1406,6 +1469,18 @@ const PropertyAreasScreen = () => {
                 autoFocus
               />
             )}
+          </View>
+
+          {/* Bottom Add Button */}
+          <View style={styles.modalBottomButton}>
+            <Button
+              title="Add Room"
+              onPress={handleAddCustomRoom}
+              type="primary"
+              size="lg"
+              fullWidth
+              disabled={!newRoomName.trim()}
+            />
           </View>
         </SafeAreaView>
       </Modal>
@@ -1796,15 +1871,18 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '400',
   },
-  modalSaveText: {
-    fontSize: 17,
-    color: '#007AFF',
-    fontWeight: '600',
-  },
   modalContent: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  modalBottomButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
   },
   modalSection: {
     marginBottom: 24,
@@ -2215,6 +2293,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#3498DB',
     marginLeft: 8,
+  },
+  customRoomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  removeCustomRoomButton: {
+    padding: 4,
   },
   infoCardCounter: {
     flexDirection: 'row',

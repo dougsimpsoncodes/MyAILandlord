@@ -212,6 +212,9 @@ export default function PhotoDropzone({
         onPress={handleBrowse}
         disabled={isDisabled}
         activeOpacity={0.7}
+        testID={`photo-upload-${areaId}`}
+        accessibilityRole="button"
+        accessibilityLabel={`Add photo to ${areaId}`}
         {...webDragProps}
       >
         <Ionicons name="add" size={28} color="#3498DB" />

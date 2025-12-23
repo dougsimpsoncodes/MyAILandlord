@@ -24,6 +24,7 @@ import {
 
 // Existing property setup screens (reused in onboarding)
 import PropertyBasicsScreen from '../screens/landlord/PropertyBasicsScreen';
+import PropertyAttributesScreen from '../screens/landlord/PropertyAttributesScreen';
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
 
 export type AuthStackParamList = {
@@ -38,6 +39,7 @@ export type AuthStackParamList = {
   LandlordOnboardingWelcome: { firstName: string; role: 'landlord' };
   LandlordPropertyIntro: { firstName: string };
   PropertyBasics: { firstName?: string; isOnboarding?: boolean };
+  PropertyAttributes: { addressData: any; isOnboarding?: boolean; firstName?: string };
   PropertyAreas: {
     propertyData: any; // PropertyData type
     draftId?: string;
@@ -129,6 +131,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       />
       {/* Reuse existing property setup screens */}
       <Stack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
+      <Stack.Screen name="PropertyAttributes" component={PropertyAttributesScreen} />
       <Stack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
       <Stack.Screen name="LandlordTenantInvite" component={LandlordTenantInviteScreen} />
       <Stack.Screen name="LandlordOnboardingSuccess" component={LandlordOnboardingSuccessScreen} />

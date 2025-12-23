@@ -131,7 +131,9 @@ export default function PropertyAddressFormSimplified({
 }: Props) {
   // Use parent state directly - no local state complexity
   const [errors, setErrors] = useState<Partial<Record<keyof Address,string>>>({});
-  const section = useMemo(() => `section-${sectionId}`, [sectionId]);
+
+  // Use consistent autocomplete section to prevent duplicates
+  const section = 'property-address';
 
   // Direct state setter - updates parent immediately
   const set = (k: keyof Address) => (t: string) => {
@@ -168,7 +170,7 @@ export default function PropertyAddressFormSimplified({
       <FormWrapper onSubmit={submit}>
         <Field
           label="Property Name"
-          id={`${section}-property-name`}
+          id="property-name"
           value={value.propertyName || ''}
           onChangeText={set('propertyName')}
           placeholder=""
@@ -177,17 +179,17 @@ export default function PropertyAddressFormSimplified({
           importantForAutofill="no"
           autoCorrect={false}
           autoCapitalize="words"
-          nameAttr="ignore-property-name"
+          nameAttr="property-name"
           required
           error={errors.propertyName}
         />
         <Field
           label="Street Address"
-          id={`${section}-address-line1`}
+          id="address-line1"
           value={value.addressLine1 || ''}
           onChangeText={set('addressLine1')}
           placeholder=""
-          autoComplete={`${section} address-line1`}
+          autoComplete="address-line1"
           textContentType={Platform.OS === 'ios' ? 'fullStreetAddress' : undefined}
           autoCapitalize="words"
           importantForAutofill="yes"
@@ -196,11 +198,11 @@ export default function PropertyAddressFormSimplified({
         />
         <Field
           label="Unit / Apt / Suite (Optional)"
-          id={`${section}-address-line2`}
+          id="address-line2"
           value={value.addressLine2 || ''}
           onChangeText={set('addressLine2')}
           placeholder=""
-          autoComplete={`${section} address-line2`}
+          autoComplete="address-line2"
           textContentType={Platform.OS === 'ios' ? 'streetAddressLine2' : undefined}
           autoCapitalize="words"
           importantForAutofill="yes"
@@ -208,11 +210,11 @@ export default function PropertyAddressFormSimplified({
         />
         <Field
           label="City"
-          id={`${section}-address-city`}
+          id="address-city"
           value={value.city || ''}
           onChangeText={set('city')}
           placeholder=""
-          autoComplete={`${section} address-level2`}
+          autoComplete="address-level2"
           textContentType={Platform.OS === 'ios' ? 'addressCity' : undefined}
           autoCapitalize="words"
           importantForAutofill="yes"
@@ -221,11 +223,11 @@ export default function PropertyAddressFormSimplified({
         />
         <Field
           label="State/Region"
-          id={`${section}-address-state`}
+          id="address-state"
           value={value.state || ''}
           onChangeText={set('state')}
           placeholder=""
-          autoComplete={`${section} address-level1`}
+          autoComplete="address-level1"
           textContentType={Platform.OS === 'ios' ? 'addressState' : undefined}
           autoCapitalize="characters"
           importantForAutofill="yes"
@@ -234,11 +236,11 @@ export default function PropertyAddressFormSimplified({
         />
         <Field
           label="Postal Code"
-          id={`${section}-postal-code`}
+          id="postal-code"
           value={value.postalCode || ''}
           onChangeText={set('postalCode')}
           placeholder=""
-          autoComplete={`${section} postal-code`}
+          autoComplete="postal-code"
           textContentType={Platform.OS === 'ios' ? 'postalCode' : undefined}
           keyboardType={Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'numeric'}
           autoCapitalize="none"
@@ -248,11 +250,11 @@ export default function PropertyAddressFormSimplified({
         />
         <Field
           label="Country"
-          id={`${section}-country`}
+          id="country"
           value={value.country || ''}
           onChangeText={set('country')}
           placeholder="United States"
-          autoComplete={`${section} country`}
+          autoComplete="country"
           textContentType={Platform.OS === 'ios' ? 'countryName' : undefined}
           autoCapitalize="words"
           importantForAutofill="yes"

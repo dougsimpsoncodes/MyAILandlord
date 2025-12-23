@@ -178,7 +178,7 @@ const PropertyPhotosScreen = () => {
 
   const handleContinue = async () => {
     const validation = validatePhotos();
-    
+
     if (!validation.isValid) {
       Alert.alert(
         'Photo Issues',
@@ -197,24 +197,22 @@ const PropertyPhotosScreen = () => {
       return;
     }
 
+    // Convert photos to URLs for storage
+    const photoUrls = photos.map(photo => photo.uri);
+    const updatedPropertyData = { ...propertyData, photos: photoUrls };
+
     try {
-      // Convert photos to URLs for storage
-      const photoUrls = photos.map(photo => photo.uri);
-      
-      // Save and navigate
-      await updatePropertyData({
-        ...propertyData,
-        photos: photoUrls,
-      });
+      await updatePropertyData(updatedPropertyData);
       await saveDraft();
-      
-      navigation.navigate('RoomSelection', { 
-        propertyData: { ...propertyData, photos: photoUrls } 
-      });
     } catch (error) {
       console.error('Error saving photos:', error);
-      Alert.alert('Error', 'Failed to save photos. Please try again.');
+      // Continue anyway - navigation can work without draft save
     }
+
+    // Navigate regardless of draft save success
+    navigation.navigate('PropertyAreas', {
+      propertyData: updatedPropertyData
+    });
   };
 
   const handleSkip = async () => {
@@ -226,19 +224,20 @@ const PropertyPhotosScreen = () => {
         {
           text: 'Skip',
           onPress: async () => {
+            const updatedPropertyData = { ...propertyData, photos: [] };
+
             try {
-              await updatePropertyData({
-                ...propertyData,
-                photos: [],
-              });
+              await updatePropertyData(updatedPropertyData);
               await saveDraft();
-              navigation.navigate('RoomSelection', { 
-                propertyData: { ...propertyData, photos: [] } 
-              });
             } catch (error) {
-              console.error('Error skipping photos:', error);
-              Alert.alert('Error', 'Failed to continue. Please try again.');
+              console.error('Error saving draft:', error);
+              // Continue anyway - navigation can work without draft save
             }
+
+            // Navigate regardless of draft save success
+            navigation.navigate('PropertyAreas', {
+              propertyData: updatedPropertyData
+            });
           },
         },
       ]
