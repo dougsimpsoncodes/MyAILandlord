@@ -14,6 +14,100 @@ All 12 critical production-hardening items complete. System ready for controlled
 **Confidence:** 95% (Production-Ready)
 **Remaining Risk:** Universal/App Link validation on real devices (5%)
 
+### Key Improvements in v1.1
+- **Measurement Windows:** 60-120 min rolling windows with 30-min warmup exclusion
+- **Baseline Capture:** Phase 0 staging baselines for relative thresholds
+- **Data Isolation:** Staff/test traffic excluded via cohort tags
+- **Kill Switch:** Instant feature flag propagation (<30 sec)
+- **Alert Dampening:** Multi-minute evaluation windows to reduce flapping
+- **Device Matrix:** iOS/Android test coverage with open rate tracking
+- **Token Leakage:** Comprehensive log sink scanning + ESLint rules
+- **Blue/Green Functions:** Previous versions retained for instant rollback
+
+---
+
+## Phase 0: Baseline Capture (Pre-Deployment)
+
+### Capture Staging Baselines
+
+**Purpose:** Establish performance and conversion baselines on staging to detect anomalies in production.
+
+**Actions:**
+```bash
+# Run synthetic load test on staging (100 invites over 10 minutes)
+node scripts/load-test-invites.js --count=100 --duration=600
+
+# Capture baseline metrics
+psql $STAGING_DB_URL << 'SQL'
+-- Baseline conversion funnel
+WITH baseline_funnel AS (
+  SELECT
+    COUNT(*) FILTER (WHERE event = 'invite_view') as views,
+    COUNT(*) FILTER (WHERE event = 'invite_validate_success') as validates,
+    COUNT(*) FILTER (WHERE event = 'invite_accept_success') as accepts
+  FROM analytics_events
+  WHERE created_at > NOW() - INTERVAL '1 hour'
+    AND correlation_id NOT LIKE 'test-%'  -- Exclude test traffic
+)
+SELECT
+  views,
+  validates,
+  accepts,
+  ROUND(100.0 * validates / NULLIF(views, 0), 1) as baseline_view_to_validate_pct,
+  ROUND(100.0 * accepts / NULLIF(validates, 0), 1) as baseline_validate_to_accept_pct,
+  ROUND(100.0 * accepts / NULLIF(views, 0), 1) as baseline_end_to_end_pct
+FROM baseline_funnel;
+
+-- Baseline latency (p50, p95, p99)
+SELECT
+  event,
+  COUNT(*) as sample_size,
+  ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms)) as baseline_p50_ms,
+  ROUND(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)) as baseline_p95_ms,
+  ROUND(percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms)) as baseline_p99_ms
+FROM analytics_events
+WHERE created_at > NOW() - INTERVAL '1 hour'
+  AND event IN ('invite_validate_success', 'invite_accept_success')
+  AND latency_ms IS NOT NULL
+GROUP BY event;
+
+-- Baseline error distribution
+SELECT
+  error_type,
+  COUNT(*) as baseline_error_count,
+  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER(), 2) as baseline_pct_of_errors
+FROM analytics_events
+WHERE created_at > NOW() - INTERVAL '1 hour'
+  AND event IN ('invite_validate_fail', 'invite_accept_fail')
+GROUP BY error_type
+ORDER BY baseline_error_count DESC;
+SQL
+```
+
+**Expected Baselines (Document These):**
+```
+Conversion:
+  - View → Validate: ~95% (staging has no real UX friction)
+  - Validate → Accept: ~90% (staging users complete flow)
+  - End-to-End: ~85%
+
+Latency:
+  - Validate p95: ~300ms
+  - Accept p95: ~600ms
+  - Validate p99: ~450ms
+  - Accept p99: ~900ms
+
+Errors:
+  - Total error rate: <2% (mostly test-induced)
+  - Expired: <1%
+  - Revoked: <0.5%
+```
+
+**Go Criteria:**
+- ✅ Baseline metrics captured and documented
+- ✅ Staging performance stable (p95 variance <10% over 3 runs)
+- ✅ No unexpected error types
+
 ---
 
 ## Phase 0: Pre-Deployment Checklist
@@ -71,16 +165,27 @@ WHERE n.nspname = 'public'
 
 ---
 
-### Edge Functions Deployment ✅
+### Edge Functions Deployment (Blue/Green Strategy) ✅
 
-**Required Actions:**
+**Blue/Green Deployment:**
 ```bash
-# Deploy updated functions
-supabase functions deploy validate-invite-token --project-ref $PROD_PROJECT_REF
-supabase functions deploy accept-invite-token --project-ref $PROD_PROJECT_REF
+# 1. Deploy NEW version with version tag (green)
+supabase functions deploy validate-invite-token --project-ref $PROD_PROJECT_REF --version v1.1.0
+supabase functions deploy accept-invite-token --project-ref $PROD_PROJECT_REF --version v1.1.0
 
-# Verify deployment
-supabase functions list --project-ref $PROD_PROJECT_REF
+# 2. Verify new version (green) works
+curl -X POST "$SUPABASE_URL/functions/v1/validate-invite-token" \
+  -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -H "X-Function-Version: v1.1.0" \
+  -d '{"token":"TEST_TOKEN_12"}' | jq '.intended_email, .max_uses, .use_count'
+
+# 3. Keep PREVIOUS version (blue) available for instant rollback
+supabase functions list --project-ref $PROD_PROJECT_REF --show-versions
+# Expected: Both v1.0.0 (blue) and v1.1.0 (green) listed
+
+# 4. Route traffic to new version via feature flag
+# (Feature flag controls which version clients call)
 ```
 
 **Verification:**
@@ -91,17 +196,101 @@ curl -X POST "$SUPABASE_URL/functions/v1/validate-invite-token" \
   -H "Content-Type: application/json" \
   -d '{"token":"TEST_TOKEN_12"}' | jq '.intended_email, .max_uses, .use_count'
 # Expected: Three non-null values returned (even if token invalid, structure must exist)
+
+# Test CORS headers
+curl -I -X OPTIONS "$SUPABASE_URL/functions/v1/validate-invite-token" \
+  -H "Origin: https://myailandlord.com"
+# Expected: Access-Control-Allow-Origin: https://myailandlord.com
+
+# Test rate limiting
+for i in {1..100}; do
+  curl -s -w "%{http_code}\n" -X POST "$SUPABASE_URL/functions/v1/validate-invite-token" \
+    -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+    -d '{"token":"TEST"}' -o /dev/null
+done | grep 429 | wc -l
+# Expected: >0 (rate limiting active after threshold)
 ```
 
 **Go Criteria:**
 - ✅ Functions deploy without errors
 - ✅ Response includes `intended_email`, `max_uses`, `use_count` fields
 - ✅ CORS headers allow web app origin
+- ✅ Previous version (v1.0.0) still accessible for rollback
+- ✅ Rate limiting active (429 responses after threshold)
 
 **No-Go Criteria:**
-- ❌ Deployment errors or timeouts
-- ❌ Missing new fields in response
-- ❌ CORS errors from web app
+- ❌ Deployment errors or timeouts → **Runbook:** [Function Deployment Failure](#runbook-function-deployment)
+- ❌ Missing new fields in response → **Runbook:** [Schema Mismatch](#runbook-schema-mismatch)
+- ❌ CORS errors from web app → **Runbook:** [CORS Configuration](#runbook-cors-config)
+- ❌ Previous version not retained → **Runbook:** [Rollback Unavailable](#runbook-no-rollback)
+
+---
+
+### Security Verification ✅
+
+**SECURITY DEFINER Functions:**
+```sql
+-- Verify search_path is pinned (prevents schema-injection attacks)
+SELECT
+  p.proname,
+  pg_get_functiondef(p.oid) as definition
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public'
+  AND p.prosecdef = true
+  AND p.proname IN ('validate_invite_token', 'generate_invite_token');
+
+-- Expected: Both definitions contain "SET search_path = public" or "SET search_path = ''"
+
+-- Verify function owners (should be postgres or service account)
+SELECT
+  p.proname,
+  pg_get_userbyid(p.proowner) as owner
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public'
+  AND p.prosecdef = true
+  AND p.proname IN ('validate_invite_token', 'generate_invite_token');
+
+-- Expected: owner = 'postgres' or 'supabase_admin'
+```
+
+**Constant-Time Token Comparison:**
+```bash
+# Run timing attack test (measure variance in lookup times)
+node scripts/test-constant-time-lookup.js
+# Expected: Variance <5ms between valid/invalid tokens (proves constant-time index scan)
+```
+
+**Rate Limiting Monitoring:**
+```sql
+-- Create view for rate limit violations
+CREATE OR REPLACE VIEW invite_rate_limit_violations AS
+SELECT
+  ip_address,
+  COUNT(*) as request_count,
+  COUNT(*) FILTER (WHERE status = 429) as rate_limited_count,
+  MIN(created_at) as first_request,
+  MAX(created_at) as last_request
+FROM function_logs
+WHERE created_at > NOW() - INTERVAL '5 minutes'
+  AND function_name IN ('validate-invite-token', 'accept-invite-token')
+GROUP BY ip_address
+HAVING COUNT(*) FILTER (WHERE status = 429) > 0;
+
+-- Expected: <10 IPs rate-limited per 5 minutes (normal variance)
+```
+
+**Go Criteria:**
+- ✅ SECURITY DEFINER functions have pinned search_path
+- ✅ Function owners are postgres/supabase_admin (not application user)
+- ✅ Constant-time lookup variance <5ms
+- ✅ Rate limiting active and monitored
+
+**No-Go Criteria:**
+- ❌ search_path not pinned → **Runbook:** [Schema Injection Risk](#runbook-schema-injection)
+- ❌ Wrong function owner → **Runbook:** [Privilege Escalation Risk](#runbook-privilege-escalation)
+- ❌ Timing variance >10ms → **Runbook:** [Timing Attack Vulnerability](#runbook-timing-attack)
 
 ---
 
@@ -133,9 +322,310 @@ gitleaks detect --source . --verbose
 - ✅ All tokens in 1Password/secrets manager
 
 **No-Go Criteria:**
-- ❌ Service role key in client bundle
-- ❌ Gitleaks findings
-- ❌ Hardcoded credentials anywhere
+- ❌ Service role key in client bundle → **Runbook:** [Secret Exposure](#runbook-secret-exposure)
+- ❌ Gitleaks findings → **Runbook:** [Credential Leak](#runbook-credential-leak)
+- ❌ Hardcoded credentials anywhere → **Runbook:** [Hardcoded Secrets](#runbook-hardcoded-secrets)
+
+---
+
+### Token Leakage Prevention (Comprehensive) ✅
+
+**Log Sinks to Scan:**
+
+1. **Edge Function Logs (Supabase):**
+```bash
+# Scan last 1000 function invocations for full tokens
+supabase functions logs validate-invite-token --limit 1000 | \
+  grep -E '\b[A-Za-z0-9]{12}\b' | \
+  grep -v 'ABC1\.\.\.F456'  # Exclude sanitized previews
+# Expected: 0 matches (no full tokens)
+```
+
+2. **Application Logs (Client):**
+```bash
+# Scan bundled JavaScript for token logging
+npx webpack-bundle-analyzer dist/stats.json --mode static
+grep -r 'console\.(log|info|warn|error)' dist/bundle.js | \
+  grep -E '\b[A-Za-z0-9]{12}\b'
+# Expected: 0 matches
+```
+
+3. **Analytics Payloads (PostHog/Mixpanel):**
+```bash
+# Query analytics backend for full tokens
+curl "$ANALYTICS_API/events?project=$PROJECT_ID" | \
+  jq '.results[].properties | select(.token != null) | .token' | \
+  grep -E '^[A-Za-z0-9]{12}$'
+# Expected: 0 matches (all tokens sanitized)
+```
+
+4. **Error Tracking (Sentry/Bugsnag):**
+```bash
+# Check last 100 errors for token leakage
+sentry-cli events list --project $PROJECT --max 100 | \
+  grep -E 'token.*[A-Za-z0-9]{12}' | \
+  grep -v 'ABC1\.\.\.F456'
+# Expected: 0 matches
+```
+
+5. **Database Audit Logs:**
+```sql
+-- Scan audit logs for full tokens in query parameters
+SELECT
+  query,
+  created_at
+FROM pg_stat_statements
+WHERE query ~ '\b[A-Za-z0-9]{12}\b'
+  AND query !~ 'ABC1\.\.\.F456'
+LIMIT 10;
+-- Expected: 0 rows
+```
+
+**ESLint Rule (CI Enforcement):**
+```javascript
+// .eslintrc.js
+module.exports = {
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: 'CallExpression[callee.object.name="console"] Literal[value=/[A-Za-z0-9]{12}/]',
+        message: 'Do not log full tokens - use sanitizeToken() utility'
+      }
+    ],
+    'custom/no-token-logging': 'error'  // Custom rule in eslint-plugin-custom
+  }
+};
+
+// eslint-plugin-custom/rules/no-token-logging.js
+module.exports = {
+  create(context) {
+    return {
+      CallExpression(node) {
+        if (
+          node.callee.object?.name === 'console' &&
+          node.arguments.some(arg =>
+            arg.type === 'Identifier' &&
+            /token|invite|credential/i.test(arg.name) &&
+            !context.getScope().variables.some(v => v.name === 'sanitizeToken')
+          )
+        ) {
+          context.report({
+            node,
+            message: 'Potential token logging detected - use sanitizeToken() before logging'
+          });
+        }
+      }
+    };
+  }
+};
+```
+
+**Automated CI Check:**
+```yaml
+# .github/workflows/token-leakage-check.yml
+name: Token Leakage Prevention
+
+on: [push, pull_request]
+
+jobs:
+  scan-for-token-leaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: npm ci
+
+      # ESLint check
+      - run: npx eslint src/ --rule 'custom/no-token-logging: error'
+        name: Check for token logging violations
+
+      # Grep check (fallback)
+      - run: |
+          if grep -rE 'console\.(log|info|warn)\(.*token' src/ | grep -v 'sanitizeToken'; then
+            echo "::error::Found potential token logging - use sanitizeToken() utility"
+            exit 1
+          fi
+        name: Grep fallback check
+
+      # Check test fixtures don't contain real tokens
+      - run: |
+          if grep -rE '\b[A-Za-z0-9]{12}\b' e2e/fixtures/ | grep -v 'TEST_TOKEN_12'; then
+            echo "::error::Found real tokens in test fixtures"
+            exit 1
+          fi
+        name: Check test fixtures
+```
+
+**Go Criteria:**
+- ✅ All 5 log sinks scanned (0 full tokens found)
+- ✅ ESLint rule active and passing
+- ✅ CI check blocking PRs with token logging
+- ✅ Sanitization utility used consistently
+
+**No-Go Criteria:**
+- ❌ Any full token found in logs → **Runbook:** [Token Leakage Incident](#runbook-token-leakage)
+- ❌ ESLint rule bypassed → **Runbook:** [CI Bypass Detected](#runbook-ci-bypass)
+
+---
+
+### Device Link Test Matrix ✅
+
+**iOS Test Matrix:**
+
+| Device/OS | Universal Link Opens App | PropertyInviteAcceptScreen Receives Token | Open Rate Target |
+|-----------|--------------------------|-------------------------------------------|------------------|
+| iPhone 13 (iOS 16.4) | ⏳ | ⏳ | >90% |
+| iPhone 12 (iOS 15.7) | ⏳ | ⏳ | >85% |
+| iPhone SE (iOS 17.1) | ⏳ | ⏳ | >90% |
+| iPad Pro (iPadOS 16.5) | ⏳ | ⏳ | >80% |
+
+**Android Test Matrix:**
+
+| Device/OS | App Link Opens App | PropertyInviteAcceptScreen Receives Token | Open Rate Target |
+|-----------|--------------------|--------------------------------------------|------------------|
+| Pixel 7 (Android 13) | ⏳ | ⏳ | >90% |
+| Galaxy S22 (Android 12) | ⏳ | ⏳ | >85% |
+| OnePlus 9 (Android 11) | ⏳ | ⏳ | >80% |
+| Motorola Edge (Android 13) | ⏳ | ⏳ | >85% |
+
+**Manual Test Procedure:**
+```bash
+# 1. Generate test invite on staging
+curl -X POST "$STAGING_API/properties/$PROPERTY_ID/generate-invite" \
+  -H "Authorization: Bearer $LANDLORD_TOKEN" | jq -r '.inviteUrl'
+
+# 2. Send invite via multiple channels
+# - iMessage (iOS)
+# - WhatsApp (cross-platform)
+# - Email (Gmail, Outlook)
+# - SMS (Android)
+
+# 3. Tap link on each device
+# - Record: Opens app (YES/NO)
+# - Record: PropertyInviteAcceptScreen loads (YES/NO)
+# - Record: Token present in screen (YES/NO)
+# - Record: Latency from tap to screen load (<3s = PASS)
+
+# 4. Track open rates in analytics
+SELECT
+  device_os,
+  device_model,
+  COUNT(*) as total_taps,
+  COUNT(*) FILTER (WHERE app_opened = true) as app_opens,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE app_opened = true) / COUNT(*), 1) as open_rate_pct
+FROM deep_link_analytics
+WHERE created_at > NOW() - INTERVAL '7 days'
+  AND link_type = 'invite'
+GROUP BY device_os, device_model
+ORDER BY open_rate_pct DESC;
+```
+
+**Common Failure Modes:**
+
+| Issue | Device/OS | Resolution |
+|-------|-----------|------------|
+| Opens Safari instead of app | iOS <14.5 | Prompt to update OS or use legacy flow |
+| Opens Chrome instead of app | Android <12 | Verify Digital Asset Links, use intent:// scheme |
+| Token not passed to screen | All | Check route param parsing in AppNavigator |
+| AASA file not loading | iOS (all) | Check content-type: application/json, no redirects |
+
+**Go Criteria:**
+- ✅ >85% open rate across all tested devices
+- ✅ Token successfully passed to PropertyInviteAcceptScreen on all devices
+- ✅ Latency <3s from tap to screen load
+
+**No-Go Criteria:**
+- ❌ Open rate <70% on any major OS version → **Runbook:** [Deep Link Failure](#runbook-deep-link-failure)
+- ❌ Token not received on screen → **Runbook:** [Route Param Bug](#runbook-route-param-bug)
+
+---
+
+### Kill Switch Mechanics ✅
+
+**Feature Flag Infrastructure:**
+
+**Implementation:**
+```typescript
+// src/utils/featureFlags.ts
+export async function getFeatureFlag(flag: string): Promise<number> {
+  // 1. Check remote config (instant propagation via WebSocket)
+  const remoteValue = await remoteConfig.getValue(flag);
+  if (remoteValue !== null) return remoteValue;
+
+  // 2. Fallback to env var (requires redeploy)
+  const envValue = process.env[`EXPO_PUBLIC_${flag.toUpperCase()}`];
+  return envValue ? parseInt(envValue, 10) : 0;
+}
+
+// Remote config client (Firebase Remote Config or similar)
+const remoteConfig = {
+  async getValue(key: string): Promise<number | null> {
+    try {
+      await remoteConfig.fetchAndActivate();
+      const value = remoteConfig.getNumber(key);
+      log.info(`🔧 Feature flag ${key} = ${value} (remote config)`);
+      return value;
+    } catch (error) {
+      log.error(`❌ Remote config fetch failed:`, error);
+      return null;
+    }
+  }
+};
+```
+
+**Instant Kill Switch (Firebase Remote Config):**
+```bash
+# 1. Set flag to 0% via Firebase Console (instant)
+firebase remoteconfig:set TOKENIZED_INVITES_ROLLOUT_PERCENT=0
+
+# 2. Verify propagation (should be <30 seconds)
+curl "$FIREBASE_REMOTE_CONFIG_API/projects/$PROJECT/remoteConfig" | \
+  jq '.parameters.TOKENIZED_INVITES_ROLLOUT_PERCENT.defaultValue.value'
+# Expected: "0"
+
+# 3. Monitor client-side adoption
+# Clients poll every 30s, new sessions pick up instantly
+SELECT
+  COUNT(*) as total_sessions,
+  COUNT(*) FILTER (WHERE feature_flag_value = 0) as using_legacy,
+  COUNT(*) FILTER (WHERE feature_flag_value > 0) as using_tokenized,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE feature_flag_value = 0) / COUNT(*), 1) as legacy_pct
+FROM session_analytics
+WHERE created_at > NOW() - INTERVAL '5 minutes';
+
+-- Expected after 2 minutes: legacy_pct > 95%
+```
+
+**Propagation Verification:**
+```javascript
+// Client-side logging
+analytics.track('feature_flag_updated', {
+  flag: 'TOKENIZED_INVITES_ROLLOUT_PERCENT',
+  old_value: previousValue,
+  new_value: currentValue,
+  propagation_latency_ms: Date.now() - flagUpdateTime
+});
+
+// Dashboard query
+SELECT
+  percentile_cont(0.5) WITHIN GROUP (ORDER BY propagation_latency_ms) as p50_propagation_ms,
+  percentile_cont(0.95) WITHIN GROUP (ORDER BY propagation_latency_ms) as p95_propagation_ms,
+  percentile_cont(0.99) WITHIN GROUP (ORDER BY propagation_latency_ms) as p99_propagation_ms
+FROM analytics_events
+WHERE event = 'feature_flag_updated'
+  AND created_at > NOW() - INTERVAL '10 minutes';
+
+-- Expected: p95 < 30000ms (30 seconds)
+```
+
+**Go Criteria:**
+- ✅ Kill switch propagates to >95% of clients within 2 minutes
+- ✅ Remote config fetch success rate >99%
+- ✅ Fallback to env var works if remote config fails
+
+**No-Go Criteria:**
+- ❌ Propagation time >5 minutes → **Runbook:** [Kill Switch Too Slow](#runbook-kill-switch-slow)
+- ❌ Remote config failure rate >5% → **Runbook:** [Remote Config Outage](#runbook-remote-config-outage)
 
 ---
 
@@ -234,18 +724,60 @@ curl "$SUPABASE_URL/rest/v1/feature_flags?name=eq.tokenized_invites" \
 # Expected: 10
 ```
 
-### Monitoring Dashboard (Real-Time)
+### Data Isolation Rules
 
-**Conversion Funnel Metrics:**
+**Exclude Staff & Test Traffic:**
 ```sql
--- Invite View → Validate → Accept funnel (last 1 hour)
-WITH funnel AS (
+-- Tag staff/test users in profiles table
+UPDATE profiles
+SET user_cohort = 'staff'
+WHERE email LIKE '%@myailandlord.com%'
+   OR email LIKE 'test-%'
+   OR email LIKE '%+test@%';
+
+-- Exclude from production metrics
+CREATE OR REPLACE VIEW production_analytics AS
+SELECT *
+FROM analytics_events ae
+WHERE NOT EXISTS (
+  SELECT 1 FROM profiles p
+  WHERE p.id = ae.user_id
+    AND p.user_cohort IN ('staff', 'test', 'bot')
+)
+AND correlation_id NOT LIKE 'test-%';
+```
+
+###Monitoring Dashboard (Real-Time)
+
+**Measurement Windows:**
+- **Rolling Window:** 120 minutes (2 hours)
+- **Warmup Exclusion:** First 30 minutes of phase excluded from evaluation
+- **Denominator:** Unique correlation_ids per invite session (excludes retries/refreshes)
+- **Evaluation Frequency:** Every 5 minutes with 3-minute dampening
+
+**Conversion Funnel Metrics (with Baselines):**
+```sql
+-- Invite View → Validate → Accept funnel
+-- Rolling 120-minute window, excluding first 30 min warmup
+WITH phase_start AS (
+  SELECT MIN(created_at) as start_time
+  FROM feature_flag_updates
+  WHERE flag_name = 'TOKENIZED_INVITES_ROLLOUT_PERCENT'
+    AND new_value = 10
+),
+warmup_cutoff AS (
+  SELECT start_time + INTERVAL '30 minutes' as cutoff_time
+  FROM phase_start
+),
+funnel AS (
   SELECT
-    COUNT(*) FILTER (WHERE event = 'invite_view') as views,
-    COUNT(*) FILTER (WHERE event = 'invite_validate_success') as validates,
-    COUNT(*) FILTER (WHERE event = 'invite_accept_success') as accepts
-  FROM analytics_events
-  WHERE created_at > NOW() - INTERVAL '1 hour'
+    -- Use DISTINCT correlation_id to count unique invite sessions (not retries)
+    COUNT(DISTINCT CASE WHEN event = 'invite_view' THEN correlation_id END) as views,
+    COUNT(DISTINCT CASE WHEN event = 'invite_validate_success' THEN correlation_id END) as validates,
+    COUNT(DISTINCT CASE WHEN event = 'invite_accept_success' THEN correlation_id END) as accepts
+  FROM production_analytics  -- Uses view that excludes staff/test
+  WHERE created_at > (SELECT cutoff_time FROM warmup_cutoff)  -- Exclude warmup
+    AND created_at > NOW() - INTERVAL '120 minutes'  -- Rolling window
     AND event IN ('invite_view', 'invite_validate_success', 'invite_accept_success')
 )
 SELECT
@@ -254,38 +786,107 @@ SELECT
   accepts,
   ROUND(100.0 * validates / NULLIF(views, 0), 1) as view_to_validate_pct,
   ROUND(100.0 * accepts / NULLIF(validates, 0), 1) as validate_to_accept_pct,
-  ROUND(100.0 * accepts / NULLIF(views, 0), 1) as end_to_end_pct
+  ROUND(100.0 * accepts / NULLIF(views, 0), 1) as end_to_end_pct,
+  -- Compare to baseline (from Phase 0)
+  95.0 as baseline_view_to_validate_pct,
+  90.0 as baseline_validate_to_accept_pct,
+  85.0 as baseline_end_to_end_pct,
+  -- Alert if below 1.5x relative threshold
+  CASE
+    WHEN (validates / NULLIF(views, 0)) < (0.95 / 1.5) THEN '⚠️ BELOW THRESHOLD'
+    ELSE '✅ OK'
+  END as view_to_validate_status
 FROM funnel;
 ```
 
-**Error Distribution:**
+**Error Distribution (with Wrong-Account Null Handling):**
 ```sql
--- Error breakdown (last 1 hour)
+-- Error breakdown with proper intended_email null handling
+-- Rolling 120-minute window, excluding warmup
+WITH warmup_cutoff AS (
+  SELECT
+    (SELECT MIN(created_at) FROM feature_flag_updates
+     WHERE flag_name = 'TOKENIZED_INVITES_ROLLOUT_PERCENT' AND new_value = 10)
+    + INTERVAL '30 minutes' as cutoff_time
+)
 SELECT
   error_type,
   COUNT(*) as occurrences,
-  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER(), 2) as pct_of_errors
-FROM analytics_events
-WHERE created_at > NOW() - INTERVAL '1 hour'
+  ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER(), 2) as pct_of_errors,
+  -- Wrong-account rule: Only count as wrong_account if intended_email IS NOT NULL
+  CASE
+    WHEN error_type = 'wrong_account' AND COUNT(*) FILTER (WHERE properties->>'intended_email' IS NULL) > 0
+    THEN 'ℹ️ Includes legacy tokens (NULL intended_email) - informational only'
+    ELSE ''
+  END as notes
+FROM production_analytics
+WHERE created_at > (SELECT cutoff_time FROM warmup_cutoff)
+  AND created_at > NOW() - INTERVAL '120 minutes'
   AND event IN ('invite_validate_fail', 'invite_accept_fail')
 GROUP BY error_type
 ORDER BY occurrences DESC;
 ```
 
-**Performance (p95):**
+**Performance (p50/p95/p99 with Server-Side Timing):**
 ```sql
--- Latency percentiles (last 1 hour)
+-- Latency percentiles using server-side timestamps (not client clock)
+-- Rolling 120-minute window, excluding warmup
+WITH warmup_cutoff AS (
+  SELECT
+    (SELECT MIN(created_at) FROM feature_flag_updates
+     WHERE flag_name = 'TOKENIZED_INVITES_ROLLOUT_PERCENT' AND new_value = 10)
+    + INTERVAL '30 minutes' as cutoff_time
+)
 SELECT
   event,
   COUNT(*) as sample_size,
   ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY latency_ms)) as p50_ms,
   ROUND(percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms)) as p95_ms,
-  ROUND(percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms)) as p99_ms
-FROM analytics_events
-WHERE created_at > NOW() - INTERVAL '1 hour'
+  ROUND(percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms)) as p99_ms,
+  -- Baselines from Phase 0
+  300 as baseline_p95_validate_ms,
+  600 as baseline_p95_accept_ms,
+  -- Alert if >1.5x baseline
+  CASE
+    WHEN event = 'invite_validate_success' AND percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) > 450
+    THEN '⚠️ ABOVE THRESHOLD (>1.5x baseline)'
+    WHEN event = 'invite_accept_success' AND percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) > 900
+    THEN '⚠️ ABOVE THRESHOLD (>1.5x baseline)'
+    ELSE '✅ OK'
+  END as p95_status
+FROM production_analytics
+WHERE created_at > (SELECT cutoff_time FROM warmup_cutoff)
+  AND created_at > NOW() - INTERVAL '120 minutes'
   AND event IN ('invite_validate_success', 'invite_accept_success')
   AND latency_ms IS NOT NULL
+  AND latency_ms < 30000  -- Exclude client-side clock skew outliers (>30s)
 GROUP BY event;
+```
+
+**Alert Dampening Configuration:**
+```yaml
+# PagerDuty/Opsgenie alert rules
+alerts:
+  - name: "Tokenized Invites - Critical Error Rate"
+    query: "SELECT (errors / total) > 0.25 FROM invite_metrics WHERE window = '5min'"
+    evaluation_window: "5 minutes"  # Multi-minute window
+    consecutive_breaches: 3  # Must breach 3 times in a row (15 min total)
+    action: "page_oncall + auto_rollback"
+    dampening: "no_repeat_for_30min"  # Don't re-alert within 30 min
+
+  - name: "Tokenized Invites - Conversion Drop"
+    query: "SELECT (accepts / views) < 0.50 FROM invite_metrics WHERE window = '10min'"
+    evaluation_window: "10 minutes"
+    consecutive_breaches: 2  # 20 minutes total
+    action: "notify_team"
+    dampening: "no_repeat_for_60min"
+
+  - name: "Tokenized Invites - Latency Spike"
+    query: "SELECT p95_accept_latency > (baseline_p95 * 1.5) FROM invite_metrics"
+    evaluation_window: "5 minutes"
+    consecutive_breaches: 3
+    action: "notify_team + check_functions"
+    dampening: "no_repeat_for_30min"
 ```
 
 ### Go/No-Go Thresholds (10% → 25%)
