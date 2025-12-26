@@ -371,7 +371,7 @@ export const propertyAreasService = {
       if (updates.inventoryComplete !== undefined) dbUpdates.inventory_complete = updates.inventoryComplete;
       if (updates.condition !== undefined) dbUpdates.condition = updates.condition;
 
-      const { error } = await supabase
+      const { error } = await defaultSupabase
         .from('property_areas')
         .update(dbUpdates)
         .eq('id', areaId);
@@ -391,7 +391,7 @@ export const propertyAreasService = {
    */
   async deleteArea(areaId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await defaultSupabase
         .from('property_areas')
         .delete()
         .eq('id', areaId);
@@ -453,7 +453,7 @@ export const propertyAreasService = {
       if (updates.notes !== undefined) dbUpdates.notes = updates.notes || null;
       if (updates.isActive !== undefined) dbUpdates.is_active = updates.isActive;
 
-      const { error } = await supabase
+      const { error } = await defaultSupabase
         .from('property_assets')
         .update(dbUpdates)
         .eq('id', assetId);
@@ -473,7 +473,7 @@ export const propertyAreasService = {
    */
   async deleteAsset(assetId: string): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await defaultSupabase
         .from('property_assets')
         .delete()
         .eq('id', assetId);

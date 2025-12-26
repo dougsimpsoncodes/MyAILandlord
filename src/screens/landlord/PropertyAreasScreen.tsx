@@ -31,6 +31,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import Input from '../../components/shared/Input';
 import { DesignSystem } from '../../theme/DesignSystem';
+import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
 
 type PropertyAreasNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAreasRouteProp = RouteProp<LandlordStackParamList, 'PropertyAreas'>;
@@ -1002,11 +1003,42 @@ const PropertyAreasScreen = () => {
 
           const newProperty = await api.createProperty(propertyPayload);
 
-          // Save areas and assets to the new property
-          let savedAreas = areasToSave;
+          // Upload area photos to storage before saving areas to database
+          let areasWithUploadedPhotos = areasToSave;
           if (areasToSave.length > 0) {
+            areasWithUploadedPhotos = await Promise.all(
+              areasToSave.map(async (area) => {
+                // If area has photos (local URIs), upload them to storage
+                if (area.photos && area.photos.length > 0) {
+                  try {
+                    const uploadedPhotos = await uploadPropertyPhotos(
+                      newProperty.id,
+                      area.id,
+                      area.photos.map(uri => ({ uri }))
+                    );
+
+                    // Replace local URIs with storage paths
+                    return {
+                      ...area,
+                      photos: uploadedPhotos.map(p => p.url), // Use signed URLs
+                      photoPaths: uploadedPhotos.map(p => p.path), // Store paths for later regeneration
+                    };
+                  } catch (error) {
+                    console.error(`Failed to upload photos for area ${area.name}:`, error);
+                    // Continue without photos if upload fails
+                    return { ...area, photos: [], photoPaths: [] };
+                  }
+                }
+                return area;
+              })
+            );
+          }
+
+          // Save areas and assets to the new property
+          let savedAreas = areasWithUploadedPhotos;
+          if (areasWithUploadedPhotos.length > 0) {
             const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
-            await propertyAreasService.saveAreasAndAssets(newProperty.id, areasToSave, supabase);
+            await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
 
             // Fetch the saved areas from database to get proper UUIDs
             savedAreas = await propertyAreasService.getAreasWithAssets(newProperty.id, supabase);

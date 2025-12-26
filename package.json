@@ -48,7 +48,10 @@
     "test:invite:e2e:cors": "playwright test e2e/flows/tenant-invite-acceptance-enhanced.spec.ts --grep \"CORS\"",
     "test:invite:complete": "npm run test:invite && npm run test:invite:e2e",
     "test:invite:production": "npm run test:invite && npm run test:invite:e2e:enhanced",
-    "scan:secrets:all": "gitleaks detect --no-git --source . --redact --config .gitleaks.toml --report-path .reports/gitleaks-all.json"
+    "test:fix": "./scripts/test-fix.sh",
+    "test:fix:area-photos": "./scripts/test-fix.sh area-photos-persist",
+    "scan:secrets:all": "gitleaks detect --no-git --source . --redact --config .gitleaks.toml --report-path .reports/gitleaks-all.json",
+    "e2e:invite:local": "BASE_URL=http://localhost:8083 LANDLORD_PASSWORD=Password123! TENANT_PASSWORD=Password123! USE_MAILPIT=false npx playwright test e2e/flows/invite-code-happy.spec.ts --project='Desktop Chrome'"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

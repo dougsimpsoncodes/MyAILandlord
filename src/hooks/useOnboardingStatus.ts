@@ -125,7 +125,7 @@ export function useOnboardingStatus(): OnboardingStatus {
           .from('tenant_property_links')
           .select('id', { count: 'exact', head: true })
           .eq('tenant_id', user.id)
-          .eq('status', 'active');
+          .eq('is_active', true);
 
         if (linkError) {
           log.error('useOnboardingStatus: Error checking property links:', linkError);

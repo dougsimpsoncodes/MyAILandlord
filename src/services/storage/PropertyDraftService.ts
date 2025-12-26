@@ -115,26 +115,24 @@ export class PropertyDraftService {
         const errorMessage = storageError instanceof Error ? storageError.message : '';
         if (errorName === 'QuotaExceededError' || errorMessage?.includes('quota')) {
           log.warn('Storage quota exceeded, cleaning up old drafts...');
-          
+
           // Try to free up space by cleaning old drafts
           await this.cleanupOldDrafts(userId, true); // Force cleanup
-          
-          // Try again with simplified data (remove photos from storage)
+
+          // Try again with simplified data (PRESERVE area photos, only remove property photos)
           const simplifiedDraft = {
             ...draftWithMetadata,
             propertyData: {
               ...draftWithMetadata.propertyData,
-              photos: [], // Remove photos to save space
+              photos: [], // Remove property-level photos to save space (less critical)
             },
-            areas: draftWithMetadata.areas?.map(area => ({
-              ...area,
-              photos: [], // Remove area photos to save space
-            })),
+            // KEEP area photos - they're critical for property creation flow
+            areas: draftWithMetadata.areas,
           };
-          
+
           try {
             await AsyncStorage.setItem(storageKey, JSON.stringify(simplifiedDraft));
-            log.warn('Saved simplified draft without photos due to storage constraints');
+            log.warn('Saved simplified draft (removed property photos but kept area photos)');
           } catch (retryError) {
             log.error('Failed to save even simplified draft', { error: String(retryError) });
             throw new Error('Storage full - please clear browser data and try again');

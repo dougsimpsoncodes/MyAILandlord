@@ -23,6 +23,7 @@ import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import log from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -112,17 +113,53 @@ const PropertyReviewScreen = () => {
       };
       
       const newProperty = await api.createProperty(propertyPayload);
-      
-      // Save areas and assets to database
+
+      // Upload area photos to storage before saving areas to database
+      let areasWithUploadedPhotos = areas;
       if (areas && areas.length > 0) {
+        areasWithUploadedPhotos = await Promise.all(
+          areas.map(async (area) => {
+            // If area has photos (local URIs), upload them to storage
+            if (area.photos && area.photos.length > 0) {
+              // Check if photos are already storage paths (start with property ID)
+              const hasLocalPhotos = area.photos.some(p => !p.includes('/') || p.startsWith('file://') || p.startsWith('blob:'));
+
+              if (hasLocalPhotos) {
+                try {
+                  const uploadedPhotos = await uploadPropertyPhotos(
+                    newProperty.id,
+                    area.id,
+                    area.photos.map(uri => ({ uri }))
+                  );
+
+                  // Replace local URIs with storage paths
+                  return {
+                    ...area,
+                    photos: uploadedPhotos.map(p => p.url), // Use signed URLs
+                    photoPaths: uploadedPhotos.map(p => p.path), // Store paths for later regeneration
+                  };
+                } catch (error) {
+                  log.error(`Failed to upload photos for area ${area.name}:`, { error: String(error) });
+                  // Continue without photos if upload fails
+                  return { ...area, photos: [], photoPaths: [] };
+                }
+              }
+            }
+            return area;
+          })
+        );
+      }
+
+      // Save areas and assets to database
+      if (areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
         try {
           log.info('Saving property areas and assets to database', {
             propertyId: newProperty.id,
-            areaCount: areas.length,
-            totalAssets: areas.reduce((sum, area) => sum + (area.assets?.length || 0), 0)
+            areaCount: areasWithUploadedPhotos.length,
+            totalAssets: areasWithUploadedPhotos.reduce((sum, area) => sum + (area.assets?.length || 0), 0)
           });
 
-          await propertyAreasService.saveAreasAndAssets(newProperty.id, areas, supabase);
+          await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
 
           log.info('Successfully saved areas and assets to database');
         } catch (areasError) {

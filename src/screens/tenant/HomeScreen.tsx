@@ -113,19 +113,33 @@ const HomeScreen = () => {
       if (tenantProperties.length > 0) {
         // Use the first active property (most apps link tenant to one property)
         const firstLink = tenantProperties[0];
+        log.info('DEBUG: firstLink data', { firstLink });
         const property = firstLink.properties as any;
+        log.info('DEBUG: property object', { property, hasProperty: !!property });
 
         if (property) {
+          log.info('DEBUG: Setting linked property', { propertyId: property.id, propertyName: property.name });
+
+          // Format address from address_jsonb if plain address is empty
+          let formattedAddress = property.address || '';
+          if (!formattedAddress && property.address_jsonb) {
+            const addr = property.address_jsonb;
+            const parts = [addr.line1, addr.city, addr.state, addr.zipCode].filter(Boolean);
+            formattedAddress = parts.join(', ');
+          }
+
           setLinkedProperty({
             id: property.id,
             name: property.name,
-            address: property.address || '',
+            address: formattedAddress,
             unit: firstLink.unit_number || undefined,
             wifiNetwork: property.wifi_network || undefined,
             wifiPassword: property.wifi_password || undefined,
             emergencyContact: property.emergency_contact || undefined,
             emergencyPhone: property.emergency_phone || undefined,
           });
+        } else {
+          log.error('DEBUG: property object is null/undefined!');
         }
       } else {
         setLinkedProperty(null);
@@ -234,7 +248,7 @@ const HomeScreen = () => {
     >
         {/* Property Section */}
         {linkedProperty && (
-          <View style={styles.sectionCard}>
+          <View style={styles.sectionCard} testID="tenant-property-list">
             <TouchableOpacity
               style={styles.propertyBanner}
               onPress={() => {

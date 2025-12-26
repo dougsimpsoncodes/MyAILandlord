@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { Platform, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import AuthStack from './navigation/AuthStack';
 import MainStack from './navigation/MainStack';
@@ -47,7 +48,8 @@ const AppNavigator = () => {
   // Check for pending invite when user becomes authenticated
   useEffect(() => {
     const checkPendingInvite = async () => {
-      if (isSignedIn && user && userRole) {
+      // Check for pending invite even without role (for new signups)
+      if (isSignedIn && user) {
         const pendingInvite = await PendingInviteService.getPendingInvite();
         if (pendingInvite) {
           if (pendingInvite.type === 'token') {
@@ -59,13 +61,12 @@ const AppNavigator = () => {
             log.info('📥 Found pending legacy invite after auth:', pendingInvite.value);
             setPendingInvitePropertyId(pendingInvite.value);
           }
-          // Clear it so we don't redirect again
-          await PendingInviteService.clearPendingInvite();
+          // Don't clear yet - let PropertyInviteAcceptScreen handle it after acceptance
         }
       }
     };
     checkPendingInvite();
-  }, [isSignedIn, user, userRole]);
+  }, [isSignedIn, user]);
 
   // Get initial URL for deep link handling (ONE-TIME ONLY)
   useEffect(() => {
@@ -73,7 +74,24 @@ const AppNavigator = () => {
       try {
         const url = await Linking.getInitialURL();
         log.info('🔗 Initial URL detected (one-time):', url);
-        setInitialUrl(url);
+
+        // If it's an invite URL and user is NOT authenticated, save pending invite immediately
+        if (url && url.includes('/invite') && !isSignedIn) {
+          const parsedUrl = Linking.parse(url);
+          const token = (parsedUrl.queryParams?.t || parsedUrl.queryParams?.token) as string | undefined;
+
+          if (token) {
+            log.info('🎟️ Invite URL detected, saving pending invite immediately:', token.substring(0, 4) + '...');
+            await PendingInviteService.savePendingInvite(token, 'token');
+            // Don't set initialUrl - let it go to OnboardingWelcome naturally
+            setInitialUrl(null);
+          } else {
+            setInitialUrl(url);
+          }
+        } else {
+          setInitialUrl(url);
+        }
+
         // Clear it after capture to prevent replay
         setTimeout(() => {
           if (url) {
@@ -89,7 +107,7 @@ const AppNavigator = () => {
     };
 
     getInitialURL();
-  }, []);
+  }, [isSignedIn]);
 
   // Activate onboarding flow freeze when user enters onboarding
   useEffect(() => {
@@ -112,10 +130,11 @@ const AppNavigator = () => {
   // Determine if we should force AuthStack for deep link invite
   const isInviteLink = initialUrl && initialUrl.includes('/invite');
 
-  // Show MainStack for all authenticated users with a role
+  // Show MainStack for all authenticated users with a role OR with a pending invite
   // MainStack will handle onboarding routing internally via LandlordNavigator
   const isFullyAuthenticated = isSignedIn && user && userRole;
-  const shouldShowMainStack = authDisabled ? true : isFullyAuthenticated;
+  const hasPendingInvite = isSignedIn && user && pendingInvitePropertyId;
+  const shouldShowMainStack = authDisabled ? true : (isFullyAuthenticated || hasPendingInvite);
 
   // Use frozen onboarding state during active flow to prevent re-checks
   const effectiveNeedsOnboarding = onboardingFlowActive ? true : needsOnboarding;
@@ -132,8 +151,13 @@ const AppNavigator = () => {
   });
 
   // Configure deep linking
+  const devPrefix = Platform.OS === 'web' && typeof window !== 'undefined'
+    ? window.location.origin
+    : Linking.createURL('/');
+
   const linking = {
     prefixes: [
+      devPrefix,
       'myailandlord://',
       'https://myailandlord.app',
       'https://www.myailandlord.app',
@@ -155,8 +179,9 @@ const AppNavigator = () => {
         PropertyInviteAccept: {
           path: 'invite',
           parse: {
+            t: (t: string) => t,                       // NEW short form token parameter
+            token: (token: string) => token,           // Legacy token parameter
             property: (property: string) => property,  // Legacy propertyId flow (deprecated)
-            token: (token: string) => token,           // NEW tokenized flow (production)
           }
         },
         // Auth screens
@@ -173,7 +198,6 @@ const AppNavigator = () => {
             SubmissionSuccess: 'submission-success',
             FollowUp: 'follow-up',
             PropertyCodeEntry: 'link',
-            PropertyInviteAccept: 'property-invite',
             PropertyWelcome: 'property-welcome',
             PropertyInfo: 'property-info',
             CommunicationHub: 'communication',
@@ -262,10 +286,12 @@ const AppNavigator = () => {
   };
 
   return (
-    <NavigationContainer linking={linking}>
-      {shouldShowMainStack ? (
+    <>
+      <View testID="app-ready" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
+      <NavigationContainer linking={linking}>
+        {shouldShowMainStack ? (
         <MainStack
-          userRole={userRole as 'tenant' | 'landlord'}
+          userRole={(userRole || (hasPendingInvite ? 'tenant' : 'landlord')) as 'tenant' | 'landlord'}
           pendingInvitePropertyId={pendingInvitePropertyId}
           needsOnboarding={effectiveNeedsOnboarding}
           userFirstName={userFirstName}
@@ -279,7 +305,8 @@ const AppNavigator = () => {
           } : undefined}
         />
       )}
-    </NavigationContainer>
+      </NavigationContainer>
+    </>
   );
 };
 

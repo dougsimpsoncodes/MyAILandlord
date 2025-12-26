@@ -63,7 +63,7 @@ export class PhotoService {
       if (!hasPermission) return null;
 
       const defaultOptions: CameraOptions = {
-        mediaTypes: 'photo' as any,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: PHOTO_CONFIG.ASPECT_RATIO,
         quality: PHOTO_CONFIG.QUALITY,
@@ -110,11 +110,12 @@ export class PhotoService {
       }
 
       const defaultOptions: ImagePickerOptions = {
-        mediaTypes: 'photo' as any,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // Opens directly to Photos library
         allowsMultipleSelection: true,
         quality: PHOTO_CONFIG.QUALITY,
         aspect: PHOTO_CONFIG.ASPECT_RATIO,
         allowsEditing: false,
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
       };
 
       const finalOptions = {

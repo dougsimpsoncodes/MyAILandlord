@@ -13,7 +13,7 @@ import {
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
-import { shouldUseTokenizedInvites } from '../../config/featureFlags';
+
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { log } from '../../lib/log';
@@ -40,7 +40,7 @@ export default function LandlordTenantInviteScreen() {
   const [inviteUrl, setInviteUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [useTokenizedFlow, setUseTokenizedFlow] = useState(false);
+
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,46 +64,45 @@ export default function LandlordTenantInviteScreen() {
 
     try {
       const isWeb = Platform.OS === 'web';
-      let url: string;
-
-      // Check if we should use tokenized invites
-      const useTokens = user?.id ? shouldUseTokenizedInvites(user.id) : false;
 
       // DIAGNOSTIC LOGGING (DEV only)
       if (__DEV__) {
-        console.log('[INVITES] 🎟️ Feature flag check:', {
+        console.log('[INVITES] 🎟️ Generating simple invite for property:', {
           userId: user?.id,
-          useTokens,
-          envFlag: process.env.EXPO_PUBLIC_TOKENIZED_INVITES,
-          rolloutPercent: process.env.EXPO_PUBLIC_TOKEN_ROLLOUT_PERCENT,
           propertyId,
+          platform: isWeb ? 'web' : 'native',
         });
       }
 
-      setUseTokenizedFlow(useTokens);
+      // Generate invite using create_invite RPC (simple invites system)
+      log.info('🎟️ Generating invite for property:', propertyId);
+      const { data, error } = await supabase.rpc('create_invite', {
+        p_property_id: propertyId,
+        p_delivery_method: 'code',
+        p_intended_email: null
+      });
 
-      if (useTokens) {
-        // NEW: Generate tokenized invite via RPC function
-        if (__DEV__) console.log('[INVITES] 🎟️ Generating tokenized invite for property:', propertyId);
-        log.info('🎟️ Generating tokenized invite for property:', propertyId);
-        url = await generateTokenizedInvite(propertyId, isWeb);
-        if (__DEV__) console.log('[INVITES] ✅ Tokenized invite generated:', url);
-      } else {
-        // LEGACY: Direct property link
-        if (__DEV__) console.log('[INVITES] 🔗 Using legacy invite link for property:', propertyId);
-        log.info('🔗 Generating legacy invite link for property:', propertyId);
-        if (isWeb) {
-          const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
-          url = `${origin}/invite?property=${propertyId}`;
-        } else {
-          url = `myailandlord://invite?property=${propertyId}`;
-        }
-        if (__DEV__) console.log('[INVITES] 🔗 Legacy URL:', url);
+      if (error || !data || !Array.isArray(data) || !data[0]?.token) {
+        const msg = error?.message || 'No token returned';
+        console.error('[INVITES] ❌ RPC error (create_invite):', error);
+        log.error('RPC error generating invite:', error || new Error(msg));
+        setGenerationError(msg);
+        Alert.alert('Error', 'Failed to generate invite link. Please try again.');
+        return;
       }
 
+      const token = data[0].token;
+      if (__DEV__) console.log('[INVITES] ✅ Token generated:', { token_preview: token.substring(0, 4) + '...' });
+
+      // Build URL with token parameter
+      const origin = isWeb && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'https://myailandlord.app';
+      const url = (isWeb ? origin : 'myailandlord://') + `/invite?t=${token}`;
+
       setInviteUrl(url);
-      setGenerationError(null); // Clear any previous errors
-      if (__DEV__) console.log('[INVITES] ✅ Invite URL set in state:', url);
+      setGenerationError(null);
+      if (__DEV__) console.log('[INVITES] ✅ Invite URL set (simple):', url);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate invite link';
       console.error('[INVITES] ❌ Error generating invite URL:', error);
@@ -112,48 +111,6 @@ export default function LandlordTenantInviteScreen() {
       Alert.alert('Error', 'Failed to generate invite link. Please try again.');
     } finally {
       setIsGenerating(false);
-    }
-  };
-
-  const generateTokenizedInvite = async (propId: string, isWeb: boolean): Promise<string> => {
-    if (__DEV__) {
-      console.log('[INVITES] 🔄 Calling RPC generate_invite_token with:', {
-        p_property_id: propId,
-        p_max_uses: 1,
-        p_expires_in_days: 7
-      });
-    }
-
-    // Call generate_invite_token RPC function
-    const { data, error } = await supabase.rpc('generate_invite_token', {
-      p_property_id: propId,
-      p_max_uses: 1,       // Single-use token by default
-      p_expires_in_days: 7 // 7-day expiry by default
-    });
-
-    if (__DEV__) console.log('[INVITES] 🎟️ RPC response:', { data, error, propId });
-
-    if (error) {
-      if (__DEV__) console.error('[INVITES] ❌ RPC error details:', JSON.stringify(error, null, 2));
-      log.error('RPC error generating token:', error);
-      throw new Error('Failed to generate invite token');
-    }
-
-    if (!data || !data.token) {
-      if (__DEV__) console.error('[INVITES] ❌ No token in response:', data);
-      throw new Error('No token returned from server');
-    }
-
-    const token = data.token;
-    if (__DEV__) console.log('[INVITES] ✅ Token generated:', { token, token_id: data.token_id });
-    log.info('✅ Generated tokenized invite:', { token_id: data.token_id });
-
-    // Build URL with token parameter
-    if (isWeb) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
-      return `${origin}/invite?token=${token}`;
-    } else {
-      return `myailandlord://invite?token=${token}`;
     }
   };
 
@@ -232,16 +189,6 @@ export default function LandlordTenantInviteScreen() {
             >
               {inviteUrl || (isGenerating ? 'Generating invite link...' : '')}
             </Text>
-            {/* Hidden testable state for E2E tests (DEV only) */}
-            {__DEV__ && (
-              <Text
-                style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-                testID="use-tokenized-flow"
-                accessibilityLabel={`Using tokenized flow: ${useTokenizedFlow}`}
-              >
-                {useTokenizedFlow ? 'true' : 'false'}
-              </Text>
-            )}
             {generationError && (
               <Text
                 style={styles.errorText}

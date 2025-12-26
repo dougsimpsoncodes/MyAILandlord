@@ -117,7 +117,7 @@ export type TenantStackParamList = {
     emergencyPhone?: string;
   } | undefined;
   PropertyCodeEntry: undefined;
-  PropertyInviteAccept: { propertyId?: string; property?: string };
+  PropertyInviteAccept: { t?: string; token?: string; propertyId?: string; property?: string };
   UnitSelection: {
     propertyCode: string;
     propertyName: string;
@@ -315,6 +315,8 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
+          // Expose testID for E2E login success check
+          tabBarTestID: 'nav-dashboard',
         }}
       />
       <LandlordTab.Screen
@@ -344,6 +346,8 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="business" size={size} color={color} />
           ),
+          // Expose testID for navigating to properties
+          tabBarTestID: 'nav-properties',
         }}
       />
       <LandlordTab.Screen
@@ -373,6 +377,7 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
+          tabBarTestID: 'nav-user-menu',
         }}
       />
     </LandlordTab.Navigator>

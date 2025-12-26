@@ -697,6 +697,7 @@ export function useApiClient(): UseApiClientReturn | null {
             id,
             name,
             address,
+            address_jsonb,
             landlord_id,
             wifi_network,
             wifi_password,

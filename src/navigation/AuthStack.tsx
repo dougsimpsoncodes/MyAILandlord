@@ -17,8 +17,7 @@ import {
   LandlordTenantInviteScreen,
   LandlordOnboardingSuccessScreen,
   TenantOnboardingWelcomeScreen,
-  TenantPropertyCodeScreen,
-  TenantPropertyConfirmScreen,
+  TenantInviteRoommateScreen,
   TenantOnboardingSuccessScreen,
 } from '../screens/onboarding';
 
@@ -51,8 +50,7 @@ export type AuthStackParamList = {
   LandlordOnboardingSuccess: { firstName: string };
   // Tenant onboarding path
   TenantOnboardingWelcome: { firstName: string; role: 'tenant' };
-  TenantPropertyCode: { firstName: string };
-  TenantPropertyConfirm: { firstName: string; propertyId: string; propertyName: string; landlordName: string };
+  TenantInviteRoommate: { firstName: string; propertyId: string; propertyName: string; inviteCode: string };
   TenantOnboardingSuccess: { firstName: string };
   // Existing auth screens
   Auth: { mode?: 'login' | 'signup' };
@@ -80,7 +78,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
   // Determine initial route based on context:
   // 1. Deep link invite → PropertyInviteAccept
   // 2. Continuation for existing landlord → LandlordPropertyIntro
-  // 3. Continuation for existing tenant → TenantPropertyCode
+  // 3. Continuation for existing tenant → TenantOnboardingWelcome
   // 4. New user → OnboardingWelcome
   let initialRouteName: keyof AuthStackParamList = 'OnboardingWelcome';
   let initialParams: Record<string, unknown> | undefined;
@@ -92,8 +90,8 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       initialRouteName = 'LandlordPropertyIntro';
       initialParams = { firstName: continuation.firstName };
     } else if (continuation.role === 'tenant') {
-      initialRouteName = 'TenantPropertyCode';
-      initialParams = { firstName: continuation.firstName };
+      initialRouteName = 'TenantOnboardingWelcome';
+      initialParams = { firstName: continuation.firstName, role: 'tenant' };
     }
     // If no role, fall back to OnboardingWelcome
   }
@@ -138,12 +136,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
 
       {/* Tenant onboarding path */}
       <Stack.Screen name="TenantOnboardingWelcome" component={TenantOnboardingWelcomeScreen} />
-      <Stack.Screen
-        name="TenantPropertyCode"
-        component={TenantPropertyCodeScreen}
-        initialParams={continuation?.role === 'tenant' ? { firstName: continuation.firstName } : undefined}
-      />
-      <Stack.Screen name="TenantPropertyConfirm" component={TenantPropertyConfirmScreen} />
+      <Stack.Screen name="TenantInviteRoommate" component={TenantInviteRoommateScreen} />
       <Stack.Screen name="TenantOnboardingSuccess" component={TenantOnboardingSuccessScreen} />
 
       {/* Existing auth screens */}

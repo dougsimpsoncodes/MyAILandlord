@@ -41,14 +41,15 @@ BEGIN
   END IF;
 
   -- Generate cryptographically secure random token (12 chars base62)
-  v_token := encode(gen_random_bytes(9), 'base64');
+  -- NOTE: Must use extensions.gen_random_bytes because search_path is set to public
+  v_token := encode(extensions.gen_random_bytes(9), 'base64');
   -- Remove non-alphanumeric characters and truncate to 12 chars
   v_token := regexp_replace(v_token, '[^A-Za-z0-9]', '', 'g');
   v_token := substring(v_token from 1 for 12);
 
   -- Ensure token is exactly 12 characters (regenerate if needed)
   WHILE length(v_token) < 12 LOOP
-    v_token := v_token || encode(gen_random_bytes(3), 'base64');
+    v_token := v_token || encode(extensions.gen_random_bytes(3), 'base64');
     v_token := regexp_replace(v_token, '[^A-Za-z0-9]', '', 'g');
     v_token := substring(v_token from 1 for 12);
   END LOOP;

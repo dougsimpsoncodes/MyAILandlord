@@ -12,6 +12,5 @@ export { default as LandlordOnboardingSuccessScreen } from './LandlordOnboarding
 
 // Tenant onboarding screens
 export { default as TenantOnboardingWelcomeScreen } from './TenantOnboardingWelcomeScreen';
-export { default as TenantPropertyCodeScreen } from './TenantPropertyCodeScreen';
-export { default as TenantPropertyConfirmScreen } from './TenantPropertyConfirmScreen';
+export { default as TenantInviteRoommateScreen } from './TenantInviteRoommateScreen';
 export { default as TenantOnboardingSuccessScreen } from './TenantOnboardingSuccessScreen';

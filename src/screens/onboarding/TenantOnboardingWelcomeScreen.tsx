@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,24 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
+import { PendingInviteService } from '../../services/storage/PendingInviteService';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { log } from '../../lib/log';
 
 type TenantOnboardingStackParamList = {
   TenantOnboardingWelcome: { firstName: string };
-  TenantPropertyCode: { firstName: string };
-  TenantPropertyConfirm: { firstName: string; propertyId: string; propertyName: string };
+  // Code-entry flow removed; only invite link path remains
+  // TenantPropertyIntro: { firstName: string };
+  // TenantPropertyCode: { firstName: string };
+  // TenantPropertyConfirm: { firstName: string; propertyId: string; propertyName: string };
+  TenantInviteRoommate: { firstName: string; propertyId: string; propertyName: string; inviteCode: string };
   TenantOnboardingSuccess: { firstName: string };
 };
 
@@ -48,9 +57,90 @@ export default function TenantOnboardingWelcomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<WelcomeRouteProp>();
   const { firstName } = route.params;
+  const { user } = useAppAuth();
+  const { supabase } = useSupabaseWithAuth();
 
-  const handleContinue = () => {
-    navigation.navigate('TenantPropertyCode', { firstName });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleContinue = async () => {
+    setIsProcessing(true);
+
+    try {
+      // Check for pending invite (from invite link flow)
+      const pendingInvite = await PendingInviteService.getPendingInvite();
+
+      if (pendingInvite && pendingInvite.type === 'token') {
+        log.info('[TenantOnboardingWelcome] Pending invite detected, validating and auto-accepting');
+
+        // If metadata is missing, validate token first to get property details
+        let propertyId = pendingInvite.metadata?.propertyId;
+        let propertyName = pendingInvite.metadata?.propertyName;
+
+        if (!propertyId || !propertyName) {
+          log.info('[TenantOnboardingWelcome] Metadata missing, validating token');
+          const { data: validateData, error: validateError } = await supabase.rpc('validate_invite', {
+            p_token: pendingInvite.value
+          });
+
+          if (validateError || !validateData || !Array.isArray(validateData) || !validateData[0]?.valid) {
+            log.error('[TenantOnboardingWelcome] Token validation failed:', validateError);
+            Alert.alert('Error', 'Invalid invite link. Please contact your landlord.');
+            await PendingInviteService.clearPendingInvite();
+            setIsProcessing(false);
+            return;
+          }
+
+          propertyId = validateData[0].property_id;
+          propertyName = validateData[0].property_name;
+          log.info('[TenantOnboardingWelcome] Token validated:', { propertyId, propertyName });
+        }
+
+        // Auto-accept the invite
+        const { data, error } = await supabase.rpc('accept_invite', {
+          p_token: pendingInvite.value
+        });
+
+        if (error) {
+          log.error('[TenantOnboardingWelcome] Failed to auto-accept invite:', error);
+          Alert.alert('Error', 'Failed to connect to property. Please try again.');
+          setIsProcessing(false);
+          return;
+        }
+
+        if (!data || !Array.isArray(data) || data.length === 0 || !data[0].success) {
+          log.error('[TenantOnboardingWelcome] Auto-accept failed:', data);
+          Alert.alert('Error', 'Failed to connect to property. Please try again.');
+          setIsProcessing(false);
+          return;
+        }
+
+        log.info('[TenantOnboardingWelcome] Auto-accept successful, navigating to roommate invite');
+
+        // Clear pending invite
+        await PendingInviteService.clearPendingInvite();
+
+        // Navigate to roommate invite screen (convergence point)
+        navigation.navigate('TenantInviteRoommate', {
+          firstName,
+          propertyId: propertyId || '',
+          propertyName: propertyName || 'your property',
+          inviteCode: pendingInvite.value
+        });
+      } else {
+        // No pending invite: require invite link
+        log.info('[TenantOnboardingWelcome] No pending invite; requiring invite link');
+        Alert.alert(
+          'Invite Required',
+          'Ask your landlord to send you an invite link. Open it on this device to connect.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      log.error('[TenantOnboardingWelcome] Error processing pending invite:', error as Error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -99,8 +189,16 @@ export default function TenantOnboardingWelcomeScreen() {
 
           {/* Button Section */}
           <View style={styles.buttonSection}>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleContinue}>
-              <Text style={styles.primaryButtonText}>Connect to My Property</Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, isProcessing && styles.primaryButtonDisabled]}
+              onPress={handleContinue}
+              disabled={isProcessing}
+            >
+              {isProcessing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Connect to My Property</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -220,6 +318,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: colors.text.inverse,

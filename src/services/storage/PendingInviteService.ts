@@ -8,6 +8,11 @@ interface PendingInvite {
   type: 'token' | 'legacy';
   value: string;  // token or propertyId
   timestamp: number;
+  metadata?: {
+    propertyId?: string;
+    propertyName?: string;
+    inviteCode?: string;
+  };
 }
 
 /**
@@ -50,17 +55,23 @@ export const PendingInviteService = {
    * Save a pending property invite before redirecting to auth
    * @param value - Either a token (NEW) or propertyId (LEGACY)
    * @param type - 'token' for tokenized invites, 'legacy' for direct propertyId links
+   * @param metadata - Optional metadata (propertyId, propertyName, inviteCode)
    */
-  async savePendingInvite(value: string, type: 'token' | 'legacy' = 'legacy'): Promise<void> {
+  async savePendingInvite(
+    value: string,
+    type: 'token' | 'legacy' = 'legacy',
+    metadata?: { propertyId?: string; propertyName?: string; inviteCode?: string }
+  ): Promise<void> {
     try {
       const invite: PendingInvite = {
         type,
         value,
         timestamp: Date.now(),
+        metadata,
       };
       await storage.setItem(PENDING_INVITE_KEY, JSON.stringify(invite));
       const storageType = Platform.OS === 'web' ? 'localStorage' : 'AsyncStorage';
-      log.info(`📥 Saved pending ${type} invite (${storageType}):`, value);
+      log.info(`📥 Saved pending ${type} invite (${storageType}):`, value, metadata);
     } catch (error) {
       log.error('Failed to save pending invite:', error as Error);
     }

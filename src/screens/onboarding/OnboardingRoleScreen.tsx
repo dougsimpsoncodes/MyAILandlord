@@ -11,6 +11,7 @@ import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-naviga
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 import { supabase } from '../../services/supabase/client';
+import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
 
 type OnboardingStackParamList = {
   OnboardingWelcome: undefined;
@@ -44,12 +45,14 @@ export default function OnboardingRoleScreen() {
     setError(null);
 
     try {
-      // Save first_name only - delay role save until onboarding complete
-      // This prevents AppNavigator from switching to MainStack mid-onboarding
+      // Mark onboarding as started to prevent AppNavigator from switching stacks mid-flow
+      await markOnboardingStarted();
+
+      // Save the selected role to database so AppNavigator can route correctly
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          first_name: firstName,
+          role: selectedRole,
         })
         .eq('id', userId);
 

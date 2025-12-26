@@ -22,6 +22,7 @@ import { DesignSystem } from '../theme/DesignSystem';
 type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Auth'>;
 
 const OAUTH_ENABLED = process.env.EXPO_PUBLIC_OAUTH_ENABLED === 'true';
+const AUTO_LOGIN_AFTER_SIGNUP = process.env.EXPO_PUBLIC_SIGNUP_AUTOLOGIN === '1';
 
 type AuthMode = 'login' | 'signup';
 
@@ -94,6 +95,23 @@ const AuthScreen = () => {
       // Check if user is already confirmed (auto sign-in)
       if (data.session) {
         return;
+      }
+
+      // Optional fallback for environments where Supabase doesn't return session
+      // even when email confirmation is disabled (e.g., E2E). When enabled via
+      // EXPO_PUBLIC_SIGNUP_AUTOLOGIN=1, attempt password sign-in immediately.
+      if (AUTO_LOGIN_AFTER_SIGNUP) {
+        const delays = [150, 300, 600, 1000];
+        for (const delay of delays) {
+          const { error: pwError } = await supabase.auth.signInWithPassword({
+            email: emailAddress,
+            password,
+          });
+          if (!pwError) {
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
 
       // Show success state - user needs to verify email
@@ -252,6 +270,7 @@ const AuthScreen = () => {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
+                  testID="auth-email"
                 />
               </View>
 
@@ -267,6 +286,7 @@ const AuthScreen = () => {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
+                    testID="auth-password"
                   />
                   <TouchableOpacity
                     style={styles.eyeButton}
@@ -294,6 +314,7 @@ const AuthScreen = () => {
                 onPress={handleSubmit}
                 disabled={loading || !emailAddress || !password}
                 activeOpacity={0.8}
+                testID="auth-submit"
               >
                 {loading ? (
                   <ActivityIndicator color="#FFFFFF" />
@@ -304,6 +325,11 @@ const AuthScreen = () => {
                 )}
               </TouchableOpacity>
             </View>
+
+            {/* Signup marker for E2E */}
+            {mode === 'signup' && (
+              <View testID="auth-signup" />
+            )}
 
             {/* OAuth Divider and Buttons */}
             {OAUTH_ENABLED && (

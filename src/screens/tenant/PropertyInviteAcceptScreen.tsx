@@ -1,181 +1,81 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
-import { useNavigation, useRoute, CommonActions } from '@react-navigation/common';
-import NetInfo from '@react-native-community/netinfo';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useProfile } from '../../context/ProfileContext';
-import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import CustomButton from '../../components/shared/CustomButton';
-import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { supabase } from '../../services/supabase/client';
 import { useRole } from '../../context/RoleContext';
-import * as Linking from 'expo-linking';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
-import { InviteCacheService } from '../../services/storage/InviteCacheService';
-import { formatAddress } from '../../utils/helpers';
-import { fetchWithRetry } from '../../utils/retryWithBackoff';
-import { analytics, generateCorrelationId } from '../../lib/analytics';
-import { sanitizeToken } from '../../utils/sanitize';
 
 interface RouteParams {
-  propertyId?: string;
-  property?: string;
-  token?: string;
+  t?: string; // Token parameter (NEW format)
+  token?: string; // Legacy token parameter
 }
 
-interface InviteData {
-  type: 'token' | 'legacy';
-  value: string;  // token value or propertyId
-  propertyId?: string;  // Only set after token validation
-}
-
-interface ErrorState {
-  type: 'wrong_account' | 'already_linked' | 'capacity_reached' | 'revoked' | 'expired' | 'network' | 'generic';
-  message: string;
-  actions?: Array<{ label: string; onPress: () => void; primary?: boolean }>;
+interface PropertyData {
+  id: string;
+  name: string;
+  address: string;
+  unit?: string;
+  landlordName?: string;
 }
 
 const PropertyInviteAcceptScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user, signOut } = useAppAuth();
+  const { user } = useAppAuth();
   const { profile, refreshProfile } = useProfile();
-  const { supabase } = useSupabaseWithAuth();
-  const apiClient = useApiClient();
   const { setUserRole } = useRole();
 
-  // Correlation ID for request tracing
-  const correlationIdRef = useRef(generateCorrelationId());
-  const correlationId = correlationIdRef.current;
-
-  // Double-submit guard
-  const acceptingRef = useRef(false);
-  const validatingRef = useRef(false);
-
-  // State
+  const [token, setToken] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
-  const [property, setProperty] = useState<any>(null);
-  const [error, setError] = useState<ErrorState | null>(null);
-  const [inviteData, setInviteData] = useState<InviteData | null>(null);
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const [intendedEmail, setIntendedEmail] = useState<string | null>(null);
+  const [property, setProperty] = useState<PropertyData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Extract invite data from route params or query parameters
-  const getInviteData = async (): Promise<InviteData | null> => {
-    const params = route.params as any;
-    log.info('🔗 PropertyInviteAcceptScreen route params', {
-      correlationId,
-      has_token: !!params?.token,
-      has_propertyId: !!params?.propertyId
-    });
-
-    // PRIORITY 1: Check for tokenized invite (NEW production flow)
-    if (params?.token) {
-      log.info('🎟️ Found invite token in route params (tokenized flow)', {
-        correlationId,
-        token_preview: sanitizeToken(params.token)
-      });
-      return { type: 'token', value: params.token };
-    }
-
-    // PRIORITY 2: Check for legacy propertyId (route params)
-    if (params?.propertyId) {
-      log.info('🔗 Found propertyId in route params (legacy flow)', { correlationId });
-      return { type: 'legacy', value: params.propertyId, propertyId: params.propertyId };
-    }
-
-    // PRIORITY 3: Check for legacy property query parameter (deep linking)
-    if (params?.property) {
-      log.info('🔗 Found property in route params (legacy flow)', { correlationId });
-      return { type: 'legacy', value: params.property, propertyId: params.property };
-    }
-
-    // PRIORITY 4: Fallback - extract from initial URL directly
-    try {
-      const url = await Linking.getInitialURL();
-      if (url) {
-        // Check for token parameter
-        const tokenMatch = url.match(/[?&]token=([^&]+)/);
-        if (tokenMatch) {
-          log.info('🎟️ Extracted token from URL', {
-            correlationId,
-            token_preview: sanitizeToken(tokenMatch[1])
-          });
-          return { type: 'token', value: tokenMatch[1] };
-        }
-
-        // Check for legacy property parameter
-        const propertyMatch = url.match(/[?&]property=([^&]+)/);
-        if (propertyMatch) {
-          log.info('🔗 Extracted property ID from URL', { correlationId });
-          return { type: 'legacy', value: propertyMatch[1], propertyId: propertyMatch[1] };
-        }
-      }
-    } catch (error) {
-      log.error('🔗 Error getting initial URL', { correlationId, error: error as Error });
-    }
-
-    log.info('🔗 No invite data found', { correlationId });
-    return null;
-  };
-
-  // Network connectivity listener
+  // Extract token from route params OR pending invite storage
   useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setIsOffline(!state.isConnected);
-    });
+    const loadToken = async () => {
+      const params = route.params as RouteParams;
+      const extractedToken = params.t || params.token;
 
-    return () => unsubscribe();
-  }, []);
-
-  // Extract invite data on component mount
-  useEffect(() => {
-    const extractInvite = async () => {
-      const data = await getInviteData();
-      setInviteData(data);
-
-      // Track invite view
-      if (data) {
-        analytics.inviteFunnel.view(
-          data.value,
-          data.propertyId || 'unknown',
-          user ? 'signed_in' : 'anonymous',
-          correlationId
-        );
+      if (extractedToken) {
+        log.info('[PropertyInviteAccept] Token extracted from route params:', { token_preview: extractedToken.substring(0, 4) + '...' });
+        setToken(extractedToken);
+        return;
       }
+
+      // Check for pending invite (user came back after auth)
+      const pendingInvite = await PendingInviteService.getPendingInvite();
+      if (pendingInvite && pendingInvite.type === 'token') {
+        log.info('[PropertyInviteAccept] Token loaded from pending invite storage:', { token_preview: pendingInvite.value.substring(0, 4) + '...' });
+        setToken(pendingInvite.value);
+        return;
+      }
+
+      log.error('[PropertyInviteAccept] No token found in route params or pending storage');
+      setError('Invalid invite link. Missing invitation token.');
     };
-    extractInvite();
-  }, []);
 
-  // Validate token or fetch property details based on invite type
+    loadToken();
+  }, [route.params]);
+
+  // Validate token when it's available
   useEffect(() => {
-    if (!inviteData) {
-      setError({
-        type: 'generic',
-        message: 'Invalid invite link. Missing invitation data.'
-      });
-      return;
+    if (token) {
+      validateInvite();
     }
+  }, [token]);
 
-    if (inviteData.type === 'token') {
-      validateTokenAndFetchProperty();
-    } else {
-      // Legacy flow: we already have propertyId
-      setPropertyId(inviteData.propertyId!);
-      fetchPropertyDetails(inviteData.propertyId!);
-    }
-  }, [inviteData]);
-
-  // Set tenant role as soon as user is authenticated via invite link
+  // Set tenant role when user authenticates
   useEffect(() => {
     const setTenantRoleOnAuth = async () => {
       if (user && !profile?.role) {
-        log.info('👤 User authenticated via invite, setting tenant role', { correlationId });
+        log.info('[PropertyInviteAccept] User authenticated via invite, setting tenant role');
         await setUserRole('tenant');
         await refreshProfile();
       }
@@ -184,434 +84,184 @@ const PropertyInviteAcceptScreen = () => {
     setTenantRoleOnAuth();
   }, [user]);
 
-  // Validate tokenized invite and fetch property details
-  const validateTokenAndFetchProperty = async () => {
-    if (validatingRef.current ||!inviteData || inviteData.type !== 'token') return;
-    validatingRef.current = true;
-    setIsValidating(true);
+  // Auto-accept invite after successful authentication
+  useEffect(() => {
+    const autoAcceptInvite = async () => {
+      // Only auto-accept if:
+      // 1. User is authenticated
+      // 2. Property data is loaded (validation succeeded)
+      // 3. Not currently accepting
+      // 4. There's a pending invite in storage
+      if (user && property && !isAccepting) {
+        const pendingInvite = await PendingInviteService.getPendingInvite();
+        if (pendingInvite && pendingInvite.type === 'token') {
+          log.info('[PropertyInviteAccept] Auto-accepting invite after authentication');
+          await handleAccept();
+        }
+      }
+    };
 
-    const startTime = Date.now();
-    const token = inviteData.value;
+    autoAcceptInvite();
+  }, [user, property]);
+
+  const validateInvite = async () => {
+    if (!token) return;
+
+    setIsValidating(true);
+    setError(null);
 
     try {
-      // Try to load cached data for offline support
-      const cached = await InviteCacheService.getCachedInviteData(token);
-      if (cached && isOffline) {
-        log.info('📦 Using cached invite data (offline)', {
-          correlationId,
-          token_preview: sanitizeToken(token)
-        });
-        setProperty(cached.property);
-        setPropertyId(cached.property.id);
-        setIsValidating(false);
-        return;
-      }
+      log.info('[PropertyInviteAccept] Validating invite token');
 
-      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-      const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-      if (!supabaseUrl || !supabaseAnonKey) {
-        throw new Error('Supabase configuration missing');
-      }
-
-      log.info('🎟️ Validating invite token via Edge Function', {
-        correlationId,
-        token_preview: sanitizeToken(token)
+      // Call validate_invite RPC function (public, no auth required)
+      const { data, error: rpcError } = await supabase.rpc('validate_invite', {
+        p_token: token
       });
 
-      // Call validate-invite-token Edge Function with retry
-      const response = await fetchWithRetry(
-        `${supabaseUrl}/functions/v1/validate-invite-token`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabaseAnonKey}`,
-            'X-Correlation-ID': correlationId
-          },
-          body: JSON.stringify({ token })
-        },
-        {
-          maxRetries: 3,
-          onRetry: (attempt, delay) => {
-            setRetryCount(attempt);
-            analytics.inviteFunnel.offlineRetry(attempt, correlationId);
-          }
-        }
-      );
+      if (rpcError) {
+        log.error('[PropertyInviteAccept] RPC error:', rpcError);
+        throw new Error('Failed to validate invite. Please try again.');
+      }
 
-      const result = await response.json();
-      const latency = Date.now() - startTime;
+      // RPC returns TABLE, so data is an array
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        log.error('[PropertyInviteAccept] No data returned from validate_invite');
+        throw new Error('Invalid invite token');
+      }
 
-      log.info('🎟️ Token validation result', {
-        correlationId,
-        valid: result.valid,
-        latency_ms: latency
-      });
+      const result = data[0];
 
       if (!result.valid) {
-        analytics.inviteFunnel.validateFailure(token, result.error || 'unknown', latency, correlationId);
-
-        // Handle specific error types
-        if (result.error === 'capacity_reached') {
-          setError({
-            type: 'capacity_reached',
-            message: `This invite link has been used ${result.use_count} times (maximum: ${result.max_uses}). Ask your landlord for a new invite.`,
-            actions: [
-              { label: 'Contact Support', onPress: () => navigation.navigate('ContactSupport' as never) }
-            ]
-          });
-        } else if (result.error === 'expired') {
-          setError({
-            type: 'expired',
-            message: 'This invite is no longer valid. Request a new link.',
-            actions: [
-              { label: 'Request New Invite', onPress: () => navigation.navigate('ContactSupport' as never) }
-            ]
-          });
-        } else if (result.error === 'revoked') {
-          setError({
-            type: 'revoked',
-            message: 'This invite was revoked by the landlord. Request a new link.',
-            actions: [
-              { label: 'Request New Invite', onPress: () => navigation.navigate('ContactSupport' as never) }
-            ]
-          });
-        } else {
-          throw new Error(result.error || 'Invalid invite token');
-        }
-        return;
+        log.error('[PropertyInviteAccept] Token invalid');
+        throw new Error('This invite link is invalid or has expired.');
       }
 
-      if (!result.property) {
-        throw new Error('Property not found for this invite');
-      }
+      log.info('[PropertyInviteAccept] Token valid, property:', result.property_name);
 
-      analytics.inviteFunnel.validateSuccess(token, latency, correlationId);
-
-      // Token is valid - set property data
-      setProperty(result.property);
-      setPropertyId(result.property.id);
-      setIntendedEmail(result.intended_email || null);
-
-      // Cache for offline viewing
-      await InviteCacheService.cacheInviteData(token, result.property);
-
-      // Update inviteData with propertyId for acceptance flow
-      setInviteData(prev => prev ? { ...prev, propertyId: result.property.id } : null);
-
-      // Check for wrong account
-      if (result.intended_email && user?.email && user.email !== result.intended_email) {
-        setError({
-          type: 'wrong_account',
-          message: `This invite was sent to ${result.intended_email}.`,
-          actions: [
-            {
-              label: 'Switch Account',
-              onPress: async () => {
-                analytics.inviteFunnel.accountSwitch(user.email!, result.intended_email, correlationId);
-                await signOut();
-                // User will be redirected to auth, pending invite saved
-              }
-            },
-            {
-              label: 'Continue Anyway',
-              onPress: () => {
-                analytics.inviteFunnel.wrongAccountContinue(user.email!, result.intended_email, correlationId);
-                setError(null);
-              },
-              primary: true
-            }
-          ]
-        });
-      }
-
-    } catch (error: any) {
-      const latency = Date.now() - startTime;
-      analytics.inviteFunnel.validateFailure(token, error.message, latency, correlationId);
-
-      log.error('🎟️ Token validation failed', {
-        correlationId,
-        error: error as Error
+      // Set property data
+      setProperty({
+        id: result.property_id,
+        name: result.property_name,
+        address: result.property_address,
+        unit: result.property_unit,
+        landlordName: result.landlord_name
       });
 
-      // Check if we have cached data to fall back to
-      const cached = await InviteCacheService.getCachedInviteData(token);
-      if (cached) {
-        log.info('📦 Falling back to cached data', { correlationId });
-        setProperty(cached.property);
-        setPropertyId(cached.property.id);
-        setIsOffline(true);
-      } else {
-        setError({
-          type: 'network',
-          message: isOffline
-            ? 'No internet. We\'ll retry when you\'re back online.'
-            : 'Unable to validate invite. Please try again.',
-          actions: [
-            { label: 'Retry Now', onPress: () => validateTokenAndFetchProperty(), primary: true }
-          ]
-        });
-      }
+    } catch (err: any) {
+      log.error('[PropertyInviteAccept] Validation error:', err);
+      setError(err.message || 'Failed to validate invite. Please try again.');
     } finally {
       setIsValidating(false);
-      validatingRef.current = false;
     }
   };
 
-  // Legacy: Fetch property details by ID (deprecated)
-  const fetchPropertyDetails = async (propId: string) => {
-    // ... legacy implementation (kept for backward compatibility)
-    // This is the old flow - not adding hardening here
-  };
-
-  // Handle accept button click
   const handleAccept = async () => {
+    if (!token) {
+      setError('Missing invite token');
+      return;
+    }
+
     if (!user) {
-      // Save pending invite before redirecting to signup
-      log.info('📥 User not authenticated, saving pending invite', { correlationId });
-
-      if (inviteData?.type === 'token') {
-        await PendingInviteService.savePendingInvite(inviteData.value, 'token');
-      } else if (inviteData?.propertyId) {
-        await PendingInviteService.savePendingInvite(inviteData.propertyId, 'legacy');
-      }
-
-      navigation.dispatch(CommonActions.navigate({ name: 'SignUp' as never }));
+      // Save pending invite before redirecting to onboarding
+      log.info('[PropertyInviteAccept] User not authenticated, saving pending invite');
+      await PendingInviteService.savePendingInvite(token, 'token', {
+        propertyId: property?.id,
+        propertyName: property?.name,
+      });
+      navigation.dispatch(CommonActions.navigate({ name: 'OnboardingName' as never }));
       return;
     }
 
-    // Double-submit guard
-    if (acceptingRef.current) {
-      analytics.inviteFunnel.doubleClickBlocked(correlationId);
-      return;
-    }
-
-    acceptingRef.current = true;
     setIsAccepting(true);
-    analytics.inviteFunnel.acceptAttempt(inviteData!.value, propertyId!, correlationId);
-
-    const startTime = Date.now();
+    setError(null);
 
     try {
+      log.info('[PropertyInviteAccept] Accepting invite');
+
       // Ensure profile exists
-      await ensureProfileExists();
-
-      // Check for already linked to another property
-      const existingLinks = await apiClient.getTenantProperties();
-      if (existingLinks.length > 0) {
-        const existingProperty = existingLinks.find(p => p.id === propertyId);
-
-        if (existingProperty) {
-          // Already linked to THIS property - idempotent success
-          analytics.inviteFunnel.alreadyLinked(propertyId!, correlationId);
-
-          setError({
-            type: 'already_linked',
-            message: `You're already connected to ${property?.name || 'this property'}`,
-            actions: [
-              {
-                label: 'Open Property',
-                onPress: () => navigation.dispatch(CommonActions.navigate({ name: 'TenantTabs' as never })),
-                primary: true
-              }
-            ]
+      if (!profile) {
+        log.info('[PropertyInviteAccept] Creating profile for user');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
+            role: 'tenant'
           });
-          return;
+
+        if (profileError && !profileError.message.includes('duplicate')) {
+          throw profileError;
         }
 
-        // TODO: Handle linked to DIFFERENT property (multi-property support or switch flow)
-        // For now, we'll allow it (multi-property tenant)
+        await refreshProfile();
       }
 
-      // Choose acceptance flow based on invite type
-      if (inviteData!.type === 'token') {
-        await acceptTokenizedInvite();
+      // Call accept_invite RPC function (authenticated only)
+      const { data, error: acceptError } = await supabase.rpc('accept_invite', {
+        p_token: token
+      });
+
+      if (acceptError) {
+        log.error('[PropertyInviteAccept] Accept RPC error:', acceptError);
+        throw new Error('Failed to accept invite. Please try again.');
+      }
+
+      // RPC returns TABLE, so data is an array
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        log.error('[PropertyInviteAccept] No data returned from accept_invite');
+        throw new Error('Failed to accept invite');
+      }
+
+      const result = data[0];
+
+      if (!result.success) {
+        log.error('[PropertyInviteAccept] Accept failed:', result.error);
+        throw new Error(result.error || 'Failed to accept invite');
+      }
+
+      log.info('[PropertyInviteAccept] Invite accepted successfully!');
+
+      // Clear pending invite
+      await PendingInviteService.clearPendingInvite();
+
+      // Refresh profile to update context
+      await refreshProfile();
+
+      // Success! The AppNavigator will automatically route to tenant dashboard
+      // after detecting the cleared pending invite and updated profile
+      // Force a re-render by navigating to a known route
+      if (Platform.OS === 'web') {
+        // On web, reload to reset navigation state
+        window.location.href = '/';
       } else {
-        await acceptLegacyInvite();
+        // On native, navigate back and let AppNavigator handle routing
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'TenantHome' as never }]
+          })
+        );
       }
 
-      const latency = Date.now() - startTime;
-      analytics.inviteFunnel.acceptSuccess(inviteData!.value, propertyId!, latency, correlationId);
-
-      // Success! Navigate to tenant dashboard
-      log.info('🎉 Success! Tenant connected to property', { correlationId });
-      setError(null);
-
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0,
-          routes: [{ name: 'TenantTabs' as never }]
-        })
-      );
-
-    } catch (error: any) {
-      const latency = Date.now() - startTime;
-      analytics.inviteFunnel.acceptFailure(inviteData!.value, error.message, latency, correlationId);
-
-      log.error('Failed to accept invite', {
-        correlationId,
-        error: error as Error
-      });
-
-      setError({
-        type: 'generic',
-        message: 'Failed to accept invite. Please try again.',
-        actions: [
-          { label: 'Retry', onPress: handleAccept, primary: true }
-        ]
-      });
+    } catch (err: any) {
+      log.error('[PropertyInviteAccept] Accept error:', err);
+      setError(err.message || 'Failed to accept invite. Please try again.');
     } finally {
       setIsAccepting(false);
-      acceptingRef.current = false;
     }
   };
 
-  // Accept tokenized invite via Edge Function with re-validation
-  const acceptTokenizedInvite = async () => {
-    if (!inviteData || inviteData.type !== 'token' || !user) {
-      throw new Error('Invalid state for tokenized invite acceptance');
-    }
-
-    const token = inviteData.value;
-    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-
-    if (!supabaseUrl) {
-      throw new Error('Supabase configuration missing');
-    }
-
-    // Re-validate token before acceptance (prevent mid-session revocation)
-    log.info('🔄 Re-validating token before acceptance', {
-      correlationId,
-      token_preview: sanitizeToken(token)
-    });
-
-    const revalidateResponse = await fetch(`${supabaseUrl}/functions/v1/validate-invite-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
-        'X-Correlation-ID': `${correlationId}-revalidate`
-      },
-      body: JSON.stringify({ token })
-    });
-
-    const revalidation = await revalidateResponse.json();
-    if (!revalidation.valid) {
-      throw new Error(revalidation.error === 'revoked'
-        ? 'This invite was revoked while you were joining.'
-        : 'This invite is no longer valid. Request a new link.'
-      );
-    }
-
-    // Get user's access token for authenticated Edge Function call
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      throw new Error('User session not found');
-    }
-
-    log.info('🎟️ Calling accept-invite-token Edge Function', {
-      correlationId,
-      token_preview: sanitizeToken(token)
-    });
-
-    const response = await fetch(`${supabaseUrl}/functions/v1/accept-invite-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'X-Correlation-ID': correlationId
-      },
-      body: JSON.stringify({ token })
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Token acceptance failed');
-    }
-
-    const result = await response.json();
-
-    if (!result.success) {
-      // Idempotent - already linked
-      if (result.already_linked) {
-        return; // Will be handled by caller
-      }
-
-      throw new Error(result.error || 'Failed to accept invite');
-    }
-
-    log.info('✅ Tokenized invite accepted successfully', { correlationId });
-  };
-
-  // Legacy acceptance (backward compatibility)
-  const acceptLegacyInvite = async () => {
-    if (!inviteData || inviteData.type !== 'legacy' || !inviteData.propertyId) {
-      throw new Error('Invalid state for legacy invite acceptance');
-    }
-
-    await apiClient.linkTenantToPropertyById(inviteData.propertyId, property?.unit || undefined);
-    log.info('✅ Legacy tenant property link created', { correlationId });
-  };
-
-  // Ensure profile exists before linking
-  const ensureProfileExists = async () => {
-    // ... existing implementation
-  };
-
-  // Handle decline
   const handleDecline = () => {
     navigation.dispatch(CommonActions.navigate({ name: 'Welcome' as never }));
-  };
-
-  // Render error state with actions
-  const renderError = () => {
-    if (!error) return null;
-
-    return (
-      <View style={styles.errorContainer} testID="invite-error">
-        <Ionicons name="alert-circle" size={64} color="#E74C3C" />
-        <Text style={styles.errorTitle}>
-          {error.type === 'wrong_account' ? 'Wrong Account' :
-           error.type === 'already_linked' ? 'Already Connected' :
-           error.type === 'capacity_reached' ? 'Invite Limit Reached' :
-           error.type === 'revoked' ? 'Invite Revoked' :
-           error.type === 'expired' ? 'Invite Expired' :
-           error.type === 'network' ? 'Connection Issue' :
-           'Error'}
-        </Text>
-        <Text style={styles.errorMessage}>{error.message}</Text>
-
-        {error.actions && (
-          <View style={styles.errorActions}>
-            {error.actions.map((action, index) => (
-              <CustomButton
-                key={index}
-                testID={`error-action-${index}`}
-                title={action.label}
-                onPress={action.onPress}
-                variant={action.primary ? 'primary' : 'secondary'}
-                style={styles.errorButton}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-    );
   };
 
   // Loading state
   if (isValidating) {
     return (
       <ScreenContainer>
-        <View style={styles.loadingContainer} testID="invite-loading">
-          <ActivityIndicator size="large" color="#2ECC71" />
-          <Text style={styles.loadingText}>
-            {retryCount > 0
-              ? `Retrying... (attempt ${retryCount})`
-              : 'Loading invite details...'}
-          </Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading invite details...</Text>
         </View>
       </ScreenContainer>
     );
@@ -621,7 +271,27 @@ const PropertyInviteAcceptScreen = () => {
   if (error) {
     return (
       <ScreenContainer>
-        {renderError()}
+        <View style={styles.errorContainer} testID="invite-invalid">
+          <Ionicons name="alert-circle" size={64} color="#E74C3C" />
+          <Text style={styles.errorTitle}>Error</Text>
+          <Text style={styles.errorMessage}>{error}</Text>
+
+          {token && (
+            <CustomButton
+              title="Try Again"
+              onPress={validateInvite}
+              variant="primary"
+              style={styles.retryButton}
+            />
+          )}
+
+          <CustomButton
+            title="Back to Home"
+            onPress={handleDecline}
+            variant="outline"
+            style={styles.backButton}
+          />
+        </View>
       </ScreenContainer>
     );
   }
@@ -630,60 +300,57 @@ const PropertyInviteAcceptScreen = () => {
   if (property) {
     return (
       <ScreenContainer>
-        {isOffline && (
-          <View style={styles.offlineBanner} testID="offline-banner">
-            <Ionicons name="cloud-offline" size={20} color="#fff" />
-            <Text style={styles.offlineText}>
-              Viewing cached data. Connect to accept invite.
+        <View style={styles.container} testID="invite-property-preview">
+          <Ionicons name="home" size={80} color="#007AFF" />
+
+          <Text style={styles.title}>{property.name}</Text>
+
+          <View style={styles.propertyDetails}>
+            <View style={styles.detailRow}>
+              <Ionicons name="location" size={20} color="#666" />
+              <Text style={styles.detailText}>{property.address}</Text>
+            </View>
+
+            {property.unit && (
+              <View style={styles.detailRow}>
+                <Ionicons name="apps" size={20} color="#666" />
+                <Text style={styles.detailText}>Unit: {property.unit}</Text>
+              </View>
+            )}
+
+            {property.landlordName && (
+              <View style={styles.detailRow}>
+                <Ionicons name="person" size={20} color="#666" />
+                <Text style={styles.detailText}>Landlord: {property.landlordName}</Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>You're invited!</Text>
+            <Text style={styles.infoText}>
+              {user
+                ? `Accept this invite to connect to ${property.name}. You'll be able to report maintenance issues and communicate with your landlord.`
+                : `Sign up to connect to ${property.name}. You'll be able to report maintenance issues and communicate with your landlord.`
+              }
             </Text>
           </View>
-        )}
-
-        <View style={styles.container}>
-          <Ionicons name="home" size={80} color="#2ECC71" />
-
-          <Text style={styles.title} testID="property-name" accessibilityRole="header">
-            {property.name}
-          </Text>
-
-          <Text style={styles.subtitle}>
-            {formatAddress(property.address_jsonb || property.address)}
-          </Text>
-
-          {property.landlord_name && (
-            <View style={styles.landlordInfo}>
-              <Text style={styles.landlordLabel}>Landlord:</Text>
-              <Text style={styles.landlordName}>{property.landlord_name}</Text>
-            </View>
-          )}
-
-          {user && user.email && intendedEmail && user.email !== intendedEmail && (
-            <View style={styles.accountWarning} testID="wrong-account-warning">
-              <Ionicons name="warning" size={20} color="#F39C12" />
-              <Text style={styles.accountWarningText}>
-                Signed in as {user.email}. Not you?
-              </Text>
-            </View>
-          )}
 
           <View style={styles.actions}>
             <CustomButton
-              testID="invite-accept-button"
-              accessibilityLabel="Accept property invite"
-              title={isAccepting ? 'Connecting you to property...' : 'Accept Invite'}
+              title={isAccepting ? 'Connecting...' : (user ? 'Accept Invite' : 'Sign Up & Accept')}
               onPress={handleAccept}
               variant="primary"
-              disabled={isAccepting || (isOffline && inviteData?.type === 'token')}
+              disabled={isAccepting}
               loading={isAccepting}
               style={styles.acceptButton}
+              testID="invite-accept"
             />
 
             <CustomButton
-              testID="invite-decline-button"
-              accessibilityLabel="Decline property invite"
               title="Decline"
               onPress={handleDecline}
-              variant="secondary"
+              variant="outline"
               disabled={isAccepting}
             />
           </View>
@@ -710,58 +377,52 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#7F8C8D',
-  },
-  offlineBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F39C12',
-    padding: 12,
-    gap: 8,
-  },
-  offlineText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#666',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     marginTop: 24,
     textAlign: 'center',
+    color: '#1a1a1a',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#7F8C8D',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  landlordInfo: {
+  propertyDetails: {
     marginTop: 24,
-    alignItems: 'center',
+    width: '100%',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
   },
-  landlordLabel: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  landlordName: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  accountWarning: {
+  detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF3CD',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 16,
+    marginBottom: 12,
     gap: 8,
   },
-  accountWarningText: {
+  detailText: {
+    fontSize: 16,
+    color: '#1a1a1a',
     flex: 1,
+  },
+  infoCard: {
+    marginTop: 24,
+    width: '100%',
+    backgroundColor: '#E8F4FF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  infoTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginBottom: 8,
+  },
+  infoText: {
     fontSize: 14,
-    color: '#856404',
+    color: '#1a1a1a',
+    lineHeight: 20,
   },
   actions: {
     width: '100%',
@@ -785,17 +446,16 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     fontSize: 16,
-    color: '#7F8C8D',
+    color: '#666',
     marginTop: 8,
     textAlign: 'center',
+    lineHeight: 24,
   },
-  errorActions: {
-    width: '100%',
+  retryButton: {
     marginTop: 24,
-    gap: 12,
   },
-  errorButton: {
-    marginBottom: 8,
+  backButton: {
+    marginTop: 12,
   },
 });
 

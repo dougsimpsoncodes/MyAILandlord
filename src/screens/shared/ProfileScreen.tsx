@@ -174,7 +174,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} testID="nav-logout">
           <Text style={styles.logoutButtonText}>Log Out</Text>
         </TouchableOpacity>
 

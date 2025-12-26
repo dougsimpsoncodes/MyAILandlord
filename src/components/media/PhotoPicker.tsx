@@ -15,13 +15,15 @@ type Props = {
 
 async function pickNative() {
   const res = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images, // Opens directly to Photos, not Files
     allowsMultipleSelection: true,
     quality: 1,
-    mediaTypes: (ImagePicker as any).MediaType?.Images ?? (ImagePicker as any).MediaTypeOptions?.Images
+    selectionLimit: 10, // Allow up to 10 photos at once
+    presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
   });
-  
+
   if (res.canceled) return [];
-  
+
   return res.assets?.map(a => ({
     uri: a.uri,
     width: a.width,
@@ -90,9 +92,11 @@ export default function PhotoPicker({ propertyId, areaId, onUploaded, disabled, 
   if (Platform.OS === 'web' && !inputRef.current) {
     const el = document.createElement('input');
     el.type = 'file';
-    el.accept = 'image/*';
+    el.accept = 'image/*,.heic,.heif'; // Include HEIC for iOS/macOS photos
     el.multiple = true;
     el.style.display = 'none';
+    // Hint to macOS: prefer media browser
+    el.setAttribute('capture', 'environment');
     document.body.appendChild(el);
     inputRef.current = el;
   }

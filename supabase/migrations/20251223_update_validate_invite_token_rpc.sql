@@ -21,13 +21,14 @@ DECLARE
   v_property_data JSONB;
 BEGIN
   -- Find the token (using index for constant-time lookup)
+  -- NOTE: Must qualify column names to avoid ambiguity with RETURNS TABLE columns
   SELECT *
   INTO v_token_record
   FROM invite_tokens
-  WHERE token = p_token
-    AND revoked_at IS NULL
-    AND used_at IS NULL
-    AND expires_at > NOW();
+  WHERE invite_tokens.token = p_token
+    AND invite_tokens.revoked_at IS NULL
+    AND invite_tokens.used_at IS NULL
+    AND invite_tokens.expires_at > NOW();
 
   -- Token not found or invalid
   IF v_token_record IS NULL THEN
@@ -55,7 +56,7 @@ BEGIN
     'address', p.address,
     'address_jsonb', p.address_jsonb,
     'unit', p.unit,
-    'landlord_name', prof.first_name,
+    'landlord_name', prof.name,
     'landlord_id', p.landlord_id
   )
   INTO v_property_data

@@ -10,6 +10,7 @@ interface CustomButtonProps {
   variant?: 'primary' | 'outline' | 'text';
   style?: StyleProp<ViewStyle>;
   icon?: keyof typeof Ionicons.glyphMap;
+  testID?: string;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({
@@ -20,6 +21,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   variant = 'primary',
   style,
   icon,
+  testID,
 }) => {
   const buttonStyles = [
     styles.button,
@@ -44,6 +46,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}
+      testID={testID}
     >
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? '#fff' : '#007AFF'} />

@@ -615,7 +615,7 @@ const PropertyAssetsListScreen = () => {
     }
   };
 
-  const handlePhotosUploaded = (areaId: string) => (photos: { path: string; url: string }[]) => {
+  const handlePhotosUploaded = (areaId: string) => async (photos: { path: string; url: string }[]) => {
     if (photos.length > 0) {
       const photoUrls = photos.map(p => p.url);
       const photoPaths = photos.map(p => p.path);
@@ -635,7 +635,27 @@ const PropertyAssetsListScreen = () => {
       setSelectedAreas(updatedAreas);
       updateAreas(updatedAreas);
 
-      // Background save is handled by auto-save; no extra action needed here
+      // For existing properties, save photos to database immediately
+      if (routePropertyId) {
+        try {
+          const updatedArea = updatedAreas.find(a => a.id === areaId);
+          if (updatedArea) {
+            console.log('💾 Saving area photos to database for existing property:', { areaId, photoPathCount: updatedArea.photoPaths?.length || 0 });
+            const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
+            // CRITICAL: Database stores PATHS, not URLs!
+            // The photos column should contain storage paths like "property-images/abc.jpg"
+            // NOT signed URLs with tokens
+            await propertyAreasService.updateArea(areaId, {
+              photos: updatedArea.photoPaths || [] // Save PATHS to database, not URLs
+            });
+            console.log('✅ Area photo paths saved to database');
+          }
+        } catch (error) {
+          console.error('Failed to save area photos to database:', error);
+          // Don't show error to user - photos are still in local state
+        }
+      }
+      // For drafts, background save is handled by auto-save
     }
   };
 

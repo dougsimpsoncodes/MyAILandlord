@@ -143,6 +143,7 @@ const PropertyDetailsScreen = () => {
               style={styles.actionButton}
               onPress={handleAddTenant}
               activeOpacity={0.7}
+              testID="invite-tenant"
             >
               <View style={[styles.actionIcon, { backgroundColor: '#E8F8F0' }]}>
                 <Ionicons name="person-add-outline" size={24} color="#2ECC71" />
