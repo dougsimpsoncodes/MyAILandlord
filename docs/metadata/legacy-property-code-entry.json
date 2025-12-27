@@ -1,9 +1,0 @@
-{
-  "screenName": "legacy-property-code-entry",
-  "timestamp": "2025-12-27T01:32:37.445Z",
-  "url": "http://localhost:8081/OnboardingWelcome",
-  "title": "OnboardingWelcome",
-  "flow": "Legacy",
-  "role": "tenant",
-  "purpose": "[DEPRECATED] Old 6-character property code entry"
-}

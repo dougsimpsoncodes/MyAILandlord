@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-case-detail",
-  "timestamp": "2025-12-27T01:32:24.132Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Maintenance",
-  "role": "landlord",
-  "purpose": "Detailed view of maintenance case/request"
-}

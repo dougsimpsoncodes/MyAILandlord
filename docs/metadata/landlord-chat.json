@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-chat",
-  "timestamp": "2025-12-27T01:30:25.761Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Communication",
-  "role": "landlord",
-  "purpose": "Individual chat conversation with tenant"
-}

@@ -1,9 +1,0 @@
-{
-  "screenName": "tenant-maintenance-status",
-  "timestamp": "2025-12-27T01:31:28.442Z",
-  "url": "http://localhost:8081/home",
-  "title": "TenantHomeMain",
-  "flow": "Maintenance",
-  "role": "tenant",
-  "purpose": "Main maintenance requests status view"
-}

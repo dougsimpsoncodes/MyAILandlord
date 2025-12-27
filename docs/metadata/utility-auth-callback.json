@@ -1,9 +1,0 @@
-{
-  "screenName": "utility-auth-callback",
-  "timestamp": "2025-12-27T01:32:28.631Z",
-  "url": "http://localhost:8081/OnboardingWelcome",
-  "title": "OnboardingWelcome",
-  "flow": "Utility",
-  "role": "both",
-  "purpose": "OAuth/SSO authentication callback handler"
-}

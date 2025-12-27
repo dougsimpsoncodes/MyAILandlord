@@ -1,9 +1,0 @@
-{
-  "screenName": "tenant-confirm-submission",
-  "timestamp": "2025-12-27T01:31:32.847Z",
-  "url": "http://localhost:8081/home",
-  "title": "TenantHomeMain",
-  "flow": "Maintenance",
-  "role": "tenant",
-  "purpose": "Confirm maintenance request before final submission"
-}

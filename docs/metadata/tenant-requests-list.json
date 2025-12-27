@@ -1,9 +1,8 @@
 {
-  "screenName": "tenant-requests-list",
-  "timestamp": "2025-12-27T01:31:15.626Z",
-  "url": "http://localhost:8081/home",
-  "title": "TenantHomeMain",
-  "flow": "Maintenance",
-  "role": "tenant",
-  "purpose": "List of all maintenance requests"
+  "name": "tenant-requests-list",
+  "url": "http://localhost:8081/requests",
+  "title": "TenantRequests",
+  "timestamp": "2025-12-27T03:18:28.829Z",
+  "flow": "Tenant",
+  "purpose": "All maintenance requests"
 }

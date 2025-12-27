@@ -1,9 +1,0 @@
-{
-  "screenName": "tenant-onboarding-welcome",
-  "timestamp": "2025-12-27T01:32:08.672Z",
-  "url": "http://localhost:8081/OnboardingWelcome",
-  "title": "OnboardingWelcome",
-  "flow": "Tenant Onboarding",
-  "role": "tenant",
-  "purpose": "Tenant-specific welcome screen"
-}

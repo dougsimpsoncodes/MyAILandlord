@@ -1,9 +1,0 @@
-{
-  "screenName": "tenant-request-status",
-  "timestamp": "2025-12-27T01:31:17.705Z",
-  "url": "http://localhost:8081/follow-up?issueId=a73d9cea-b081-40b7-bbf6-c18958db490f",
-  "title": "FollowUp",
-  "flow": "Maintenance",
-  "role": "tenant",
-  "purpose": "View maintenance request status and updates"
-}

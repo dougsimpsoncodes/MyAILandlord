@@ -1,9 +1,8 @@
 {
-  "screenName": "shared-edit-profile",
-  "timestamp": "2025-12-27T01:31:39.560Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Settings",
-  "role": "both",
-  "purpose": "Edit user profile information (name, avatar, etc.)"
+  "name": "shared-edit-profile",
+  "url": "http://localhost:8081/edit-profile",
+  "title": "EditProfile",
+  "timestamp": "2025-12-27T14:55:37.153Z",
+  "purpose": "Edit profile information",
+  "flow": "Shared"
 }

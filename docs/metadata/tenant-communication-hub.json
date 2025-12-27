@@ -1,9 +1,0 @@
-{
-  "screenName": "tenant-communication-hub",
-  "timestamp": "2025-12-27T01:32:26.301Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Communication",
-  "role": "tenant",
-  "purpose": "Alternative messages/communication view"
-}

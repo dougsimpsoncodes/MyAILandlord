@@ -1,9 +1,0 @@
-{
-  "screenName": "shared-help-center",
-  "timestamp": "2025-12-27T01:31:46.090Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Help & Support",
-  "role": "both",
-  "purpose": "Help center with FAQs, guides, and troubleshooting"
-}

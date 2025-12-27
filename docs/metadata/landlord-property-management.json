@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-property-management",
-  "timestamp": "2025-12-27T01:32:15.406Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Property Management",
-  "role": "landlord",
-  "purpose": "Manage existing property settings and details"
-}

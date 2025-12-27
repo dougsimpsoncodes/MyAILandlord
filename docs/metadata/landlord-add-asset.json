@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-add-asset",
-  "timestamp": "2025-12-27T01:30:42.930Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Asset Management",
-  "role": "landlord",
-  "purpose": "Add new asset manually (appliance, fixture, system)"
-}

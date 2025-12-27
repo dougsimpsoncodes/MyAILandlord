@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-asset-details",
-  "timestamp": "2025-12-27T01:30:47.321Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Asset Management",
-  "role": "landlord",
-  "purpose": "View and edit individual asset details"
-}

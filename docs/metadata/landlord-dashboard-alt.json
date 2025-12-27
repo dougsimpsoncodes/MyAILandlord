@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-dashboard-alt",
-  "timestamp": "2025-12-27T01:32:21.963Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Landlord Management",
-  "role": "landlord",
-  "purpose": "Alternative dashboard view for landlord"
-}

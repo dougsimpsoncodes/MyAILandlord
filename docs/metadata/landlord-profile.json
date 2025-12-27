@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-profile",
-  "timestamp": "2025-12-27T01:30:32.086Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Settings",
-  "role": "landlord",
-  "purpose": "User profile and account settings"
-}

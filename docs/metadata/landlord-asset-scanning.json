@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-asset-scanning",
-  "timestamp": "2025-12-27T01:30:45.120Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Asset Management",
-  "role": "landlord",
-  "purpose": "AI-powered asset scanning from photos"
-}

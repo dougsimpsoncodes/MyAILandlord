@@ -1,9 +1,0 @@
-{
-  "screenName": "landlord-add-property",
-  "timestamp": "2025-12-27T01:32:19.773Z",
-  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
-  "title": "LandlordPropertyIntro",
-  "flow": "Property Management",
-  "role": "landlord",
-  "purpose": "Add new property (alternative flow)"
-}
