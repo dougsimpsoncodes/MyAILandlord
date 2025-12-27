@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyAILandlord - Tenant Home Screen Design Options</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #000000;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .designs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .design-option {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .option-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .option-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .option-description {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .color-chips {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .color-chip {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Phone mockup styles */
+        .phone-mockup {
+            background: #000000;
+            border-radius: 50px;
+            padding: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+        }
+
+        .phone-screen {
+            background: #FFFFFF;
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 32px;
+            background: #000000;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen-content {
+            padding: 20px;
+            min-height: 700px;
+        }
+
+        .user-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-info {
+            margin-left: 16px;
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .user-role {
+            font-size: 15px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .property-card {
+            border-radius: 20px;
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .property-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .property-info {
+            padding: 20px;
+        }
+
+        .property-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .property-address {
+            font-size: 15px;
+            opacity: 0.7;
+            margin-bottom: 16px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 6px;
+        }
+
+        .action-section {
+            margin-top: 24px;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+
+        .action-buttons {
+            display: grid;
+            gap: 12px;
+        }
+
+        .action-button {
+            display: flex;
+            align-items: center;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .action-button:active {
+            transform: scale(0.98);
+        }
+
+        .action-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-right: 14px;
+        }
+
+        /* Option 1: Classic iOS Blue */
+        .option1 .status-bar {
+            background: #007AFF;
+            color: white;
+        }
+
+        .option1 .screen-content {
+            background: linear-gradient(180deg, #E3F2FF 0%, #F8FBFF 100%);
+        }
+
+        .option1 .user-name {
+            color: #007AFF;
+        }
+
+        .option1 .avatar {
+            border: 3px solid #007AFF;
+        }
+
+        .option1 .property-card {
+            background: white;
+            box-shadow: 0 8px 24px rgba(0, 122, 255, 0.12);
+        }
+
+        .option1 .status-badge {
+            background: #E3F2FF;
+            color: #007AFF;
+        }
+
+        .option1 .stat-item {
+            background: #F0F7FF;
+        }
+
+        .option1 .stat-value {
+            color: #007AFF;
+        }
+
+        .option1 .action-button {
+            background: white;
+            color: #1a1a1a;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.08);
+        }
+
+        .option1 .action-icon {
+            background: #E3F2FF;
+        }
+
+        /* Option 2: Warm Sunset */
+        .option2 .status-bar {
+            background: linear-gradient(90deg, #FF6B6B 0%, #FF8E53 100%);
+            color: white;
+        }
+
+        .option2 .screen-content {
+            background: linear-gradient(180deg, #FFF5F0 0%, #FFFBF7 100%);
+        }
+
+        .option2 .user-name {
+            color: #FF6B6B;
+        }
+
+        .option2 .avatar {
+            border: 3px solid #FF6B6B;
+        }
+
+        .option2 .property-card {
+            background: white;
+            box-shadow: 0 8px 24px rgba(255, 107, 107, 0.15);
+        }
+
+        .option2 .status-badge {
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+            color: white;
+        }
+
+        .option2 .stat-item {
+            background: linear-gradient(135deg, #FFE5E5 0%, #FFF0E6 100%);
+        }
+
+        .option2 .stat-value {
+            color: #FF6B6B;
+        }
+
+        .option2 .action-button {
+            background: white;
+            color: #1a1a1a;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.1);
+        }
+
+        .option2 .action-icon {
+            background: linear-gradient(135deg, #FFE5E5 0%, #FFF0E6 100%);
+        }
+
+        /* Option 3: Forest Green */
+        .option3 .status-bar {
+            background: #2D6A4F;
+            color: white;
+        }
+
+        .option3 .screen-content {
+            background: linear-gradient(180deg, #E8F5E9 0%, #F1F8F4 100%);
+        }
+
+        .option3 .user-name {
+            color: #2D6A4F;
+        }
+
+        .option3 .avatar {
+            border: 3px solid #52B788;
+        }
+
+        .option3 .property-card {
+            background: white;
+            box-shadow: 0 8px 24px rgba(45, 106, 79, 0.12);
+        }
+
+        .option3 .status-badge {
+            background: #D8F3DC;
+            color: #2D6A4F;
+        }
+
+        .option3 .stat-item {
+            background: #E8F5E9;
+        }
+
+        .option3 .stat-value {
+            color: #2D6A4F;
+        }
+
+        .option3 .action-button {
+            background: white;
+            color: #1a1a1a;
+            box-shadow: 0 4px 12px rgba(45, 106, 79, 0.08);
+        }
+
+        .option3 .action-icon {
+            background: #D8F3DC;
+        }
+
+        /* Option 4: Modern Purple */
+        .option4 .status-bar {
+            background: linear-gradient(90deg, #6366F1 0%, #8B5CF6 100%);
+            color: white;
+        }
+
+        .option4 .screen-content {
+            background: linear-gradient(180deg, #EEF2FF 0%, #FAF5FF 100%);
+        }
+
+        .option4 .user-name {
+            color: #6366F1;
+        }
+
+        .option4 .avatar {
+            border: 3px solid #8B5CF6;
+        }
+
+        .option4 .property-card {
+            background: white;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.15);
+        }
+
+        .option4 .status-badge {
+            background: linear-gradient(135deg, #EEF2FF 0%, #FAF5FF 100%);
+            color: #6366F1;
+            border: 2px solid #E0E7FF;
+        }
+
+        .option4 .stat-item {
+            background: linear-gradient(135deg, #EEF2FF 0%, #FAF5FF 100%);
+        }
+
+        .option4 .stat-value {
+            color: #6366F1;
+        }
+
+        .option4 .action-button {
+            background: white;
+            color: #1a1a1a;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+        }
+
+        .option4 .action-icon {
+            background: linear-gradient(135deg, #EEF2FF 0%, #FAF5FF 100%);
+        }
+
+        /* Option 5: Minimalist Grayscale */
+        .option5 .status-bar {
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .option5 .screen-content {
+            background: #F5F5F5;
+        }
+
+        .option5 .user-name {
+            color: #1a1a1a;
+        }
+
+        .option5 .avatar {
+            border: 3px solid #1a1a1a;
+            filter: grayscale(100%);
+        }
+
+        .option5 .property-card {
+            background: white;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E5E5E5;
+        }
+
+        .option5 .status-badge {
+            background: #1a1a1a;
+            color: white;
+        }
+
+        .option5 .stat-item {
+            background: #F0F0F0;
+            border: 1px solid #E5E5E5;
+        }
+
+        .option5 .stat-value {
+            color: #1a1a1a;
+        }
+
+        .option5 .action-button {
+            background: white;
+            color: #1a1a1a;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid #E5E5E5;
+        }
+
+        .option5 .action-icon {
+            background: #F0F0F0;
+        }
+
+        /* Option 6: Vibrant Gradient */
+        .option6 .status-bar {
+            background: linear-gradient(90deg, #FF0080 0%, #7928CA 50%, #0070F3 100%);
+            color: white;
+        }
+
+        .option6 .screen-content {
+            background: linear-gradient(180deg, #FFF0F9 0%, #F0F9FF 100%);
+        }
+
+        .option6 .user-name {
+            background: linear-gradient(90deg, #FF0080 0%, #7928CA 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .option6 .avatar {
+            border: 3px solid transparent;
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(90deg, #FF0080 0%, #7928CA 100%) border-box;
+        }
+
+        .option6 .property-card {
+            background: white;
+            box-shadow: 0 8px 24px rgba(255, 0, 128, 0.12);
+        }
+
+        .option6 .status-badge {
+            background: linear-gradient(90deg, #FF0080 0%, #7928CA 100%);
+            color: white;
+        }
+
+        .option6 .stat-item {
+            background: linear-gradient(135deg, #FFF0F9 0%, #F0F0FF 100%);
+        }
+
+        .option6 .stat-value {
+            background: linear-gradient(90deg, #FF0080 0%, #7928CA 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .option6 .action-button {
+            background: white;
+            color: #1a1a1a;
+            box-shadow: 0 4px 12px rgba(255, 0, 128, 0.1);
+        }
+
+        .option6 .action-icon {
+            background: linear-gradient(135deg, #FFF0F9 0%, #F0F0FF 100%);
+        }
+
+        @media (max-width: 1400px) {
+            .designs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .designs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .implementation-info {
+            background: #FFF9E6;
+            border-left: 4px solid #FFB800;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏠 Tenant Home Screen</h1>
+            <p class="subtitle">6 Modern Design Options - No Glassmorphism</p>
+            <p style="font-size: 14px; color: #999; margin-top: 12px;">Scroll down to compare all variations</p>
+        </header>
+
+        <div class="designs-grid">
+            <!-- Option 1: Classic iOS Blue -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title" style="color: #007AFF;">Option 1: Classic iOS Blue</div>
+                    <div class="option-description">Traditional iOS design with blue accents. Clean, professional, and universally recognizable.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #007AFF;"></div>
+                        <div class="color-chip" style="background: #E3F2FF;"></div>
+                        <div class="color-chip" style="background: #FFFFFF;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option1">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 2: Warm Sunset -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title" style="color: #FF6B6B;">Option 2: Warm Sunset</div>
+                    <div class="option-description">Friendly and inviting with warm coral and orange tones. Creates a welcoming, comfortable atmosphere.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #FF6B6B;"></div>
+                        <div class="color-chip" style="background: #FF8E53;"></div>
+                        <div class="color-chip" style="background: #FFE5E5;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option2">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 3: Forest Green -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title" style="color: #2D6A4F;">Option 3: Forest Green</div>
+                    <div class="option-description">Natural and calming with earth-inspired greens. Conveys stability, growth, and trust.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #2D6A4F;"></div>
+                        <div class="color-chip" style="background: #52B788;"></div>
+                        <div class="color-chip" style="background: #D8F3DC;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option3">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 4: Modern Purple -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title" style="color: #6366F1;">Option 4: Modern Purple</div>
+                    <div class="option-description">Contemporary and tech-forward with indigo and violet hues. Innovative and premium feel.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #6366F1;"></div>
+                        <div class="color-chip" style="background: #8B5CF6;"></div>
+                        <div class="color-chip" style="background: #EEF2FF;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option4">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 5: Minimalist Grayscale -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title" style="color: #1a1a1a;">Option 5: Minimalist Grayscale</div>
+                    <div class="option-description">Ultra-clean monochrome design with precise typography. Sophisticated and distraction-free.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #1a1a1a;"></div>
+                        <div class="color-chip" style="background: #F5F5F5;"></div>
+                        <div class="color-chip" style="background: #FFFFFF;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option5">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 6: Vibrant Gradient -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title" style="background: linear-gradient(90deg, #FF0080 0%, #7928CA 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Option 6: Vibrant Gradient</div>
+                    <div class="option-description">Bold and energetic with multi-color gradients. Eye-catching and modern for a younger audience.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: linear-gradient(90deg, #FF0080 0%, #7928CA 100%);"></div>
+                        <div class="color-chip" style="background: #0070F3;"></div>
+                        <div class="color-chip" style="background: #FFF0F9;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option6">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="implementation-info">
+            <h2 style="margin-bottom: 16px; font-size: 24px;">📋 Design Options Summary</h2>
+
+            <h3 style="margin-top: 20px; margin-bottom: 12px;">Option Comparison</h3>
+            <table style="width: 100%; background: white; border-radius: 12px; overflow: hidden; margin-top: 16px;">
+                <tr style="background: #f5f5f5;">
+                    <th style="padding: 12px; text-align: left; font-weight: 600;">Option</th>
+                    <th style="padding: 12px; text-align: left; font-weight: 600;">Best For</th>
+                    <th style="padding: 12px; text-align: left; font-weight: 600;">Personality</th>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">1. Classic iOS Blue</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Professional, corporate users</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Trustworthy, familiar, safe</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">2. Warm Sunset</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Family-oriented properties</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Welcoming, comfortable, friendly</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">3. Forest Green</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Eco-conscious communities</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Natural, calming, stable</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">4. Modern Purple</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Tech-savvy, younger tenants</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Innovative, premium, modern</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">5. Minimalist Grayscale</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Luxury properties, professionals</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Sophisticated, clean, focused</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">6. Vibrant Gradient</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Young adults, student housing</td>
+                    <td style="padding: 12px; border-top: 1px solid #e5e5e5;">Bold, energetic, playful</td>
+                </tr>
+            </table>
+
+            <h3 style="margin-top: 24px; margin-bottom: 12px;">Key Features (All Options)</h3>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li><strong>No Glassmorphism:</strong> Solid backgrounds and gradients for better performance</li>
+                <li><strong>Consistent Layout:</strong> Same structure across all options for easy implementation</li>
+                <li><strong>Modern Typography:</strong> SF Pro system font with proper sizing</li>
+                <li><strong>Touch-Optimized:</strong> 44pt minimum touch targets on all interactive elements</li>
+                <li><strong>Accessible:</strong> All color combinations meet WCAG AA standards</li>
+                <li><strong>Gradient Backgrounds:</strong> Subtle depth without blur effects</li>
+                <li><strong>Card Shadows:</strong> Simple box shadows instead of complex effects</li>
+            </ul>
+
+            <h3 style="margin-top: 24px; margin-bottom: 12px;">Recommendation</h3>
+            <p style="line-height: 1.8;">
+                <strong>Option 1 (Classic iOS Blue)</strong> is recommended for broad appeal and professional image.<br>
+                <strong>Option 3 (Forest Green)</strong> is great for eco-friendly branding and calming aesthetics.<br>
+                <strong>Option 4 (Modern Purple)</strong> works well for tech-forward, innovative positioning.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

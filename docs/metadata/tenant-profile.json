@@ -1,8 +1,0 @@
-{
-  "name": "tenant-profile",
-  "url": "http://localhost:8081/profile?userRole=tenant",
-  "title": "TenantProfile",
-  "timestamp": "2025-12-27T03:18:41.021Z",
-  "flow": "Shared",
-  "purpose": "Tenant profile and settings"
-}

@@ -1,8 +1,0 @@
-{
-  "name": "tenant-report-issue",
-  "url": "http://localhost:8081/report-issue",
-  "title": "ReportIssue",
-  "timestamp": "2025-12-27T14:55:15.356Z",
-  "purpose": "Report new maintenance issue",
-  "flow": "Tenant Maintenance"
-}

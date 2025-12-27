@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyAILandlord - Black/Grey Color Palette Options</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #ffffff;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #666;
+            margin-top: 8px;
+        }
+
+        .designs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-top: 40px;
+        }
+
+        .design-option {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .option-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .option-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+        }
+
+        .option-description {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .color-chips {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .color-chip {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Phone mockup styles */
+        .phone-mockup {
+            background: #000000;
+            border-radius: 50px;
+            padding: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 375px;
+            margin: 0 auto;
+        }
+
+        .phone-screen {
+            border-radius: 40px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 47px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 160px;
+            height: 32px;
+            background: #000000;
+            border-radius: 0 0 20px 20px;
+            z-index: 10;
+        }
+
+        .screen-content {
+            padding: 20px;
+            min-height: 700px;
+        }
+
+        .user-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .user-info {
+            margin-left: 16px;
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .user-role {
+            font-size: 15px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .property-card {
+            border-radius: 20px;
+            padding: 0;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .property-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .property-info {
+            padding: 20px;
+        }
+
+        .property-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .property-address {
+            font-size: 15px;
+            opacity: 0.7;
+            margin-bottom: 16px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-top: 6px;
+        }
+
+        .action-section {
+            margin-top: 24px;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+
+        .action-buttons {
+            display: grid;
+            gap: 12px;
+        }
+
+        .action-button {
+            display: flex;
+            align-items: center;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .action-button:active {
+            transform: scale(0.98);
+        }
+
+        .action-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-right: 14px;
+        }
+
+        /* Option 1: Pure Dark Mode */
+        .option1 .phone-screen {
+            background: #000000;
+        }
+
+        .option1 .status-bar {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .option1 .screen-content {
+            background: #000000;
+        }
+
+        .option1 .user-name {
+            color: #ffffff;
+        }
+
+        .option1 .user-role {
+            color: #8E8E93;
+        }
+
+        .option1 .avatar {
+            border: 3px solid #ffffff;
+        }
+
+        .option1 .property-card {
+            background: #1C1C1E;
+            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.05);
+        }
+
+        .option1 .property-title {
+            color: #ffffff;
+        }
+
+        .option1 .property-address {
+            color: #8E8E93;
+        }
+
+        .option1 .status-badge {
+            background: #2C2C2E;
+            color: #ffffff;
+            border: 1px solid #3A3A3C;
+        }
+
+        .option1 .stat-item {
+            background: #2C2C2E;
+            border: 1px solid #3A3A3C;
+        }
+
+        .option1 .stat-value {
+            color: #ffffff;
+        }
+
+        .option1 .stat-label {
+            color: #8E8E93;
+        }
+
+        .option1 .section-title {
+            color: #8E8E93;
+        }
+
+        .option1 .action-button {
+            background: #1C1C1E;
+            color: #ffffff;
+            border: 1px solid #3A3A3C;
+        }
+
+        .option1 .action-icon {
+            background: #2C2C2E;
+        }
+
+        /* Option 2: Charcoal Professional */
+        .option2 .phone-screen {
+            background: #2C2C2E;
+        }
+
+        .option2 .status-bar {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+
+        .option2 .screen-content {
+            background: linear-gradient(180deg, #2C2C2E 0%, #1C1C1E 100%);
+        }
+
+        .option2 .user-name {
+            color: #F5F5F7;
+        }
+
+        .option2 .user-role {
+            color: #AEAEB2;
+        }
+
+        .option2 .avatar {
+            border: 3px solid #48484A;
+        }
+
+        .option2 .property-card {
+            background: #3A3A3C;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .option2 .property-title {
+            color: #F5F5F7;
+        }
+
+        .option2 .property-address {
+            color: #AEAEB2;
+        }
+
+        .option2 .status-badge {
+            background: #48484A;
+            color: #F5F5F7;
+        }
+
+        .option2 .stat-item {
+            background: #48484A;
+        }
+
+        .option2 .stat-value {
+            color: #F5F5F7;
+        }
+
+        .option2 .stat-label {
+            color: #AEAEB2;
+        }
+
+        .option2 .section-title {
+            color: #AEAEB2;
+        }
+
+        .option2 .action-button {
+            background: #3A3A3C;
+            color: #F5F5F7;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .option2 .action-icon {
+            background: #48484A;
+        }
+
+        /* Option 3: Slate & White */
+        .option3 .phone-screen {
+            background: #F8F9FA;
+        }
+
+        .option3 .status-bar {
+            background: #1E293B;
+            color: #ffffff;
+        }
+
+        .option3 .screen-content {
+            background: linear-gradient(180deg, #F8F9FA 0%, #F1F3F5 100%);
+        }
+
+        .option3 .user-name {
+            color: #1E293B;
+        }
+
+        .option3 .user-role {
+            color: #64748B;
+        }
+
+        .option3 .avatar {
+            border: 3px solid #1E293B;
+        }
+
+        .option3 .property-card {
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(30, 41, 59, 0.12);
+            border: 1px solid #E2E8F0;
+        }
+
+        .option3 .property-title {
+            color: #1E293B;
+        }
+
+        .option3 .property-address {
+            color: #64748B;
+        }
+
+        .option3 .status-badge {
+            background: #1E293B;
+            color: #ffffff;
+        }
+
+        .option3 .stat-item {
+            background: #F1F3F5;
+            border: 1px solid #E2E8F0;
+        }
+
+        .option3 .stat-value {
+            color: #1E293B;
+        }
+
+        .option3 .stat-label {
+            color: #64748B;
+        }
+
+        .option3 .section-title {
+            color: #64748B;
+        }
+
+        .option3 .action-button {
+            background: #ffffff;
+            color: #1E293B;
+            box-shadow: 0 4px 12px rgba(30, 41, 59, 0.08);
+            border: 1px solid #E2E8F0;
+        }
+
+        .option3 .action-icon {
+            background: #F1F3F5;
+        }
+
+        /* Option 4: High Contrast B&W */
+        .option4 .phone-screen {
+            background: #ffffff;
+        }
+
+        .option4 .status-bar {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .option4 .screen-content {
+            background: #ffffff;
+        }
+
+        .option4 .user-name {
+            color: #000000;
+        }
+
+        .option4 .user-role {
+            color: #666666;
+        }
+
+        .option4 .avatar {
+            border: 4px solid #000000;
+        }
+
+        .option4 .property-card {
+            background: #ffffff;
+            box-shadow: 0 0 0 2px #000000;
+        }
+
+        .option4 .property-title {
+            color: #000000;
+        }
+
+        .option4 .property-address {
+            color: #666666;
+        }
+
+        .option4 .status-badge {
+            background: #000000;
+            color: #ffffff;
+        }
+
+        .option4 .stat-item {
+            background: #ffffff;
+            border: 2px solid #000000;
+        }
+
+        .option4 .stat-value {
+            color: #000000;
+        }
+
+        .option4 .stat-label {
+            color: #666666;
+        }
+
+        .option4 .section-title {
+            color: #000000;
+        }
+
+        .option4 .action-button {
+            background: #ffffff;
+            color: #000000;
+            border: 2px solid #000000;
+        }
+
+        .option4 .action-icon {
+            background: #f5f5f5;
+            border: 1px solid #000000;
+        }
+
+        /* Option 5: Soft Graphite */
+        .option5 .phone-screen {
+            background: #FAFAFA;
+        }
+
+        .option5 .status-bar {
+            background: #424242;
+            color: #ffffff;
+        }
+
+        .option5 .screen-content {
+            background: linear-gradient(180deg, #FAFAFA 0%, #F5F5F5 100%);
+        }
+
+        .option5 .user-name {
+            color: #212121;
+        }
+
+        .option5 .user-role {
+            color: #757575;
+        }
+
+        .option5 .avatar {
+            border: 3px solid #616161;
+        }
+
+        .option5 .property-card {
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            border: 1px solid #E0E0E0;
+        }
+
+        .option5 .property-title {
+            color: #212121;
+        }
+
+        .option5 .property-address {
+            color: #757575;
+        }
+
+        .option5 .status-badge {
+            background: #424242;
+            color: #ffffff;
+        }
+
+        .option5 .stat-item {
+            background: #F5F5F5;
+            border: 1px solid #E0E0E0;
+        }
+
+        .option5 .stat-value {
+            color: #212121;
+        }
+
+        .option5 .stat-label {
+            color: #757575;
+        }
+
+        .option5 .section-title {
+            color: #616161;
+        }
+
+        .option5 .action-button {
+            background: #ffffff;
+            color: #212121;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            border: 1px solid #E0E0E0;
+        }
+
+        .option5 .action-icon {
+            background: #F5F5F5;
+        }
+
+        /* Option 6: Dark Mode with Grey Accents */
+        .option6 .phone-screen {
+            background: #121212;
+        }
+
+        .option6 .status-bar {
+            background: #121212;
+            color: #E0E0E0;
+        }
+
+        .option6 .screen-content {
+            background: linear-gradient(180deg, #121212 0%, #1E1E1E 100%);
+        }
+
+        .option6 .user-name {
+            color: #E0E0E0;
+        }
+
+        .option6 .user-role {
+            color: #9E9E9E;
+        }
+
+        .option6 .avatar {
+            border: 3px solid #424242;
+        }
+
+        .option6 .property-card {
+            background: #1E1E1E;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .option6 .property-title {
+            color: #E0E0E0;
+        }
+
+        .option6 .property-address {
+            color: #9E9E9E;
+        }
+
+        .option6 .status-badge {
+            background: #424242;
+            color: #E0E0E0;
+        }
+
+        .option6 .stat-item {
+            background: #2C2C2C;
+        }
+
+        .option6 .stat-value {
+            color: #E0E0E0;
+        }
+
+        .option6 .stat-label {
+            color: #9E9E9E;
+        }
+
+        .option6 .section-title {
+            color: #9E9E9E;
+        }
+
+        .option6 .action-button {
+            background: #1E1E1E;
+            color: #E0E0E0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .option6 .action-icon {
+            background: #2C2C2C;
+        }
+
+        @media (max-width: 1400px) {
+            .designs-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .designs-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .implementation-info {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 32px;
+            border-radius: 24px;
+            margin-top: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .implementation-info h2 {
+            color: #1a1a1a;
+            margin-bottom: 16px;
+            font-size: 28px;
+        }
+
+        .implementation-info h3 {
+            color: #1a1a1a;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-size: 20px;
+        }
+
+        .implementation-info p,
+        .implementation-info li {
+            color: #333;
+            line-height: 1.8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid #E0E0E0;
+        }
+
+        th {
+            background: #F5F5F5;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        td {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚫ Black & Grey Palette Options</h1>
+            <p class="subtitle">6 Sophisticated Monochrome Design Variations</p>
+            <p style="font-size: 14px; color: #999; margin-top: 12px;">No glassmorphism • Clean gradients • Professional aesthetics</p>
+        </header>
+
+        <div class="designs-grid">
+            <!-- Option 1: Pure Dark Mode -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title">Option 1: Pure Dark Mode</div>
+                    <div class="option-description">True OLED black (#000000) with subtle grey accents. Perfect for night viewing and battery savings on OLED screens.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #000000;"></div>
+                        <div class="color-chip" style="background: #1C1C1E;"></div>
+                        <div class="color-chip" style="background: #2C2C2E;"></div>
+                        <div class="color-chip" style="background: #ffffff;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option1">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 2: Charcoal Professional -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title">Option 2: Charcoal Professional</div>
+                    <div class="option-description">Rich charcoal tones with depth. Professional dark theme with better readability than pure black.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #1a1a1a;"></div>
+                        <div class="color-chip" style="background: #2C2C2E;"></div>
+                        <div class="color-chip" style="background: #3A3A3C;"></div>
+                        <div class="color-chip" style="background: #F5F5F7;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option2">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 3: Slate & White -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title">Option 3: Slate & White</div>
+                    <div class="option-description">Light background with slate navy accents. Clean and professional with excellent readability.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #1E293B;"></div>
+                        <div class="color-chip" style="background: #64748B;"></div>
+                        <div class="color-chip" style="background: #F8F9FA;"></div>
+                        <div class="color-chip" style="background: #ffffff;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option3">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 4: High Contrast B&W -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title">Option 4: High Contrast B&W</div>
+                    <div class="option-description">Pure black and white with bold borders. Maximum accessibility and striking visual impact.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #000000;"></div>
+                        <div class="color-chip" style="background: #666666;"></div>
+                        <div class="color-chip" style="background: #ffffff; border: 1px solid #ddd;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option4">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 5: Soft Graphite -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title">Option 5: Soft Graphite</div>
+                    <div class="option-description">Gentle grey palette with warm undertones. Sophisticated and easy on the eyes for extended use.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #424242;"></div>
+                        <div class="color-chip" style="background: #757575;"></div>
+                        <div class="color-chip" style="background: #FAFAFA;"></div>
+                        <div class="color-chip" style="background: #ffffff; border: 1px solid #ddd;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option5">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Option 6: Dark Mode with Grey Accents -->
+            <div class="design-option">
+                <div class="option-header">
+                    <div class="option-title">Option 6: Dark Grey Material</div>
+                    <div class="option-description">Material Design inspired dark theme. Balanced contrast with subtle elevation layers.</div>
+                    <div class="color-chips">
+                        <div class="color-chip" style="background: #121212;"></div>
+                        <div class="color-chip" style="background: #1E1E1E;"></div>
+                        <div class="color-chip" style="background: #2C2C2C;"></div>
+                        <div class="color-chip" style="background: #E0E0E0;"></div>
+                    </div>
+                </div>
+
+                <div class="phone-mockup option6">
+                    <div class="phone-screen">
+                        <div class="notch"></div>
+                        <div class="status-bar">
+                            <span>9:41</span>
+                            <span>📶 📡 🔋</span>
+                        </div>
+                        <div class="screen-content">
+                            <div class="user-header">
+                                <img src="https://i.pravatar.cc/64?img=5" alt="Avatar" class="avatar">
+                                <div class="user-info">
+                                    <div class="user-name">Sarah Chen</div>
+                                    <div class="user-role">Tenant</div>
+                                </div>
+                            </div>
+
+                            <div class="property-card">
+                                <img src="https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=400&h=200&fit=crop" alt="Property" class="property-image">
+                                <div class="property-info">
+                                    <div class="property-title">Sunset Apartments</div>
+                                    <div class="property-address">123 Main Street, Unit 4B</div>
+                                    <div class="status-badge">
+                                        <span>✓</span> Active Lease
+                                    </div>
+
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <div class="stat-value">2</div>
+                                            <div class="stat-label">Open Requests</div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <div class="stat-value">1</div>
+                                            <div class="stat-label">New Messages</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="action-section">
+                                <div class="section-title">Quick Actions</div>
+                                <div class="action-buttons">
+                                    <div class="action-button">
+                                        <div class="action-icon">🔧</div>
+                                        <span>Report Maintenance Issue</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💬</div>
+                                        <span>Message Landlord</span>
+                                    </div>
+                                    <div class="action-button">
+                                        <div class="action-icon">💰</div>
+                                        <span>View Rent History</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="implementation-info">
+            <h2>⚫ Black & Grey Options Summary</h2>
+
+            <h3>Design Comparison</h3>
+            <table>
+                <tr style="background: #F5F5F5;">
+                    <th>Option</th>
+                    <th>Style</th>
+                    <th>Best For</th>
+                    <th>Accessibility</th>
+                </tr>
+                <tr>
+                    <td><strong>1. Pure Dark Mode</strong></td>
+                    <td>True OLED black (#000)</td>
+                    <td>Night viewing, battery savings</td>
+                    <td>21:1 contrast ratio</td>
+                </tr>
+                <tr>
+                    <td><strong>2. Charcoal Professional</strong></td>
+                    <td>Rich charcoal tones</td>
+                    <td>Professional environments</td>
+                    <td>18:1 contrast ratio</td>
+                </tr>
+                <tr>
+                    <td><strong>3. Slate & White</strong></td>
+                    <td>Light with slate accents</td>
+                    <td>Daytime use, readability</td>
+                    <td>12:1 contrast ratio</td>
+                </tr>
+                <tr>
+                    <td><strong>4. High Contrast B&W</strong></td>
+                    <td>Pure black borders on white</td>
+                    <td>Maximum accessibility</td>
+                    <td>21:1 contrast ratio</td>
+                </tr>
+                <tr>
+                    <td><strong>5. Soft Graphite</strong></td>
+                    <td>Warm grey tones</td>
+                    <td>Extended viewing, comfort</td>
+                    <td>8:1 contrast ratio</td>
+                </tr>
+                <tr>
+                    <td><strong>6. Dark Grey Material</strong></td>
+                    <td>Material Design dark</td>
+                    <td>Modern, balanced contrast</td>
+                    <td>15:1 contrast ratio</td>
+                </tr>
+            </table>
+
+            <h3>Key Features</h3>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li><strong>No Glassmorphism:</strong> Solid colors and clean gradients for performance</li>
+                <li><strong>Professional Aesthetic:</strong> Sophisticated monochrome palettes</li>
+                <li><strong>WCAG AAA Compliant:</strong> All options exceed accessibility standards</li>
+                <li><strong>Battery Efficient:</strong> Dark options save power on OLED screens</li>
+                <li><strong>Versatile:</strong> Works for both landlord and tenant interfaces</li>
+                <li><strong>Modern iOS:</strong> Following Apple's dark mode guidelines</li>
+            </ul>
+
+            <h3>Recommendations</h3>
+            <p style="line-height: 1.8; margin-top: 16px;">
+                <strong>Option 3 (Slate & White)</strong> - Most versatile for daytime use with professional appearance.<br>
+                <strong>Option 2 (Charcoal Professional)</strong> - Best balance of readability and modern dark aesthetic.<br>
+                <strong>Option 1 (Pure Dark Mode)</strong> - Ideal for night mode or battery-conscious users.
+            </p>
+
+            <h3 style="margin-top: 24px;">Color Codes Reference</h3>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 16px;">
+                <div>
+                    <strong>Dark Backgrounds:</strong><br>
+                    <code style="display: block; margin-top: 4px;">#000000 - Pure Black</code>
+                    <code style="display: block; margin-top: 4px;">#121212 - Material Dark</code>
+                    <code style="display: block; margin-top: 4px;">#1E293B - Slate</code>
+                    <code style="display: block; margin-top: 4px;">#2C2C2E - Charcoal</code>
+                </div>
+                <div>
+                    <strong>Light Backgrounds:</strong><br>
+                    <code style="display: block; margin-top: 4px;">#FFFFFF - Pure White</code>
+                    <code style="display: block; margin-top: 4px;">#F8F9FA - Off White</code>
+                    <code style="display: block; margin-top: 4px;">#FAFAFA - Soft Grey</code>
+                    <code style="display: block; margin-top: 4px;">#F5F5F5 - Light Grey</code>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,8 +1,0 @@
-{
-  "name": "tenant-property-info",
-  "url": "http://localhost:8081/property-info",
-  "title": "PropertyInfo",
-  "timestamp": "2025-12-27T14:55:08.826Z",
-  "purpose": "Property details and information",
-  "flow": "Tenant Management"
-}

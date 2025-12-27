@@ -1,8 +1,0 @@
-{
-  "name": "tenant-home-post-onboarding",
-  "url": "http://localhost:8081/home",
-  "title": "TenantHomeMain",
-  "timestamp": "2025-12-27T14:54:54.804Z",
-  "purpose": "Tenant home after completing onboarding (no property)",
-  "flow": "Tenant Onboarding"
-}

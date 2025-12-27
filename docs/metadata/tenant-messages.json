@@ -1,8 +1,0 @@
-{
-  "name": "tenant-messages",
-  "url": "http://localhost:8081/messages",
-  "title": "TenantMessages",
-  "timestamp": "2025-12-27T03:18:36.951Z",
-  "flow": "Tenant",
-  "purpose": "Messages with landlord"
-}

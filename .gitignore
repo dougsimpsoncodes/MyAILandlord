@@ -62,9 +62,4 @@ build
 .gitleaks-cache*
 
 # test artifacts
-test-results/
-playwright-report/
 coverage/
-
-# playwright auth states (contain session tokens)
-.auth/

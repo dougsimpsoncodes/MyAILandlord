@@ -1,8 +1,0 @@
-{
-  "name": "onboarding-welcome",
-  "url": "http://localhost:8081/OnboardingWelcome",
-  "title": "OnboardingWelcome",
-  "timestamp": "2025-12-27T14:54:48.056Z",
-  "purpose": "Initial welcome screen",
-  "flow": "Onboarding"
-}

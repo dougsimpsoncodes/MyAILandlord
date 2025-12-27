@@ -1,8 +1,0 @@
-{
-  "name": "shared-edit-profile",
-  "url": "http://localhost:8081/edit-profile",
-  "title": "EditProfile",
-  "timestamp": "2025-12-27T14:55:37.153Z",
-  "purpose": "Edit profile information",
-  "flow": "Shared"
-}
