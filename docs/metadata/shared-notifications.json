@@ -1,0 +1,9 @@
+{
+  "screenName": "shared-notifications",
+  "timestamp": "2025-12-27T01:31:43.909Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Settings",
+  "role": "both",
+  "purpose": "Notification preferences - email, push, SMS settings"
+}

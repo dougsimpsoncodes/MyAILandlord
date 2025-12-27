@@ -1,0 +1,9 @@
+{
+  "screenName": "landlord-messages",
+  "timestamp": "2025-12-27T01:30:23.711Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Communication",
+  "role": "landlord",
+  "purpose": "Message inbox for landlord-tenant communication"
+}

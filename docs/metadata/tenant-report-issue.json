@@ -1,0 +1,10 @@
+{
+  "screenName": "tenant-report-issue",
+  "timestamp": "2025-12-27T01:31:00.943Z",
+  "url": "http://localhost:8081/report-issue",
+  "title": "ReportIssue",
+  "flow": "Report Issue",
+  "step": 1,
+  "role": "tenant",
+  "purpose": "Create new maintenance request - select area and describe issue"
+}

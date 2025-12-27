@@ -1,0 +1,9 @@
+{
+  "screenName": "tenant-property-info",
+  "timestamp": "2025-12-27T01:31:11.538Z",
+  "url": "http://localhost:8081/property-info?propertyId=2a17b6c7-5f4f-4cdb-a707-d5b24d364fc7&address=San%20Francisco%2C%20CA%2C%2094105&name=Sunset%20Apartments%20%28Doc%29",
+  "title": "PropertyInfo",
+  "flow": "Property Information",
+  "role": "tenant",
+  "purpose": "View property details and areas"
+}

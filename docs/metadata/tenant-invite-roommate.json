@@ -1,0 +1,9 @@
+{
+  "screenName": "tenant-invite-roommate",
+  "timestamp": "2025-12-27T01:32:13.029Z",
+  "url": "http://localhost:8081/OnboardingWelcome",
+  "title": "OnboardingWelcome",
+  "flow": "Tenant Onboarding",
+  "role": "tenant",
+  "purpose": "Invite roommate to join property"
+}

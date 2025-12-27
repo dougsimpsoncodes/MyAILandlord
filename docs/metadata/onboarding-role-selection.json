@@ -1,0 +1,10 @@
+{
+  "screenName": "onboarding-role-selection",
+  "timestamp": "2025-12-27T01:31:59.852Z",
+  "url": "http://localhost:8081/OnboardingAccount?firstName=Test%20User",
+  "title": "OnboardingAccount",
+  "flow": "Onboarding",
+  "step": 4,
+  "role": "both",
+  "purpose": "Choose between Landlord and Tenant role"
+}

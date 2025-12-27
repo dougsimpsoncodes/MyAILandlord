@@ -1,0 +1,105 @@
+{
+  "generatedAt": "2025-12-26T20:34:29.816Z",
+  "totalScreenshots": 10,
+  "screenshots": [
+    {
+      "screenName": "onboarding-welcome",
+      "timestamp": "2025-12-26T20:33:43.528Z",
+      "url": "http://localhost:8081/OnboardingWelcome",
+      "title": "OnboardingWelcome",
+      "flow": "Onboarding",
+      "role": "both",
+      "step": 1,
+      "purpose": "App entry point with get started button"
+    },
+    {
+      "screenName": "onboarding-name",
+      "timestamp": "2025-12-26T20:33:46.644Z",
+      "url": "http://localhost:8081/OnboardingName",
+      "title": "OnboardingName",
+      "flow": "Onboarding",
+      "role": "both",
+      "step": 2,
+      "purpose": "Collect user first name"
+    },
+    {
+      "screenName": "onboarding-account",
+      "timestamp": "2025-12-26T20:33:49.757Z",
+      "url": "http://localhost:8081/OnboardingAccount?firstName=Documentation%20User",
+      "title": "OnboardingAccount",
+      "flow": "Onboarding",
+      "role": "both",
+      "step": 3,
+      "purpose": "Create account with email and password"
+    },
+    {
+      "screenName": "landlord-home",
+      "timestamp": "2025-12-26T20:34:00.096Z",
+      "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+      "title": "LandlordPropertyIntro",
+      "flow": "Landlord Dashboard",
+      "role": "landlord",
+      "purpose": "Main dashboard with properties and requests overview"
+    },
+    {
+      "screenName": "landlord-properties-list",
+      "timestamp": "2025-12-26T20:34:03.158Z",
+      "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+      "title": "LandlordPropertyIntro",
+      "flow": "Property Management",
+      "role": "landlord",
+      "purpose": "List of all landlord properties"
+    },
+    {
+      "screenName": "tenant-home",
+      "timestamp": "2025-12-26T20:34:13.526Z",
+      "url": "http://localhost:8081/home",
+      "title": "TenantHomeMain",
+      "flow": "Tenant Dashboard",
+      "role": "tenant",
+      "purpose": "Main tenant dashboard with property and requests"
+    },
+    {
+      "screenName": "tenant-requests-list",
+      "timestamp": "2025-12-26T20:34:16.625Z",
+      "url": "http://localhost:8081/home",
+      "title": "TenantHomeMain",
+      "flow": "Maintenance History",
+      "role": "tenant",
+      "purpose": "All maintenance requests and their status"
+    },
+    {
+      "screenName": "tenant-messages",
+      "timestamp": "2025-12-26T20:34:19.710Z",
+      "url": "http://localhost:8081/messages",
+      "title": "TenantMessages",
+      "flow": "Communication",
+      "role": "tenant",
+      "purpose": "Message inbox with landlord"
+    },
+    {
+      "screenName": "tenant-profile",
+      "timestamp": "2025-12-26T20:34:22.827Z",
+      "url": "http://localhost:8081/profile?userRole=tenant",
+      "title": "TenantProfile",
+      "flow": "Settings",
+      "role": "tenant",
+      "purpose": "User profile and account settings"
+    },
+    {
+      "screenName": "error-login-invalid",
+      "timestamp": "2025-12-26T20:34:29.813Z",
+      "url": "http://localhost:8081/Auth?mode=login",
+      "title": "Auth",
+      "flow": "Error States",
+      "role": "both",
+      "purpose": "Login error with invalid credentials"
+    }
+  ],
+  "flows": {
+    "onboarding": 3,
+    "landlord": 2,
+    "tenant": 4,
+    "errors": 1
+  }
+}

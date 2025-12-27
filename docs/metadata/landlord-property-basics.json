@@ -1,0 +1,10 @@
+{
+  "screenName": "landlord-property-basics",
+  "timestamp": "2025-12-27T01:29:50.926Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Property Setup",
+  "step": 2,
+  "role": "landlord",
+  "purpose": "Enter property address, name, and type"
+}

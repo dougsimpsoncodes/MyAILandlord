@@ -1,0 +1,10 @@
+{
+  "screenName": "landlord-property-assets-list",
+  "timestamp": "2025-12-27T01:30:02.647Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Property Setup",
+  "step": 6,
+  "role": "landlord",
+  "purpose": "List of assets detected or manually added"
+}

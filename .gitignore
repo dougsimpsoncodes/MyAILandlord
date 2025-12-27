@@ -65,3 +65,6 @@ build
 test-results/
 playwright-report/
 coverage/
+
+# playwright auth states (contain session tokens)
+.auth/

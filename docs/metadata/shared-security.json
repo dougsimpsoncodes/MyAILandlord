@@ -1,0 +1,9 @@
+{
+  "screenName": "shared-security",
+  "timestamp": "2025-12-27T01:31:41.753Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Settings",
+  "role": "both",
+  "purpose": "Security settings - change password, 2FA"
+}

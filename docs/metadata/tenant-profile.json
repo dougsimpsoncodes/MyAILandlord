@@ -1,0 +1,9 @@
+{
+  "screenName": "tenant-profile",
+  "timestamp": "2025-12-27T01:31:26.058Z",
+  "url": "http://localhost:8081/profile?userRole=tenant",
+  "title": "TenantProfile",
+  "flow": "Settings",
+  "role": "tenant",
+  "purpose": "User profile and account settings"
+}

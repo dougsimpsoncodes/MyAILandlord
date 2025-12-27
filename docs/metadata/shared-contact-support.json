@@ -1,0 +1,9 @@
+{
+  "screenName": "shared-contact-support",
+  "timestamp": "2025-12-27T01:31:48.292Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Help & Support",
+  "role": "both",
+  "purpose": "Contact support form - submit tickets or questions"
+}

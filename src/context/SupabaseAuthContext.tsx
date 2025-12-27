@@ -9,6 +9,7 @@ interface AppUser {
   name: string;
   email: string;
   avatar?: string;
+  user_metadata?: Record<string, any>;
 }
 
 interface AuthContextValue {
@@ -157,6 +158,7 @@ function mapSupabaseUserToAppUser(user: User): AppUser {
     name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
     email: user.email || '',
     avatar: user.user_metadata?.avatar_url,
+    user_metadata: user.user_metadata,
   };
 }
 

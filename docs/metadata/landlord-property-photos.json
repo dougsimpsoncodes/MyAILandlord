@@ -1,0 +1,9 @@
+{
+  "screenName": "landlord-property-photos",
+  "timestamp": "2025-12-27T01:32:17.600Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Property Management",
+  "role": "landlord",
+  "purpose": "Add/manage overall property photos"
+}

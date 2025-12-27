@@ -1,0 +1,9 @@
+{
+  "screenName": "error-login-invalid",
+  "timestamp": "2025-12-27T01:32:35.114Z",
+  "url": "http://localhost:8081/Auth?mode=login",
+  "title": "Auth",
+  "flow": "Error States",
+  "role": "both",
+  "purpose": "Error message for invalid login credentials"
+}

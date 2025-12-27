@@ -48,10 +48,13 @@ export function useProfileSync() {
         const existingProfile = profile
 
         // Database role is the source of truth. Only use context role for new users without a DB role.
-        const finalRole = existingProfile?.role || userRole || 'landlord'
+        // Check auth metadata for role before defaulting to 'landlord'
+        const metadataRole = user?.user_metadata?.role as 'landlord' | 'tenant' | undefined
+        const finalRole = existingProfile?.role || userRole || metadataRole || 'landlord'
         log.info('useProfileSync: role determination:', {
           existingRole: existingProfile?.role,
           contextRole: userRole,
+          metadataRole,
           finalRole
         })
 

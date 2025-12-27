@@ -1,0 +1,10 @@
+{
+  "screenName": "landlord-room-photography",
+  "timestamp": "2025-12-27T01:29:59.604Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Property Setup",
+  "step": 5,
+  "role": "landlord",
+  "purpose": "Add photos to each selected room/area"
+}

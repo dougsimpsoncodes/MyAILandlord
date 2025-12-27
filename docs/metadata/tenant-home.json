@@ -1,0 +1,9 @@
+{
+  "screenName": "tenant-home",
+  "timestamp": "2025-12-27T01:30:58.831Z",
+  "url": "http://localhost:8081/home",
+  "title": "TenantHomeMain",
+  "flow": "Tenant Dashboard",
+  "role": "tenant",
+  "purpose": "Main tenant dashboard with property and requests"
+}

@@ -1,0 +1,9 @@
+{
+  "screenName": "landlord-home",
+  "timestamp": "2025-12-26T20:34:00.096Z",
+  "url": "http://localhost:8081/LandlordPropertyIntro?firstName=landlord-doc",
+  "title": "LandlordPropertyIntro",
+  "flow": "Landlord Dashboard",
+  "role": "landlord",
+  "purpose": "Main dashboard with properties and requests overview"
+}

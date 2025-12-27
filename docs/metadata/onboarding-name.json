@@ -1,0 +1,10 @@
+{
+  "screenName": "onboarding-name",
+  "timestamp": "2025-12-27T01:29:37.504Z",
+  "url": "http://localhost:8081/OnboardingName",
+  "title": "OnboardingName",
+  "flow": "Onboarding",
+  "step": 2,
+  "role": "both",
+  "purpose": "Collect user first name"
+}
