@@ -65,6 +65,103 @@ export type Database = {
           },
         ]
       }
+      device_tokens: {
+        Row: {
+          created_at: string | null
+          device_type: string
+          id: string
+          is_active: boolean | null
+          push_token: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          device_type: string
+          id?: string
+          is_active?: boolean | null
+          push_token: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Update: {
+          created_at?: string | null
+          device_type?: string
+          id?: string
+          is_active?: boolean | null
+          push_token?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          delivery_method: string
+          expires_at: string
+          id: string
+          intended_email: string | null
+          last_validation_attempt: string | null
+          property_id: string
+          token_hash: string
+          token_salt: string
+          validation_attempts: number
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          delivery_method: string
+          expires_at?: string
+          id?: string
+          intended_email?: string | null
+          last_validation_attempt?: string | null
+          property_id: string
+          token_hash: string
+          token_salt: string
+          validation_attempts?: number
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          delivery_method?: string
+          expires_at?: string
+          id?: string
+          intended_email?: string | null
+          last_validation_attempt?: string | null
+          property_id?: string
+          token_hash?: string
+          token_salt?: string
+          validation_attempts?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       maintenance_requests: {
         Row: {
           actual_cost: number | null
@@ -214,6 +311,7 @@ export type Database = {
           email: string
           id: string
           name: string | null
+          onboarding_completed: boolean | null
           role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string | null
         }
@@ -223,6 +321,7 @@ export type Database = {
           email: string
           id?: string
           name?: string | null
+          onboarding_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
@@ -232,6 +331,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string | null
+          onboarding_completed?: boolean | null
           role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string | null
         }
@@ -251,6 +351,7 @@ export type Database = {
           emergency_phone: string | null
           id: string
           image_url: string | null
+          invite_code_created_at: string | null
           landlord_id: string | null
           name: string
           onboarding_message: string | null
@@ -275,6 +376,7 @@ export type Database = {
           emergency_phone?: string | null
           id?: string
           image_url?: string | null
+          invite_code_created_at?: string | null
           landlord_id?: string | null
           name: string
           onboarding_message?: string | null
@@ -299,6 +401,7 @@ export type Database = {
           emergency_phone?: string | null
           id?: string
           image_url?: string | null
+          invite_code_created_at?: string | null
           landlord_id?: string | null
           name?: string
           onboarding_message?: string | null
@@ -463,6 +566,42 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          created_at: string
+          id: string
+          last_refill: string
+          limiter_key: string
+          max_tokens: number
+          refill_rate: number
+          tokens: number
+          updated_at: string
+          window_seconds: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_refill?: string
+          limiter_key: string
+          max_tokens?: number
+          refill_rate?: number
+          tokens?: number
+          updated_at?: string
+          window_seconds?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_refill?: string
+          limiter_key?: string
+          max_tokens?: number
+          refill_rate?: number
+          tokens?: number
+          updated_at?: string
+          window_seconds?: number
+        }
+        Relationships: []
+      }
       tenant_property_links: {
         Row: {
           accepted_at: string | null
@@ -472,6 +611,7 @@ export type Database = {
           invited_at: string | null
           invited_by: string | null
           is_active: boolean | null
+          landlord_id: string | null
           lease_end_date: string | null
           lease_start_date: string | null
           property_id: string
@@ -487,6 +627,7 @@ export type Database = {
           invited_at?: string | null
           invited_by?: string | null
           is_active?: boolean | null
+          landlord_id?: string | null
           lease_end_date?: string | null
           lease_start_date?: string | null
           property_id: string
@@ -502,6 +643,7 @@ export type Database = {
           invited_at?: string | null
           invited_by?: string | null
           is_active?: boolean | null
+          landlord_id?: string | null
           lease_end_date?: string | null
           lease_start_date?: string | null
           property_id?: string
@@ -513,6 +655,13 @@ export type Database = {
           {
             foreignKeyName: "tenant_property_links_invited_by_fkey"
             columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_property_links_landlord_id_fkey"
+            columns: ["landlord_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -538,31 +687,120 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite: {
+        Args: { p_token: string }
+        Returns: {
+          out_error: string
+          out_property_id: string
+          out_property_name: string
+          out_status: string
+          success: boolean
+        }[]
+      }
       address_text_from_jsonb: {
         Args: { j: Json; unit?: string }
         Returns: string
       }
       auth_uid_compat: { Args: never; Returns: string }
-      clerk_id_to_uuid: { Args: { clerk_id: string }; Returns: string }
+      check_rate_limit: {
+        Args: {
+          p_limiter_key: string
+          p_max_tokens?: number
+          p_refill_rate?: number
+          p_window_seconds?: number
+        }
+        Returns: Json
+      }
+      cleanup_old_invites: { Args: never; Returns: number }
+      cleanup_rate_limits: { Args: never; Returns: Json }
+      create_invite: {
+        Args: {
+          p_delivery_method: string
+          p_intended_email?: string
+          p_property_id: string
+        }
+        Returns: {
+          expires_at: string
+          invite_id: string
+          token: string
+        }[]
+      }
+      create_test_user_if_not_exists: {
+        Args: {
+          p_email: string
+          p_name: string
+          p_password: string
+          p_role: string
+        }
+        Returns: string
+      }
       generate_property_code: { Args: never; Returns: string }
       get_auth_jwt_sub: { Args: never; Returns: string }
       get_current_user_profile: { Args: never; Returns: Json }
+      get_onboarding_status: {
+        Args: never
+        Returns: {
+          has_properties: boolean
+          has_property_links: boolean
+          onboarding_completed: boolean
+          role: string
+          user_id: string
+        }[]
+      }
       link_tenant_to_property: {
-        Args: {
-          input_code: string
-          tenant_clerk_id: string
-          unit_number?: string
-        }
+        Args: { input_code: string; tenant_id: string; unit_number?: string }
         Returns: {
           error_message: string
           link_id: string
           success: boolean
         }[]
       }
-      set_app_user_id: { Args: { user_id: string }; Returns: undefined }
+      set_app_user_id:
+        | { Args: { p_user_id: string }; Returns: undefined }
+        | { Args: { user_id: string }; Returns: undefined }
       set_current_user_id: { Args: { user_id: string }; Returns: undefined }
+      signup_and_accept_invite: {
+        Args: { p_name?: string; p_token: string }
+        Returns: {
+          error_message: string
+          profile_id: string
+          property_id: string
+          property_name: string
+          status: string
+          success: boolean
+        }[]
+      }
+      signup_and_onboard_landlord: {
+        Args: {
+          p_address_jsonb: Json
+          p_areas?: string[]
+          p_bathrooms?: number
+          p_bedrooms?: number
+          p_property_name: string
+          p_property_type?: string
+        }
+        Returns: {
+          error_message: string
+          profile_id: string
+          property_id: string
+          success: boolean
+        }[]
+      }
+      validate_invite: {
+        Args: { p_token: string }
+        Returns: {
+          expires_at: string
+          invite_id: string
+          landlord_name: string
+          property_address: string
+          property_id: string
+          property_name: string
+          property_unit: string
+          valid: boolean
+        }[]
+      }
       validate_property_code: {
-        Args: { input_code: string; tenant_clerk_id: string }
+        Args: { input_code: string; tenant_id: string }
         Returns: {
           error_message: string
           is_multi_unit: boolean
@@ -579,7 +817,12 @@ export type Database = {
       announcement_priority: "low" | "medium" | "high"
       message_type: "text" | "image" | "file"
       request_priority: "low" | "medium" | "high" | "urgent"
-      request_status: "pending" | "in_progress" | "completed" | "cancelled"
+      request_status:
+        | "submitted"
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       user_role: "landlord" | "tenant"
     }
     CompositeTypes: {
@@ -711,7 +954,13 @@ export const Constants = {
       announcement_priority: ["low", "medium", "high"],
       message_type: ["text", "image", "file"],
       request_priority: ["low", "medium", "high", "urgent"],
-      request_status: ["pending", "in_progress", "completed", "cancelled"],
+      request_status: [
+        "submitted",
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
       user_role: ["landlord", "tenant"],
     },
   },
