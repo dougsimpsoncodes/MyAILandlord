@@ -1591,3 +1591,51 @@ Guidance Applied:
 Quality Score: 6
 ---
 Context reset for branch: fix/ios-keyboard-inset-auth
+[2025-12-31T16:26:24Z] Commit eab4fce71fbbb55d51a127b004ba3a96adec82af successful
+Message: feat: zero-flash navigation, onboarding redesign docs, and invite flow improvements
+
+Major architectural improvements and documentation:
+
+## Navigation Architecture
+- Implement RootNavigator with BootstrapScreen pattern for zero-flash navigation
+- Simplify AppNavigator to single NavigationContainer
+- Add deep link handling with pending invite service integration
+
+## Onboarding Redesign
+- Document comprehensive world-class onboarding redesign (WORLD_CLASS_ONBOARDING_REDESIGN.md)
+- Create interactive HTML presentation for redesign visualization
+- Plan to reduce landlord flow from 10→6 screens, tenant flow from 5→2 screens
+
+## Invite Flow Fixes
+- Fix role assignment sequence (create profile without role → accept → set role)
+- Add atomic database migrations for invite acceptance
+- Document invite flow architecture and edge cases (INVITE_FLOW_FIXES_SUMMARY.md)
+
+## UI/UX Improvements
+- Fix iOS keyboard inset issues in auth screens
+- Improve form components (AddressForm, PropertyAddressForm)
+- Enhance ScreenContainer with better keyboard handling
+- Update Input and Button components with refined design system
+
+## Documentation
+- Navigation flashing issue analysis (NAVIGATION_FLASHING_ISSUE.md)
+- Zero-flash navigation implementation plan (ZERO_FLASH_NAVIGATION_IMPLEMENTATION.md)
+- Testing protocols and validation checklists
+- Quick test guides for development workflows
+
+## Database
+- Migration: accept_invite sets role atomically
+- Migration: fix salt matching in invite validation
+- Edge function: get-property-image for optimized image serving
+
+## Testing & Debug
+- Add debug utilities (InviteDiag, devExpose)
+- Add test scripts for invite flows
+- Add database cleanup scripts
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
