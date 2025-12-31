@@ -51,6 +51,15 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
     try {
       await clearRole();
       await signOut();
+      // Navigate to Auth screen after successful sign out
+      // Use getRootState to access root navigator
+      const rootNav = navigation.getParent();
+      if (rootNav) {
+        rootNav.reset({
+          index: 0,
+          routes: [{ name: 'Auth' }],
+        });
+      }
     } catch (error) {
       console.error('Error signing out:', error);
       setShowSignOutDialog(false);
@@ -173,9 +182,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           {supportMenuItems.map(renderMenuItem)}
         </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} testID="nav-logout">
-          <Text style={styles.logoutButtonText}>Log Out</Text>
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} testID="nav-sign-out">
+          <Text style={styles.logoutButtonText}>Sign Out</Text>
         </TouchableOpacity>
 
         {/* App Version */}

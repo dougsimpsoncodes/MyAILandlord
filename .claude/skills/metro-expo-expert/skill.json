@@ -1,0 +1,26 @@
+{
+  "name": "metro-expo-expert",
+  "description": "World-class Metro bundler and Expo development workflow expert. Diagnoses cache issues, JavaScript vs native boundaries, Fast Refresh problems, and optimizes development builds.",
+  "version": "1.0.0",
+  "trigger": {
+    "keywords": [
+      "metro",
+      "bundler",
+      "cache",
+      "expo start",
+      "fast refresh",
+      "code not updating",
+      "old code running",
+      "development build",
+      "npx expo run"
+    ]
+  },
+  "capabilities": [
+    "Metro bundler cache diagnosis and clearing",
+    "JavaScript vs native code boundary understanding",
+    "Development build workflow optimization",
+    "Fast Refresh troubleshooting",
+    "Metro configuration guidance",
+    "Performance optimization for bundles"
+  ]
+}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Platform, InteractionManager } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
@@ -8,8 +8,8 @@ import log from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import CustomButton from '../../components/shared/CustomButton';
 import { supabase } from '../../services/supabase/client';
-import { useRole } from '../../context/RoleContext';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
+import { useApiClient } from '../../services/api/client';
 
 interface RouteParams {
   t?: string; // Token parameter (NEW format)
@@ -27,9 +27,9 @@ interface PropertyData {
 const PropertyInviteAcceptScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user } = useAppAuth();
+  const { user, redirect, clearRedirect } = useAppAuth();
   const { profile, refreshProfile } = useProfile();
-  const { setUserRole } = useRole();
+  const api = useApiClient();
 
   const [token, setToken] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -37,9 +37,35 @@ const PropertyInviteAcceptScreen = () => {
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Extract token from route params OR pending invite storage
+  // Idempotent guard: prevent duplicate accepts
+  const acceptAttemptedRef = useRef(false);
+  const acceptInProgressRef = useRef(false);
+
+  log.info('[PropertyInviteAccept] Screen mounted', {
+    hasUser: !!user,
+    hasRedirect: !!redirect,
+    redirectType: redirect?.type,
+    routeParams: route.params,
+  });
+
+  // Extract token from redirect state (highest priority), route params, OR pending invite storage
   useEffect(() => {
     const loadToken = async () => {
+      // Priority 1: Redirect state from auth context
+      if (redirect && redirect.type === 'acceptInvite') {
+        log.info('[PropertyInviteAccept] Token from redirect state:', { token_preview: redirect.token.substring(0, 4) + '...' });
+        setToken(redirect.token);
+        if (redirect.propertyId && redirect.propertyName) {
+          setProperty({
+            id: redirect.propertyId,
+            name: redirect.propertyName,
+            address: '', // Will be filled by validation
+          });
+        }
+        return;
+      }
+
+      // Priority 2: Route params
       const params = route.params as RouteParams;
       const extractedToken = params.t || params.token;
 
@@ -49,7 +75,7 @@ const PropertyInviteAcceptScreen = () => {
         return;
       }
 
-      // Check for pending invite (user came back after auth)
+      // Priority 3: Pending invite storage (fallback)
       const pendingInvite = await PendingInviteService.getPendingInvite();
       if (pendingInvite && pendingInvite.type === 'token') {
         log.info('[PropertyInviteAccept] Token loaded from pending invite storage:', { token_preview: pendingInvite.value.substring(0, 4) + '...' });
@@ -57,12 +83,12 @@ const PropertyInviteAcceptScreen = () => {
         return;
       }
 
-      log.error('[PropertyInviteAccept] No token found in route params or pending storage');
+      log.error('[PropertyInviteAccept] No token found in redirect, route params, or pending storage');
       setError('Invalid invite link. Missing invitation token.');
     };
 
     loadToken();
-  }, [route.params]);
+  }, [route.params, redirect]);
 
   // Validate token when it's available
   useEffect(() => {
@@ -71,38 +97,31 @@ const PropertyInviteAcceptScreen = () => {
     }
   }, [token]);
 
-  // Set tenant role when user authenticates
-  useEffect(() => {
-    const setTenantRoleOnAuth = async () => {
-      if (user && !profile?.role) {
-        log.info('[PropertyInviteAccept] User authenticated via invite, setting tenant role');
-        await setUserRole('tenant');
-        await refreshProfile();
-      }
-    };
-
-    setTenantRoleOnAuth();
-  }, [user]);
-
-  // Auto-accept invite after successful authentication
+  // Auto-accept invite when user is authenticated and property is validated
   useEffect(() => {
     const autoAcceptInvite = async () => {
+      // Idempotent guard: only auto-accept once
+      if (acceptAttemptedRef.current || acceptInProgressRef.current) {
+        log.info('[PropertyInviteAccept] Auto-accept skipped (already attempted or in progress)');
+        return;
+      }
+
       // Only auto-accept if:
       // 1. User is authenticated
       // 2. Property data is loaded (validation succeeded)
       // 3. Not currently accepting
-      // 4. There's a pending invite in storage
-      if (user && property && !isAccepting) {
-        const pendingInvite = await PendingInviteService.getPendingInvite();
-        if (pendingInvite && pendingInvite.type === 'token') {
-          log.info('[PropertyInviteAccept] Auto-accepting invite after authentication');
-          await handleAccept();
-        }
+      // 4. We have a redirect state (came from auth guard)
+      if (user && property && !isAccepting && redirect && redirect.type === 'acceptInvite') {
+        log.info('[PropertyInviteAccept] Auto-accepting invite (came from auth guard)', {
+          tokenHash: token?.substring(0, 4) + '...' + token?.substring(token.length - 4),
+        });
+        acceptAttemptedRef.current = true;
+        await handleAccept();
       }
     };
 
     autoAcceptInvite();
-  }, [user, property]);
+  }, [user, property, redirect]);
 
   const validateInvite = async () => {
     if (!token) return;
@@ -156,47 +175,68 @@ const PropertyInviteAcceptScreen = () => {
   };
 
   const handleAccept = async () => {
+    // Idempotent guard: prevent concurrent accepts
+    if (acceptInProgressRef.current) {
+      log.warn('[PropertyInviteAccept] Accept already in progress, ignoring duplicate call');
+      return;
+    }
+
     if (!token) {
       setError('Missing invite token');
       return;
     }
 
     if (!user) {
-      // Save pending invite before redirecting to onboarding
-      log.info('[PropertyInviteAccept] User not authenticated, saving pending invite');
+      // Save pending invite before redirecting to signup
+      log.info('[PropertyInviteAccept] User not authenticated, saving pending invite and redirecting to signup');
       await PendingInviteService.savePendingInvite(token, 'token', {
         propertyId: property?.id,
         propertyName: property?.name,
       });
-      navigation.dispatch(CommonActions.navigate({ name: 'OnboardingName' as never }));
+      // Navigate to AuthScreen (signup)
+      // Auth guard will detect pending invite and route back here after signup
+      navigation.dispatch(CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'Auth' as never,
+            params: { initialMode: 'signup', forceRole: 'tenant' } as never
+          }
+        ]
+      }));
       return;
     }
 
+    // Set in-progress flag BEFORE async work
+    acceptInProgressRef.current = true;
     setIsAccepting(true);
     setError(null);
 
     try {
-      log.info('[PropertyInviteAccept] Accepting invite');
+      log.info('[PropertyInviteAccept] Starting accept flow', {
+        userId: user.id,
+        hasProfile: !!profile,
+        profileRole: profile?.role,
+      });
 
-      // Ensure profile exists
+      // Ensure profile exists WITHOUT setting role yet (will set after successful accept)
       if (!profile) {
-        log.info('[PropertyInviteAccept] Creating profile for user');
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: user.id,
+        log.info('[PropertyInviteAccept] Creating minimal profile (role will be set after accept)');
+        if (api) {
+          await api.createUserProfile({
+            email: user.email!,
             name: user.user_metadata?.name || user.email?.split('@')[0] || 'User',
-            role: 'tenant'
+            avatarUrl: user.user_metadata?.avatar_url,
+            // No role set - will be set to 'tenant' after successful accept
           });
-
-        if (profileError && !profileError.message.includes('duplicate')) {
-          throw profileError;
         }
-
         await refreshProfile();
       }
 
-      // Call accept_invite RPC function (authenticated only)
+      // Call accept_invite RPC function FIRST (before setting tenant role)
+      log.info('[PropertyInviteAccept] Calling accept_invite RPC', {
+        tokenHash: token.substring(0, 4) + '...' + token.substring(token.length - 4),
+      });
       const { data, error: acceptError } = await supabase.rpc('accept_invite', {
         p_token: token
       });
@@ -206,7 +246,6 @@ const PropertyInviteAcceptScreen = () => {
         throw new Error('Failed to accept invite. Please try again.');
       }
 
-      // RPC returns TABLE, so data is an array
       if (!data || !Array.isArray(data) || data.length === 0) {
         log.error('[PropertyInviteAccept] No data returned from accept_invite');
         throw new Error('Failed to accept invite');
@@ -215,43 +254,64 @@ const PropertyInviteAcceptScreen = () => {
       const result = data[0];
 
       if (!result.success) {
-        log.error('[PropertyInviteAccept] Accept failed:', result.error);
-        throw new Error(result.error || 'Failed to accept invite');
+        log.error('[PropertyInviteAccept] Accept failed:', { status: result.out_status, error: result.out_error });
+
+        throw new Error(result.out_error || 'Failed to accept invite');
       }
 
-      log.info('[PropertyInviteAccept] Invite accepted successfully!');
+      log.info('[PropertyInviteAccept] Invite accepted successfully!', {
+        status: result.out_status,
+        property_name: result.out_property_name
+      });
 
-      // Clear pending invite
-      await PendingInviteService.clearPendingInvite();
+      // Navigate IMMEDIATELY to tenant home (zero-flash navigation pattern)
+      // IMPORTANT: navigation.reset() replaces the entire navigation state.
+      // This means NO back stack - user cannot go "back" to signup/auth screens.
+      // On Android, hardware back from TenantHome will exit the app (expected behavior).
+      log.info('[PropertyInviteAccept] Navigating directly to tenant home (zero-flash)');
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{
+            name: 'Main' as never,
+            params: {
+              userRole: 'tenant',
+              needsOnboarding: !profile?.onboarding_completed,
+              userFirstName: profile?.name?.split(' ')[0] || null,
+            } as never
+          }]
+        })
+      );
 
-      // Refresh profile to update context
-      await refreshProfile();
-
-      // Success! The AppNavigator will automatically route to tenant dashboard
-      // after detecting the cleared pending invite and updated profile
-      // Force a re-render by navigating to a known route
-      if (Platform.OS === 'web') {
-        // On web, reload to reset navigation state
-        window.location.href = '/';
-      } else {
-        // On native, navigate back and let AppNavigator handle routing
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'TenantHome' as never }]
-          })
-        );
-      }
+      // Defer cleanup AFTER navigation completes (prevents intermediate screen flashing)
+      InteractionManager.runAfterInteractions(async () => {
+        log.info('[PropertyInviteAccept] Deferred cleanup: refreshing profile and clearing state');
+        await refreshProfile();
+        await PendingInviteService.clearPendingInvite();
+        clearRedirect();
+      });
 
     } catch (err: any) {
       log.error('[PropertyInviteAccept] Accept error:', err);
       setError(err.message || 'Failed to accept invite. Please try again.');
+
+      // DON'T clear redirect on failure - we want to keep user on this screen
+      // so they can see error and retry. Redirect keeps guard active.
+      // Only clear redirect on explicit decline or successful accept.
+      log.info('[PropertyInviteAccept] Keeping redirect on failure to allow retry');
+
+      // Reset in-progress flag to allow manual retry
+      acceptInProgressRef.current = false;
     } finally {
       setIsAccepting(false);
     }
   };
 
   const handleDecline = () => {
+    // User explicitly declined - clear redirect and pending invite
+    log.info('[PropertyInviteAccept] User declined invite, clearing redirect');
+    clearRedirect();
+    PendingInviteService.clearPendingInvite();
     navigation.dispatch(CommonActions.navigate({ name: 'Welcome' as never }));
   };
 
@@ -354,6 +414,16 @@ const PropertyInviteAcceptScreen = () => {
               disabled={isAccepting}
             />
           </View>
+
+          {/* Full-screen overlay during acceptance to prevent flashing */}
+          {isAccepting && (
+            <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+              <View style={styles.acceptingOverlay}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.acceptingText}>Connecting to {property.name}...</Text>
+              </View>
+            </View>
+          )}
         </View>
       </ScreenContainer>
     );
@@ -456,6 +526,18 @@ const styles = StyleSheet.create({
   },
   backButton: {
     marginTop: 12,
+  },
+  acceptingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  acceptingText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
 

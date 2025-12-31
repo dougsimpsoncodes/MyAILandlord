@@ -95,10 +95,18 @@ export default function LandlordTenantInviteScreen() {
       if (__DEV__) console.log('[INVITES] ✅ Token generated:', { token_preview: token.substring(0, 4) + '...' });
 
       // Build URL with token parameter
-      const origin = isWeb && typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://myailandlord.app';
-      const url = (isWeb ? origin : 'myailandlord://') + `/invite?t=${token}`;
+      // For development, just use the custom scheme directly - it will work with dev client
+      const isDevelopment = __DEV__;
+      let url: string;
+
+      if (isWeb) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+        url = `${origin}/invite?t=${token}`;
+      } else {
+        // Both dev and production use the same custom scheme
+        // The expo-development-client will handle it properly
+        url = `myailandlord:///invite?t=${token}`;
+      }
 
       setInviteUrl(url);
       setGenerationError(null);

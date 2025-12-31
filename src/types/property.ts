@@ -153,6 +153,7 @@ export interface PropertyReviewParams {
   propertyData: PropertyData;
   areas: PropertyArea[];
   draftId?: string;
+  propertyId?: string; // For onboarding flow where property already created
 }
 
 // Validation types

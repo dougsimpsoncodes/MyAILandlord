@@ -1,12 +1,14 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { haptics } from '../lib/haptics';
 import { useUnreadMessages } from '../context/UnreadMessagesContext';
 import { usePendingRequests } from '../context/PendingRequestsContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { log } from '../lib/log';
 
 // Tenant Screens
 import HomeScreen from '../screens/tenant/HomeScreen';
@@ -502,14 +504,9 @@ const TenantProfileStackNavigator = () => (
   </TenantProfileStack.Navigator>
 );
 
-interface TenantNavigatorProps {
-  pendingInvitePropertyId?: string | null;
-}
-
-const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInvitePropertyId }) => {
+const TenantNavigator: React.FC = () => {
   const { unreadCount } = useUnreadMessages();
 
-  // For pending invites, we'll handle the initial navigation in the Home stack
   return (
     <TenantTab.Navigator
       screenOptions={{
@@ -580,14 +577,12 @@ const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInviteProperty
 
 interface MainStackProps {
   userRole: 'tenant' | 'landlord';
-  pendingInvitePropertyId?: string | null;
   needsOnboarding?: boolean;
   userFirstName?: string | null;
 }
 
-const MainStack: React.FC<MainStackProps> = ({
+const MainStackComponent: React.FC<MainStackProps> = ({
   userRole,
-  pendingInvitePropertyId,
   needsOnboarding,
   userFirstName
 }) => {
@@ -595,9 +590,22 @@ const MainStack: React.FC<MainStackProps> = ({
   usePushNotifications();
 
   return userRole === 'tenant' ? (
-    <TenantNavigator pendingInvitePropertyId={pendingInvitePropertyId} />
+    <TenantNavigator />
   ) : (
     <LandlordNavigator needsOnboarding={needsOnboarding} userFirstName={userFirstName} />
+  );
+};
+
+// Wrapper to extract route.params and pass to MainStackComponent
+const MainStack = ({ route }: { route: any }) => {
+  const { userRole, needsOnboarding, userFirstName } = route.params || {};
+
+  return (
+    <MainStackComponent
+      userRole={userRole}
+      needsOnboarding={needsOnboarding}
+      userFirstName={userFirstName}
+    />
   );
 };
 

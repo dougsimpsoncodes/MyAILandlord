@@ -24,7 +24,6 @@ import { PropertyDraftService } from '../../services/storage/PropertyDraftServic
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useApiClient } from '../../services/api/client';
-import { clearOnboardingInProgress } from '../../hooks/useOnboardingStatus';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import Button from '../../components/shared/Button';
@@ -1044,10 +1043,8 @@ const PropertyAreasScreen = () => {
             savedAreas = await propertyAreasService.getAreasWithAssets(newProperty.id, supabase);
           }
 
-          // Clear onboarding in-progress flag since property is now created
-          await clearOnboardingInProgress();
-
           // Navigate to PropertyAssets for photos and inventory during onboarding
+          // Note: Onboarding flag will be cleared later in PropertyReviewScreen after final submission
           navigation.navigate('PropertyAssets', {
             propertyData: updatedPropertyData,
             areas: savedAreas, // Use areas with proper UUIDs from database
@@ -1133,47 +1130,7 @@ const PropertyAreasScreen = () => {
       scrollable
       bottomContent={bottomContent}
     >
-        {/* Header Section */}
-        <View style={styles.section}>
-          <View style={styles.headerSection}>
-            <Text style={styles.title}>Property Areas</Text>
-          </View>
-          <Text style={styles.subtitle}>
-            Add the areas in your property. Properties with varied layouts are supported.
-          </Text>
-        </View>
-
-        {/* Read-Only: Bedrooms & Bathrooms from PropertyBasicsScreen */}
-        <View style={styles.categorySection}>
-          <View style={styles.categoryHeader}>
-            <Ionicons name="bed" size={20} color="#9CA3AF" />
-            <Text style={styles.categoryTitle}>From Property Basics</Text>
-          </View>
-
-          {/* Bedrooms - Read Only */}
-          <View style={styles.readOnlyRow}>
-            <View style={styles.readOnlyIconContainer}>
-              <Ionicons name="bed" size={24} color="#7F8C8D" />
-            </View>
-            <Text style={styles.readOnlyLabel}>Bedrooms</Text>
-            <View style={styles.readOnlyBadge}>
-              <Text style={styles.readOnlyCount}>{propertyData?.bedrooms || 0}</Text>
-            </View>
-          </View>
-
-          {/* Bathrooms - Read Only */}
-          <View style={styles.readOnlyRow}>
-            <View style={styles.readOnlyIconContainer}>
-              <Ionicons name="water" size={24} color="#7F8C8D" />
-            </View>
-            <Text style={styles.readOnlyLabel}>Bathrooms</Text>
-            <View style={styles.readOnlyBadge}>
-              <Text style={styles.readOnlyCount}>{propertyData?.bathrooms || 0}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Counter Section: Other Rooms */}
+        {/* Counter Section: Additional Areas */}
         <View style={styles.categorySection}>
           <View style={styles.categoryHeader}>
             <Ionicons name="home" size={20} color="#2ECC71" />

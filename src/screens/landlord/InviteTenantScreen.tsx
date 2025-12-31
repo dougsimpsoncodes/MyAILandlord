@@ -50,15 +50,17 @@ const InviteTenantScreen = () => {
 
   const buildInviteUrl = (token: string): string => {
     const isDevelopment = __DEV__;
+    const isWeb = Platform.OS === 'web';
 
-    if (Platform.OS === 'web') {
-      return isDevelopment
-        ? `http://localhost:8081/invite?t=${token}`
-        : `https://myailandlord.app/invite?t=${token}`;
+    if (isWeb) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+      return `${origin}/invite?t=${token}`;
+    } else if (isDevelopment) {
+      // Development build uses expo-development-client scheme
+      return `exp+myailandlord://expo-development-client/?url=http://192.168.0.14:8081/--/invite?t=${token}`;
     } else {
-      return isDevelopment
-        ? `exp://192.168.0.14:8081/--/invite?t=${token}`
-        : `https://myailandlord.app/invite?t=${token}`;
+      // Production build uses custom scheme
+      return `myailandlord:///invite?t=${token}`;
     }
   };
 

@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 declare global { var __sb: SupabaseClient | undefined }
 
@@ -9,6 +10,7 @@ const anon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string
 function createSupabaseClient() {
   return createClient(url, anon, {
     auth: {
+      storage: AsyncStorage, // Required for React Native session persistence
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,

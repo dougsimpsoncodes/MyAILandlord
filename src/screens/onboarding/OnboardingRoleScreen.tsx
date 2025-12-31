@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 import { supabase } from '../../services/supabase/client';
 import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
+import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { log } from '../../lib/log';
 
 type OnboardingStackParamList = {
   OnboardingWelcome: undefined;
@@ -33,10 +35,27 @@ export default function OnboardingRoleScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RoleRouteProp>();
   const { firstName, userId } = route.params;
+  const { processingInvite, redirect } = useAppAuth();
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // CRITICAL: Skip role selection if user came through invite link
+  useEffect(() => {
+    if (processingInvite && redirect?.type === 'acceptInvite') {
+      log.info('[OnboardingRole] Pending invite detected - skipping role selection, navigating to PropertyInviteAcceptScreen');
+      // Navigate to PropertyInviteAcceptScreen which will handle the invite acceptance
+      // Use parent navigation to get to root level
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        parentNav.reset({
+          index: 0,
+          routes: [{ name: 'PropertyInviteAccept' as never }],
+        });
+      }
+    }
+  }, [processingInvite, redirect, navigation]);
 
   const handleContinue = async () => {
     if (!selectedRole) return;

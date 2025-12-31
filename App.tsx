@@ -9,6 +9,11 @@ import { UnreadMessagesProvider } from './src/context/UnreadMessagesContext';
 import { PendingRequestsProvider } from './src/context/PendingRequestsContext';
 import AppNavigator from './src/AppNavigator';
 import { initMonitoring } from './src/lib/monitoring';
+// Dev-only diagnostics
+if (__DEV__) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  require('./src/lib/devExpose');
+}
 
 export default function App() {
   // Initialize monitoring (no-op without DSN)

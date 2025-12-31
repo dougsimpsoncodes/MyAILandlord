@@ -94,7 +94,8 @@ export class PushNotificationService {
 
       return this.expoPushToken;
     } catch (error) {
-      log.error('Error registering for push notifications', { error: String(error) });
+      // Use warn instead of error - this is expected in dev builds without push entitlements
+      log.warn('Push notifications not available (expected in development)', { error: String(error) });
       return null;
     }
   }

@@ -24,6 +24,7 @@ import { propertyAreasService } from '../../services/supabase/propertyAreasServi
 import log from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
+import { clearOnboardingInProgress } from '../../hooks/useOnboardingStatus';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -31,7 +32,7 @@ type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview
 const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
-  const { propertyData, areas, draftId } = route.params;
+  const { propertyData, areas, draftId, propertyId } = route.params;
   const api = useApiClient();
   const { supabase } = useSupabaseWithAuth();
 
@@ -100,19 +101,29 @@ const PropertyReviewScreen = () => {
       
       // Ensure API is ready
       if (!api) throw new Error('Authentication required');
-      
+
       if (draftState) await saveDraft();
 
-      const propertyPayload = {
-        name: propertyData.name,
-        address_jsonb: propertyData.address,
-        property_type: propertyData.type,
-        unit: propertyData.unit || '',
-        bedrooms: propertyData.bedrooms || 0,
-        bathrooms: propertyData.bathrooms || 0
-      };
-      
-      const newProperty = await api.createProperty(propertyPayload);
+      // Determine if property already exists (from onboarding flow)
+      let currentPropertyId = propertyId;
+
+      // Only create property if it doesn't already exist
+      if (!currentPropertyId) {
+        log.info('PropertyReview: Creating new property in database');
+        const propertyPayload = {
+          name: propertyData.name,
+          address_jsonb: propertyData.address,
+          property_type: propertyData.type,
+          unit: propertyData.unit || '',
+          bedrooms: propertyData.bedrooms || 0,
+          bathrooms: propertyData.bathrooms || 0
+        };
+
+        const newProperty = await api.createProperty(propertyPayload);
+        currentPropertyId = newProperty.id;
+      } else {
+        log.info('PropertyReview: Property already exists (onboarding flow), skipping creation', { propertyId: currentPropertyId });
+      }
 
       // Upload area photos to storage before saving areas to database
       let areasWithUploadedPhotos = areas;
@@ -127,7 +138,7 @@ const PropertyReviewScreen = () => {
               if (hasLocalPhotos) {
                 try {
                   const uploadedPhotos = await uploadPropertyPhotos(
-                    newProperty.id,
+                    currentPropertyId,
                     area.id,
                     area.photos.map(uri => ({ uri }))
                   );
@@ -150,16 +161,17 @@ const PropertyReviewScreen = () => {
         );
       }
 
-      // Save areas and assets to database
-      if (areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
+      // Save areas and assets to database (only if property was just created)
+      // In onboarding flow, areas/assets were already saved by PropertyAreasScreen
+      if (!propertyId && areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
         try {
           log.info('Saving property areas and assets to database', {
-            propertyId: newProperty.id,
+            propertyId: currentPropertyId,
             areaCount: areasWithUploadedPhotos.length,
             totalAssets: areasWithUploadedPhotos.reduce((sum, area) => sum + (area.assets?.length || 0), 0)
           });
 
-          await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
+          await propertyAreasService.saveAreasAndAssets(currentPropertyId, areasWithUploadedPhotos, supabase);
 
           log.info('Successfully saved areas and assets to database');
         } catch (areasError) {
@@ -168,11 +180,11 @@ const PropertyReviewScreen = () => {
         }
       }
       
-      
+
       // Show success state
       setSubmissionSuccess(true);
       setIsSubmitting(false);
-      
+
       // Clean up draft
       try {
         if (draftState) {
@@ -181,7 +193,15 @@ const PropertyReviewScreen = () => {
       } catch (error) {
         console.error('🏠 Error cleaning up draft:', error);
       }
-      
+
+      // Clear onboarding in-progress flag (property creation complete!)
+      try {
+        await clearOnboardingInProgress();
+        log.info('✅ Onboarding complete - property created successfully');
+      } catch (error) {
+        log.error('Error clearing onboarding flag:', error);
+      }
+
       // Navigate to PropertyDetails after 2 seconds to allow user to invite tenant
       setTimeout(() => {
         // Format address as string for PropertyDetails
@@ -189,7 +209,7 @@ const PropertyReviewScreen = () => {
 
         navigation.navigate('PropertyDetails', {
           property: {
-            id: newProperty.id,
+            id: currentPropertyId,
             name: propertyData.name,
             address: addressString,
             type: propertyData.type,

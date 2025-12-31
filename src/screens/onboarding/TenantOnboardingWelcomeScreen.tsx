@@ -158,7 +158,6 @@ export default function TenantOnboardingWelcomeScreen() {
 
           {/* Hero Section */}
           <View style={styles.heroSection}>
-            <Text style={styles.heroIcon}>👋</Text>
             <Text style={styles.title}>Welcome, {firstName}!</Text>
             <Text style={styles.subtitle}>
               Here's what you can do with MyAI Landlord
@@ -246,10 +245,6 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     marginBottom: spacing.xl,
-  },
-  heroIcon: {
-    fontSize: 60,
-    marginBottom: spacing.md,
   },
   title: {
     fontSize: 26,

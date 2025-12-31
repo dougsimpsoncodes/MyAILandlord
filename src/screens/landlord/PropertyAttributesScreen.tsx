@@ -70,6 +70,7 @@ const PropertyAttributesScreen = () => {
     draftState,
     updatePropertyData,
     saveDraft,
+    createNewDraft,
   } = usePropertyDraft({
     enableAutoSave: false,
   });
@@ -129,9 +130,21 @@ const PropertyAttributesScreen = () => {
       console.log('🔍 PropertyAttributesScreen - Property data created:', { name: propertyData.name, type: propertyData.type });
 
       try {
-        await updatePropertyData(propertyData);
-        await saveDraft();
-        console.log('🔍 PropertyAttributesScreen - Draft saved successfully');
+        // Create draft if it doesn't exist yet (for non-onboarding flow)
+        if (!draftState && !isOnboarding) {
+          console.log('🔍 PropertyAttributesScreen - Creating new draft');
+          createNewDraft(propertyData);
+          await saveDraft();
+          console.log('🔍 PropertyAttributesScreen - Draft saved successfully');
+        } else if (draftState) {
+          // Update existing draft
+          await updatePropertyData(propertyData);
+          await saveDraft();
+          console.log('🔍 PropertyAttributesScreen - Draft updated successfully');
+        } else {
+          // During onboarding, skip draft save - data is passed via navigation
+          console.log('🔍 PropertyAttributesScreen - Skipping draft save during onboarding');
+        }
       } catch (error) {
         console.error('🔍 PropertyAttributesScreen - Error saving property draft:', error);
         // Continue anyway - navigation can work without draft
@@ -176,8 +189,8 @@ const PropertyAttributesScreen = () => {
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"
-      scrollable={false}
-      keyboardAware={false}
+      scrollable={true}
+      keyboardAware={true}
       bottomContent={
         <Button
           testID="continue-button"
@@ -301,22 +314,22 @@ const PropertyAttributesScreen = () => {
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 4,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#343A40',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   typeOption: {
     flex: 1,
@@ -348,7 +361,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,

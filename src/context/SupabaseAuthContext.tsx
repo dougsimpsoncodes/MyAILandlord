@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 import { log } from '../lib/log';
+import { PendingInviteService } from '../services/storage/PendingInviteService';
 
 interface AppUser {
   id: string;
@@ -12,6 +13,10 @@ interface AppUser {
   user_metadata?: Record<string, any>;
 }
 
+type RedirectType =
+  | { type: 'acceptInvite'; token: string; propertyId?: string; propertyName?: string }
+  | null;
+
 interface AuthContextValue {
   user: AppUser | null;
   isLoading: boolean;
@@ -20,6 +25,9 @@ interface AuthContextValue {
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   session: Session | null;
+  redirect: RedirectType;
+  clearRedirect: () => void;
+  processingInvite: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -30,6 +38,9 @@ const AuthContext = createContext<AuthContextValue>({
   updateProfile: async () => {},
   resetPassword: async () => {},
   session: null,
+  redirect: null,
+  clearRedirect: () => {},
+  processingInvite: false,
 });
 
 interface SupabaseAuthProviderProps {
@@ -41,6 +52,14 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [redirect, setRedirect] = useState<RedirectType>(null);
+  const [processingInvite, setProcessingInvite] = useState(false);
+
+  const clearRedirect = () => {
+    log.info('🧭 Clearing redirect state');
+    setRedirect(null);
+    setProcessingInvite(false);
+  };
 
   useEffect(() => {
     // If auth is disabled, use dev user
@@ -69,17 +88,96 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
-      log.info('🔐 Auth state changed', { event: _event, hasSession: !!session });
+      log.info('🔐 Auth state changed', {
+        event: _event,
+        hasSession: !!session,
+        userId: session?.user?.id,
+        userEmail: session?.user?.email,
+      });
+
       setSession(session);
+
       if (session?.user) {
-        setUser(mapSupabaseUserToAppUser(session.user));
+        const mappedUser = mapSupabaseUserToAppUser(session.user);
+        log.info('🔐 Setting user from session', {
+          userId: mappedUser.id,
+          email: mappedUser.email,
+          name: mappedUser.name,
+        });
+        setUser(mappedUser);
       } else {
+        log.info('🔐 Clearing user (no session)');
         setUser(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, [authDisabled]);
+
+  // Check for pending invite when user becomes authenticated
+  useEffect(() => {
+    if (authDisabled) return;
+
+    // Log the current state to debug timing
+    log.info('🎟️ Auth guard: Effect triggered', {
+      hasUser: !!user?.id,
+      userId: user?.id,
+      isLoading,
+      isSignedIn: !!session,
+    });
+
+    // Early return with clear logging
+    if (!user?.id) {
+      log.info('🎟️ Auth guard: Skipping check - no user ID yet');
+      return;
+    }
+
+    if (isLoading) {
+      log.info('🎟️ Auth guard: Skipping check - still loading');
+      return;
+    }
+
+    // Run the actual check
+    const checkPendingInvite = async () => {
+      try {
+        log.info('🎟️ Auth guard: Starting async check for pending invite');
+        const pendingInvite = await PendingInviteService.getPendingInvite();
+
+        const tokenHash = pendingInvite && pendingInvite.type === 'token'
+          ? pendingInvite.value.substring(0, 4) + '...' + pendingInvite.value.substring(pendingInvite.value.length - 4)
+          : null;
+
+        log.info('🎟️ Auth guard: AsyncStorage check complete', {
+          userId: user.id,
+          hasPendingInvite: !!pendingInvite,
+          inviteType: pendingInvite?.type,
+          tokenHash,
+        });
+
+        if (pendingInvite && pendingInvite.type === 'token') {
+          log.info('🎟️ Auth guard: Pending invite detected, setting redirect state', {
+            tokenHash,
+            propertyId: pendingInvite.metadata?.propertyId,
+            propertyName: pendingInvite.metadata?.propertyName,
+          });
+
+          setProcessingInvite(true);
+          setRedirect({
+            type: 'acceptInvite',
+            token: pendingInvite.value,
+            propertyId: pendingInvite.metadata?.propertyId,
+            propertyName: pendingInvite.metadata?.propertyName,
+          });
+        } else {
+          log.info('🎟️ Auth guard: No pending invite found - normal navigation will proceed');
+        }
+      } catch (error) {
+        log.error('🎟️ Auth guard: Error checking pending invite', error as Error);
+      }
+    };
+
+    checkPendingInvite();
+  }, [user?.id, isLoading, session, authDisabled]);
 
   const signOut = async (options?: { scope?: 'global' | 'local' | 'others' }) => {
     if (authDisabled) {
@@ -146,7 +244,21 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
     updateProfile,
     resetPassword,
     session,
+    redirect,
+    clearRedirect,
+    processingInvite,
   };
+
+  // Expose guard snapshot in development for Metro diagnostics
+  if (__DEV__) {
+    // @ts-ignore
+    (globalThis as any).__AuthDebug = {
+      processingInvite,
+      redirect,
+      isSignedIn: authDisabled ? true : !!session,
+      userId: user?.id,
+    };
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

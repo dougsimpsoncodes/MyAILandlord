@@ -53,7 +53,7 @@ export type AuthStackParamList = {
   TenantInviteRoommate: { firstName: string; propertyId: string; propertyName: string; inviteCode: string };
   TenantOnboardingSuccess: { firstName: string };
   // Existing auth screens
-  Auth: { mode?: 'login' | 'signup' };
+  Auth: { initialMode?: 'login' | 'signup'; forceRole?: 'tenant' | 'landlord' };
   // Keep legacy routes for backwards compatibility
   Login: undefined;
   SignUp: undefined;

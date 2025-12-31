@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Image, View, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import log from '../../lib/log';
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const SUPABASE_FUNCTIONS_URL = process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 interface PropertyImageProps {
   address: string;
@@ -33,19 +35,35 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
 
+  // Reset error state when address changes
+  React.useEffect(() => {
+    setHasError(false);
+    setIsLoading(true);
+  }, [address]);
+
   // Determine the API request size (Google allows up to 640x640 for free tier)
   const requestWidth = apiSize || (width === '100%' ? Math.min(screenWidth * 2, 640) : Math.min(width as number * 2, 640));
   const requestHeight = Math.min(height * 2, 640);
 
-  // Construct the Street View Static API URL
-  const getStreetViewUrl = () => {
-    if (!address || !GOOGLE_MAPS_API_KEY) return null;
+  // Use Supabase Edge Function proxy to fetch Street View images
+  // This avoids API key restrictions and provides better caching
+  const getPropertyImageUrl = () => {
+    if (!address || !SUPABASE_FUNCTIONS_URL) return null;
 
     const encodedAddress = encodeURIComponent(address);
-    return `https://maps.googleapis.com/maps/api/streetview?size=${Math.round(requestWidth)}x${requestHeight}&location=${encodedAddress}&key=${GOOGLE_MAPS_API_KEY}`;
+    return `${SUPABASE_FUNCTIONS_URL}/get-property-image?address=${encodedAddress}&width=${Math.round(requestWidth)}&height=${requestHeight}`;
   };
 
-  const imageUrl = getStreetViewUrl();
+  const imageUrl = getPropertyImageUrl();
+
+  // Debug logging
+  log.info('[PropertyImage] Using proxy:', {
+    address,
+    hasFunctionsUrl: !!SUPABASE_FUNCTIONS_URL,
+    imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : null,
+    isLoading,
+    hasError
+  });
 
   // Determine container and image styles
   const isFullWidth = width === '100%';
@@ -57,8 +75,9 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
     ? { width: '100%' as const, height }
     : { width: width as number, height };
 
-  // If no address or API key, show placeholder
+  // If no address or functions URL, show placeholder
   if (!imageUrl) {
+    log.warn('[PropertyImage] No image URL - showing placeholder', { address, hasFunctionsUrl: !!SUPABASE_FUNCTIONS_URL });
     return (
       <View style={[styles.placeholder, containerStyle, style]}>
         <Ionicons name="home-outline" size={48} color="#BDC3C7" />
@@ -85,8 +104,12 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
       <Image
         source={{ uri: imageUrl }}
         style={[styles.image, imageStyle]}
-        onLoad={() => setIsLoading(false)}
-        onError={() => {
+        onLoad={() => {
+          log.info('[PropertyImage] Image loaded successfully', { address });
+          setIsLoading(false);
+        }}
+        onError={(error) => {
+          log.error('[PropertyImage] Image failed to load', { address, error });
           setIsLoading(false);
           setHasError(true);
         }}

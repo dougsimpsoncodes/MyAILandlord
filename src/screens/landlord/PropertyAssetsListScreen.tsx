@@ -754,7 +754,8 @@ const PropertyAssetsListScreen = () => {
       navigation.navigate('PropertyReview', {
         propertyData,
         areas: selectedAreas,
-        draftId: effectiveDraftId
+        draftId: effectiveDraftId,
+        propertyId: routePropertyId // Pass propertyId if it exists (onboarding flow)
       });
     }
 
