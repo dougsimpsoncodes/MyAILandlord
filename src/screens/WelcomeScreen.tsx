@@ -13,7 +13,7 @@ const { width, height } = Dimensions.get('window');
 
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
-  const { user, isSignedIn } = useUnifiedAuth();
+  const { user, isSignedIn, signOut } = useUnifiedAuth();
   const userRole = user?.role;
 
   // Debug logging
@@ -84,10 +84,7 @@ const WelcomeScreen = () => {
         {isSignedIn && (
           <TouchableOpacity
             style={styles.signOutButton}
-            onPress={async () => {
-              await clearRole();
-              await signOut();
-            }}
+            onPress={() => signOut()}
             activeOpacity={0.8}
           >
             <Text style={styles.signOutButtonText}>Sign Out</Text>

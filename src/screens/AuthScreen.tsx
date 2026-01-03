@@ -19,8 +19,8 @@ import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { DesignSystem } from '../theme/DesignSystem';
 
-type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Auth'>;
-type AuthScreenRouteProp = RouteProp<AuthStackParamList, 'Auth'>;
+type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AuthForm'>;
+type AuthScreenRouteProp = RouteProp<AuthStackParamList, 'AuthForm'>;
 
 const OAUTH_ENABLED = process.env.EXPO_PUBLIC_OAUTH_ENABLED === 'true';
 const AUTO_LOGIN_AFTER_SIGNUP = process.env.EXPO_PUBLIC_SIGNUP_AUTOLOGIN === '1';
@@ -53,14 +53,17 @@ const AuthScreen = () => {
   };
 
   const handleLogin = async () => {
+    console.log('🔐 handleLogin called', { emailAddress, password: password ? '***' : 'empty' });
     try {
       setLoading(true);
       setError(null);
 
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      console.log('🔐 Calling signInWithPassword...');
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
+      console.log('🔐 signInWithPassword result:', { hasData: !!data, hasSession: !!data?.session, error: loginError?.message });
 
       if (loginError) {
         setError(loginError.message);

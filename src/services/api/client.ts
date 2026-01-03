@@ -3,7 +3,7 @@ import { SupabaseClient } from '../supabase/client';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
 import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { getMaintenanceRequests as getMaintenanceRequestsREST, getMaintenanceRequestById as getMaintenanceRequestByIdREST } from '../../lib/maintenanceClient';
 import {
   CreateProfileData,
@@ -38,7 +38,6 @@ import { FileValidation } from '../../types/api';
 import { ENV_CONFIG } from '../../utils/constants';
 import log from '../../lib/log';
 import { captureException } from '../../lib/monitoring';
-import { createMockApiClient } from './mockClient';
 
 const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL || 
   `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
@@ -48,8 +47,7 @@ const supabaseClientCache = new WeakMap<object, SupabaseClient>();
 
 // Hook for use in components - all API logic is contained within this hook
 export function useApiClient(): UseApiClientReturn | null {
-  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1' || process.env.NODE_ENV === 'test';
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const { supabase: supabaseClient, getAccessToken } = useSupabaseWithAuth();
   const userId = user?.id;
 
@@ -743,11 +741,6 @@ export function useApiClient(): UseApiClientReturn | null {
   // MUST be called unconditionally to satisfy React's rules of hooks
   // Only recreate when userId, supabaseClient, or authDisabled changes
   return useMemo(() => {
-    // Return mock client for auth-disabled mode
-    if (authDisabled) {
-      return createMockApiClient('dev_user_1');
-    }
-
     // Return null if not authenticated
     if (!userId) {
       return null;
@@ -796,5 +789,5 @@ export function useApiClient(): UseApiClientReturn | null {
       subscribeToMaintenanceRequests,
       subscribeToMessages,
     };
-  }, [userId, supabaseClient, authDisabled]);
+  }, [userId, supabaseClient]);
 }
