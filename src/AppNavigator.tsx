@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './navigation/navigation';
 import { Platform, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useProfileSync } from './hooks/useProfileSync';
@@ -22,23 +23,28 @@ const AppNavigator = () => {
   // Sync user with Supabase profile
   useProfileSync();
 
-  const [isReady, setIsReady] = useState(false);
+  const linkingRefactor = process.env.EXPO_PUBLIC_LINKING_REFACTOR === '1';
 
-  // Capture initial deep link and save as pending invite
+  // If refactor is OFF, fall back to legacy initial URL gating to avoid surprises.
+  const [isReady, setIsReady] = useState(linkingRefactor ? true : false);
+
   useEffect(() => {
+    if (linkingRefactor) return;
     const handleInitialURL = async () => {
       try {
         const url = await Linking.getInitialURL();
         log.info('🔗 Initial URL detected:', url);
-
         if (url && url.includes('/invite')) {
-          const parsedUrl = Linking.parse(url);
-          const token = (parsedUrl.queryParams?.t || parsedUrl.queryParams?.token) as string | undefined;
-
-          if (token) {
-            const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
-            log.info('🎟️ Deep link: Invite URL detected, saving pending invite', { tokenHash });
-            await PendingInviteService.savePendingInvite(token, 'token');
+          try {
+            const parsed = Linking.parse(url);
+            const token = (parsed.queryParams?.t || parsed.queryParams?.token) as string | undefined;
+            if (token) {
+              const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
+              log.info('🎟️ Saving pending invite token', { tokenHash });
+              await PendingInviteService.savePendingInvite(token, 'token');
+            }
+          } catch (e) {
+            log.warn('🔗 Failed parsing initialURL', e);
           }
         }
       } catch (error) {
@@ -47,14 +53,14 @@ const AppNavigator = () => {
         setIsReady(true);
       }
     };
-
     handleInitialURL();
-  }, []);
+  }, [linkingRefactor]);
 
-  // Wait until initial URL is processed before rendering NavigationContainer
   if (!isReady) {
-    return null; // Brief loading, BootstrapScreen will show spinner
+    return null;
   }
+
+  // Option B-lite: Let React Navigation control deep-link timing when enabled.
 
   // Configure deep linking
   const devPrefix = Platform.OS === 'web' && typeof window !== 'undefined'
@@ -71,11 +77,46 @@ const AppNavigator = () => {
     ],
     async getInitialURL() {
       const url = await Linking.getInitialURL();
+      if (linkingRefactor) {
+        // Small delay to align with Expo docs on cold start timing
+        await new Promise(res => setTimeout(res, 250));
+        if (url && url.includes('/invite')) {
+          try {
+            const parsed = Linking.parse(url);
+            const token = (parsed.queryParams?.t || parsed.queryParams?.token) as string | undefined;
+            if (token) {
+              const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
+              log.info('🎟️ Saving pending invite from initialURL', { tokenHash });
+              await PendingInviteService.savePendingInvite(token, 'token');
+            }
+          } catch (e) {
+            log.warn('🔗 Failed parsing initialURL', e);
+          }
+        }
+      }
       return url;
     },
     subscribe(listener: (url: string) => void) {
-      const subscription = Linking.addEventListener('url', ({ url }) => {
-        listener(url);
+      const subscription = Linking.addEventListener('url', async ({ url }) => {
+        if (linkingRefactor) {
+          try {
+            if (url && url.includes('/invite')) {
+              const parsed = Linking.parse(url);
+              const token = (parsed.queryParams?.t || parsed.queryParams?.token) as string | undefined;
+              if (token) {
+                const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
+                log.info('🎟️ Saving pending invite from subscribe', { tokenHash });
+                await PendingInviteService.savePendingInvite(token, 'token');
+              }
+            }
+          } catch (e) {
+            log.warn('🔗 Failed parsing subscribe URL', e);
+          } finally {
+            listener(url);
+          }
+        } else {
+          listener(url);
+        }
       });
       return () => subscription?.remove();
     },
@@ -208,7 +249,7 @@ const AppNavigator = () => {
   return (
     <>
       <View testID="app-ready" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }} />
-      <NavigationContainer linking={linking}>
+      <NavigationContainer linking={linking} ref={navigationRef}>
         <RootNavigator />
       </NavigationContainer>
     </>

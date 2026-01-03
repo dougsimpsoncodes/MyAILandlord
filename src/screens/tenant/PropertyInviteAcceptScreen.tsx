@@ -39,10 +39,13 @@ const PropertyInviteAcceptScreen = () => {
   const acceptAttemptedRef = useRef(false);
   const acceptInProgressRef = useRef(false);
 
-  log.info('[PropertyInviteAccept] Screen mounted', {
-    hasUser: !!user,
-    routeParams: route.params,
-  });
+  // Log only on actual mount (not every render)
+  useEffect(() => {
+    log.info('[PropertyInviteAccept] Screen mounted', {
+      hasUser: !!user,
+      routeParams: route.params,
+    });
+  }, []);
 
   // Extract token from route params OR pending invite storage
   useEffect(() => {
@@ -175,9 +178,12 @@ const PropertyInviteAcceptScreen = () => {
         propertyId: property?.id,
         propertyName: property?.name,
       });
-      // Navigate directly to OnboardingName (both screens are in AuthStack)
+      // Navigate to Auth stack, then to OnboardingName screen
       // Pass fromInvite flag to skip role selection (they're obviously tenants)
-      (navigation as any).navigate('OnboardingName', { fromInvite: true });
+      (navigation as any).navigate('Auth', {
+        screen: 'OnboardingName',
+        params: { fromInvite: true }
+      });
       return;
     }
 
@@ -271,6 +277,12 @@ const PropertyInviteAcceptScreen = () => {
         });
       }
 
+      // CRITICAL: Clear pending invite BEFORE navigation to prevent race conditions.
+      // Other components (useProfileSync, Bootstrap) check for pending invites on mount
+      // and would redirect back here with a stale token that's already been consumed.
+      log.info('[PropertyInviteAccept] Clearing pending invite BEFORE navigation');
+      await PendingInviteService.clearPendingInvite();
+
       // Navigate IMMEDIATELY to tenant home (zero-flash navigation pattern)
       // IMPORTANT: navigation.reset() replaces the entire navigation state.
       // This means NO back stack - user cannot go "back" to signup/auth screens.
@@ -290,15 +302,12 @@ const PropertyInviteAcceptScreen = () => {
         })
       );
 
-      // Defer cleanup AFTER navigation completes (prevents intermediate screen flashing)
-      InteractionManager.runAfterInteractions(async () => {
-        log.info('[PropertyInviteAccept] Deferred cleanup: clearing state');
-        // Only refresh user for existing users (new users already refreshed above)
-        if (!isNewUser) {
+      // Refresh user for existing users after navigation (deferred to avoid blocking)
+      if (!isNewUser) {
+        InteractionManager.runAfterInteractions(async () => {
           await refreshUser();
-        }
-        await PendingInviteService.clearPendingInvite();
-      });
+        });
+      }
 
     } catch (err: any) {
       log.error('[PropertyInviteAccept] Accept error:', err);
@@ -318,7 +327,14 @@ const PropertyInviteAcceptScreen = () => {
     // User explicitly declined - clear pending invite
     log.info('[PropertyInviteAccept] User declined invite, clearing pending invite');
     PendingInviteService.clearPendingInvite();
-    navigation.dispatch(CommonActions.navigate({ name: 'Welcome' as never }));
+    // Reset to Bootstrap which will route based on auth state
+    // (Auth screen if not signed in, Main if signed in with role)
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Bootstrap' as never }],
+      })
+    );
   };
 
   // Loading state
@@ -423,7 +439,7 @@ const PropertyInviteAcceptScreen = () => {
 
           {/* Full-screen overlay during acceptance to prevent flashing */}
           {isAccepting && (
-            <View style={StyleSheet.absoluteFill} pointerEvents="auto">
+            <View style={[StyleSheet.absoluteFill, { pointerEvents: 'auto' }]}>
               <View style={styles.acceptingOverlay}>
                 <ActivityIndicator size="large" color="#007AFF" />
                 <Text style={styles.acceptingText}>Connecting to {property.name}...</Text>

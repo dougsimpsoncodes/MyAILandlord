@@ -1,7 +1,7 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { RoleContext } from '../context/RoleContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import ConfirmDialog from '../components/shared/ConfirmDialog';
 
@@ -10,7 +10,8 @@ import ConfirmDialog from '../components/shared/ConfirmDialog';
  * Add this screen to your navigation to easily switch between tenant and landlord
  */
 const QuickRoleSwitch = () => {
-  const { userRole, setUserRole, clearRole } = useContext(RoleContext);
+  const { user } = useUnifiedAuth();
+  const userRole = user?.role;
 
   // Dialog state
   const [dialogConfig, setDialogConfig] = useState<{
@@ -30,29 +31,21 @@ const QuickRoleSwitch = () => {
   };
 
   const handleRoleSwitch = async (role: 'tenant' | 'landlord') => {
-    try {
-      await setUserRole(role);
-      showNotification(
-        'Role Changed',
-        `You are now viewing the app as a ${role}`,
-        'default'
-      );
-    } catch (error) {
-      showNotification('Error', 'Failed to switch role. Please try again.', 'destructive');
-    }
+    // Role switching now requires database profile update via API
+    showNotification(
+      'Feature Unavailable',
+      'Role switching requires account reconfiguration through the API. This dev tool is temporarily disabled.',
+      'info'
+    );
   };
 
   const handleClearRole = async () => {
-    try {
-      await clearRole();
-      showNotification(
-        'Role Cleared',
-        'You will be prompted to select a role on next app launch',
-        'default'
-      );
-    } catch (error) {
-      showNotification('Error', 'Failed to clear role. Please try again.', 'destructive');
-    }
+    // Role clearing now requires sign out (handled by UnifiedAuth)
+    showNotification(
+      'Feature Unavailable',
+      'Use the sign out button to clear your session. This dev tool is temporarily disabled.',
+      'info'
+    );
   };
 
   return (
@@ -185,10 +178,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   tenantButton: {
     backgroundColor: '#007AFF',

@@ -6,7 +6,7 @@ import AuthCallbackScreen from '../screens/AuthCallbackScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
 import { log } from '../lib/log';
 
-// New onboarding screens
+// New onboarding screens (all screens used in auth/onboarding flow)
 import {
   OnboardingWelcomeScreen,
   OnboardingNameScreen,
@@ -25,6 +25,8 @@ import {
 import PropertyBasicsScreen from '../screens/landlord/PropertyBasicsScreen';
 import PropertyAttributesScreen from '../screens/landlord/PropertyAttributesScreen';
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
+import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScreen';
+import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
 
 export type AuthStackParamList = {
   // Legacy screen for backwards compatibility
@@ -45,6 +47,24 @@ export type AuthStackParamList = {
     propertyId?: string;
     existingAreas?: any[]; // PropertyArea[] type
     isOnboarding?: boolean;
+    firstName?: string;
+  };
+  PropertyAssets: {
+    propertyData: any; // PropertyData type
+    areas: any[]; // PropertyArea[] type
+    propertyId?: string;
+    draftId?: string;
+    isOnboarding?: boolean;
+    firstName?: string;
+    newAsset?: any; // InventoryItem type
+  };
+  PropertyReview: {
+    propertyData: any; // PropertyData type
+    areas: any[]; // PropertyArea[] type
+    draftId?: string;
+    propertyId?: string;
+    isOnboarding?: boolean;
+    firstName?: string;
   };
   LandlordTenantInvite: { firstName: string; propertyId: string; propertyName: string };
   LandlordOnboardingSuccess: { firstName: string };
@@ -53,7 +73,7 @@ export type AuthStackParamList = {
   TenantInviteRoommate: { firstName: string; propertyId: string; propertyName: string; inviteCode: string };
   TenantOnboardingSuccess: { firstName: string };
   // Existing auth screens
-  Auth: { initialMode?: 'login' | 'signup'; forceRole?: 'tenant' | 'landlord' };
+  AuthForm: { initialMode?: 'login' | 'signup'; forceRole?: 'tenant' | 'landlord' };
   // Keep legacy routes for backwards compatibility
   Login: undefined;
   SignUp: undefined;
@@ -131,6 +151,8 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       <Stack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
       <Stack.Screen name="PropertyAttributes" component={PropertyAttributesScreen} />
       <Stack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
+      <Stack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
+      <Stack.Screen name="PropertyReview" component={PropertyReviewScreen} />
       <Stack.Screen name="LandlordTenantInvite" component={LandlordTenantInviteScreen} />
       <Stack.Screen name="LandlordOnboardingSuccess" component={LandlordOnboardingSuccessScreen} />
 
@@ -140,7 +162,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       <Stack.Screen name="TenantOnboardingSuccess" component={TenantOnboardingSuccessScreen} />
 
       {/* Existing auth screens */}
-      <Stack.Screen name="Auth" component={AuthScreen} />
+      <Stack.Screen name="AuthForm" component={AuthScreen} />
       {/* Legacy screens redirect to unified Auth screen */}
       <Stack.Screen name="Login" component={AuthScreen} />
       <Stack.Screen name="SignUp" component={AuthScreen} />

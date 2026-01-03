@@ -1,11 +1,10 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useAppAuth } from '../context/SupabaseAuthContext';
-import { RoleContext } from '../context/RoleContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 import { log } from '../lib/log';
 
 type WelcomeScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
@@ -14,9 +13,9 @@ const { width, height } = Dimensions.get('window');
 
 const WelcomeScreen = () => {
   const navigation = useNavigation<WelcomeScreenNavigationProp>();
-  const { signOut, isSignedIn } = useAppAuth();
-  const { clearRole, userRole } = useContext(RoleContext);
-  
+  const { user, isSignedIn } = useUnifiedAuth();
+  const userRole = user?.role;
+
   // Debug logging
   log.info('🏠 Welcome Screen - Auth State:', { isSignedIn, userRole });
 
@@ -30,7 +29,7 @@ const WelcomeScreen = () => {
     }
 
     // User not authenticated or no role, go to unified Auth screen
-    navigation.navigate('Auth', { mode: 'signup' });
+    navigation.navigate('AuthForm', { initialMode: 'signup' });
   };
 
   return (
@@ -76,7 +75,7 @@ const WelcomeScreen = () => {
 
         <TouchableOpacity
           style={styles.loginButton}
-          onPress={() => navigation.navigate('Auth', { mode: 'login' })}
+          onPress={() => navigation.navigate('AuthForm', { initialMode: 'login' })}
           activeOpacity={0.8}
         >
           <Text style={styles.loginButtonText}>Already have an account? Sign In</Text>
