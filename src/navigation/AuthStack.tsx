@@ -31,8 +31,8 @@ export type AuthStackParamList = {
   Welcome: undefined;
   // New onboarding flow
   OnboardingWelcome: undefined;
-  OnboardingName: undefined;
-  OnboardingAccount: { firstName: string };
+  OnboardingName: { fromInvite?: boolean };
+  OnboardingAccount: { firstName: string; fromInvite?: boolean };
   OnboardingRole: { firstName: string; userId: string };
   // Landlord onboarding path
   LandlordOnboardingWelcome: { firstName: string; role: 'landlord' };

@@ -5,8 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { haptics } from '../lib/haptics';
-import { useUnreadMessages } from '../context/UnreadMessagesContext';
-import { usePendingRequests } from '../context/PendingRequestsContext';
+import { useAppState } from '../context/AppStateContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { log } from '../lib/log';
 
@@ -23,7 +22,6 @@ import PropertyInfoScreen from '../screens/tenant/PropertyInfoScreen';
 import PropertyCodeEntryScreen from '../screens/tenant/PropertyCodeEntryScreen';
 import PropertyWelcomeScreen from '../screens/tenant/PropertyWelcomeScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
-import InviteAcceptScreen from '../screens/tenant/InviteAcceptScreen';
 
 // Landlord Screens
 import LandlordHomeScreen from '../screens/landlord/LandlordHomeScreen';
@@ -132,9 +130,6 @@ export type TenantStackParamList = {
     wifiPassword?: string;
   };
   PropertySearch: undefined;
-  InviteAccept: {
-    propertyCode: string;
-  };
 };
 
 export type LandlordTabParamList = {
@@ -290,12 +285,11 @@ const LandlordProfileStackNavigator = () => (
 
 // Landlord Tabs (the main app once onboarding is complete)
 const LandlordTabsNavigator = () => {
-  const { unreadCount } = useUnreadMessages();
-  const { newCount, pendingCount } = usePendingRequests();
+  const { unreadMessagesCount, newRequestsCount, pendingRequestsCount } = useAppState();
 
   // Badge logic: red for new requests, orange for pending (if no new)
-  const requestBadgeCount = newCount > 0 ? newCount : (pendingCount > 0 ? pendingCount : undefined);
-  const requestBadgeColor = newCount > 0 ? '#E74C3C' : '#F39C12';
+  const requestBadgeCount = newRequestsCount > 0 ? newRequestsCount : (pendingRequestsCount > 0 ? pendingRequestsCount : undefined);
+  const requestBadgeColor = newRequestsCount > 0 ? '#E74C3C' : '#F39C12';
 
   return (
     <LandlordTab.Navigator
@@ -360,7 +354,7 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined,
           tabBarBadgeStyle: {
             backgroundColor: '#E74C3C',
             fontSize: 11,
@@ -464,7 +458,6 @@ const TenantHomeStackNavigator = () => (
     <TenantHomeStack.Screen name="PropertyCodeEntry" component={PropertyCodeEntryScreen} />
     <TenantHomeStack.Screen name="PropertyInviteAccept" component={PropertyInviteAcceptScreen} />
     <TenantHomeStack.Screen name="PropertyWelcome" component={PropertyWelcomeScreen} />
-    <TenantHomeStack.Screen name="InviteAccept" component={InviteAcceptScreen} />
     <TenantHomeStack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
     <TenantHomeStack.Screen name="CommunicationHub" component={CommunicationHubScreen} />
   </TenantHomeStack.Navigator>
@@ -505,7 +498,7 @@ const TenantProfileStackNavigator = () => (
 );
 
 const TenantNavigator: React.FC = () => {
-  const { unreadCount } = useUnreadMessages();
+  const { unreadMessagesCount } = useAppState();
 
   return (
     <TenantTab.Navigator
@@ -548,7 +541,7 @@ const TenantNavigator: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined,
           tabBarBadgeStyle: {
             backgroundColor: '#E74C3C',
             fontSize: 11,

@@ -9,18 +9,19 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 
 type OnboardingStackParamList = {
   OnboardingWelcome: undefined;
-  OnboardingName: undefined;
-  OnboardingAccount: { firstName: string };
-  OnboardingRole: { firstName: string };
+  OnboardingName: { fromInvite?: boolean };
+  OnboardingAccount: { firstName: string; fromInvite?: boolean };
+  OnboardingRole: { firstName: string; userId: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'OnboardingName'>;
+type OnboardingNameRouteProp = RouteProp<OnboardingStackParamList, 'OnboardingName'>;
 
 // Name validation: 2-60 chars, Unicode-friendly, no special characters
 const validateName = (name: string): { valid: boolean; error?: string } => {
@@ -50,6 +51,9 @@ const validateName = (name: string): { valid: boolean; error?: string } => {
 
 export default function OnboardingNameScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<OnboardingNameRouteProp>();
+  const fromInvite = route.params?.fromInvite ?? false;
+
   const [firstName, setFirstName] = useState('');
   const [touched, setTouched] = useState(false);
 
@@ -59,7 +63,8 @@ export default function OnboardingNameScreen() {
   const handleContinue = () => {
     setTouched(true);
     if (validation.valid) {
-      navigation.navigate('OnboardingAccount', { firstName: firstName.trim() });
+      // Pass fromInvite flag to skip role selection for invite users
+      navigation.navigate('OnboardingAccount', { firstName: firstName.trim(), fromInvite });
     }
   };
 

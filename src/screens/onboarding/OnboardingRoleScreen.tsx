@@ -12,7 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 import { supabase } from '../../services/supabase/client';
 import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { log } from '../../lib/log';
 
 type OnboardingStackParamList = {
@@ -35,7 +35,7 @@ export default function OnboardingRoleScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RoleRouteProp>();
   const { firstName, userId } = route.params;
-  const { processingInvite, redirect } = useAppAuth();
+  const { processingInvite, redirect } = useUnifiedAuth();
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);

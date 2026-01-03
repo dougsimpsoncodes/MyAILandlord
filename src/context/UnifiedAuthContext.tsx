@@ -18,6 +18,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log } from '../lib/log';
+import { PendingInviteService } from '../services/storage/PendingInviteService';
 
 // ============================================================================
 // Types
@@ -40,6 +41,11 @@ export interface UnifiedUser {
   updatedAt?: string;
 }
 
+// Redirect type for pending invites
+type RedirectType =
+  | { type: 'acceptInvite'; token: string; propertyId?: string; propertyName?: string }
+  | null;
+
 interface UnifiedAuthContextValue {
   // User state
   user: UnifiedUser | null;
@@ -53,6 +59,11 @@ interface UnifiedAuthContextValue {
   signOut: (options?: { scope?: 'global' | 'local' | 'others' }) => Promise<void>;
   refreshUser: () => Promise<void>;
   updateRole: (role: 'landlord' | 'tenant') => Promise<void>;
+
+  // Pending invite state (for tenant invite flow)
+  processingInvite: boolean;
+  redirect: RedirectType;
+  clearRedirect: () => void;
 
   // Error state
   error: string | null;
@@ -78,9 +89,22 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Pending invite state (for tenant invite flow)
+  const [processingInvite, setProcessingInvite] = useState(false);
+  const [redirect, setRedirect] = useState<RedirectType>(null);
+
   // Refs to prevent concurrent operations
   const fetchInProgress = useRef(false);
   const initialized = useRef(false);
+
+  /**
+   * Clear redirect state after handling
+   */
+  const clearRedirect = useCallback(() => {
+    log.info('🧭 UnifiedAuth: Clearing redirect state');
+    setRedirect(null);
+    setProcessingInvite(false);
+  }, []);
 
   /**
    * Map Supabase auth user + profile data to UnifiedUser
@@ -211,6 +235,49 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
   }, []);
 
   /**
+   * Check for pending invite when user becomes authenticated
+   * This enables the tenant invite flow to skip role selection
+   */
+  useEffect(() => {
+    if (authDisabled) return;
+
+    // Only check if we have an authenticated user and auth is initialized
+    if (!user?.id || isLoading) {
+      return;
+    }
+
+    const checkPendingInvite = async () => {
+      try {
+        log.info('🎟️ UnifiedAuth: Checking for pending invite', { userId: user.id });
+        const pendingInvite = await PendingInviteService.getPendingInvite();
+
+        if (pendingInvite && pendingInvite.type === 'token') {
+          const tokenHash = pendingInvite.value.substring(0, 4) + '...' + pendingInvite.value.substring(pendingInvite.value.length - 4);
+          log.info('🎟️ UnifiedAuth: Pending invite detected, setting redirect state', {
+            tokenHash,
+            propertyId: pendingInvite.metadata?.propertyId,
+            propertyName: pendingInvite.metadata?.propertyName,
+          });
+
+          setProcessingInvite(true);
+          setRedirect({
+            type: 'acceptInvite',
+            token: pendingInvite.value,
+            propertyId: pendingInvite.metadata?.propertyId,
+            propertyName: pendingInvite.metadata?.propertyName,
+          });
+        } else {
+          log.info('🎟️ UnifiedAuth: No pending invite found');
+        }
+      } catch (error) {
+        log.error('🎟️ UnifiedAuth: Error checking pending invite', error as Error);
+      }
+    };
+
+    checkPendingInvite();
+  }, [user?.id, isLoading, authDisabled]);
+
+  /**
    * Initialize and listen to auth state changes
    */
   useEffect(() => {
@@ -289,6 +356,9 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     signOut,
     refreshUser,
     updateRole,
+    processingInvite,
+    redirect,
+    clearRedirect,
     error,
   };
 
