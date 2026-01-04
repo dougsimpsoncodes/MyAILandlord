@@ -1,1 +1,17 @@
-* @dougsimpsoncodes
+# Code ownership to avoid LLM conflicts on critical areas.
+# Update handles as appropriate for your org.
+
+# Navigation and linking
+src/AppNavigator.tsx         @dougsimpson
+src/navigation/*             @dougsimpson
+
+# Auth/Role/Profile contexts
+src/context/*                @dougsimpson
+
+# Push notifications
+src/hooks/usePushNotifications.ts @dougsimpson
+src/services/push/*          @dougsimpson
+
+# Top-level app wiring
+App.tsx                      @dougsimpson
+
