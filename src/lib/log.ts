@@ -193,7 +193,20 @@ function sendToLoggingService(level: 'info' | 'warn' | 'error', args: unknown[])
   // }
 }
 
+// Check if running in development mode
+const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+
 export const log = {
+  /**
+   * Debug logs - only shown in development mode
+   * Use for verbose logging that helps during development but shouldn't appear in production
+   */
+  debug: (...args: unknown[]) => {
+    if (isDev) {
+      const sanitized = sanitizeArgs(args);
+      console.log(...sanitized);
+    }
+  },
   info: (...args: unknown[]) => {
     const sanitized = sanitizeArgs(args);
     console.log(...sanitized);

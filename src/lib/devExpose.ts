@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { PendingInviteService } from '../services/storage/PendingInviteService';
 import { supabase } from '../lib/supabaseClient';
+import { log } from './log';
 
 const PENDING_INVITE_KEY = '@MyAILandlord:pendingPropertyInvite';
 
@@ -139,7 +140,6 @@ async function run() {
   validateInvite,
 };
 
-// Dev banner
-// eslint-disable-next-line no-console
-console.log('[devExpose] InviteDiag attached to globalThis.InviteDiag');
+// Dev banner (only shows in development)
+log.debug('[devExpose] InviteDiag attached to globalThis.InviteDiag');
 
