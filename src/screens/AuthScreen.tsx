@@ -53,17 +53,14 @@ const AuthScreen = () => {
   };
 
   const handleLogin = async () => {
-    console.log('🔐 handleLogin called', { emailAddress, password: password ? '***' : 'empty' });
     try {
       setLoading(true);
       setError(null);
 
-      console.log('🔐 Calling signInWithPassword...');
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
-      console.log('🔐 signInWithPassword result:', { hasData: !!data, hasSession: !!data?.session, error: loginError?.message });
 
       if (loginError) {
         setError(loginError.message);

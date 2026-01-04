@@ -18,6 +18,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log } from '../../lib/log';
 import { AssetTemplate, AssetCondition, InventoryItem, PropertyData } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { extractAssetDataFromImage, validateAndEnhanceData } from '../../services/ai/labelExtraction';
@@ -29,7 +30,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 
 type AddAssetNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddAssetRouteProp = RouteProp<LandlordStackParamList, 'AddAsset'>;
@@ -42,7 +43,7 @@ const AddAssetScreen = () => {
   const { supabase } = useSupabaseWithAuth();
 
   // SAFE: Get auth context but don't destructure immediately
-  const authContext = useAppAuth();
+  const authContext = useUnifiedAuth();
   const user = authContext?.user;
 
   // Route params (may be incomplete on web due to URL serialization)
@@ -339,34 +340,20 @@ const AddAssetScreen = () => {
     setSaveError(null);
     setSaveSuccess(false);
 
-    if (__DEV__) {
-      console.log('📦 ===== ASSET SAVE ATTEMPT =====');
-      console.log('📦 User from context:', !!user);
-      console.log('📦 Effective User ID:', effectiveUserId || 'NO_USER');
-      console.log('📦 Property ID:', propertyId || 'NO_PROPERTY_ID');
-      console.log('📦 Area ID:', areaId || 'NO_AREA_ID');
-      console.log('📦 Draft ID:', draftId || 'NO_DRAFT_ID');
-      console.log('📦 Is Params Loaded:', isParamsLoaded);
-    }
+    log.debug('[AddAsset] Save attempt', { hasUser: !!effectiveUserId, propertyId, areaId });
 
     if (!effectiveUserId) {
-      const error = 'User not authenticated. Please sign in again.';
-      console.error('📦 CRITICAL: No user ID available (neither context nor route)');
-      setSaveError(error);
+      setSaveError('User not authenticated. Please sign in again.');
       return;
     }
 
     if (!isParamsLoaded) {
-      const error = 'Loading data, please try again in a moment.';
-      setSaveError(error);
-      console.error('📦 ERROR:', error);
+      setSaveError('Loading data, please try again in a moment.');
       return;
     }
 
     if (!areaId) {
-      const error = 'Area information is missing. Please go back and try again.';
-      console.error('📦 BLOCKED: No areaId available');
-      setSaveError(error);
+      setSaveError('Area information is missing. Please go back and try again.');
       return;
     }
 
@@ -400,17 +387,9 @@ const AddAssetScreen = () => {
 
       // For EXISTING properties (propertyId), save directly to database
       if (propertyId) {
-        if (__DEV__) {
-          console.log('📦 Saving asset to database for property:', propertyId);
-          console.log('📦 Asset data:', JSON.stringify(newAsset, null, 2));
-        }
-
         try {
-          // Pass the authenticated Supabase client to ensure RLS works correctly
-          if (__DEV__) console.log('📦 Calling propertyAreasService.addAsset...');
           const savedAsset = await propertyAreasService.addAsset(propertyId, newAsset, supabase);
-
-          if (__DEV__) console.log('📦 ✅ Asset saved successfully:', savedAsset);
+          log.debug('[AddAsset] Asset saved', { assetId: savedAsset.id });
           setSaveSuccess(true);
 
           // Navigate back after a short delay to show success message
