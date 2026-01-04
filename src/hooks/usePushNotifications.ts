@@ -3,7 +3,18 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { log } from '../lib/log';
 import * as Linking from 'expo-linking';
-import { navigate } from '../navigation/navigation';
+import { createNavigationContainerRef } from '@react-navigation/native';
+
+// Navigation ref for push notification handling
+const navigationRef = createNavigationContainerRef();
+
+function navigate(name: string, params?: object) {
+  if (navigationRef.isReady()) {
+    navigationRef.navigate(name as never, params as never);
+  } else {
+    log.warn('📲 Navigation not ready, cannot navigate to', name);
+  }
+}
 
 export function usePushNotifications() {
   useEffect(() => {

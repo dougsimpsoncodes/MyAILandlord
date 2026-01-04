@@ -8,7 +8,6 @@ import { AppStateProvider } from './src/context/AppStateContext';
 // OnboardingContext is still used by some legacy flows
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import AppNavigator from './src/AppNavigator';
-import AppCleanNavigator from './src/clean/AppCleanNavigator';
 import { initMonitoring } from './src/lib/monitoring';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
 // Dev-only diagnostics
@@ -37,11 +36,7 @@ export default function App() {
       <UnifiedAuthProvider>
         <AppStateProvider>
           <OnboardingProvider>
-                      {process.env.EXPO_PUBLIC_EXPERIMENTAL_APP === '1' ? (
-                        <AppCleanNavigator />
-                      ) : (
-                        <AppNavigator />
-                      )}
+            <AppNavigator />
             {iosMvp && (
               <View style={[styles.mvpBanner, { pointerEvents: 'none' }]}>
                 <Text style={styles.mvpText}>iOS MVP mode</Text>

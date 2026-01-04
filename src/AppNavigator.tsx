@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { navigationRef } from './navigation/navigation';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+
+// Navigation ref for programmatic navigation
+const navigationRef = createNavigationContainerRef();
 import { Platform, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useProfileSync } from './hooks/useProfileSync';
