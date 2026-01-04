@@ -121,38 +121,23 @@ export const DesignSystem = {
 
   elevation: {
     none: {
-      shadowColor: '#1E293B',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0,
-      shadowRadius: 0,
+      boxShadow: 'none',
       elevation: 0,
     },
     sm: {
-      shadowColor: '#1E293B',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.08,
-      shadowRadius: 4,
+      boxShadow: '0px 2px 4px rgba(30, 41, 59, 0.08)',
       elevation: 2,
     },
     md: {
-      shadowColor: '#1E293B',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.10,
-      shadowRadius: 8,
+      boxShadow: '0px 4px 8px rgba(30, 41, 59, 0.10)',
       elevation: 4,
     },
     lg: {
-      shadowColor: '#1E293B',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
+      boxShadow: '0px 8px 16px rgba(30, 41, 59, 0.12)',
       elevation: 8,
     },
     xl: {
-      shadowColor: '#1E293B',
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.15,
-      shadowRadius: 24,
+      boxShadow: '0px 12px 24px rgba(30, 41, 59, 0.15)',
       elevation: 12,
     },
   },
