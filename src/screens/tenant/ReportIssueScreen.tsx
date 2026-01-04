@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Speech from 'expo-speech';
 import Constants from 'expo-constants';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
@@ -39,7 +39,7 @@ const getCategoryIcon = (category: string) => {
 
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
-  const { isSignedIn } = useAppAuth();
+  const { isSignedIn } = useUnifiedAuth();
 
   const handleGoBack = () => {
     navigation.goBack();

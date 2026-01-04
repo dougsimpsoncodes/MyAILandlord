@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { RoleContext } from '../../context/RoleContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
@@ -33,9 +32,8 @@ interface MenuItem {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const navigation = useNavigation<any>();
-  const { user, signOut } = useAppAuth();
-  const { userRole, clearRole } = useContext(RoleContext);
-  const role = route?.params?.userRole || userRole;
+  const { user, signOut } = useUnifiedAuth();
+  const role = route?.params?.userRole || user?.role;
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -49,7 +47,6 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const confirmSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await clearRole();
       await signOut();
       // Navigate to Auth screen after successful sign out
       // Use getRootState to access root navigator

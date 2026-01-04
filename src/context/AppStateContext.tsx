@@ -92,7 +92,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
       setNewRequestsCount(newCount);
       setPendingRequestsCount(pendingCount);
 
-      log.info('AppState: Request counts updated', { newCount, pendingCount });
+      log.debug('AppState: Request counts updated', { newCount, pendingCount });
     } catch (err) {
       log.error('AppState: Failed to fetch request counts:', err);
     }
@@ -119,7 +119,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
       }
 
       setUnreadMessagesCount(count || 0);
-      log.info('AppState: Unread count updated', { count });
+      log.debug('AppState: Unread count updated', { count });
     } catch (err) {
       log.error('AppState: Failed to fetch unread count:', err);
     }
@@ -172,7 +172,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
         throw updateError;
       }
 
-      log.info('AppState: Message marked as read', { messageId });
+      log.debug('AppState: Message marked as read', { messageId });
     } catch (err) {
       log.error('AppState: Failed to mark message as read:', err);
       // Rollback optimistic update
@@ -215,7 +215,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
             filter: `property_id=in.(SELECT id FROM properties WHERE landlord_id='${user.id}')`,
           },
           () => {
-            log.info('AppState: Maintenance request changed, refreshing counts');
+            log.debug('AppState: Maintenance request changed, refreshing counts');
             fetchRequestCounts();
           }
         )
@@ -234,7 +234,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
           filter: `recipient_id=eq.${user.id}`,
         },
         () => {
-          log.info('AppState: Message changed, refreshing counts');
+          log.debug('AppState: Message changed, refreshing counts');
           fetchUnreadCount();
         }
       )

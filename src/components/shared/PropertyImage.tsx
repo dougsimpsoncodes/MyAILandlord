@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import log from '../../lib/log';
 
 const SUPABASE_FUNCTIONS_URL = process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL;
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 interface PropertyImageProps {
   address: string;
@@ -56,15 +55,6 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
 
   const imageUrl = getPropertyImageUrl();
 
-  // Debug logging
-  log.info('[PropertyImage] Using proxy:', {
-    address,
-    hasFunctionsUrl: !!SUPABASE_FUNCTIONS_URL,
-    imageUrl: imageUrl ? imageUrl.substring(0, 100) + '...' : null,
-    isLoading,
-    hasError
-  });
-
   // Determine container and image styles
   const isFullWidth = width === '100%';
   const containerStyle = isFullWidth
@@ -77,7 +67,6 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
 
   // If no address or functions URL, show placeholder
   if (!imageUrl) {
-    log.warn('[PropertyImage] No image URL - showing placeholder', { address, hasFunctionsUrl: !!SUPABASE_FUNCTIONS_URL });
     return (
       <View style={[styles.placeholder, containerStyle, style]}>
         <Ionicons name="home-outline" size={48} color="#BDC3C7" />
@@ -104,10 +93,7 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
       <Image
         source={{ uri: imageUrl }}
         style={[styles.image, imageStyle]}
-        onLoad={() => {
-          log.info('[PropertyImage] Image loaded successfully', { address });
-          setIsLoading(false);
-        }}
+        onLoad={() => setIsLoading(false)}
         onError={(error) => {
           log.error('[PropertyImage] Image failed to load', { address, error });
           setIsLoading(false);

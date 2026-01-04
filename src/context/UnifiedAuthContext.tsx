@@ -101,7 +101,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
    * Clear redirect state after handling
    */
   const clearRedirect = useCallback(() => {
-    log.info('🧭 UnifiedAuth: Clearing redirect state');
+    log.debug('🧭 UnifiedAuth: Clearing redirect state');
     setRedirect(null);
     setProcessingInvite(false);
   }, []);
@@ -160,7 +160,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     }
 
     if (fetchInProgress.current) {
-      log.info('UnifiedAuth: Fetch already in progress, skipping');
+      log.debug('UnifiedAuth: Fetch already in progress, skipping');
       return;
     }
 
@@ -170,7 +170,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     try {
       const mappedUser = await mapToUnifiedUser(session.user);
       setUser(mappedUser);
-      log.info('UnifiedAuth: User refreshed', {
+      log.debug('UnifiedAuth: User refreshed', {
         userId: mappedUser?.id,
         role: mappedUser?.role,
         onboardingComplete: mappedUser?.onboarding_completed
@@ -206,7 +206,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
         throw updateError;
       }
 
-      log.info('UnifiedAuth: Role updated', { role });
+      log.debug('UnifiedAuth: Role updated', { role });
 
       // Refresh to get server state
       await refreshUser();
@@ -227,7 +227,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
       await AsyncStorage.removeItem(ROLE_STORAGE_KEY);
       setUser(null);
       setSession(null);
-      log.info('UnifiedAuth: Signed out');
+      log.debug('UnifiedAuth: Signed out');
     } catch (err) {
       log.error('UnifiedAuth: Sign out failed:', err);
       throw err;
@@ -248,7 +248,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
 
     const checkPendingInvite = async () => {
       try {
-        log.info('🎟️ UnifiedAuth: Checking for pending invite', { userId: user.id });
+        log.debug('🎟️ UnifiedAuth: Checking for pending invite', { userId: user.id });
         const pendingInvite = await PendingInviteService.getPendingInvite();
 
         if (pendingInvite && pendingInvite.type === 'token') {
@@ -267,7 +267,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
             propertyName: pendingInvite.metadata?.propertyName,
           });
         } else {
-          log.info('🎟️ UnifiedAuth: No pending invite found');
+          log.debug('🎟️ UnifiedAuth: No pending invite found');
         }
       } catch (error) {
         log.error('🎟️ UnifiedAuth: Error checking pending invite', error as Error);
@@ -325,7 +325,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, newSession: Session | null) => {
-        log.info('UnifiedAuth: Auth state changed', {
+        log.debug('UnifiedAuth: Auth state changed', {
           event,
           hasSession: !!newSession,
           userId: newSession?.user?.id,

@@ -20,7 +20,7 @@ import { PropertyArea, InventoryItem, PropertyData } from '../../types/property'
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import PhotoDropzone from '../../components/media/PhotoDropzone';
 import { storageService } from '../../services/supabase/storage';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -61,6 +61,7 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
   // Start expanded by default so Assets & Inventory is visible
   const [expanded, setExpanded] = useState(true);
   const animatedHeight = useState(new Animated.Value(0))[0];
+  const probedUrlsRef = useRef<Set<string>>(new Set());
 
   const toggleExpanded = () => {
     setExpanded(!expanded);
@@ -70,6 +71,19 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
       useNativeDriver: false,
     }).start();
   };
+
+  const probeImageUrl = useCallback(async (uri: string, label: string) => {
+    if (!__DEV__ || !uri) return;
+    if (probedUrlsRef.current.has(uri)) return;
+    probedUrlsRef.current.add(uri);
+    try {
+      const res = await fetch(uri);
+      const contentType = res.headers.get('content-type');
+      console.error('📸 Image probe', { label, status: res.status, contentType, finalUrl: res.url });
+    } catch (error) {
+      console.error('📸 Image probe failed', { label, error: String(error), uri });
+    }
+  }, []);
 
   // Only count valid photos (non-empty URLs)
   const validPhotos = area.photos.filter(p => p && p.trim() !== '');
@@ -148,7 +162,11 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
                 <Image
                   source={{ uri: photo }}
                   style={styles.photoThumbImage}
-                  onError={(e) => console.error(`📸 Image load failed for ${area.name}[${index}]:`, e.nativeEvent.error)}
+                  onError={(e) => {
+                    const label = `${area.name}[${index}]`;
+                    console.error(`📸 Image load failed for ${label}:`, { error: e.nativeEvent.error, uri: photo });
+                    probeImageUrl(photo, label);
+                  }}
                 />
               </TouchableOpacity>
             ))}
@@ -217,7 +235,7 @@ const PropertyAssetsListScreen = () => {
   const navigation = useNavigation<PropertyAssetsListNavigationProp>();
   const route = useRoute<PropertyAssetsListRouteProp>();
   const responsive = useResponsive();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
 
   // Get route params with defaults for page refresh scenario
   const routePropertyData = route.params?.propertyData;
@@ -322,7 +340,6 @@ const PropertyAssetsListScreen = () => {
         const freshAreas = await propertyAreasService.getAreasWithAssets(routePropertyId);
 
         if (freshAreas && freshAreas.length > 0) {
-          console.log('✅ Refetched property areas with assets:', freshAreas.length);
           setSelectedAreas(freshAreas);
         }
       } catch (error) {
@@ -640,7 +657,6 @@ const PropertyAssetsListScreen = () => {
         try {
           const updatedArea = updatedAreas.find(a => a.id === areaId);
           if (updatedArea) {
-            console.log('💾 Saving area photos to database for existing property:', { areaId, photoPathCount: updatedArea.photoPaths?.length || 0 });
             const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
             // CRITICAL: Database stores PATHS, not URLs!
             // The photos column should contain storage paths like "property-images/abc.jpg"
@@ -648,7 +664,6 @@ const PropertyAssetsListScreen = () => {
             await propertyAreasService.updateArea(areaId, {
               photos: updatedArea.photoPaths || [] // Save PATHS to database, not URLs
             });
-            console.log('✅ Area photo paths saved to database');
           }
         } catch (error) {
           console.error('Failed to save area photos to database:', error);
@@ -690,16 +705,13 @@ const PropertyAssetsListScreen = () => {
     try {
       // For existing properties, delete from database
       if (routePropertyId) {
-        console.log('🗑️ Deleting asset from database:', assetId);
         const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
         await propertyAreasService.deleteAsset(assetId);
-        console.log('✅ Asset deleted from database');
 
         // Refetch to update UI
         const freshAreas = await propertyAreasService.getAreasWithAssets(routePropertyId);
         if (freshAreas && freshAreas.length > 0) {
           setSelectedAreas(freshAreas);
-          console.log('✅ Refetched areas after delete');
         }
       } else {
         // For drafts, just update local state

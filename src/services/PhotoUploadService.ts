@@ -65,7 +65,10 @@ export async function uploadPropertyPhotos(
     }
     
     const blob = await toBlob(work);
-    const name = fileNameFor(propertyId, areaId, a.fileName, mime);
+    // On native, we always convert to JPEG, so use .jpg extension regardless of original filename
+    const name = Platform.OS !== 'web'
+      ? fileNameFor(propertyId, areaId, undefined, 'image/jpeg')
+      : fileNameFor(propertyId, areaId, a.fileName, mime);
     try {
       // Try primary name
       await storageService.uploadFile({ bucket: bucket as any, path: name, file: blob, contentType: mime || 'image/jpeg' });

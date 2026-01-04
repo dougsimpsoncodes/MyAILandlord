@@ -4,10 +4,10 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import { log } from '../../lib/log';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
@@ -38,10 +38,10 @@ interface PropertySummary {
 
 const LandlordHomeScreen = () => {
   const navigation = useNavigation<LandlordHomeNavigationProp>();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const api = useApiClient();
   const { drafts, isLoading: isDraftsLoading } = usePropertyDrafts();
-  const { unreadCount } = useUnreadMessages();
+  const { unreadCount } = useAppState();
 
   const [selectedProperty, setSelectedProperty] = useState<string>('all');
   const [properties, setProperties] = useState<PropertySummary[]>([]);

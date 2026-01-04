@@ -11,14 +11,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 const EditProfileScreen = () => {
   const navigation = useNavigation();
-  const { user, updateProfile } = useAppAuth();
+  const { user } = useUnifiedAuth();
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');

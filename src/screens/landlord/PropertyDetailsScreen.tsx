@@ -35,7 +35,7 @@ const PropertyDetailsScreen = () => {
   // Load areas from database when screen comes into focus
   const loadAreasFromDatabase = useCallback(async () => {
     try {
-      log.info('Loading property areas from database', { propertyId: property.id });
+      log.debug('Loading property areas from database', { propertyId: property.id });
       const loadedAreas = await propertyAreasService.getAreasWithAssets(property.id, supabase);
       setAreas(loadedAreas);
     } catch (error) {

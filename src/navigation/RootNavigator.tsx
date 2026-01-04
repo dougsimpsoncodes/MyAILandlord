@@ -2,9 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
-import { useAppAuth } from '../context/SupabaseAuthContext';
-import { RoleContext } from '../context/RoleContext';
-import { useProfile } from '../context/ProfileContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 import { PendingInviteService } from '../services/storage/PendingInviteService';
 import { log } from '../lib/log';
 import AuthStack from './AuthStack';
@@ -34,20 +32,18 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  */
 function BootstrapScreen() {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const { isSignedIn, user, isLoading: authLoading } = useAppAuth();
-  const { userRole, isLoading: roleLoading } = React.useContext(RoleContext);
-  const { profile, isLoading: profileLoading } = useProfile();
+  const { user, isSignedIn, isLoading } = useUnifiedAuth();
   const decidedRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [devBusy, setDevBusy] = useState(false);
 
   // Derived ready flag (Codex recommendation)
-  const isBootstrapReady = !authLoading && !roleLoading && !profileLoading;
+  const isBootstrapReady = !isLoading;
 
   useEffect(() => {
     // CRITICAL: Handle sign out immediately - don't wait for other state
     if (!isSignedIn && decidedRef.current) {
-      log.info('🧭 [Bootstrap] User signed out - navigating to Auth');
+      log.debug('🧭 [Bootstrap] User signed out - navigating to Auth');
       decidedRef.current = false;
       navigation.reset({
         index: 0,
@@ -77,10 +73,8 @@ function BootstrapScreen() {
     const decide = async () => {
       // Wait until all required state is loaded
       if (!isBootstrapReady) {
-        log.info('🧭 [Bootstrap] Waiting for state to load', {
-          authLoading,
-          roleLoading,
-          profileLoading,
+        log.debug('🧭 [Bootstrap] Waiting for state to load', {
+          isLoading,
         });
         return;
       }
@@ -91,16 +85,16 @@ function BootstrapScreen() {
         timeoutRef.current = null;
       }
 
-      log.info('🧭 [Bootstrap] Making routing decision', {
+      log.debug('🧭 [Bootstrap] Making routing decision', {
         isSignedIn,
         hasUser: !!user,
-        userRole,
-        hasProfile: !!profile,
+        userRole: user?.role,
+        onboardingCompleted: user?.onboarding_completed,
       });
 
       // Decision 1: Unauthenticated → Auth
       if (!isSignedIn || !user) {
-        log.info('🧭 [Bootstrap] → Auth (not signed in)');
+        log.debug('🧭 [Bootstrap] → Auth (not signed in)');
         decidedRef.current = true;
         navigation.reset({
           index: 0,
@@ -114,7 +108,7 @@ function BootstrapScreen() {
         const pendingInvite = await PendingInviteService.getPendingInvite();
         if (pendingInvite?.type === 'token') {
           const tokenHash = pendingInvite.value.substring(0, 4) + '...' + pendingInvite.value.substring(pendingInvite.value.length - 4);
-          log.info('🧭 [Bootstrap] → PropertyInviteAccept (pending invite detected)', { tokenHash });
+          log.debug('🧭 [Bootstrap] → PropertyInviteAccept (pending invite detected)', { tokenHash });
           decidedRef.current = true;
           navigation.reset({
             index: 0,
@@ -127,17 +121,17 @@ function BootstrapScreen() {
       }
 
       // Decision 3: Authenticated with role → Main
-      if (userRole) {
-        log.info(`🧭 [Bootstrap] → Main (${userRole})`);
+      if (user?.role) {
+        log.debug(`🧭 [Bootstrap] → Main (${user.role})`);
         decidedRef.current = true;
         navigation.reset({
           index: 0,
           routes: [{
             name: 'Main',
             params: {
-              userRole,
-              needsOnboarding: !profile?.onboarding_completed,
-              userFirstName: profile?.name?.split(' ')[0] || null,
+              userRole: user.role,
+              needsOnboarding: !user.onboarding_completed,
+              userFirstName: user.name?.split(' ')[0] || null,
             },
           }],
         });
@@ -145,7 +139,7 @@ function BootstrapScreen() {
       }
 
       // Decision 4: Authenticated but no role yet (edge case - wait)
-      log.info('🧭 [Bootstrap] Waiting for role assignment...');
+      log.debug('🧭 [Bootstrap] Waiting for role assignment...');
     };
 
     decide();
@@ -156,7 +150,7 @@ function BootstrapScreen() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [isSignedIn, user, userRole, profile, isBootstrapReady, navigation]);
+  }, [isSignedIn, user, isBootstrapReady, navigation]);
 
   // Full-screen loading overlay while deciding
   return (

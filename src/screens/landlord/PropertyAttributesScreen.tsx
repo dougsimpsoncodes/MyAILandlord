@@ -103,8 +103,6 @@ const PropertyAttributesScreen = () => {
   };
 
   const handleContinue = async () => {
-    console.log('🔍 PropertyAttributesScreen - handleContinue starting', { isOnboarding, selectedType, bedrooms, bathrooms });
-
     setIsValidating(true);
     const isTypeValid = validateType();
     setIsValidating(false);
@@ -127,26 +125,18 @@ const PropertyAttributesScreen = () => {
         photos: draftState?.propertyData?.photos || [],
       };
 
-      console.log('🔍 PropertyAttributesScreen - Property data created:', { name: propertyData.name, type: propertyData.type });
-
       try {
         // Create draft if it doesn't exist yet (for non-onboarding flow)
         if (!draftState && !isOnboarding) {
-          console.log('🔍 PropertyAttributesScreen - Creating new draft');
           createNewDraft(propertyData);
           await saveDraft();
-          console.log('🔍 PropertyAttributesScreen - Draft saved successfully');
         } else if (draftState) {
           // Update existing draft
           await updatePropertyData(propertyData);
           await saveDraft();
-          console.log('🔍 PropertyAttributesScreen - Draft updated successfully');
-        } else {
-          // During onboarding, skip draft save - data is passed via navigation
-          console.log('🔍 PropertyAttributesScreen - Skipping draft save during onboarding');
         }
-      } catch (error) {
-        console.error('🔍 PropertyAttributesScreen - Error saving property draft:', error);
+        // During onboarding, skip draft save - data is passed via navigation
+      } catch {
         // Continue anyway - navigation can work without draft
       }
 
@@ -157,16 +147,8 @@ const PropertyAttributesScreen = () => {
         firstName,
       };
 
-      console.log('🔍 PropertyAttributesScreen - About to navigate', {
-        isOnboarding,
-        navigateTo: isOnboarding ? 'PropertyAreas' : 'PropertyPhotos',
-        params: navParams
-      });
-
       if (isOnboarding) {
-        console.log('🔍 PropertyAttributesScreen - Calling navigation.navigate to PropertyAreas');
         (navigation as any).navigate('PropertyAreas', navParams);
-        console.log('🔍 PropertyAttributesScreen - Navigation call completed');
       } else {
         navigation.navigate('PropertyPhotos', { propertyData });
       }

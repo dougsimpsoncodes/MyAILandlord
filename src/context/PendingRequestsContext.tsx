@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useApiClient } from '../services/api/client';
-import { useAppAuth } from './SupabaseAuthContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 import { useProfile } from './ProfileContext';
 import { supabase } from '../services/supabase/config';
 import log from '../lib/log';
@@ -27,7 +27,7 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
   const [newCount, setNewCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [landlordId, setLandlordId] = useState<string | null>(null);
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const { profile } = useProfile();
   const apiClient = useApiClient();
 

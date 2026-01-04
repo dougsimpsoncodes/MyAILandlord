@@ -18,7 +18,7 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import log from '../../lib/log';
@@ -34,6 +34,7 @@ const PropertyReviewScreen = () => {
   const route = useRoute<PropertyReviewRouteProp>();
   const { propertyData, areas, draftId, propertyId } = route.params;
   const api = useApiClient();
+  const { user, refreshUser } = useUnifiedAuth();
   const { supabase } = useSupabaseWithAuth();
 
   // Initialize draft management
@@ -98,13 +99,83 @@ const PropertyReviewScreen = () => {
     
     try {
       setIsSubmitting(true);
-      
+
       // Ensure API is ready
       if (!api) throw new Error('Authentication required');
 
       if (draftState) await saveDraft();
 
-      // Determine if property already exists (from onboarding flow)
+      // Check if this is first-time onboarding (use atomic RPC)
+      const isFirstProperty = !user?.onboarding_completed && !propertyId;
+
+      if (isFirstProperty) {
+        log.info('PropertyReview: First-time onboarding detected - using atomic RPC');
+
+        // Prepare area names for atomic RPC
+        const areaNames = areas?.map(area => area.name) || [];
+
+        // Call atomic onboarding RPC
+        const { data: rpcData, error: rpcError } = await supabase.rpc('signup_and_onboard_landlord', {
+          p_property_name: propertyData.name,
+          p_address_jsonb: propertyData.address,
+          p_property_type: propertyData.type || null,
+          p_bedrooms: propertyData.bedrooms || null,
+          p_bathrooms: propertyData.bathrooms || null,
+          p_areas: areaNames.length > 0 ? areaNames : null
+        });
+
+        if (rpcError) {
+          log.error('PropertyReview: Atomic RPC error', { error: rpcError });
+          throw new Error(rpcError.message || 'Failed to complete onboarding');
+        }
+
+        // RPC returns TABLE, so data is an array
+        const result = rpcData && rpcData.length > 0 ? rpcData[0] : null;
+
+        if (!result || !result.success) {
+          throw new Error(result?.error_message || 'Onboarding failed');
+        }
+
+        log.info('PropertyReview: Atomic onboarding successful', {
+          propertyId: result.property_id,
+          profileId: result.profile_id
+        });
+
+        // Refresh user to get updated onboarding_completed flag
+        await refreshUser();
+
+        // Set property ID for success navigation
+        const currentPropertyId = result.property_id;
+
+        // Show success and navigate
+        setSubmissionSuccess(true);
+        setIsSubmitting(false);
+
+        // Clean up draft
+        if (draftState) {
+          await deleteDraft();
+        }
+
+        // Navigate to PropertyDetails
+        setTimeout(() => {
+          const addressString = `${propertyData.address.line1}${propertyData.address.line2 ? ', ' + propertyData.address.line2 : ''}, ${propertyData.address.city}, ${propertyData.address.state} ${propertyData.address.zipCode}`;
+
+          navigation.navigate('PropertyDetails', {
+            property: {
+              id: currentPropertyId,
+              name: propertyData.name,
+              address: addressString,
+              type: propertyData.type,
+              tenants: 0,
+              activeRequests: 0,
+            }
+          });
+        }, 2000);
+
+        return; // Exit early - atomic RPC handled everything
+      }
+
+      // Continue with existing flow for non-onboarding property creation
       let currentPropertyId = propertyId;
 
       // Only create property if it doesn't already exist

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useApiClient } from '../services/api/client';
-import { useAppAuth } from './SupabaseAuthContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 import { useProfile } from './ProfileContext';
 import { supabase } from '../services/supabase/config';
 import log from '../lib/log';
@@ -26,7 +26,7 @@ interface UnreadMessagesProviderProps {
 export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const { profile } = useProfile();
   const apiClient = useApiClient();
 

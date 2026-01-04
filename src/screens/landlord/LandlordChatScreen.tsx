@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
@@ -37,9 +37,9 @@ const LandlordChatScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<LandlordChatRouteParams, 'LandlordChat'>>();
   const { tenantId, tenantName, tenantEmail } = route.params;
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
-  const { refreshUnreadCount } = useUnreadMessages();
+  const { refreshNotificationCounts } = useAppState();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [messageText, setMessageText] = useState('');
@@ -111,14 +111,14 @@ const LandlordChatScreen = () => {
         if (apiClient) {
           try {
             await apiClient.markMessagesAsRead();
-            await refreshUnreadCount();
+            await refreshNotificationCounts();
           } catch (error) {
             log.error('Error marking messages as read', { error: String(error) });
           }
         }
       };
       markAsRead();
-    }, [apiClient, refreshUnreadCount])
+    }, [apiClient, refreshNotificationCounts])
   );
 
   const formatTimestamp = (date: Date) => {

@@ -21,7 +21,7 @@ import { PropertyData, PropertyArea, AssetCondition } from '../../types/property
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useApiClient } from '../../services/api/client';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -132,7 +132,7 @@ const PropertyAreasScreen = () => {
   const navigation = useNavigation<PropertyAreasNavigationProp>();
   const route = useRoute<PropertyAreasRouteProp>();
   const responsive = useResponsive();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const { supabase } = useSupabaseWithAuth();
   const api = useApiClient();
   const propertyData = route.params.propertyData;

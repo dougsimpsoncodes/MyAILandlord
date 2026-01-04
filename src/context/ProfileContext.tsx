@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { useAppAuth } from './SupabaseAuthContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 import { useApiClient } from '../services/api/client';
 import { log } from '../lib/log';
 
@@ -40,7 +40,7 @@ interface ProfileProviderProps {
 }
 
 export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) => {
-  const { user, isSignedIn, isLoading: authLoading } = useAppAuth();
+  const { user, isSignedIn, isLoading: authLoading } = useUnifiedAuth();
   const apiClient = useApiClient();
 
   // CRITICAL: Use undefined as initial state to distinguish "not checked" from "checked and not found"
