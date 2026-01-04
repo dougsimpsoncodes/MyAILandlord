@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { supabase } from '../lib/supabaseClient';
@@ -66,7 +66,13 @@ const AuthScreen = () => {
         setError(loginError.message);
         return;
       }
-      // Session is automatically set by Supabase
+      // Session is set by Supabase - navigate to Bootstrap which will route to Main
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Bootstrap' as never }],
+        })
+      );
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sign in. Please try again.';
       setError(errorMessage);

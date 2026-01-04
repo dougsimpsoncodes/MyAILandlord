@@ -53,7 +53,14 @@ function BootstrapScreen() {
       return;
     }
 
-    // Only decide once
+    // CRITICAL: Handle sign IN - reset decidedRef so we can navigate to Main
+    if (isSignedIn && user && decidedRef.current) {
+      log.debug('🧭 [Bootstrap] User signed in - allowing re-navigation');
+      decidedRef.current = false;
+      // Fall through to decide() below
+    }
+
+    // Only decide once (per auth state change)
     if (decidedRef.current) return;
 
     // Timeout fallback: if Bootstrap idles for 10 seconds, force to Auth
