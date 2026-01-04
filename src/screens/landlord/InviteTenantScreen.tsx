@@ -50,15 +50,17 @@ const InviteTenantScreen = () => {
 
   const buildInviteUrl = (token: string): string => {
     const isDevelopment = __DEV__;
+    const isWeb = Platform.OS === 'web';
 
-    if (Platform.OS === 'web') {
-      return isDevelopment
-        ? `http://localhost:8081/invite?t=${token}`
-        : `https://myailandlord.app/invite?t=${token}`;
+    if (isWeb) {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+      return `${origin}/invite?t=${token}`;
+    } else if (isDevelopment) {
+      // Development build uses expo-development-client scheme
+      return `exp+myailandlord://expo-development-client/?url=http://192.168.0.14:8081/--/invite?t=${token}`;
     } else {
-      return isDevelopment
-        ? `exp://192.168.0.14:8081/--/invite?t=${token}`
-        : `https://myailandlord.app/invite?t=${token}`;
+      // Production build uses custom scheme
+      return `myailandlord:///invite?t=${token}`;
     }
   };
 
@@ -67,19 +69,18 @@ const InviteTenantScreen = () => {
     try {
       log.info('[InviteTenant] Generating code invite for property:', propertyId);
 
-      // Check session before RPC call
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      log.info('[InviteTenant] Current session:', {
-        hasSession: !!sessionData?.session,
-        userId: sessionData?.session?.user?.id,
-        sessionError: sessionError?.message,
-      });
+      // Wrap RPC call with timeout
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timeout after 15 seconds')), 15000)
+      );
 
-      const { data, error } = await supabase.rpc('create_invite', {
+      const rpcPromise = supabase.rpc('create_invite', {
         p_property_id: propertyId,
         p_delivery_method: 'code',
         p_intended_email: null
       });
+
+      const { data, error } = await Promise.race([rpcPromise, timeoutPromise]) as Awaited<typeof rpcPromise>;
 
       if (error) {
         log.error('[InviteTenant] Error generating invite:', error);
@@ -143,21 +144,44 @@ const InviteTenantScreen = () => {
 
       log.info('[InviteTenant] Email invite token created:', { token, url });
 
-      // Step 2: Send email via Edge Function
+      // Step 2: Send email via Edge Function (with timeout)
       const { data: userData } = await supabase.auth.getUser();
       const landlordName = userData?.user?.user_metadata?.name || 'Your Landlord';
 
-      const edgeResponse = await supabase.functions.invoke('send-invite-email', {
-        body: {
-          recipientEmail: email,
-          propertyName: propertyName,
-          inviteUrl: url,
-          landlordName: landlordName,
-        },
-      });
+      // Wrap Edge Function call with timeout
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Email service timeout')), 10000)
+      );
 
-      if (edgeResponse.error) {
-        log.error('[InviteTenant] Error sending email:', edgeResponse.error);
+      let edgeResponse;
+      try {
+        edgeResponse = await Promise.race([
+          supabase.functions.invoke('send-invite-email', {
+            body: {
+              recipientEmail: email,
+              propertyName: propertyName,
+              inviteUrl: url,
+              landlordName: landlordName,
+            },
+          }),
+          timeoutPromise,
+        ]) as any;
+      } catch (timeoutErr) {
+        log.warn('[InviteTenant] Email service timeout or error:', timeoutErr);
+        showNotification(
+          'Email Service Unavailable',
+          'Email could not be sent. Here\'s the invite link to share manually.',
+          'info'
+        );
+        setInviteToken(token);
+        setInviteUrl(url);
+        setMode('code');
+        return;
+      }
+
+      if (edgeResponse?.error || edgeResponse?.data?.error) {
+        const errorMsg = edgeResponse?.error?.message || edgeResponse?.data?.error || 'Unknown error';
+        log.error('[InviteTenant] Error sending email:', errorMsg);
         showNotification(
           'Email Failed',
           'Invite was created but email failed to send. You can copy the link and send it manually.',

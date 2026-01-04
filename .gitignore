@@ -63,3 +63,5 @@ build
 
 # test artifacts
 coverage/
+test-results/
+.claude/hooks/learning-log.txt

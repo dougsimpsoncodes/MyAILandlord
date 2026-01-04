@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import log from '../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, InventoryItem } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
-import { useAppAuth } from '../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 interface UsePropertyDraftOptions {
   autoSaveDelay?: number; // Delay in milliseconds before auto-save triggers
@@ -43,7 +43,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
     draftId,
   } = options;
 
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const [draftState, setDraftState] = useState<PropertySetupState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

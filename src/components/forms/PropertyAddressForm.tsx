@@ -79,12 +79,12 @@ const Field = ({
     borderRadius: DesignSystem.radius.sm,
     padding: DesignSystem.spacing.md,
     backgroundColor: DesignSystem.colors.background,
-    fontSize: DesignSystem.typography.fontSize.md
+    fontSize: DesignSystem.typography.fontSize.callout
   } as const;
 
   return (
     <View style={{ marginBottom: DesignSystem.spacing.lg }}>
-      <Text style={{ fontSize: DesignSystem.typography.fontSize.sm, fontWeight: DesignSystem.typography.fontWeight.semibold, marginBottom: DesignSystem.spacing.sm }}>
+      <Text style={{ fontSize: DesignSystem.typography.fontSize.subheadline, fontWeight: DesignSystem.typography.fontWeight.semibold, marginBottom: DesignSystem.spacing.sm }}>
         {label}
       </Text>
       <RNTextInput
@@ -102,7 +102,7 @@ const Field = ({
         onSubmitEditing={onSubmitEditing}
         blurOnSubmit={false}
       />
-      {!!error && <Text style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}>{error}</Text>}
+      {!!error && <Text style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}>{error}</Text>}
     </View>
   );
 };

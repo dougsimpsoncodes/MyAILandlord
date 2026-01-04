@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppAuth } from '../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 import { supabase } from '../services/supabase/client';
 import { log } from '../lib/log';
 
@@ -19,11 +19,11 @@ interface OnboardingStatus {
 /**
  * Hook to check if an authenticated user needs to complete onboarding.
  *
- * For landlords: onboarding is complete when they have at least one property
- * For tenants: onboarding is complete when they have at least one property link
+ * Uses the `onboarding_completed` flag in the profiles table (set by atomic RPCs).
+ * This is the single source of truth for onboarding status.
  *
- * This is used to route existing users who created accounts but never
- * completed the property setup flow.
+ * For landlords: onboarding_completed is set to TRUE by signup_and_onboard_landlord() RPC
+ * For tenants: onboarding_completed is set to TRUE by signup_and_accept_invite() RPC
  */
 /**
  * Mark that user has started the onboarding flow.
@@ -31,7 +31,7 @@ interface OnboardingStatus {
  */
 export async function markOnboardingStarted() {
   await AsyncStorage.setItem(ONBOARDING_IN_PROGRESS_KEY, 'true');
-  log.info('✅ Onboarding marked as started');
+  log.debug('✅ Onboarding marked as started');
 }
 
 /**
@@ -40,11 +40,11 @@ export async function markOnboardingStarted() {
  */
 export async function clearOnboardingInProgress() {
   await AsyncStorage.removeItem(ONBOARDING_IN_PROGRESS_KEY);
-  log.info('✅ Onboarding in-progress flag cleared');
+  log.debug('✅ Onboarding in-progress flag cleared');
 }
 
 export function useOnboardingStatus(): OnboardingStatus {
-  const { user, isSignedIn, isLoading: authLoading } = useAppAuth();
+  const { user, isSignedIn, isLoading: authLoading } = useUnifiedAuth();
   const [needsOnboarding, setNeedsOnboarding] = useState(true); // Start as true to prevent flash
   const [isLoading, setIsLoading] = useState(true);
   const [userFirstName, setUserFirstName] = useState<string | null>(null);
@@ -63,10 +63,10 @@ export function useOnboardingStatus(): OnboardingStatus {
     }
 
     try {
-      // First, get the user's profile to check their role
+      // Get the user's profile to check onboarding_completed flag
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('name, role')
+        .select('name, role, onboarding_completed')
         .eq('id', user.id)
         .single();
 
@@ -79,7 +79,7 @@ export function useOnboardingStatus(): OnboardingStatus {
 
       // No role set - needs full onboarding
       if (!profile?.role) {
-        log.info('useOnboardingStatus: User has no role, needs full onboarding');
+        log.debug('useOnboardingStatus: User has no role, needs full onboarding');
         setNeedsOnboarding(true);
         setUserFirstName(profile?.name?.split(' ')[0] || null);
         setUserRole(null);
@@ -93,54 +93,19 @@ export function useOnboardingStatus(): OnboardingStatus {
       setUserRole(profile.role);
 
       // Check if onboarding is currently in progress
-      // If so, keep needsOnboarding true but skip property count check
+      // If so, keep needsOnboarding true
       const onboardingInProgress = await AsyncStorage.getItem(ONBOARDING_IN_PROGRESS_KEY);
       if (onboardingInProgress === 'true') {
-        log.info('useOnboardingStatus: Onboarding in progress, keeping needsOnboarding true');
+        log.debug('useOnboardingStatus: Onboarding in progress, keeping needsOnboarding true');
         setNeedsOnboarding(true);
         setIsLoading(false);
         return;
       }
 
-      if (profile.role === 'landlord') {
-        // Check if landlord has any properties
-        const { count, error: propError } = await supabase
-          .from('properties')
-          .select('id', { count: 'exact', head: true })
-          .eq('landlord_id', user.id);
-
-        if (propError) {
-          log.error('useOnboardingStatus: Error checking properties:', propError);
-          setError(propError.message);
-          setIsLoading(false);
-          return;
-        }
-
-        const hasProperties = (count ?? 0) > 0;
-        log.info('useOnboardingStatus: Landlord property count:', count, 'needsOnboarding:', !hasProperties);
-        setNeedsOnboarding(!hasProperties);
-      } else if (profile.role === 'tenant') {
-        // Check if tenant has any property links
-        const { count, error: linkError } = await supabase
-          .from('tenant_property_links')
-          .select('id', { count: 'exact', head: true })
-          .eq('tenant_id', user.id)
-          .eq('is_active', true);
-
-        if (linkError) {
-          log.error('useOnboardingStatus: Error checking property links:', linkError);
-          setError(linkError.message);
-          setIsLoading(false);
-          return;
-        }
-
-        const hasPropertyLinks = (count ?? 0) > 0;
-        log.info('useOnboardingStatus: Tenant property link count:', count, 'needsOnboarding:', !hasPropertyLinks);
-        setNeedsOnboarding(!hasPropertyLinks);
-      } else {
-        // Unknown role - treat as needs onboarding
-        setNeedsOnboarding(true);
-      }
+      // Use onboarding_completed flag as single source of truth
+      const completed = profile.onboarding_completed ?? false;
+      log.debug('useOnboardingStatus: onboarding_completed =', completed, 'needsOnboarding:', !completed);
+      setNeedsOnboarding(!completed);
     } catch (err) {
       log.error('useOnboardingStatus: Unexpected error:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');

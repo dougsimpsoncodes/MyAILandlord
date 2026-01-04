@@ -22,7 +22,7 @@ export default function OnboardingWelcomeScreen() {
   };
 
   const handleSignIn = () => {
-    navigation.navigate('Auth', { mode: 'login' });
+    navigation.navigate('AuthForm', { initialMode: 'login' });
   };
 
   return (

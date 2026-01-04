@@ -10,7 +10,6 @@ export const haptics = {
    * Light tap - for button presses, selections
    */
   light: () => {
-    console.log('🔔 haptics.light() called, platform:', Platform.OS);
     if (Platform.OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }

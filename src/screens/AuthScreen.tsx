@@ -8,18 +8,19 @@ import {
   TextInput,
   Platform,
   Modal,
-  KeyboardAvoidingView,
   ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { DesignSystem } from '../theme/DesignSystem';
 
-type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Auth'>;
+type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AuthForm'>;
+type AuthScreenRouteProp = RouteProp<AuthStackParamList, 'AuthForm'>;
 
 const OAUTH_ENABLED = process.env.EXPO_PUBLIC_OAUTH_ENABLED === 'true';
 const AUTO_LOGIN_AFTER_SIGNUP = process.env.EXPO_PUBLIC_SIGNUP_AUTOLOGIN === '1';
@@ -28,7 +29,11 @@ type AuthMode = 'login' | 'signup';
 
 const AuthScreen = () => {
   const navigation = useNavigation<AuthScreenNavigationProp>();
-  const [mode, setMode] = useState<AuthMode>('login');
+  const route = useRoute<AuthScreenRouteProp>();
+
+  // Get initial mode from route params, default to 'login'
+  const initialMode = (route.params as any)?.initialMode || 'login';
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
@@ -52,7 +57,7 @@ const AuthScreen = () => {
       setLoading(true);
       setError(null);
 
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
@@ -61,7 +66,13 @@ const AuthScreen = () => {
         setError(loginError.message);
         return;
       }
-      // Session is automatically set by Supabase
+      // Session is set by Supabase - navigate to Bootstrap which will route to Main
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Bootstrap' as never }],
+        })
+      );
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to sign in. Please try again.';
       setError(errorMessage);
@@ -205,10 +216,11 @@ const AuthScreen = () => {
         </View>
       </Modal>
 
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -382,7 +394,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },

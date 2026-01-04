@@ -10,8 +10,8 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';
@@ -33,8 +33,8 @@ interface Conversation {
 const LandlordCommunicationScreen = () => {
   const navigation = useNavigation();
   const apiClient = useApiClient();
-  const { user } = useAppAuth();
-  const { refreshUnreadCount } = useUnreadMessages();
+  const { user } = useUnifiedAuth();
+  const { refreshNotificationCounts } = useAppState();
   const { handleApiError } = useApiErrorHandling();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -50,14 +50,14 @@ const LandlordCommunicationScreen = () => {
         if (apiClient) {
           try {
             await apiClient.markMessagesAsRead();
-            await refreshUnreadCount();
+            await refreshNotificationCounts();
           } catch (error) {
             log.error('Error marking messages as read', { error: String(error) });
           }
         }
       };
       markAsRead();
-    }, [apiClient, refreshUnreadCount])
+    }, [apiClient, refreshNotificationCounts])
   );
 
   // Reload conversations when screen gets focus (like tenant screen)

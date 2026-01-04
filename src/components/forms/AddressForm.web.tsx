@@ -27,12 +27,12 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
     borderRadius: DesignSystem.radius.sm as number,
     padding: DesignSystem.spacing.md as number,
     background: DesignSystem.colors.background,
-    fontSize: DesignSystem.typography.fontSize.md as number,
+    fontSize: DesignSystem.typography.fontSize.callout as number,
     outline: 'none'
   };
 
   const labelStyle = {
-    fontSize: DesignSystem.typography.fontSize.sm,
+    fontSize: DesignSystem.typography.fontSize.subheadline,
     fontWeight: DesignSystem.typography.fontWeight.semibold as any,
     marginBottom: DesignSystem.spacing.sm
   };
@@ -56,7 +56,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
           placeholder=""
           inputMode="text"
         />
-        {errors.line1 ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}> {errors.line1} </div> : null}
+        {errors.line1 ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}> {errors.line1} </div> : null}
       </div>
 
       <div style={fieldWrap as any}>
@@ -72,7 +72,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
           placeholder=""
           inputMode="text"
         />
-        {errors.line2 ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}> {errors.line2} </div> : null}
+        {errors.line2 ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}> {errors.line2} </div> : null}
       </div>
 
       <div style={{ ...(row as any) }}>
@@ -90,7 +90,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
               placeholder=""
               inputMode="text"
             />
-            {errors.city ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}> {errors.city} </div> : null}
+            {errors.city ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}> {errors.city} </div> : null}
           </div>
         </div>
 
@@ -108,7 +108,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
               placeholder=""
               inputMode="text"
             />
-            {errors.state ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}> {errors.state} </div> : null}
+            {errors.state ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}> {errors.state} </div> : null}
           </div>
         </div>
       </div>
@@ -128,7 +128,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
               placeholder=""
               inputMode="numeric"
             />
-            {errors.zipCode ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}> {errors.zipCode} </div> : null}
+            {errors.zipCode ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}> {errors.zipCode} </div> : null}
           </div>
         </div>
 
@@ -146,7 +146,7 @@ export const AddressForm: React.FC<AddressFormProps> = ({ value, onChange, error
               placeholder=""
               inputMode="text"
             />
-            {errors.country ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.sm }}> {errors.country} </div> : null}
+            {errors.country ? <div style={{ color: DesignSystem.colors.danger, marginTop: 6, fontSize: DesignSystem.typography.fontSize.subheadline }}> {errors.country} </div> : null}
           </div>
         </div>
       </div>

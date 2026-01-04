@@ -64,6 +64,24 @@ This directory contains specialized AI sub agents designed to enhance developmen
 
 **When Used:** For UI components, navigation, state management, and mobile-specific features
 
+### 🚀 expo-expert
+**Purpose:** World-class Expo specialist for development, testing, and deployment
+- Development builds vs Expo Go guidance
+- EAS Build, Update, Submit workflows
+- Metro bundler configuration and troubleshooting
+- Physical device and simulator deployment (iOS 17+ `xcrun devicectl`)
+- Prebuild, native modules, and config plugins
+- SDK 54 specific knowledge (New Architecture, XCFrameworks)
+- Common error patterns and solutions
+
+**When Used:** AUTOMATICALLY for ANY Expo/Metro related tasks including:
+- Starting dev server or Metro bundler
+- Installing apps on simulators or physical devices
+- Building with EAS or locally
+- Troubleshooting connection issues
+- Device deployment problems
+- Prebuild and native module issues
+
 ### 🗄️ supabase-specialist
 **Purpose:** Backend operations with Supabase
 - Database schema and RLS policy design
@@ -115,6 +133,9 @@ This directory contains specialized AI sub agents designed to enhance developmen
 > Use the typescript-enforcer to fix these type errors
 > Have the test-automation-specialist add tests for this feature
 > Get the git-security-guardian to scan before committing
+> Have the expo-expert install the app on my iPhone
+> Use expo-expert to troubleshoot this Metro connection issue
+> Get expo-expert to help with EAS build configuration
 ```
 
 ### Automatic Delegation
@@ -129,6 +150,13 @@ Sub agents are automatically invoked based on context:
 - Type errors → typescript-enforcer fixes issues
 - Missing tests → test-automation-specialist adds coverage
 - Git commits → git-security-guardian scans for secrets
+- **Expo/Metro operations → expo-expert handles automatically:**
+  - `npx expo start`, `npx expo run:ios/android`
+  - Device installation (`xcrun devicectl`, `xcrun simctl`)
+  - EAS commands (`eas build`, `eas update`, `eas submit`)
+  - Metro bundler issues, connection problems
+  - "Test on device", "install on phone", "run on simulator"
+  - Prebuild, native module, or build errors
 
 ## Development Workflow
 
@@ -139,7 +167,8 @@ Sub agents are automatically invoked based on context:
 5. **Type Safety** → typescript-enforcer validates and fixes
 6. **Security Review** → security-auditor scans for vulnerabilities
 7. **Testing** → test-automation-specialist ensures coverage
-8. **Commit** → git-security-guardian prevents secret exposure
+8. **Device Testing** → expo-expert handles Metro, builds, and device deployment
+9. **Commit** → git-security-guardian prevents secret exposure
 
 ## Security Benefits
 

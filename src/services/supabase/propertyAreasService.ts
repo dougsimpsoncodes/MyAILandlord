@@ -228,7 +228,7 @@ export const propertyAreasService = {
           try {
             const urls = await regeneratePhotoUrls(area.photoPaths);
             area.photos = urls;
-            log.info('Regenerated photo URLs for area', {
+            log.debug('Regenerated photo URLs for area', {
               areaId: area.id,
               areaName: area.name,
               pathCount: area.photoPaths.length,
@@ -243,7 +243,7 @@ export const propertyAreasService = {
         }
       }
 
-      log.info('Fetched property areas with assets', {
+      log.debug('Fetched property areas with assets', {
         propertyId,
         areaCount: areas.length,
         assetCount: assetsData?.length || 0
@@ -275,7 +275,7 @@ export const propertyAreasService = {
       }
 
       if (areas.length === 0) {
-        log.info('No areas to save', { propertyId });
+        log.debug('No areas to save', { propertyId });
         return;
       }
 
@@ -323,7 +323,7 @@ export const propertyAreasService = {
         }
       }
 
-      log.info('Saved property areas and assets', {
+      log.debug('Saved property areas and assets', {
         propertyId,
         areaCount: areas.length,
         assetCount: allAssets.length

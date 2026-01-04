@@ -70,6 +70,7 @@ const PropertyAttributesScreen = () => {
     draftState,
     updatePropertyData,
     saveDraft,
+    createNewDraft,
   } = usePropertyDraft({
     enableAutoSave: false,
   });
@@ -102,8 +103,6 @@ const PropertyAttributesScreen = () => {
   };
 
   const handleContinue = async () => {
-    console.log('🔍 PropertyAttributesScreen - handleContinue starting', { isOnboarding, selectedType, bedrooms, bathrooms });
-
     setIsValidating(true);
     const isTypeValid = validateType();
     setIsValidating(false);
@@ -126,14 +125,18 @@ const PropertyAttributesScreen = () => {
         photos: draftState?.propertyData?.photos || [],
       };
 
-      console.log('🔍 PropertyAttributesScreen - Property data created:', { name: propertyData.name, type: propertyData.type });
-
       try {
-        await updatePropertyData(propertyData);
-        await saveDraft();
-        console.log('🔍 PropertyAttributesScreen - Draft saved successfully');
-      } catch (error) {
-        console.error('🔍 PropertyAttributesScreen - Error saving property draft:', error);
+        // Create draft if it doesn't exist yet (for non-onboarding flow)
+        if (!draftState && !isOnboarding) {
+          createNewDraft(propertyData);
+          await saveDraft();
+        } else if (draftState) {
+          // Update existing draft
+          await updatePropertyData(propertyData);
+          await saveDraft();
+        }
+        // During onboarding, skip draft save - data is passed via navigation
+      } catch {
         // Continue anyway - navigation can work without draft
       }
 
@@ -144,16 +147,8 @@ const PropertyAttributesScreen = () => {
         firstName,
       };
 
-      console.log('🔍 PropertyAttributesScreen - About to navigate', {
-        isOnboarding,
-        navigateTo: isOnboarding ? 'PropertyAreas' : 'PropertyPhotos',
-        params: navParams
-      });
-
       if (isOnboarding) {
-        console.log('🔍 PropertyAttributesScreen - Calling navigation.navigate to PropertyAreas');
         (navigation as any).navigate('PropertyAreas', navParams);
-        console.log('🔍 PropertyAttributesScreen - Navigation call completed');
       } else {
         navigation.navigate('PropertyPhotos', { propertyData });
       }
@@ -176,8 +171,8 @@ const PropertyAttributesScreen = () => {
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"
-      scrollable={false}
-      keyboardAware={false}
+      scrollable={true}
+      keyboardAware={true}
       bottomContent={
         <Button
           testID="continue-button"
@@ -301,22 +296,22 @@ const PropertyAttributesScreen = () => {
 const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 4,
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#343A40',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   typeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   typeOption: {
     flex: 1,
@@ -348,7 +343,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,

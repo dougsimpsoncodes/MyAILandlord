@@ -13,8 +13,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
@@ -40,9 +40,9 @@ interface Announcement {
 
 const CommunicationHubScreen = () => {
   const navigation = useNavigation<CommunicationHubNavigationProp>();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
-  const { refreshUnreadCount } = useUnreadMessages();
+  const { refreshNotificationCounts } = useAppState();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [activeTab, setActiveTab] = useState<'messages' | 'announcements'>('messages');
@@ -61,14 +61,14 @@ const CommunicationHubScreen = () => {
         if (apiClient) {
           try {
             await apiClient.markMessagesAsRead();
-            await refreshUnreadCount();
+            await refreshNotificationCounts();
           } catch (error) {
             log.error('Error marking messages as read', { error: String(error) });
           }
         }
       };
       markAsRead();
-    }, [apiClient, refreshUnreadCount])
+    }, [apiClient, refreshNotificationCounts])
   );
 
   // Load messages and property info on mount

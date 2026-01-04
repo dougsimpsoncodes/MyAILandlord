@@ -4,7 +4,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import Button from '../../components/shared/Button';
@@ -38,7 +38,7 @@ interface LinkedProperty {
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
   const pendingInviteChecked = useRef(false);
 
@@ -113,13 +113,9 @@ const HomeScreen = () => {
       if (tenantProperties.length > 0) {
         // Use the first active property (most apps link tenant to one property)
         const firstLink = tenantProperties[0];
-        log.info('DEBUG: firstLink data', { firstLink });
         const property = firstLink.properties as any;
-        log.info('DEBUG: property object', { property, hasProperty: !!property });
 
         if (property) {
-          log.info('DEBUG: Setting linked property', { propertyId: property.id, propertyName: property.name });
-
           // Format address from address_jsonb if plain address is empty
           let formattedAddress = property.address || '';
           if (!formattedAddress && property.address_jsonb) {
@@ -138,8 +134,6 @@ const HomeScreen = () => {
             emergencyContact: property.emergency_contact || undefined,
             emergencyPhone: property.emergency_phone || undefined,
           });
-        } else {
-          log.error('DEBUG: property object is null/undefined!');
         }
       } else {
         setLinkedProperty(null);
@@ -173,6 +167,17 @@ const HomeScreen = () => {
       loadData();
     }, [loadData])
   );
+
+  // Fix race condition: trigger loadData when apiClient becomes available
+  // useFocusEffect only runs on focus, but apiClient might be null initially
+  useEffect(() => {
+    if (apiClient) {
+      log.info('[HomeScreen] apiClient now available, loading data');
+      loadData();
+    } else {
+      log.info('[HomeScreen] apiClient is null, waiting...');
+    }
+  }, [apiClient, loadData]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

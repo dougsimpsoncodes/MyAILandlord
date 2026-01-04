@@ -12,16 +12,17 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 import { supabase } from '../../services/supabase/client';
 
 type OnboardingStackParamList = {
   OnboardingWelcome: undefined;
-  OnboardingName: undefined;
-  OnboardingAccount: { firstName: string };
+  OnboardingName: { fromInvite?: boolean };
+  OnboardingAccount: { firstName: string; fromInvite?: boolean };
   OnboardingRole: { firstName: string; userId: string };
+  PropertyInviteAccept: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'OnboardingAccount'>;
@@ -71,7 +72,7 @@ const strengthColors: Record<PasswordStrength, string> = {
 export default function OnboardingAccountScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<AccountRouteProp>();
-  const { firstName } = route.params;
+  const { firstName, fromInvite = false } = route.params;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -124,11 +125,19 @@ export default function OnboardingAccountScreen() {
       }
 
       if (data.user) {
-        // Navigate to role selection
-        navigation.navigate('OnboardingRole', {
-          firstName,
-          userId: data.user.id
-        });
+        if (fromInvite) {
+          // User came from tenant invite - skip role selection (they're obviously tenants)
+          // Don't navigate anywhere - let RootNavigator bootstrap handle it
+          // RootNavigator detects pending invite + signed in user → PropertyInviteAccept
+          // This avoids race conditions with auth state changes
+          return;
+        } else {
+          // Normal flow - navigate to role selection
+          navigation.navigate('OnboardingRole', {
+            firstName,
+            userId: data.user.id
+          });
+        }
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');
@@ -140,9 +149,9 @@ export default function OnboardingAccountScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollViewRef}
@@ -352,8 +361,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.lg, // Normal padding
+    paddingBottom: spacing.lg,
   },
   content: {
     paddingHorizontal: spacing.lg,
