@@ -74,11 +74,11 @@ const EditProfileScreen = () => {
       // Refresh UnifiedAuth (ProfileScreen uses this) and ProfileContext
       await refreshUser();
       await refreshProfile();
+      setIsSaving(false);
       showNotification('Success', 'Profile updated successfully', 'default', () => navigation.goBack());
     } catch (error) {
-      showNotification('Error', 'Failed to update profile', 'destructive');
-    } finally {
       setIsSaving(false);
+      showNotification('Error', 'Failed to update profile', 'destructive');
     }
   };
 

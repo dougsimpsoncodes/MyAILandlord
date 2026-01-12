@@ -989,6 +989,18 @@ const PropertyAreasScreen = () => {
 
           const currentPropertyData = draftState.propertyData;
 
+          // Check if property was already created (e.g., user clicked back and Continue again)
+          const existingPropertyId = propertyId || (currentPropertyData as any).propertyId;
+          if (existingPropertyId) {
+            // Property already exists - navigate to PropertyAssets without creating again
+            console.log('Property already exists, skipping creation', { existingPropertyId });
+            navigation.navigate('PropertyAssets', {
+              draftId: draftState.id,
+              propertyId: existingPropertyId,
+            });
+            return;
+          }
+
           // Create the property first
           const propertyPayload = {
             name: currentPropertyData.name,

@@ -350,7 +350,7 @@ const PropertyAssetsListScreen = () => {
     refetchPropertyAreas();
 
     return unsubscribe;
-  }, [navigation, effectiveDraftId, updateAreas]);
+  }, [navigation, effectiveDraftId, updateAreas, routePropertyId]);
 
   // Handle new asset from AddAssetScreen navigation (legacy route params method)
   useEffect(() => {
