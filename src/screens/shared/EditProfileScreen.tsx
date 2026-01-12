@@ -12,15 +12,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useProfile } from '../../context/ProfileContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 const EditProfileScreen = () => {
   const navigation = useNavigation();
-  const { user } = useUnifiedAuth();
-  const { updateProfile } = useAppAuth();
+  const { user, refreshUser, updateProfile } = useUnifiedAuth();
+  const { refreshProfile, updateProfileCache } = useProfile();
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');
@@ -69,6 +69,11 @@ const EditProfileScreen = () => {
         name: name.trim(),
         phone: phone.trim() || undefined
       });
+      // Update local cache immediately for instant UI update
+      updateProfileCache({ name: name.trim() });
+      // Refresh UnifiedAuth (ProfileScreen uses this) and ProfileContext
+      await refreshUser();
+      await refreshProfile();
       showNotification('Success', 'Profile updated successfully', 'default', () => navigation.goBack());
     } catch (error) {
       showNotification('Error', 'Failed to update profile', 'destructive');

@@ -228,6 +228,9 @@ export const SupabaseAuthProvider: React.FC<SupabaseAuthProviderProps> = ({ chil
       throw error;
     }
 
+    // Refresh the session to get updated user metadata
+    await supabase.auth.refreshSession();
+
     // Update local user state immediately
     if (data.name && user) {
       setUser({ ...user, name: data.name });

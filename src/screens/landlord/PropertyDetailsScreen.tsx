@@ -87,8 +87,9 @@ const PropertyDetailsScreen = () => {
   );
 
   const handleEditProperty = () => {
-    // Navigate to edit property flow (reuse AddProperty with existing data)
-    Alert.alert('Edit Property', 'Property editing will be available soon.');
+    if (!property) return;
+    // Navigate to edit property flow with existing property ID
+    navigation.navigate('PropertyBasics', { propertyId: property.id });
   };
 
   const handleViewAreas = () => {

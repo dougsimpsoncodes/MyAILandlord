@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
@@ -32,10 +32,17 @@ interface MenuItem {
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const navigation = useNavigation<any>();
-  const { user, signOut } = useUnifiedAuth();
+  const { user, signOut, refreshUser } = useUnifiedAuth();
   const role = route?.params?.userRole || user?.role;
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Refresh user data when screen comes into focus (e.g., after editing profile)
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+    }, [refreshUser])
+  );
 
   const isLandlord = role === 'landlord';
   const accentColor = isLandlord ? '#3498DB' : '#2ECC71';

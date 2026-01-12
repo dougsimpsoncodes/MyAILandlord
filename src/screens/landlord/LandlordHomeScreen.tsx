@@ -14,6 +14,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import { PropertyImage } from '../../components/shared/PropertyImage';
 import { haptics } from '../../lib/haptics';
 import { formatAddress } from '../../utils/helpers';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 
 type LandlordHomeNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Home'>;
 
@@ -34,14 +35,16 @@ interface PropertySummary {
   address: string;
   type: string;
   issueCount: number;
+  tenantCount: number;
 }
 
 const LandlordHomeScreen = () => {
   const navigation = useNavigation<LandlordHomeNavigationProp>();
   const { user } = useUnifiedAuth();
   const api = useApiClient();
+  const { supabase } = useSupabaseWithAuth();
   const { drafts, isLoading: isDraftsLoading } = usePropertyDrafts();
-  const { unreadCount } = useAppState();
+  const { unreadMessagesCount } = useAppState();
 
   const [selectedProperty, setSelectedProperty] = useState<string>('all');
   const [properties, setProperties] = useState<PropertySummary[]>([]);
@@ -58,11 +61,31 @@ const LandlordHomeScreen = () => {
 
   const loadData = useCallback(async () => {
     try {
-      if (!api) return;
+      if (!api || !supabase) return;
 
       // Load properties and maintenance requests together
       const userProperties = await api.getUserProperties();
       const maintenanceData = await api.getMaintenanceRequests({ limit: 20 });
+
+      // Get tenant counts for all properties
+      const propertyIds = userProperties.map((p: any) => p.id);
+      let tenantCounts: Record<string, number> = {};
+
+      if (propertyIds.length > 0) {
+        const { data: tenantLinks, error: tenantError } = await supabase
+          .from('tenant_property_links')
+          .select('property_id')
+          .in('property_id', propertyIds)
+          .eq('is_active', true);
+
+        if (!tenantError && tenantLinks) {
+          // Count tenants per property
+          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: any) => {
+            acc[link.property_id] = (acc[link.property_id] || 0) + 1;
+            return acc;
+          }, {});
+        }
+      }
 
       // Map API data to UI format
       const mappedRequests: MaintenanceRequest[] = maintenanceData.map((req: any) => {
@@ -101,13 +124,14 @@ const LandlordHomeScreen = () => {
         return originalReq?.status !== 'completed' && originalReq?.status !== 'cancelled';
       });
 
-      // Create property summaries with ACTIVE issue counts only
+      // Create property summaries with ACTIVE issue counts and tenant counts
       const summaries: PropertySummary[] = userProperties.map((p: any) => ({
         id: p.id,
         name: p.name,
         address: p.address,
         type: p.property_type || 'house',
         issueCount: filteredActiveRequests.filter(r => r.propertyId === p.id).length,
+        tenantCount: tenantCounts[p.id] || 0,
       }));
       setProperties(summaries);
       setActiveRequests(filteredActiveRequests);
@@ -116,7 +140,7 @@ const LandlordHomeScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [api]);
+  }, [api, supabase]);
 
   // Load data on mount and when screen comes into focus
   useFocusEffect(
@@ -342,7 +366,9 @@ const LandlordHomeScreen = () => {
             />
             <View style={styles.propertyInfo}>
               <Text style={styles.propertyName}>{property.name}</Text>
-              <Text style={styles.propertyAddress}>{formatAddress(property.address)}</Text>
+              <Text style={styles.propertyAddress}>
+                {formatAddress(property.address)} • {property.tenantCount} {property.tenantCount === 1 ? 'Tenant' : 'Tenants'}
+              </Text>
             </View>
             <View style={[
               styles.statusDot,
@@ -402,30 +428,30 @@ const LandlordHomeScreen = () => {
         {/* Messages Section */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Messages ({unreadCount})</Text>
+            <Text style={styles.sectionTitle}>Messages ({unreadMessagesCount})</Text>
             <TouchableOpacity onPress={() => navigation.getParent()?.navigate('LandlordMessages')}>
               <Text style={styles.sectionLink}>View All</Text>
             </TouchableOpacity>
           </View>
 
         <TouchableOpacity
-          style={[styles.emptyCard, unreadCount > 0 && styles.highlightCard]}
+          style={[styles.emptyCard, unreadMessagesCount > 0 && styles.highlightCard]}
           onPress={() => navigation.getParent()?.navigate('LandlordMessages')}
           activeOpacity={0.7}
         >
-          <View style={unreadCount > 0 ? styles.badgeContainer : undefined}>
-            <Ionicons name="chatbubbles-outline" size={40} color={unreadCount > 0 ? '#2ECC71' : '#3498DB'} />
-            {unreadCount > 0 && (
+          <View style={unreadMessagesCount > 0 ? styles.badgeContainer : undefined}>
+            <Ionicons name="chatbubbles-outline" size={40} color={unreadMessagesCount > 0 ? '#2ECC71' : '#3498DB'} />
+            {unreadMessagesCount > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadCount}</Text>
+                <Text style={styles.badgeText}>{unreadMessagesCount}</Text>
               </View>
             )}
           </View>
           <Text style={styles.emptyCardTitle}>
-            {unreadCount > 0 ? `${unreadCount} New Message${unreadCount > 1 ? 's' : ''}` : 'No New Messages'}
+            {unreadMessagesCount > 0 ? `${unreadMessagesCount} New Message${unreadMessagesCount > 1 ? 's' : ''}` : 'No New Messages'}
           </Text>
           <Text style={styles.emptyCardSubtitle}>
-            {unreadCount > 0 ? 'Tap to view and respond' : 'View and respond to tenant communications'}
+            {unreadMessagesCount > 0 ? 'Tap to view and respond' : 'View and respond to tenant communications'}
           </Text>
         </TouchableOpacity>
         </View>

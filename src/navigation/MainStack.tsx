@@ -149,7 +149,7 @@ export type LandlordStackParamList = {
   PropertyDetails: { propertyId: string };
   AddProperty: { draftId?: string } | undefined;
   // New flow screens - use draftId only (no object params)
-  PropertyBasics: { draftId?: string; isOnboarding?: boolean; firstName?: string } | undefined;
+  PropertyBasics: { draftId?: string; propertyId?: string; isOnboarding?: boolean; firstName?: string } | undefined;
   PropertyAttributes: { draftId: string; isOnboarding?: boolean; firstName?: string };
   PropertyAreas: { draftId: string; propertyId?: string; isOnboarding?: boolean; firstName?: string };
   // draftId is required for new properties, propertyId for existing properties (at least one required)

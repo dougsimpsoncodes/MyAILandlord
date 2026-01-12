@@ -59,6 +59,7 @@ interface UnifiedAuthContextValue {
   signOut: (options?: { scope?: 'global' | 'local' | 'others' }) => Promise<void>;
   refreshUser: () => Promise<void>;
   updateRole: (role: 'landlord' | 'tenant') => Promise<void>;
+  updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
 
   // Pending invite state (for tenant invite flow)
   processingInvite: boolean;
@@ -168,11 +169,26 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     setError(null);
 
     try {
-      const mappedUser = await mapToUnifiedUser(session.user);
+      // Fetch fresh user data from server (not cached session)
+      // This ensures we get the latest user_metadata after profile updates
+      const { data: { user: freshUser }, error: userError } = await supabase.auth.getUser();
+
+      log.debug('UnifiedAuth: getUser() response', {
+        hasUser: !!freshUser,
+        nameFromMetadata: freshUser?.user_metadata?.name,
+        email: freshUser?.email,
+      });
+
+      if (userError || !freshUser) {
+        throw userError || new Error('Failed to fetch user');
+      }
+
+      const mappedUser = await mapToUnifiedUser(freshUser);
       setUser(mappedUser);
       log.debug('UnifiedAuth: User refreshed', {
         userId: mappedUser?.id,
         role: mappedUser?.role,
+        name: mappedUser?.name,
         onboardingComplete: mappedUser?.onboarding_completed
       });
     } catch (err) {
@@ -217,6 +233,44 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
       throw err;
     }
   }, [user, refreshUser]);
+
+  /**
+   * Update user profile (name, phone)
+   */
+  const updateProfile = useCallback(async (data: { name?: string; phone?: string }) => {
+    if (!user) {
+      throw new Error('No user to update');
+    }
+
+    try {
+      // Update auth user metadata
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          name: data.name,
+          full_name: data.name,
+          phone: data.phone,
+        },
+      });
+
+      if (error) {
+        log.error('UnifiedAuth: Failed to update profile:', error);
+        throw error;
+      }
+
+      // Optimistic update to local state
+      if (data.name) {
+        setUser(prev => prev ? { ...prev, name: data.name! } : null);
+      }
+
+      // Refresh session to propagate changes
+      await supabase.auth.refreshSession();
+
+      log.debug('UnifiedAuth: Profile updated', { name: data.name });
+    } catch (err) {
+      log.error('UnifiedAuth: Failed to update profile:', err);
+      throw err;
+    }
+  }, [user]);
 
   /**
    * Sign out
@@ -329,6 +383,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
           event,
           hasSession: !!newSession,
           userId: newSession?.user?.id,
+          userName: newSession?.user?.user_metadata?.name,
         });
 
         setSession(newSession);
@@ -356,6 +411,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     signOut,
     refreshUser,
     updateRole,
+    updateProfile,
     processingInvite,
     redirect,
     clearRedirect,
