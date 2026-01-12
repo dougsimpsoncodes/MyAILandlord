@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,7 +15,7 @@ import Card from '../../components/shared/Card';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { PropertyImage } from '../../components/shared/PropertyImage';
 import { DesignSystem } from '../../theme/DesignSystem';
-import { PropertyArea, PropertyData } from '../../types/property';
+import { PropertyArea } from '../../types/property';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import log from '../../lib/log';
@@ -23,31 +24,66 @@ import { formatAddress } from '../../utils/helpers';
 type PropertyDetailsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyDetails'>;
 type PropertyDetailsRouteProp = RouteProp<LandlordStackParamList, 'PropertyDetails'>;
 
+interface PropertyInfo {
+  id: string;
+  name: string;
+  address: string;
+  type: string;
+}
+
 const PropertyDetailsScreen = () => {
   const navigation = useNavigation<PropertyDetailsNavigationProp>();
   const route = useRoute<PropertyDetailsRouteProp>();
-  const { property } = route.params;
+  const { propertyId } = route.params;
   const { supabase } = useSupabaseWithAuth();
 
-  // State for areas loaded from database
+  // State for property data loaded from database
+  const [property, setProperty] = useState<PropertyInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [areas, setAreas] = useState<PropertyArea[]>([]);
 
-  // Load areas from database when screen comes into focus
-  const loadAreasFromDatabase = useCallback(async () => {
+  // Load property and areas from database when screen comes into focus
+  const loadPropertyData = useCallback(async () => {
     try {
-      log.debug('Loading property areas from database', { propertyId: property.id });
-      const loadedAreas = await propertyAreasService.getAreasWithAssets(property.id, supabase);
+      setIsLoading(true);
+      log.debug('Loading property from database', { propertyId });
+
+      // Fetch property details
+      const { data: propertyData, error: propertyError } = await supabase
+        .from('properties')
+        .select('id, name, address_jsonb, property_type')
+        .eq('id', propertyId)
+        .single();
+
+      if (propertyError) throw propertyError;
+
+      // Format address from JSONB
+      const addr = propertyData.address_jsonb || {};
+      const addressString = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim();
+
+      setProperty({
+        id: propertyData.id,
+        name: propertyData.name,
+        address: addressString,
+        type: propertyData.property_type || 'house',
+      });
+
+      // Fetch areas
+      const loadedAreas = await propertyAreasService.getAreasWithAssets(propertyId, supabase);
       setAreas(loadedAreas);
     } catch (error) {
-      log.error('Failed to load property areas', { error: String(error) });
+      log.error('Failed to load property', { error: String(error) });
+      Alert.alert('Error', 'Failed to load property details');
+    } finally {
+      setIsLoading(false);
     }
-  }, [property.id, supabase]);
+  }, [propertyId, supabase]);
 
-  // Reload areas whenever screen comes into focus
+  // Reload data whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadAreasFromDatabase();
-    }, [loadAreasFromDatabase])
+      loadPropertyData();
+    }, [loadPropertyData])
   );
 
   const handleEditProperty = () => {
@@ -56,32 +92,18 @@ const PropertyDetailsScreen = () => {
   };
 
   const handleViewAreas = () => {
-    // Create a minimal PropertyData from the property object
-    const propertyData: PropertyData = {
-      name: property.name,
-      address: {
-        line1: property.address,
-        city: '',
-        state: '',
-        zipCode: ''
-      },
-      type: property.type as PropertyData['type'],
-      unit: '',
-      bedrooms: 0,
-      bathrooms: 0,
-      photos: []
-    };
+    if (!property) return;
 
-    // For existing properties, go directly to Photos & Assets screen
-    // (not the area selection screen - that's only for initial setup)
+    // For existing properties, navigate with propertyId only
+    // PropertyAssets will load areas from database
     navigation.navigate('PropertyAssets', {
-      propertyData,
-      areas, // Pass areas loaded from database
-      propertyId: property.id // Pass property ID for database operations
+      propertyId: property.id,
     });
   };
 
   const handleAddTenant = () => {
+    if (!property) return;
+
     navigation.navigate('InviteTenant', {
       propertyId: property.id,
       propertyName: property.name,
@@ -92,6 +114,23 @@ const PropertyDetailsScreen = () => {
     // Navigate to the Maintenance tab (LandlordRequests)
     navigation.getParent()?.navigate('LandlordRequests');
   };
+
+  // Loading state
+  if (isLoading || !property) {
+    return (
+      <ScreenContainer
+        title="Property Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={DesignSystem.colors.primary} />
+          <Text style={styles.loadingText}>Loading property...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer
@@ -179,6 +218,16 @@ const PropertyDetailsScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: DesignSystem.colors.textSecondary,
+  },
   editText: {
     fontSize: 16,
     color: '#3498DB',

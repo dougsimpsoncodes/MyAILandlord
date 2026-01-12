@@ -4,16 +4,19 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
+import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import Button from '../../components/shared/Button';
 import PropertyAddressFormSimplified from '../../components/forms/PropertyAddressFormSimplified';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import log from '../../lib/log';
 
 // Address type for the form
 type Address = {
@@ -27,15 +30,19 @@ type Address = {
 };
 
 type PropertyBasicsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyBasics'>;
+type PropertyBasicsRouteProp = RouteProp<LandlordStackParamList, 'PropertyBasics'>;
 
 const PropertyBasicsScreen = () => {
   const navigation = useNavigation<PropertyBasicsNavigationProp>();
-  const route = useRoute();
+  const route = useRoute<PropertyBasicsRouteProp>();
   const responsive = useResponsive();
+  const { user } = useUnifiedAuth();
 
-  // Check if we're in onboarding mode
-  const isOnboarding = (route.params as any)?.isOnboarding || false;
-  
+  // Get params from route (all optional)
+  const routeDraftId = route.params?.draftId;
+  const isOnboarding = route.params?.isOnboarding || false;
+  const firstName = route.params?.firstName;
+
   // Form state
   const [addressData, setAddressData] = useState<Address>({
     propertyName: '',
@@ -50,15 +57,14 @@ const PropertyBasicsScreen = () => {
   // UI state
   const [isValidating, setIsValidating] = useState(false);
 
-  // Draft management (disable auto-save for better performance, we handle it manually)
+  // Draft management - load existing draft if draftId provided
   const {
     draftState,
     updatePropertyData,
-    updateCurrentStep,
-    isLoading: isDraftLoading,
-    lastSaved,
+    createNewDraft,
     saveDraft,
   } = usePropertyDraft({
+    draftId: routeDraftId, // Auto-loads draft if ID provided
     enableAutoSave: false, // Disable auto-save for better typing performance
   });
 
@@ -86,7 +92,7 @@ const PropertyBasicsScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftState?.propertyData]); // Only react to propertyData changes, and only if form is empty
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setIsValidating(true);
 
     // Basic validation - check required address fields
@@ -96,20 +102,61 @@ const PropertyBasicsScreen = () => {
                              addressData.state.trim() &&
                              addressData.postalCode.trim();
 
-    setIsValidating(false);
-
-    if (hasRequiredFields) {
-      // Navigate to Property Attributes screen (type, bedrooms, bathrooms)
-      navigation.navigate('PropertyAttributes', {
-        addressData,
-        isOnboarding,
-        firstName: (route.params as any)?.firstName,
-      });
-    } else {
+    if (!hasRequiredFields) {
+      setIsValidating(false);
       Alert.alert(
         'Please Complete Required Fields',
         'Make sure all required address information is filled out correctly.'
       );
+      return;
+    }
+
+    try {
+      // Build PropertyData from form
+      const propertyDataFromForm = {
+        name: addressData.propertyName.trim(),
+        address: {
+          line1: addressData.addressLine1.trim(),
+          line2: addressData.addressLine2?.trim() || '',
+          city: addressData.city.trim(),
+          state: addressData.state.trim(),
+          zipCode: addressData.postalCode.trim(),
+          country: addressData.country || 'US',
+        },
+      };
+
+      let targetDraftId: string;
+
+      if (draftState) {
+        // Update existing draft
+        log.debug('PropertyBasics: Updating existing draft', { draftId: draftState.id });
+        updatePropertyData(propertyDataFromForm);
+        await saveDraft();
+        targetDraftId = draftState.id;
+      } else {
+        // Create new draft and save immediately to storage
+        log.debug('PropertyBasics: Creating new draft');
+        const newDraft = createNewDraft(propertyDataFromForm);
+        targetDraftId = newDraft.id;
+        // Save directly to storage (can't use saveDraft() since state hasn't updated yet)
+        if (user?.id) {
+          await PropertyDraftService.saveDraft(user.id, newDraft);
+          log.debug('PropertyBasics: Draft saved to storage', { draftId: targetDraftId });
+        }
+      }
+
+      setIsValidating(false);
+
+      // Navigate with only draftId (no object params)
+      navigation.navigate('PropertyAttributes', {
+        draftId: targetDraftId,
+        isOnboarding,
+        firstName,
+      });
+    } catch (error) {
+      setIsValidating(false);
+      log.error('PropertyBasics: Failed to save draft', { error: String(error) });
+      Alert.alert('Error', 'Failed to save property data. Please try again.');
     }
   };
 

@@ -140,18 +140,16 @@ const LandlordHomeScreen = () => {
       });
 
       if (incompleteDraft.currentStep <= 1) {
-        navigation.navigate('AddProperty', { draftId: incompleteDraft.id });
+        navigation.navigate('PropertyBasics', { draftId: incompleteDraft.id });
       } else if (incompleteDraft.currentStep === 2) {
+        // Navigate with draft-only params - areas will be loaded from draft
         navigation.navigate('PropertyAssets', {
-          propertyData: incompleteDraft.propertyData,
-          areas: incompleteDraft.areas || [],
-          draftId: incompleteDraft.id
+          draftId: incompleteDraft.id,
         });
       } else {
+        // Navigate with draft-only params - propertyData and areas will be loaded from draft
         navigation.navigate('PropertyReview', {
-          propertyData: incompleteDraft.propertyData,
-          areas: incompleteDraft.areas || [],
-          draftId: incompleteDraft.id
+          draftId: incompleteDraft.id,
         });
       }
     }
@@ -184,14 +182,7 @@ const LandlordHomeScreen = () => {
   const handlePropertyPress = (property: PropertySummary) => {
     haptics.light();
     navigation.navigate('PropertyDetails', {
-      property: {
-        id: property.id,
-        name: property.name,
-        address: property.address,
-        type: property.type,
-        tenants: 0,
-        activeRequests: property.issueCount,
-      }
+      propertyId: property.id,
     });
   };
 
@@ -217,7 +208,7 @@ const LandlordHomeScreen = () => {
               style={styles.addPropertyBtn}
               onPress={() => {
                 haptics.medium();
-                navigation.navigate('AddProperty');
+                navigation.navigate('PropertyBasics');
               }}
               testID="add-property-button"
             >

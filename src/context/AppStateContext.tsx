@@ -32,6 +32,7 @@ interface AppStateContextValue {
 
   // Actions
   refreshCounts: () => Promise<void>;
+  refreshNotificationCounts: () => Promise<void>; // Alias for refreshCounts
   markMessageAsRead: (messageId: string) => Promise<void>;
 
   // Loading/error state
@@ -258,6 +259,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     pendingRequestsCount,
     unreadMessagesCount,
     refreshCounts,
+    refreshNotificationCounts: refreshCounts, // Alias for backwards compatibility
     markMessageAsRead,
     isLoading,
     error,

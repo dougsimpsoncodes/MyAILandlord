@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Image,
   Alert,
   ActivityIndicator,
@@ -17,7 +16,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -223,8 +222,8 @@ const RoomPhotographyScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetScanning', { 
-      propertyData: { ...propertyData, roomPhotos } 
+    navigation.navigate('AssetScanning', {
+      draftId: draftState?.id || '',
     });
   };
 

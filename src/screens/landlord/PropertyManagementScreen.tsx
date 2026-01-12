@@ -139,7 +139,7 @@ const PropertyManagementScreen = () => {
   };
 
   const handlePropertyPress = (property: Property) => {
-    navigation.navigate('PropertyDetails', { property });
+    navigation.navigate('PropertyDetails', { propertyId: property.id });
   };
 
   const handleInviteTenant = async (property: Property) => {
@@ -174,16 +174,14 @@ const PropertyManagementScreen = () => {
 
   const handleDraftPress = (draft: PropertySetupState) => {
     // Navigate to the appropriate screen based on current step
+    // All screens load data from draft via draftId
     if (draft.currentStep === 0 || draft.currentStep === 1) {
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      navigation.navigate('PropertyBasics', { draftId: draft.id });
     } else if (draft.currentStep === 2) {
-      navigation.navigate('PropertyAreas', { 
-        propertyData: draft.propertyData, 
-        draftId: draft.id 
-      });
+      navigation.navigate('PropertyAreas', { draftId: draft.id });
     } else {
-      // For steps 3+, go to AddProperty for now
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      // For steps 3+, go to PropertyAssets
+      navigation.navigate('PropertyAssets', { draftId: draft.id });
     }
   };
 

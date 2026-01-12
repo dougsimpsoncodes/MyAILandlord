@@ -105,6 +105,13 @@ const AuthScreen = () => {
 
       // Check if user is already confirmed (auto sign-in)
       if (data.session) {
+        // Navigate to Bootstrap which will route to Main based on role
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Bootstrap' as never }],
+          })
+        );
         return;
       }
 

@@ -13,6 +13,7 @@ import { colors, spacing, typography } from '../../theme/DesignSystem';
 import { supabase } from '../../services/supabase/client';
 import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useRole } from '../../context/RoleContext';
 import { log } from '../../lib/log';
 
 type OnboardingStackParamList = {
@@ -36,6 +37,7 @@ export default function OnboardingRoleScreen() {
   const route = useRoute<RoleRouteProp>();
   const { firstName, userId } = route.params;
   const { processingInvite, redirect } = useUnifiedAuth();
+  const { setUserRole } = useRole();
 
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(false);
@@ -80,6 +82,11 @@ export default function OnboardingRoleScreen() {
         setLoading(false);
         return;
       }
+
+      // CRITICAL: Set role in RoleContext to prevent useProfileSync from overwriting
+      // This ensures the selected role is preserved during navigation
+      await setUserRole(selectedRole);
+      log.info('[OnboardingRole] Role set in context and DB', { selectedRole });
 
       // Navigate to role-specific onboarding, passing role in params
       if (selectedRole === 'landlord') {

@@ -32,12 +32,14 @@ type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview
 const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
-  const { propertyData, areas, draftId, propertyId } = route.params;
   const api = useApiClient();
   const { user, refreshUser } = useUnifiedAuth();
   const { supabase } = useSupabaseWithAuth();
 
-  // Initialize draft management
+  // Get route params - only draftId and propertyId (no object params)
+  const { draftId, propertyId } = route.params;
+
+  // Initialize draft management - this loads the draft including propertyData and areas
   const {
     draftState,
     isLoading: isDraftLoading,
@@ -48,11 +50,15 @@ const PropertyReviewScreen = () => {
     saveDraft,
     deleteDraft,
     clearError,
-  } = usePropertyDraft({ 
+  } = usePropertyDraft({
     draftId,
     enableAutoSave: true,
-    autoSaveDelay: 2000 
+    autoSaveDelay: 2000
   });
+
+  // Property data and areas come from draft state
+  const propertyData = draftState?.propertyData;
+  const areas = draftState?.areas || [];
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
@@ -79,24 +85,22 @@ const PropertyReviewScreen = () => {
   const handleEdit = (section: 'property' | 'areas' | 'assets') => {
     switch (section) {
       case 'property':
-        navigation.navigate('AddProperty', { draftId });
+        navigation.navigate('PropertyBasics', { draftId });
         break;
       case 'areas':
-        navigation.navigate('PropertyAreas', { propertyData, draftId });
+        navigation.navigate('PropertyAreas', { draftId, propertyId });
         break;
       case 'assets':
-        navigation.navigate('PropertyAssets', { propertyData, areas, draftId });
+        navigation.navigate('PropertyAssets', { draftId, propertyId });
         break;
     }
   };
 
   const handleSubmit = async () => {
-    
-    if (isSubmitting || isDraftLoading) {
+    if (isSubmitting || isDraftLoading || !propertyData) {
       return;
     }
 
-    
     try {
       setIsSubmitting(true);
 
@@ -158,17 +162,8 @@ const PropertyReviewScreen = () => {
 
         // Navigate to PropertyDetails
         setTimeout(() => {
-          const addressString = `${propertyData.address.line1}${propertyData.address.line2 ? ', ' + propertyData.address.line2 : ''}, ${propertyData.address.city}, ${propertyData.address.state} ${propertyData.address.zipCode}`;
-
           navigation.navigate('PropertyDetails', {
-            property: {
-              id: currentPropertyId,
-              name: propertyData.name,
-              address: addressString,
-              type: propertyData.type,
-              tenants: 0,
-              activeRequests: 0,
-            }
+            propertyId: currentPropertyId,
           });
         }, 2000);
 
@@ -275,18 +270,8 @@ const PropertyReviewScreen = () => {
 
       // Navigate to PropertyDetails after 2 seconds to allow user to invite tenant
       setTimeout(() => {
-        // Format address as string for PropertyDetails
-        const addressString = `${propertyData.address.line1}${propertyData.address.line2 ? ', ' + propertyData.address.line2 : ''}, ${propertyData.address.city}, ${propertyData.address.state} ${propertyData.address.zipCode}`;
-
         navigation.navigate('PropertyDetails', {
-          property: {
-            id: currentPropertyId,
-            name: propertyData.name,
-            address: addressString,
-            type: propertyData.type,
-            tenants: 0,
-            activeRequests: 0,
-          }
+          propertyId: currentPropertyId,
         });
       }, 2000);
     } catch (error) {
@@ -378,10 +363,28 @@ const PropertyReviewScreen = () => {
       type="primary"
       size="lg"
       fullWidth
-      disabled={isSubmitting || isDraftLoading}
+      disabled={isSubmitting || isDraftLoading || !propertyData}
       loading={isSubmitting}
     />
   );
+
+  // Show loading state while draft is loading
+  if (isDraftLoading || !propertyData) {
+    return (
+      <ScreenContainer
+        title="Review & Submit"
+        subtitle="Step 4 of 4"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 16, color: '#7F8C8D' }}>Loading property data...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer

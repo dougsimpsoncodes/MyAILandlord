@@ -29,7 +29,7 @@ interface UsePropertyDraftReturn {
   clearError: () => void;
   
   // Draft management
-  createNewDraft: (initialData?: Partial<PropertyData>) => void;
+  createNewDraft: (initialData?: Partial<PropertyData>) => PropertySetupState;
   resetDraft: () => void;
 }
 
@@ -245,20 +245,22 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
   }, []);
 
   /**
-   * Create a new draft
+   * Create a new draft and return it (so caller can immediately use draft.id for navigation)
    */
-  const createNewDraft = useCallback((initialData?: Partial<PropertyData>) => {
+  const createNewDraft = useCallback((initialData?: Partial<PropertyData>): PropertySetupState => {
     const newDraft = PropertyDraftService.createDraftState(
       initialData || {},
       [],
       [],
       0
     );
-    
+
     setDraftState(newDraft);
     setLastSaved(null);
     pendingChanges.current = true;
     setError(null);
+
+    return newDraft; // Return the draft so caller can use newDraft.id immediately
   }, []);
 
   /**

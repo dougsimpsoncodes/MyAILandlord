@@ -14,7 +14,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -58,7 +58,7 @@ const AssetDetailsScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
   } = usePropertyDraft();
 
@@ -187,8 +187,8 @@ const AssetDetailsScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetPhotos', { 
-      propertyData: { ...propertyData, assetDetails } 
+    navigation.navigate('AssetPhotos', {
+      draftId: draftState?.id || '',
     });
   };
 
@@ -385,7 +385,7 @@ const AssetDetailsScreen = () => {
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('AssetPhotos', { propertyData })}
+            onPress={() => navigation.navigate('AssetPhotos', { draftId: draftState?.id || '' })}
           >
             <Text style={styles.continueButtonText}>Continue to Photos</Text>
           </TouchableOpacity>

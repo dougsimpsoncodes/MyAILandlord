@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,12 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LandlordStackParamList } from '../../navigation/MainStack';
-import { PropertyData, PropertyType } from '../../types/property';
+import { PropertyType } from '../../types/property';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import log from '../../lib/log';
 
 type PropertyAttributesNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyAttributes'>;
 type PropertyAttributesRouteProp = RouteProp<LandlordStackParamList, 'PropertyAttributes'>;
@@ -57,8 +58,8 @@ const PropertyAttributesScreen = () => {
   const navigation = useNavigation<PropertyAttributesNavigationProp>();
   const route = useRoute<PropertyAttributesRouteProp>();
 
-  // Get address data from previous screen
-  const { addressData, isOnboarding, firstName } = route.params as any;
+  // Get draftId and other params from route
+  const { draftId, isOnboarding, firstName } = route.params;
 
   const [selectedType, setSelectedType] = useState<PropertyType | null>(null);
   const [bedrooms, setBedrooms] = useState<number>(1);
@@ -66,14 +67,31 @@ const PropertyAttributesScreen = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isValidating, setIsValidating] = useState(false);
 
+  // Load draft using draftId from route params
   const {
     draftState,
     updatePropertyData,
     saveDraft,
-    createNewDraft,
   } = usePropertyDraft({
+    draftId, // Auto-loads draft
     enableAutoSave: false,
   });
+
+  // Initialize form from draft data when loaded
+  useEffect(() => {
+    if (draftState?.propertyData) {
+      const data = draftState.propertyData;
+      if (data.type && !selectedType) {
+        setSelectedType(data.type);
+      }
+      if (data.bedrooms !== undefined) {
+        setBedrooms(data.bedrooms);
+      }
+      if (data.bathrooms !== undefined) {
+        setBathrooms(data.bathrooms);
+      }
+    }
+  }, [draftState?.propertyData]);
 
   const validateType = () => {
     const newErrors = { ...errors };
@@ -105,58 +123,44 @@ const PropertyAttributesScreen = () => {
   const handleContinue = async () => {
     setIsValidating(true);
     const isTypeValid = validateType();
-    setIsValidating(false);
 
-    if (isTypeValid) {
-      const propertyData: PropertyData = {
-        name: addressData.propertyName,
-        address: {
-          line1: addressData.addressLine1,
-          line2: addressData.addressLine2,
-          city: addressData.city,
-          state: addressData.state,
-          zipCode: addressData.postalCode,
-          country: addressData.country || 'US'
-        },
-        type: selectedType!,
-        unit: '',
-        bedrooms,
-        bathrooms,
-        photos: draftState?.propertyData?.photos || [],
-      };
-
-      try {
-        // Create draft if it doesn't exist yet (for non-onboarding flow)
-        if (!draftState && !isOnboarding) {
-          createNewDraft(propertyData);
-          await saveDraft();
-        } else if (draftState) {
-          // Update existing draft
-          await updatePropertyData(propertyData);
-          await saveDraft();
-        }
-        // During onboarding, skip draft save - data is passed via navigation
-      } catch {
-        // Continue anyway - navigation can work without draft
-      }
-
-      const navParams = {
-        propertyData,
-        draftId: draftState?.id,
-        isOnboarding: true,
-        firstName,
-      };
-
-      if (isOnboarding) {
-        (navigation as any).navigate('PropertyAreas', navParams);
-      } else {
-        navigation.navigate('PropertyPhotos', { propertyData });
-      }
-    } else {
+    if (!isTypeValid) {
+      setIsValidating(false);
       Alert.alert(
         'Please Select Property Type',
         'Please select the type of property before continuing.'
       );
+      return;
+    }
+
+    if (!draftState) {
+      setIsValidating(false);
+      Alert.alert('Error', 'Draft not loaded. Please go back and try again.');
+      return;
+    }
+
+    try {
+      // Update draft with type, bedrooms, bathrooms
+      log.debug('PropertyAttributes: Updating draft with attributes', { draftId });
+      updatePropertyData({
+        type: selectedType!,
+        bedrooms,
+        bathrooms,
+      });
+      await saveDraft();
+
+      setIsValidating(false);
+
+      // Navigate with only draftId (no object params)
+      navigation.navigate('PropertyAreas', {
+        draftId,
+        isOnboarding: isOnboarding || false,
+        firstName,
+      });
+    } catch (error) {
+      setIsValidating(false);
+      log.error('PropertyAttributes: Failed to save draft', { error: String(error) });
+      Alert.alert('Error', 'Failed to save property data. Please try again.');
     }
   };
 

@@ -135,13 +135,11 @@ const PropertyAreasScreen = () => {
   const { user } = useUnifiedAuth();
   const { supabase } = useSupabaseWithAuth();
   const api = useApiClient();
-  const propertyData = route.params.propertyData;
-  const draftId = route.params.draftId;
-  const propertyId = route.params.propertyId; // For existing properties from database
-  const existingAreas = route.params.existingAreas; // Areas loaded from database
-  const isOnboarding = (route.params as any)?.isOnboarding || false; // Check if in onboarding mode
 
-  // Initialize draft management
+  // Get route params - only draftId is required, no object params
+  const { draftId, propertyId, isOnboarding = false } = route.params;
+
+  // Initialize draft management - this loads the draft including propertyData
   const {
     draftState,
     isLoading: isDraftLoading,
@@ -154,33 +152,28 @@ const PropertyAreasScreen = () => {
     saveDraft,
     loadDraft,
     clearError,
-  } = usePropertyDraft({ 
+  } = usePropertyDraft({
     draftId,
     enableAutoSave: true,
-    autoSaveDelay: 2000 
+    autoSaveDelay: 2000
   });
 
+  // Property data comes from draft state (loaded via draftId)
+  const propertyData = draftState?.propertyData;
 
-  // Initialize areas based on existing areas (from DB), draft state, or generate new
+
+  // Initialize areas from draft state or generate new
   const initializeAreas = () => {
-    // Priority 1: Use existing areas from database (for existing properties)
-    if (existingAreas && existingAreas.length > 0) {
-      return existingAreas;
-    }
-    // Priority 2: Use draft state areas
+    // Priority 1: Use draft state areas
     if (draftState?.areas && draftState.areas.length > 0) {
       return draftState.areas;
     }
-    // Priority 3: Generate new areas based on property data
+    // Priority 2: Generate new areas based on property data from draft
     return propertyData ? generateDynamicAreas(propertyData) : [];
   };
 
   const initializeSelectedAreas = () => {
-    // Priority 1: Use existing areas from database (all are selected)
-    if (existingAreas && existingAreas.length > 0) {
-      return existingAreas.map(area => area.id);
-    }
-    // Priority 2: Use draft state areas
+    // Use draft state areas if available
     if (draftState?.areas && draftState.areas.length > 0) {
       return draftState.areas.map(area => area.id);
     }
@@ -206,9 +199,9 @@ const PropertyAreasScreen = () => {
     laundry: 0,
   });
   
-  // Use draft photos if available, otherwise use route params
+  // Use draft photos if available
   const currentPropertyData = draftState?.propertyData || propertyData;
-  const [propertyPhotos, setPropertyPhotos] = useState<string[]>(currentPropertyData.photos || []);
+  const [propertyPhotos, setPropertyPhotos] = useState<string[]>(currentPropertyData?.photos || []);
   const isInitialized = useRef(false);
 
   // Sync with draft state when it changes
@@ -959,22 +952,26 @@ const PropertyAreasScreen = () => {
         return;
       }
 
-      // Save current progress before navigating
-      if (draftState) {
-        try {
-          await saveDraft();
-        } catch (error) {
-          console.warn('Failed to save draft before navigation:', error);
-          // Continue anyway - user can manually save later
-        }
+      if (!draftState) {
+        Alert.alert('Error', 'Draft not loaded. Please go back and try again.');
+        return;
       }
 
-      // Use draft property data if available, otherwise use route data
-      const currentData = draftState?.propertyData || propertyData;
-      const updatedPropertyData = {
-        ...currentData,
-        photos: propertyPhotos,
-      };
+      // Update draft with photos before saving
+      if (propertyPhotos.length > 0) {
+        updatePropertyData({ photos: propertyPhotos });
+      }
+
+      // Save areas to draft
+      updateAreas(areasToSave);
+
+      // Save current progress before navigating
+      try {
+        await saveDraft();
+      } catch (error) {
+        console.warn('Failed to save draft before navigation:', error);
+        // Continue anyway - user can manually save later
+      }
 
       // Save current draft ID for page refresh persistence (step 2)
       if (user?.id && draftState?.id) {
@@ -983,21 +980,23 @@ const PropertyAreasScreen = () => {
 
       // Navigate based on context
       if (isOnboarding) {
-        // In onboarding mode, create property and save areas to database, then go to PropertyAssets (photos/inventory)
+        // In onboarding mode, create property and save areas to database
         try {
           // Ensure API is ready
           if (!api) {
             throw new Error('Authentication required');
           }
 
+          const currentPropertyData = draftState.propertyData;
+
           // Create the property first
           const propertyPayload = {
-            name: updatedPropertyData.name,
-            address_jsonb: updatedPropertyData.address,
-            property_type: updatedPropertyData.type,
-            unit: updatedPropertyData.unit || '',
-            bedrooms: updatedPropertyData.bedrooms || 0,
-            bathrooms: updatedPropertyData.bathrooms || 0
+            name: currentPropertyData.name,
+            address_jsonb: currentPropertyData.address,
+            property_type: currentPropertyData.type,
+            unit: currentPropertyData.unit || '',
+            bedrooms: currentPropertyData.bedrooms || 0,
+            bathrooms: currentPropertyData.bathrooms || 0
           };
 
           const newProperty = await api.createProperty(propertyPayload);
@@ -1034,24 +1033,19 @@ const PropertyAreasScreen = () => {
           }
 
           // Save areas and assets to the new property
-          let savedAreas = areasWithUploadedPhotos;
           if (areasWithUploadedPhotos.length > 0) {
             const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
             await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
-
-            // Fetch the saved areas from database to get proper UUIDs
-            savedAreas = await propertyAreasService.getAreasWithAssets(newProperty.id, supabase);
           }
 
-          // Navigate to PropertyAssets for photos and inventory during onboarding
-          // Note: Onboarding flag will be cleared later in PropertyReviewScreen after final submission
+          // Update draft with the new propertyId so subsequent screens can access it
+          updatePropertyData({ propertyId: newProperty.id } as any);
+          await saveDraft();
+
+          // Navigate to PropertyAssets with draft-only params
           navigation.navigate('PropertyAssets', {
-            propertyData: updatedPropertyData,
-            areas: savedAreas, // Use areas with proper UUIDs from database
-            draftId: draftState?.id,
+            draftId: draftState.id,
             propertyId: newProperty.id,
-            isOnboarding: true, // Pass onboarding flag
-            firstName: (route.params as any)?.firstName || 'there', // Pass for final screen
           });
         } catch (error) {
           console.error('Error in onboarding save:', error);
@@ -1060,12 +1054,10 @@ const PropertyAreasScreen = () => {
           return;
         }
       } else {
-        // Regular flow - go to PropertyAssets
+        // Regular flow - go to PropertyAssets with draft-only params
         navigation.navigate('PropertyAssets', {
-          propertyData: updatedPropertyData,
-          areas: areasToSave,
-          draftId: draftState?.id,
-          propertyId, // Pass property ID for existing properties
+          draftId: draftState.id,
+          propertyId,
         });
       }
     } catch (error) {

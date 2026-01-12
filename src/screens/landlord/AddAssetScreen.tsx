@@ -19,13 +19,9 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log } from '../../lib/log';
-import { AssetTemplate, AssetCondition, InventoryItem, PropertyData } from '../../types/property';
+import { AssetTemplate, AssetCondition, InventoryItem } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { extractAssetDataFromImage, validateAndEnhanceData } from '../../services/ai/labelExtraction';
-import Button from '../../components/shared/Button';
-import Card from '../../components/shared/Card';
-import Input from '../../components/shared/Input';
-import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
@@ -46,26 +42,19 @@ const AddAssetScreen = () => {
   const authContext = useUnifiedAuth();
   const user = authContext?.user;
 
-  // Route params (may be incomplete on web due to URL serialization)
-  const routeAreaId = route.params?.areaId;
-  const routeAreaName = route.params?.areaName;
-  const routeTemplate = route.params?.template;
-  const routePropertyData = route.params?.propertyData;
-  const routeDraftId = route.params?.draftId;
-  const routePropertyId = route.params?.propertyId;
-  const routeUserId = route.params?.userId; // FALLBACK: passed explicitly if context fails
+  // Route params - only simple primitives, no object params
+  const { areaId: routeAreaId, areaName: routeAreaName, draftId: routeDraftId, propertyId: routePropertyId } = route.params || {};
 
-  // Compute effective userId (prefer context, fallback to route param)
-  const effectiveUserId = user?.id || routeUserId;
+  // Compute effective userId from auth context
+  const effectiveUserId = user?.id;
 
   // Effective params (recovered from storage on web if needed)
   const [areaId, setAreaId] = useState(routeAreaId || '');
   const [areaName, setAreaName] = useState(routeAreaName || '');
-  const [template, setTemplate] = useState<AssetTemplate | null>(routeTemplate || null);
-  const [propertyData, setPropertyData] = useState<PropertyData | undefined>(routePropertyData);
+  const [template, setTemplate] = useState<AssetTemplate | null>(null);
   const [draftId, setDraftId] = useState<string | undefined>(routeDraftId);
   const [propertyId, setPropertyId] = useState<string | undefined>(routePropertyId);
-  const [isParamsLoaded, setIsParamsLoaded] = useState(!!routePropertyData);
+  const [isParamsLoaded, setIsParamsLoaded] = useState(false);
 
   // Recover params from AsyncStorage on web (URL params lose complex objects)
   useEffect(() => {
@@ -74,13 +63,8 @@ const AddAssetScreen = () => {
         return;
       }
 
-      // If we already have propertyData from route, no need to recover
-      if (routePropertyData) {
-        setIsParamsLoaded(true);
-        return;
-      }
-
-      // Try to recover from AsyncStorage (web scenario)
+      // Try to recover extended params from AsyncStorage
+      // (complex objects are stored there for web compatibility)
       const storageKey = `add_asset_params_${routeAreaId}`;
 
       try {
@@ -91,9 +75,8 @@ const AddAssetScreen = () => {
           setAreaId(params.areaId || routeAreaId);
           setAreaName(params.areaName || routeAreaName || '');
           setTemplate(params.template || null);
-          setPropertyData(params.propertyData);
-          setDraftId(params.draftId);
-          setPropertyId(params.propertyId);
+          setDraftId(params.draftId || routeDraftId);
+          setPropertyId(params.propertyId || routePropertyId);
 
           // Clean up storage after recovery
           await AsyncStorage.removeItem(storageKey);
@@ -108,7 +91,7 @@ const AddAssetScreen = () => {
     };
 
     recoverParams();
-  }, [routeAreaId, routePropertyData, routeAreaName]);
+  }, [routeAreaId, routeAreaName, routeDraftId, routePropertyId]);
 
   // Form state
   const [assetName, setAssetName] = useState(template?.name || '');
@@ -434,7 +417,7 @@ const AddAssetScreen = () => {
   };
 
   // Show loading while recovering params on web
-  if (!isParamsLoaded && !routePropertyData) {
+  if (!isParamsLoaded) {
     return (
       <ScreenContainer
         title="Add Item"
@@ -451,8 +434,8 @@ const AddAssetScreen = () => {
     );
   }
 
-  // GUARD: Wait for user context to load (unless we have fallback userId from route)
-  if (!user && !routeUserId) {
+  // GUARD: Wait for user context to load
+  if (!user) {
     return (
       <ScreenContainer
         title="Add Item"
@@ -509,7 +492,7 @@ const AddAssetScreen = () => {
         {__DEV__ && (
           <View style={{ padding: 8, backgroundColor: '#f0f0f0', marginBottom: 8 }}>
             <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-user-id">
-              User: {effectiveUserId || 'NO_USER'} {routeUserId ? '(from route)' : '(from context)'}
+              User: {effectiveUserId || 'NO_USER'} (from context)
             </Text>
             <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-property-id">
               Property: {propertyId || 'NO_PROPERTY_ID'}

@@ -50,8 +50,8 @@ const PropertyInviteAcceptScreen = () => {
   // Extract token from route params OR pending invite storage
   useEffect(() => {
     const loadToken = async () => {
-      // Priority 1: Route params
-      const params = route.params as RouteParams;
+      // Priority 1: Route params (handle undefined params gracefully)
+      const params = (route.params || {}) as RouteParams;
       const extractedToken = params.t || params.token;
 
       if (extractedToken) {
@@ -137,6 +137,9 @@ const PropertyInviteAcceptScreen = () => {
 
       if (!result.valid) {
         log.error('[PropertyInviteAccept] Token invalid');
+        // CRITICAL: Clear pending invite to prevent redirect loops
+        // Bootstrap checks for pending invites and would redirect here again
+        await PendingInviteService.clearPendingInvite();
         throw new Error('This invite link is invalid or has expired.');
       }
 
@@ -153,6 +156,8 @@ const PropertyInviteAcceptScreen = () => {
 
     } catch (err: any) {
       log.error('[PropertyInviteAccept] Validation error:', err);
+      // Clear pending invite to prevent redirect loops on validation failure
+      await PendingInviteService.clearPendingInvite();
       setError(err.message || 'Failed to validate invite. Please try again.');
     } finally {
       setIsValidating(false);

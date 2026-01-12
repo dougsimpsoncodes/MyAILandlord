@@ -8,7 +8,6 @@ import {
   Image,
   Alert,
   Animated,
-  SafeAreaView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,7 +15,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PropertyArea, InventoryItem, PropertyData } from '../../types/property';
+import { PropertyArea, InventoryItem } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
@@ -27,8 +26,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import ResponsiveGrid from '../../components/shared/ResponsiveGrid';
-import { ResponsiveTitle, ResponsiveSubtitle, ResponsiveBody, ResponsiveCaption } from '../../components/shared/ResponsiveText';
+import { ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { LoadingScreen } from '../../components/LoadingSpinner';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -237,22 +235,13 @@ const PropertyAssetsListScreen = () => {
   const responsive = useResponsive();
   const { user } = useUnifiedAuth();
 
-  // Get route params with defaults for page refresh scenario
-  const routePropertyData = route.params?.propertyData;
-  const routeAreas = route.params?.areas;
-  const routeDraftId = route.params?.draftId;
-  const routeNewAsset = route.params?.newAsset;
-  const routePropertyId = route.params?.propertyId; // For existing properties from database
-  const isOnboarding = (route.params as any)?.isOnboarding || false; // Check if in onboarding mode
-  const firstName = (route.params as any)?.firstName || 'there'; // For onboarding flow
+  // Get route params - only draftId, propertyId, and newAsset (no object params)
+  const { draftId, propertyId: routePropertyId, newAsset: routeNewAsset } = route.params || {};
 
   // State for handling page refresh/direct URL access
   // For existing properties (routePropertyId), never initialize from drafts - even if areas are empty
-  const [isInitializing, setIsInitializing] = useState(
-    !routePropertyId && (!routeDraftId || !routeAreas || routeAreas.length === 0)
-  );
-  const [effectiveDraftId, setEffectiveDraftId] = useState<string | undefined>(routeDraftId);
-  const [propertyData, setPropertyData] = useState<PropertyData | undefined>(routePropertyData);
+  const [isInitializing, setIsInitializing] = useState(!routePropertyId && !draftId);
+  const [effectiveDraftId, setEffectiveDraftId] = useState<string | undefined>(draftId);
 
   // Initialize draft management
   const {
@@ -272,9 +261,12 @@ const PropertyAssetsListScreen = () => {
     autoSaveDelay: 2000
   });
 
-  const [selectedAreas, setSelectedAreas] = useState<PropertyArea[]>(routeAreas || []);
+  const [selectedAreas, setSelectedAreas] = useState<PropertyArea[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [processedAssetIds, setProcessedAssetIds] = useState<Set<string>>(new Set());
+
+  // Property data comes from draft state
+  const propertyData = draftState?.propertyData;
 
   // Refs to hold latest values for the focus listener
   const selectedAreasRef = useRef(selectedAreas);
@@ -440,28 +432,18 @@ const PropertyAssetsListScreen = () => {
         return;
       }
 
-      // If we already have valid route params for a draft, no need to check storage
-      if (routeDraftId && routeAreas && routeAreas.length > 0) {
+      // If we already have a draftId from route, no need to check storage
+      if (draftId) {
         setIsInitializing(false);
         return;
       }
 
-      // Check if there's a stored current draft ID for this user
+      // Check if there's a stored current draft ID for this user (page refresh scenario)
       if (user?.id) {
         const storedDraft = await PropertyDraftService.getCurrentDraftId(user.id);
 
         if (storedDraft && storedDraft.step >= 2) {
           setEffectiveDraftId(storedDraft.draftId);
-
-          // Load the draft data
-          const draft = await PropertyDraftService.loadDraft(user.id, storedDraft.draftId);
-          if (draft) {
-            // Regenerate signed URLs for photos from stored paths
-            const areasWithFreshUrls = await regeneratePhotoUrls(draft.areas || []);
-
-            setSelectedAreas(areasWithFreshUrls);
-            setPropertyData(draft.propertyData);
-          }
         } else {
           // No stored draft for this step - redirect to home
           navigation.replace('Home');
@@ -473,7 +455,7 @@ const PropertyAssetsListScreen = () => {
     };
 
     checkForStoredDraft();
-  }, [user?.id, routeDraftId, routeAreas, routePropertyId, navigation]);
+  }, [user?.id, draftId, routePropertyId, navigation]);
 
   // Save the current draft ID for page refresh persistence
   // Skip for existing properties (they don't use drafts)
@@ -484,13 +466,18 @@ const PropertyAssetsListScreen = () => {
     }
   }, [user?.id, effectiveDraftId, isInitializing, routePropertyId]);
 
-  // Use draft areas if available and route areas are empty, OR merge photoPaths from draft
+  // Load areas from draft state when it becomes available
   // IMPORTANT: Skip this entirely for existing properties (routePropertyId) - they load from database
-  const hasMergedPhotoPaths = useRef(false);
+  const hasLoadedDraftAreas = useRef(false);
   useEffect(() => {
     const loadDraftAreas = async () => {
-      // Skip draft merging for existing properties - their data comes from database
+      // Skip for existing properties - their data comes from database
       if (routePropertyId) {
+        return;
+      }
+
+      // Only load once to prevent loops
+      if (hasLoadedDraftAreas.current) {
         return;
       }
 
@@ -498,48 +485,14 @@ const PropertyAssetsListScreen = () => {
         return;
       }
 
-      // Case 1: No route areas - use draft areas entirely
-      if (!routeAreas || routeAreas.length === 0) {
-        const areasWithFreshUrls = await regeneratePhotoUrls(draftState.areas);
-        setSelectedAreas(areasWithFreshUrls);
-      }
-      // Case 2: Route areas exist but may be missing photoPaths - merge from draft (once only)
-      else if (!hasMergedPhotoPaths.current && selectedAreas.length > 0) {
-        // Check if any area has photos but no photoPaths
-        const needsMerge = selectedAreas.some(area =>
-          area.photos?.length > 0 && (!area.photoPaths || area.photoPaths.length === 0)
-        );
+      hasLoadedDraftAreas.current = true;
 
-        if (needsMerge) {
-          hasMergedPhotoPaths.current = true;
-          // Create a map of draft areas by ID for quick lookup
-          const draftAreaMap = new Map(draftState.areas.map(a => [a.id, a]));
-
-          // Merge photoPaths from draft into route areas
-          const mergedAreas = selectedAreas.map(area => {
-            const draftArea = draftAreaMap.get(area.id);
-            if (draftArea?.photoPaths && draftArea.photoPaths.length > 0) {
-              return {
-                ...area,
-                photoPaths: draftArea.photoPaths
-              };
-            }
-            return area;
-          });
-
-          // Now regenerate URLs with the photoPaths
-          const areasWithFreshUrls = await regeneratePhotoUrls(mergedAreas);
-          setSelectedAreas(areasWithFreshUrls);
-        }
-      }
-
-      // Also update property data from draft if not from route
-      if (!routePropertyData && draftState?.propertyData) {
-        setPropertyData(draftState.propertyData);
-      }
+      // Load areas from draft with fresh signed URLs
+      const areasWithFreshUrls = await regeneratePhotoUrls(draftState.areas);
+      setSelectedAreas(areasWithFreshUrls);
     };
     loadDraftAreas();
-  }, [routeAreas, routePropertyData, routePropertyId, draftState?.areas, draftState?.propertyData]);
+  }, [routePropertyId, draftState?.areas]);
 
   // Regenerate photo URLs when areas come from route params with photoPaths
   // This handles: empty photos, expired signed URLs, or stale URLs
@@ -676,25 +629,27 @@ const PropertyAssetsListScreen = () => {
 
   const handleAddAsset = async (areaId: string, areaName: string) => {
     const area = selectedAreas.find(a => a.id === areaId);
-    if (!area || !propertyData) return;
+    // For existing properties (routePropertyId), draftId is not required
+    if (!area || (!routePropertyId && !effectiveDraftId)) return;
 
-    // Store navigation params in AsyncStorage for web (URL params lose complex objects)
-    const navParams = {
+    // Store extended params in AsyncStorage for web (URL params can't include complex objects)
+    const storageParams = {
       areaId,
       areaName,
-      template: null,
-      propertyData,
       draftId: effectiveDraftId,
-      propertyId: routePropertyId, // Pass propertyId for existing properties (saves to DB)
-      userId: user?.id // FALLBACK: Pass userId explicitly for context timing issues
+      propertyId: routePropertyId,
+      userId: user?.id
     };
-
-    // Store params in AsyncStorage so AddAssetScreen can recover them on web
     const storageKey = `add_asset_params_${areaId}`;
-    await AsyncStorage.setItem(storageKey, JSON.stringify(navParams));
+    await AsyncStorage.setItem(storageKey, JSON.stringify(storageParams));
 
-    // Navigate to AddAssetScreen
-    navigation.navigate('AddAsset', navParams);
+    // Navigate with draft-only params (no object params)
+    navigation.navigate('AddAsset', {
+      draftId: effectiveDraftId,
+      areaId,
+      areaName,
+      propertyId: routePropertyId,
+    });
   };
 
   const handleRemoveAsset = async (areaId: string, assetId: string) => {
@@ -739,8 +694,9 @@ const PropertyAssetsListScreen = () => {
     setIsSubmitting(true);
 
     try {
-      // Save current progress
+      // Save current progress (including areas) to draft
       if (draftState) {
+        updateAreas(selectedAreas);
         await saveDraft();
       }
 
@@ -753,23 +709,11 @@ const PropertyAssetsListScreen = () => {
       // Continue anyway - navigation can work without draft save
     }
 
-    // Navigate based on context
-    if (isOnboarding) {
-      // In onboarding mode, skip review and go directly to Tenant Invite
-      (navigation as any).navigate('LandlordTenantInvite', {
-        firstName,
-        propertyId: routePropertyId,
-        propertyName: propertyData.name || 'Your Property',
-      });
-    } else {
-      // Regular flow - go to PropertyReview
-      navigation.navigate('PropertyReview', {
-        propertyData,
-        areas: selectedAreas,
-        draftId: effectiveDraftId,
-        propertyId: routePropertyId // Pass propertyId if it exists (onboarding flow)
-      });
-    }
+    // Navigate to PropertyReview with draft-only params
+    navigation.navigate('PropertyReview', {
+      draftId: effectiveDraftId!,
+      propertyId: routePropertyId,
+    });
 
     setIsSubmitting(false);
   };
@@ -799,7 +743,7 @@ const PropertyAssetsListScreen = () => {
   // Bottom navigation button
   const bottomContent = selectedAreas.length > 0 ? (
     <Button
-      title={isOnboarding ? "Continue" : "Continue to Review"}
+      title="Continue to Review"
       onPress={handleNext}
       type="primary"
       size="lg"

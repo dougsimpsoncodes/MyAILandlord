@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -22,7 +21,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData, DetectedAsset } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -272,8 +271,8 @@ const AssetScanningScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetDetails', { 
-      propertyData: { ...propertyData, detectedAssets } 
+    navigation.navigate('AssetDetails', {
+      draftId: draftState?.id || '',
     });
   };
 

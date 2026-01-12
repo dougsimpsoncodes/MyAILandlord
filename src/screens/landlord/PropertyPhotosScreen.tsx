@@ -16,7 +16,7 @@ import { Photo, PHOTO_CONFIG } from '../../types/photo';
 import { PhotoService } from '../../services/PhotoService';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { usePhotoCapture } from '../../hooks/usePhotoCapture';
 import PhotoCapture from '../../components/property/PhotoCapture';
@@ -209,9 +209,9 @@ const PropertyPhotosScreen = () => {
       // Continue anyway - navigation can work without draft save
     }
 
-    // Navigate regardless of draft save success
+    // Navigate regardless of draft save success (use draftId from draft system)
     navigation.navigate('PropertyAreas', {
-      propertyData: updatedPropertyData
+      draftId: draftState?.id || '',
     });
   };
 
@@ -234,9 +234,9 @@ const PropertyPhotosScreen = () => {
               // Continue anyway - navigation can work without draft save
             }
 
-            // Navigate regardless of draft save success
+            // Navigate regardless of draft save success (use draftId from draft system)
             navigation.navigate('PropertyAreas', {
-              propertyData: updatedPropertyData
+              draftId: draftState?.id || '',
             });
           },
         },

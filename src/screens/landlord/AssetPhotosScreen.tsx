@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Image,
   Alert,
   ActivityIndicator,
@@ -17,7 +16,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -204,8 +203,8 @@ const AssetPhotosScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('ReviewSubmit', { 
-      propertyData: { ...propertyData, assetPhotos } 
+    navigation.navigate('ReviewSubmit', {
+      draftId: draftState?.id || '',
     });
   };
 
@@ -471,7 +470,7 @@ const AssetPhotosScreen = () => {
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('ReviewSubmit', { propertyData })}
+            onPress={() => navigation.navigate('ReviewSubmit', { draftId: draftState?.id || '' })}
           >
             <Text style={styles.continueButtonText}>Continue to Review</Text>
           </TouchableOpacity>
