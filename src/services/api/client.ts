@@ -161,10 +161,11 @@ export function useApiClient(): UseApiClientReturn | null {
     bathrooms?: number;
   }) => {
     // Insert property with user_id (required by RLS policy: user_id = auth_uid_compat())
+    // Convert empty property_type to null (database constraint requires specific values or NULL, not empty string)
     const insertPayload = {
       name: payload.name,
       address_jsonb: payload.address_jsonb,
-      property_type: payload.property_type,
+      property_type: payload.property_type || null,
       unit: payload.unit || null,
       bedrooms: payload.bedrooms ?? null,
       bathrooms: payload.bathrooms ?? null,
