@@ -242,34 +242,30 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
       throw new Error('No user to update');
     }
 
-    try {
-      // Update auth user metadata
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          name: data.name,
-          full_name: data.name,
-          phone: data.phone,
-        },
-      });
+    // Optimistic update to local state immediately
+    if (data.name) {
+      setUser(prev => prev ? { ...prev, name: data.name! } : null);
+    }
 
+    // Fire update to Supabase (don't await - response can hang on web)
+    // Auth state listener will update state when server confirms
+    supabase.auth.updateUser({
+      data: {
+        name: data.name,
+        full_name: data.name,
+        phone: data.phone,
+      },
+    }).then(({ error }) => {
       if (error) {
         log.error('UnifiedAuth: Failed to update profile:', error);
-        throw error;
+      } else {
+        log.debug('UnifiedAuth: Profile updated confirmed', { name: data.name });
       }
+    }).catch(err => {
+      log.error('UnifiedAuth: Profile update error:', err);
+    });
 
-      // Optimistic update to local state
-      if (data.name) {
-        setUser(prev => prev ? { ...prev, name: data.name! } : null);
-      }
-
-      // Refresh session to propagate changes
-      await supabase.auth.refreshSession();
-
-      log.debug('UnifiedAuth: Profile updated', { name: data.name });
-    } catch (err) {
-      log.error('UnifiedAuth: Failed to update profile:', err);
-      throw err;
-    }
+    log.debug('UnifiedAuth: Profile update initiated', { name: data.name });
   }, [user]);
 
   /**

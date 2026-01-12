@@ -71,9 +71,9 @@ const EditProfileScreen = () => {
       });
       // Update local cache immediately for instant UI update
       updateProfileCache({ name: name.trim() });
-      // Refresh UnifiedAuth (ProfileScreen uses this) and ProfileContext
-      await refreshUser();
-      await refreshProfile();
+      // Refresh contexts in background (don't await - they may have race conditions)
+      refreshUser().catch(() => {});
+      refreshProfile().catch(() => {});
       setIsSaving(false);
       showNotification('Success', 'Profile updated successfully', 'default', () => navigation.goBack());
     } catch (error) {
