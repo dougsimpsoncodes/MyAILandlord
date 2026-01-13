@@ -35,7 +35,7 @@ const PropertyDetailsScreen = () => {
   const navigation = useNavigation<PropertyDetailsNavigationProp>();
   const route = useRoute<PropertyDetailsRouteProp>();
   const { propertyId } = route.params;
-  const { supabase } = useSupabaseWithAuth();
+  const { supabase, isLoaded } = useSupabaseWithAuth();
 
   // State for property data loaded from database
   const [property, setProperty] = useState<PropertyInfo | null>(null);
@@ -44,6 +44,12 @@ const PropertyDetailsScreen = () => {
 
   // Load property and areas from database when screen comes into focus
   const loadPropertyData = useCallback(async () => {
+    // Wait for auth to be ready before making queries
+    if (!isLoaded) {
+      log.debug('Auth not ready, skipping property load');
+      return;
+    }
+
     try {
       setIsLoading(true);
       log.debug('Loading property from database', { propertyId });
@@ -77,7 +83,7 @@ const PropertyDetailsScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [propertyId, supabase]);
+  }, [propertyId, supabase, isLoaded]);
 
   // Reload data whenever screen comes into focus
   useFocusEffect(
