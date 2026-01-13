@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -22,7 +21,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData, DetectedAsset } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -101,33 +100,29 @@ const AssetScanningScreen = () => {
   const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
     setIsScanning(true);
     setScannerActive(false);
-    
-    // Simulate AI processing
-    setTimeout(() => {
-      // Mock asset detection based on barcode
-      const mockAsset: DetectedAsset = {
-        id: `asset-${Date.now()}`,
-        name: 'Detected Appliance',
-        category: 'appliances',
-        brand: 'Samsung',
-        model: 'Model-' + data.slice(-4),
-        roomId: propertyData.rooms?.[0]?.id || 'unknown',
-        confidence: 0.85,
-        scannedData: data,
-      };
-      
-      setDetectedAssets(prev => [...prev, mockAsset]);
-      setIsScanning(false);
-      
-      Alert.alert(
-        'Asset Detected!',
-        `Found: ${mockAsset.brand} ${mockAsset.model}\nConfidence: ${(((mockAsset.confidence ?? 0) * 100).toFixed(0))}%`,
-        [
-          { text: 'Add Another', onPress: () => setScannerActive(true) },
-          { text: 'Continue', onPress: () => {} },
-        ]
-      );
-    }, 2000);
+
+    // Create asset entry with scanned barcode data
+    // Real implementation would call an API to lookup product info
+    const scannedAsset: DetectedAsset = {
+      id: `asset-${Date.now()}`,
+      name: 'Scanned Appliance',
+      category: 'appliances',
+      scannedData: data,
+      roomId: propertyData.rooms?.[0]?.id || 'unknown',
+      confidence: 1.0, // Manual scan is 100% accurate for barcode
+    };
+
+    setDetectedAssets(prev => [...prev, scannedAsset]);
+    setIsScanning(false);
+
+    Alert.alert(
+      'Barcode Scanned',
+      `Barcode data captured. You can add details in the next step.`,
+      [
+        { text: 'Add Another', onPress: () => setScannerActive(true) },
+        { text: 'Continue', onPress: () => {} },
+      ]
+    );
   };
 
   const scanWithCamera = async () => {
@@ -152,33 +147,66 @@ const AssetScanningScreen = () => {
         aspect: [4, 3],
         quality: 1.0,
       });
-      
-      if (!result.canceled) {
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
         setIsScanning(true);
-        
-        // Simulate AI analysis of the photo
-        setTimeout(() => {
-          const mockAsset: DetectedAsset = {
-            id: `asset-${Date.now()}`,
-            name: 'Refrigerator',
-            category: 'appliances',
-            brand: 'LG',
-            model: 'Photo-Detected',
-            roomId: propertyData.rooms?.find(r => r.name.toLowerCase().includes('kitchen'))?.id || 'unknown',
-            confidence: 0.72,
-          };
-          
-          setDetectedAssets(prev => [...prev, mockAsset]);
+
+        // Import label extraction service dynamically
+        const { extractAssetDataFromImage } = await import('../../services/ai/labelExtraction');
+
+        try {
+          const extractionResult = await extractAssetDataFromImage(result.assets[0].uri);
+
+          if (extractionResult.success && extractionResult.data) {
+            const extractedData = extractionResult.data;
+            const photoAsset: DetectedAsset = {
+              id: `asset-${Date.now()}`,
+              name: extractedData.model || 'Detected Appliance',
+              category: 'appliances',
+              brand: extractedData.brand,
+              model: extractedData.model,
+              roomId: propertyData.rooms?.find(r => r.name.toLowerCase().includes('kitchen'))?.id || 'unknown',
+              confidence: extractedData.confidence || 0.8,
+            };
+
+            setDetectedAssets(prev => [...prev, photoAsset]);
+            setIsScanning(false);
+
+            const details = [
+              extractedData.brand,
+              extractedData.model,
+              extractedData.serialNumber ? `S/N: ${extractedData.serialNumber}` : null,
+            ].filter(Boolean).join(' • ');
+
+            Alert.alert(
+              'Asset Detected!',
+              details || 'Asset information extracted. You can add more details in the next step.'
+            );
+          } else {
+            // Extraction failed - add as unidentified asset for manual entry
+            const unidentifiedAsset: DetectedAsset = {
+              id: `asset-${Date.now()}`,
+              name: 'Unidentified Appliance',
+              category: 'appliances',
+              roomId: propertyData.rooms?.[0]?.id || 'unknown',
+              confidence: 0,
+            };
+
+            setDetectedAssets(prev => [...prev, unidentifiedAsset]);
+            setIsScanning(false);
+
+            Alert.alert(
+              'Photo Captured',
+              extractionResult.error || 'Could not extract details automatically. Please add information manually.'
+            );
+          }
+        } catch (extractionError) {
           setIsScanning(false);
-          
-          Alert.alert(
-            'Asset Detected from Photo!',
-            `Found: ${mockAsset.brand} ${mockAsset.name}\nConfidence: ${(((mockAsset.confidence ?? 0) * 100).toFixed(0))}%`
-          );
-        }, 2500);
+          Alert.alert('Error', 'Failed to analyze photo. Please try again or add the asset manually.');
+        }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to analyze photo. Please try again.');
+      Alert.alert('Error', 'Failed to select photo. Please try again.');
       setIsScanning(false);
     }
   };
@@ -243,8 +271,8 @@ const AssetScanningScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetDetails', { 
-      propertyData: { ...propertyData, detectedAssets } 
+    navigation.navigate('AssetDetails', {
+      draftId: draftState?.id || '',
     });
   };
 

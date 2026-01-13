@@ -58,8 +58,10 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
     });
 
     if (error) {
-      // Fall back to mock data on error (for development/testing)
-      return getMockResult();
+      return {
+        success: false,
+        error: `Label extraction service unavailable: ${error.message}`
+      };
     }
 
     if (!data.success) {
@@ -83,77 +85,6 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
       error: 'Failed to process image. Please try again.'
     };
   }
-}
-
-/**
- * Returns mock data when API is not available (for development/testing)
- */
-function getMockResult(): LabelExtractionResult {
-  const mockResults: ExtractedAssetData[] = [
-    {
-      brand: 'Whirlpool',
-      model: 'WRF555SDFZ',
-      serialNumber: 'WH1234567890',
-      year: '2021',
-      energyRating: 'Energy Star',
-      capacity: '25.2 cu ft',
-      voltage: '115V',
-      confidence: 0.92
-    },
-    {
-      brand: 'GE',
-      model: 'GSS25GSHSS',
-      serialNumber: 'GE9876543210',
-      year: '2020',
-      energyRating: 'Energy Star Certified',
-      capacity: '25.4 cu ft',
-      confidence: 0.88
-    },
-    {
-      brand: 'Samsung',
-      model: 'RF23J9011SR',
-      serialNumber: 'SM5555666677',
-      year: '2022',
-      energyRating: 'Energy Star Most Efficient',
-      capacity: '22.5 cu ft',
-      color: 'Stainless Steel',
-      confidence: 0.95
-    },
-    {
-      brand: 'Bosch',
-      model: 'SHPM65Z55N',
-      serialNumber: 'BSH2023001122',
-      year: '2023',
-      voltage: '120V',
-      wattage: '1800W',
-      confidence: 0.89
-    },
-    {
-      brand: 'KitchenAid',
-      model: 'KRMF706ESS',
-      serialNumber: 'KA7890123456',
-      year: '2021',
-      capacity: '25.8 cu ft',
-      energyRating: 'Energy Star',
-      confidence: 0.91
-    }
-  ];
-
-  // Randomly select one of the mock results
-  const selectedResult = mockResults[Math.floor(Math.random() * mockResults.length)];
-
-  // Occasionally simulate extraction failure (15% rate)
-  if (Math.random() < 0.15) {
-    return {
-      success: false,
-      error: 'Could not extract clear text from the image. Please ensure the label is well-lit and in focus.'
-    };
-  }
-
-  return {
-    success: true,
-    data: selectedResult
-  };
 }
 
 /**

@@ -4,8 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useProfile } from '../../context/ProfileContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
@@ -16,8 +15,7 @@ type PropertyCodeEntryNavigationProp = NativeStackNavigationProp<TenantStackPara
 
 const PropertyCodeEntryScreen = () => {
   const navigation = useNavigation<PropertyCodeEntryNavigationProp>();
-  const { user } = useAppAuth();
-  const { profile, refreshProfile } = useProfile();
+  const { user, refreshUser } = useUnifiedAuth();
   const apiClient = useApiClient();
 
   const [propertyCode, setPropertyCode] = useState('');
@@ -28,14 +26,11 @@ const PropertyCodeEntryScreen = () => {
     if (!user || !apiClient) {
       throw new Error('User not authenticated');
     }
-    // Use cached profile from ProfileContext
-    if (!profile) {
-      const email = user.email;
-      const name = user.name;
-      const avatarUrl = user.avatar || '';
-      await apiClient.createUserProfile({ email, name, avatarUrl, role: 'tenant' });
-      await refreshProfile();
-      log.info('Profile created for tenant via code entry');
+    // With UnifiedAuth, profile is created automatically on auth
+    // Just ensure we have fresh user data
+    if (!user?.id) {
+      await refreshUser();
+      log.info('Refreshed user data for tenant code entry');
     }
   };
 

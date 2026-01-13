@@ -18,6 +18,7 @@ import { DataClearer } from '../../utils/dataClearer';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { Property as DbProperty } from '../../types/api';
+import { supabase } from '../../lib/supabaseClient';
 import { formatAddress } from '../../utils/helpers';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
@@ -63,6 +64,25 @@ const PropertyManagementScreen = () => {
       setIsLoadingProperties(true);
       const dbProperties = await api.getUserProperties({ limit: pageSize, offset: 0 });
 
+      // Get tenant counts for all properties
+      const propertyIds = dbProperties.map((p: DbProperty) => p.id);
+      let tenantCounts: Record<string, number> = {};
+
+      if (propertyIds.length > 0) {
+        const { data: tenantLinks, error: tenantError } = await supabase
+          .from('tenant_property_links')
+          .select('property_id')
+          .in('property_id', propertyIds)
+          .eq('is_active', true);
+
+        if (!tenantError && tenantLinks) {
+          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: any) => {
+            acc[link.property_id] = (acc[link.property_id] || 0) + 1;
+            return acc;
+          }, {});
+        }
+      }
+
       // Map database properties to screen interface
       const mappedProperties = dbProperties.map((prop: DbProperty) => ({
         id: prop.id,
@@ -73,12 +93,12 @@ const PropertyManagementScreen = () => {
             ? formatAddressString(prop.address)
             : 'No Address',
         type: prop.property_type || 'Unknown',
-        image: '', // TODO: Add property image support
-        tenants: 0, // TODO: Add tenant count
+        image: '',
+        tenants: tenantCounts[prop.id] || 0,
         property_code: prop.property_code,
         activeRequests: 0, // TODO: Add maintenance request count
       }));
-      
+
       setProperties(mappedProperties);
       setPage(1);
       setHasMore(dbProperties.length === pageSize);
@@ -95,6 +115,26 @@ const PropertyManagementScreen = () => {
     try {
       const offset = page * pageSize;
       const more = await api.getUserProperties({ limit: pageSize, offset });
+
+      // Get tenant counts for loaded properties
+      const propertyIds = more.map((p: DbProperty) => p.id);
+      let tenantCounts: Record<string, number> = {};
+
+      if (propertyIds.length > 0) {
+        const { data: tenantLinks, error: tenantError } = await supabase
+          .from('tenant_property_links')
+          .select('property_id')
+          .in('property_id', propertyIds)
+          .eq('is_active', true);
+
+        if (!tenantError && tenantLinks) {
+          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: any) => {
+            acc[link.property_id] = (acc[link.property_id] || 0) + 1;
+            return acc;
+          }, {});
+        }
+      }
+
       const mapped = more.map((prop: DbProperty) => ({
         id: prop.id,
         name: prop.name || 'Unnamed Property',
@@ -105,7 +145,7 @@ const PropertyManagementScreen = () => {
             : 'No Address',
         type: prop.property_type || 'Unknown',
         image: '',
-        tenants: 0,
+        tenants: tenantCounts[prop.id] || 0,
         property_code: prop.property_code,
         activeRequests: 0,
       }));
@@ -139,7 +179,7 @@ const PropertyManagementScreen = () => {
   };
 
   const handlePropertyPress = (property: Property) => {
-    navigation.navigate('PropertyDetails', { property });
+    navigation.navigate('PropertyDetails', { propertyId: property.id });
   };
 
   const handleInviteTenant = async (property: Property) => {
@@ -174,16 +214,14 @@ const PropertyManagementScreen = () => {
 
   const handleDraftPress = (draft: PropertySetupState) => {
     // Navigate to the appropriate screen based on current step
+    // All screens load data from draft via draftId
     if (draft.currentStep === 0 || draft.currentStep === 1) {
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      navigation.navigate('PropertyBasics', { draftId: draft.id });
     } else if (draft.currentStep === 2) {
-      navigation.navigate('PropertyAreas', { 
-        propertyData: draft.propertyData, 
-        draftId: draft.id 
-      });
+      navigation.navigate('PropertyAreas', { draftId: draft.id });
     } else {
-      // For steps 3+, go to AddProperty for now
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      // For steps 3+, go to PropertyAssets
+      navigation.navigate('PropertyAssets', { draftId: draft.id });
     }
   };
 
@@ -653,10 +691,7 @@ const styles = StyleSheet.create({
     backgroundColor: DesignSystem.colors.background,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
     elevation: 3,
   },
   selectedCard: {

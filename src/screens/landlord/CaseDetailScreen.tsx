@@ -8,7 +8,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
-import { usePendingRequests } from '../../context/PendingRequestsContext';
+import { useAppState } from '../../context/AppStateContext';
 
 type CaseDetailScreenRouteProp = RouteProp<LandlordStackParamList, 'CaseDetail'>;
 type CaseDetailScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'CaseDetail'>;
@@ -37,7 +37,7 @@ const CaseDetailScreen = () => {
   const route = useRoute<CaseDetailScreenRouteProp>();
   const navigation = useNavigation<CaseDetailScreenNavigationProp>();
   const api = useApiClient();
-  const { refreshPendingCount } = usePendingRequests();
+  const { refreshNotificationCounts } = useAppState();
   const { caseId } = route.params;
 
   const [caseData, setCaseData] = useState<DetailedCase | null>(null);
@@ -98,7 +98,7 @@ const CaseDetailScreen = () => {
             mapped.status = 'pending';
             setCaseData({ ...mapped });
             // Refresh the badge count
-            refreshPendingCount();
+            refreshNotificationCounts();
           } catch (updateErr) {
             log.error('Failed to mark request as viewed', { error: String(updateErr) });
           }

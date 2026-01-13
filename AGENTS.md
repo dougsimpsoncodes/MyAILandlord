@@ -1,35 +1,36 @@
-# Repository Guidelines
+# Agent Collaboration Guidelines
 
-## Project Structure & Module Organization
-- Source: `src/` (feature folders: `components/`, `screens/`, `services/`, `hooks/`, `lib/`, `navigation/`, `utils/`, `context/`, `theme/`, `types/`, `models/`, `data/`).
-- Tests: colocated under `__tests__/` (e.g., `src/services/storage/__tests__`).
-- E2E: `e2e/` with Playwright config in `playwright.config.ts`.
-- Assets: `assets/`. Platform folders: `ios/`, `android/`. Scripts: `scripts/`. Supabase artifacts: `supabase/`, `sql/`, `migrations/`.
+This repository may be edited by multiple agents. To minimize conflicts and regressions, follow these rules.
 
-## Build, Test, and Development Commands
-- `npm start`: Launch Expo dev server (Metro). Variants: `npm run web`, `npm run ios`, `npm run android`.
-- `npm run typecheck`: TypeScript checks with no emit.
-- `npm run lint` / `npm run lint:fix`: Lint code; auto-fix where safe.
-- `npm test`: Run Jest tests. `npm run test:unit` adds coverage. `npm run test:watch` for TDD.
-- `npm run test:e2e`: Run Playwright E2E via Expo Web. Ensure no dev server is already using port `8082`.
-- `npm run security:audit` and `npm run scan:secrets`: Security scans (npm, gitleaks).
+## Ownership
 
-## Coding Style & Naming Conventions
-- TypeScript, 2-space indent, single quotes, semicolons, `printWidth: 100` (see `.prettierrc.json`).
-- ESLint enforced; `no-console` except in tests/logging files. Prefer hooks in `hooks/` with `useX` naming; components in `PascalCase`.
-- File naming: feature-oriented folders; tests use `*.test.ts`/`*.test.tsx` inside `__tests__/`.
+Primary owner: @dougsimpson
 
-## Testing Guidelines
-- Unit/Component: Jest + Testing Library (`jest-expo` preset). Match: `**/__tests__/**/*.test.(ts|tsx|js)`.
-- E2E: Playwright. Starts Expo Web on `:8082`. Typical run: `npm run test:e2e`.
-- Aim for meaningful coverage on services and critical screens. Keep tests deterministic; avoid network where possible.
+Critical areas (see .github/CODEOWNERS):
+- Navigation/linking: `src/AppNavigator.tsx`, `src/navigation/**`
+- Contexts: `src/context/**`
+- Push notifications: `src/hooks/usePushNotifications.ts`, `src/services/push/**`
+- Top-level wiring: `App.tsx`
 
-## Commit & Pull Request Guidelines
-- Conventional prefixes: `feat:`, `fix:`, `chore:`, `security:`, etc. Example: `fix: resolve EAS build peer dependency conflicts`.
-- PRs: concise description, linked issue, screenshots/GIFs for UI, and notes on security/db changes.
-- Must pass: `typecheck`, `lint`, `test`, and security scans. Do not commit secrets or `.env` values.
+Do not change these areas without a PR reviewed by the owner.
 
-## Security & Configuration Tips
-- Required envs for Supabase use `EXPO_PUBLIC_*` on client. Validate via `npm run validate:env`.
-- Use `scan:secrets` before pushing. Keep RLS tests available via `npm run test:rls`.
+## Feature Flags
+
+- `EXPO_PUBLIC_IOS_MVP` (0|1): Enables iOS‑first MVP behavior (e.g., push hook, banner).
+- `EXPO_PUBLIC_LINKING_REFACTOR` (0|1): Toggles centralized deep‑link handling (Option B‑lite). Default OFF to avoid surprises.
+- `EXPO_PUBLIC_EXPERIMENTAL_APP` (0|1): Renders the clean experimental app entry (see `src/clean/`). Default OFF.
+
+## Branching
+
+Use a dedicated branch for iOS MVP work: `ios-mvp`. Merge to `main` via PRs only after passing `typecheck` and lint on touched areas.
+
+## Testing
+
+Local device testing: `./scripts/claude-test-invite-on-iphone.sh --clean`
+
+Deep‑linking guidance: Use Tunnel mode in DevTools; for physical devices, paste Tunnel URL or direct IP in Expo Go. See `docs/QUICK_TEST_GUIDE.md`.
+
+## Experimental Clean App
+
+An optional clean entry can be developed under `src/clean/` and enabled via `EXPO_PUBLIC_EXPERIMENTAL_APP=1`. Keep it self‑contained and avoid altering legacy paths.
 

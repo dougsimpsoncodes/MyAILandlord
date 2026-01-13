@@ -1,11 +1,10 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
-import { useAppAuth } from '../context/SupabaseAuthContext';
-import { RoleContext } from '../context/RoleContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 type RoleSelectScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'RoleSelect'>;
 
@@ -13,17 +12,15 @@ const { width } = Dimensions.get('window');
 
 const RoleSelectScreen = () => {
   const navigation = useNavigation<RoleSelectScreenNavigationProp>();
-  const { isSignedIn, user } = useAppAuth();
-  const { setUserRole } = useContext(RoleContext);
+  const { isSignedIn, user } = useUnifiedAuth();
 
   const handleRoleSelect = async (role: 'tenant' | 'landlord') => {
-    if (isSignedIn) {
-      // User is already authenticated, just set the role
-      await setUserRole(role);
-    } else {
-      // User needs to authenticate
+    // With UnifiedAuth, role is set during onboarding/signup via API
+    // This screen should navigate to Auth/Login with role parameter
+    if (!isSignedIn) {
       navigation.navigate('Login', { role });
     }
+    // If already signed in, role should already be set in profile
   };
 
   return (

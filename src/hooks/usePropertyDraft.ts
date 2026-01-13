@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import log from '../lib/log';
 import { PropertySetupState, PropertyData, PropertyArea, InventoryItem } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
-import { useAppAuth } from '../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 interface UsePropertyDraftOptions {
   autoSaveDelay?: number; // Delay in milliseconds before auto-save triggers
@@ -29,7 +29,7 @@ interface UsePropertyDraftReturn {
   clearError: () => void;
   
   // Draft management
-  createNewDraft: (initialData?: Partial<PropertyData>) => void;
+  createNewDraft: (initialData?: Partial<PropertyData>) => PropertySetupState;
   resetDraft: () => void;
 }
 
@@ -43,7 +43,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
     draftId,
   } = options;
 
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const [draftState, setDraftState] = useState<PropertySetupState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -245,20 +245,22 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
   }, []);
 
   /**
-   * Create a new draft
+   * Create a new draft and return it (so caller can immediately use draft.id for navigation)
    */
-  const createNewDraft = useCallback((initialData?: Partial<PropertyData>) => {
+  const createNewDraft = useCallback((initialData?: Partial<PropertyData>): PropertySetupState => {
     const newDraft = PropertyDraftService.createDraftState(
       initialData || {},
       [],
       [],
       0
     );
-    
+
     setDraftState(newDraft);
     setLastSaved(null);
     pendingChanges.current = true;
     setError(null);
+
+    return newDraft; // Return the draft so caller can use newDraft.id immediately
   }, []);
 
   /**
