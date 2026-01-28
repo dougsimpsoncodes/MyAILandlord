@@ -214,7 +214,10 @@ export default function OnboardingAccountScreen() {
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
-                    textContentType="newPassword"
+                    textContentType="oneTimeCode"
+                    autoComplete="off"
+                    autoCorrect={false}
+                    spellCheck={false}
                     accessibilityLabel="Password"
                     accessibilityHint="Enter a password with at least 8 characters"
                   />
@@ -264,7 +267,10 @@ export default function OnboardingAccountScreen() {
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showConfirmPassword}
-                    textContentType="newPassword"
+                    textContentType="oneTimeCode"
+                    autoComplete="off"
+                    autoCorrect={false}
+                    spellCheck={false}
                     onSubmitEditing={handleCreateAccount}
                     onFocus={() => {
                       // Scroll to bottom when confirm password is focused so terms are visible

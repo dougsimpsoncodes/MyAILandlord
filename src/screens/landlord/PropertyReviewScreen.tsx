@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
   FlatList,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -62,53 +62,56 @@ const PropertyReviewScreen = () => {
   });
 
   // Load existing property data when there's propertyId but no draft
-  useEffect(() => {
-    const loadExistingProperty = async () => {
-      // Wait for auth to be ready before making queries
-      if (!isLoaded) return;
-      // Only load if we have propertyId but no draft/draftId
-      if (!propertyId || draftId) return;
+  // Uses useFocusEffect to refresh data when returning from edit screens
+  useFocusEffect(
+    useCallback(() => {
+      const loadExistingProperty = async () => {
+        // Wait for auth to be ready before making queries
+        if (!isLoaded) return;
+        // Only load if we have propertyId but no draft/draftId
+        if (!propertyId || draftId) return;
 
-      setIsLoadingExisting(true);
-      try {
-        // Load property details
-        const { data: property, error: propError } = await supabase
-          .from('properties')
-          .select('*')
-          .eq('id', propertyId)
-          .single();
+        setIsLoadingExisting(true);
+        try {
+          // Load property details
+          const { data: property, error: propError } = await supabase
+            .from('properties')
+            .select('*')
+            .eq('id', propertyId)
+            .single();
 
-        if (propError) throw propError;
+          if (propError) throw propError;
 
-        // Map to PropertyData format
-        const mappedPropertyData: PropertyData = {
-          name: property.nickname || property.address || '',
-          address: {
-            line1: property.address || '',
-            city: property.city || '',
-            state: property.state || '',
-            zipCode: property.zip_code || '',
-          },
-          type: (property.property_type as PropertyData['type']) || '',
-          unit: property.unit_number || '',
-          bedrooms: property.bedrooms || 0,
-          bathrooms: property.bathrooms || 0,
-          photos: [],
-        };
-        setExistingPropertyData(mappedPropertyData);
+          // Map to PropertyData format
+          const mappedPropertyData: PropertyData = {
+            name: property.nickname || property.address || '',
+            address: {
+              line1: property.address || '',
+              city: property.city || '',
+              state: property.state || '',
+              zipCode: property.zip_code || '',
+            },
+            type: (property.property_type as PropertyData['type']) || '',
+            unit: property.unit_number || '',
+            bedrooms: property.bedrooms || 0,
+            bathrooms: property.bathrooms || 0,
+            photos: [],
+          };
+          setExistingPropertyData(mappedPropertyData);
 
-        // Load areas with assets
-        const areasWithAssets = await propertyAreasService.getAreasWithAssets(propertyId);
-        setExistingAreas(areasWithAssets || []);
-      } catch (error) {
-        log.error('PropertyReview: Error loading existing property', { error, propertyId });
-      } finally {
-        setIsLoadingExisting(false);
-      }
-    };
+          // Load areas with assets
+          const areasWithAssets = await propertyAreasService.getAreasWithAssets(propertyId);
+          setExistingAreas(areasWithAssets || []);
+        } catch (error) {
+          log.error('PropertyReview: Error loading existing property', { error, propertyId });
+        } finally {
+          setIsLoadingExisting(false);
+        }
+      };
 
-    loadExistingProperty();
-  }, [propertyId, draftId, supabase, isLoaded]);
+      loadExistingProperty();
+    }, [propertyId, draftId, supabase, isLoaded])
+  );
 
   // Property data and areas - prefer draft state, fall back to existing property data
   const propertyData = draftState?.propertyData || existingPropertyData;

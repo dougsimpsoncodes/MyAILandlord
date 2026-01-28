@@ -10,11 +10,6 @@ import { OnboardingProvider } from './src/context/OnboardingContext';
 import AppNavigator from './src/AppNavigator';
 import { initMonitoring } from './src/lib/monitoring';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
-// Dev-only diagnostics
-if (__DEV__) {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  require('./src/lib/devExpose');
-}
 
 export default function App() {
   // Initialize monitoring (no-op without DSN)

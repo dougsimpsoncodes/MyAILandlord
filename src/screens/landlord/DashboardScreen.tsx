@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,9 +47,12 @@ const DashboardScreen = () => {
   const [cases, setCases] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadCases();
-  }, []);
+  // Refresh cases whenever screen gains focus (handles returning from case updates)
+  useFocusEffect(
+    useCallback(() => {
+      loadCases();
+    }, [apiClient])
+  );
 
   const loadCases = async () => {
     try {

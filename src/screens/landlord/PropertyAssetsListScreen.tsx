@@ -27,7 +27,6 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveBody } from '../../components/shared/ResponsiveText';
-import { LoadingScreen } from '../../components/LoadingSpinner';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
 type PropertyAssetsListNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
@@ -467,12 +466,14 @@ const PropertyAssetsListScreen = () => {
   }, [user?.id, effectiveDraftId, isInitializing, routePropertyId]);
 
   // Load areas from draft state when it becomes available
-  // IMPORTANT: Skip this entirely for existing properties (routePropertyId) - they load from database
+  // Skip ONLY for existing properties being edited (routePropertyId without draftId)
+  // For onboarding (routePropertyId WITH draftId), still load from draft since areas are there
   const hasLoadedDraftAreas = useRef(false);
   useEffect(() => {
     const loadDraftAreas = async () => {
-      // Skip for existing properties - their data comes from database
-      if (routePropertyId) {
+      // Skip for existing properties being edited (no draft) - their data comes from database
+      // But for onboarding (has both routePropertyId AND effectiveDraftId), still load from draft
+      if (routePropertyId && !effectiveDraftId) {
         return;
       }
 
@@ -722,11 +723,6 @@ const PropertyAssetsListScreen = () => {
     setIsSubmitting(false);
   };
 
-  // Show loading screen while initializing after page refresh
-  if (isInitializing) {
-    return <LoadingScreen message="Loading your property draft..." />;
-  }
-
   // Save status indicator for header (no button)
   const headerRight = (isSaving || lastSaved) ? (
     <View style={styles.saveStatus}>
@@ -770,38 +766,22 @@ const PropertyAssetsListScreen = () => {
       bottomContent={bottomContent}
     >
       <ResponsiveContainer maxWidth={responsive.isLargeScreen() ? 'large' : 'desktop'} style={{ flex: 1 }}>
-        {selectedAreas.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="alert-circle" size={48} color="#8E8E93" />
-            <Text style={styles.emptyStateTitle}>No Areas Selected</Text>
-            <Text style={styles.emptyStateText}>
-              Please go back to Step 1 and select areas for your property.
-            </Text>
-            <TouchableOpacity
-              style={styles.goBackButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Text style={styles.goBackButtonText}>Go Back to Step 1</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.areasContainer}>
-            {selectedAreas.map((area) => (
-              <ExpandableAreaCard
-                key={area.id}
-                area={area}
-                isSelected={false}
-                onToggle={() => {}}
-                onAddPhoto={() => handleAddPhoto(area.id)}
-                onPhotosUploaded={handlePhotosUploaded(area.id)}
-                onAddAsset={() => handleAddAsset(area.id, area.name)}
-                onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
-                responsive={responsive}
-                propertyId={routePropertyId || effectiveDraftId || 'temp'}
-              />
-            ))}
-          </View>
-        )}
+        <View style={styles.areasContainer}>
+          {selectedAreas.map((area) => (
+            <ExpandableAreaCard
+              key={area.id}
+              area={area}
+              isSelected={false}
+              onToggle={() => {}}
+              onAddPhoto={() => handleAddPhoto(area.id)}
+              onPhotosUploaded={handlePhotosUploaded(area.id)}
+              onAddAsset={() => handleAddAsset(area.id, area.name)}
+              onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
+              responsive={responsive}
+              propertyId={routePropertyId || effectiveDraftId || 'temp'}
+            />
+          ))}
+        </View>
       </ResponsiveContainer>
     </ScreenContainer>
   );
@@ -1127,37 +1107,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#95A5A6',
     fontStyle: 'italic',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-  },
-  emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 40,
-  },
-  goBackButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  goBackButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
   },
 });
 

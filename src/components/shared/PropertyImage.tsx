@@ -34,10 +34,14 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
 
-  // Reset error state when address changes
+  // Track address changes with a cache-busting key
+  const [cacheKey, setCacheKey] = useState(Date.now());
+
+  // Reset error state and update cache key when address changes
   React.useEffect(() => {
     setHasError(false);
     setIsLoading(true);
+    setCacheKey(Date.now()); // Force new image fetch
   }, [address]);
 
   // Determine the API request size (Google allows up to 640x640 for free tier)
@@ -50,7 +54,8 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
     if (!address || !SUPABASE_FUNCTIONS_URL) return null;
 
     const encodedAddress = encodeURIComponent(address);
-    return `${SUPABASE_FUNCTIONS_URL}/get-property-image?address=${encodedAddress}&width=${Math.round(requestWidth)}&height=${requestHeight}`;
+    // Include cacheKey to bust React Native's image cache when address changes
+    return `${SUPABASE_FUNCTIONS_URL}/get-property-image?address=${encodedAddress}&width=${Math.round(requestWidth)}&height=${requestHeight}&_=${cacheKey}`;
   };
 
   const imageUrl = getPropertyImageUrl();

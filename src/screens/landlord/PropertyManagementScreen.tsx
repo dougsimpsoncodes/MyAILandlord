@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,10 +53,12 @@ const PropertyManagementScreen = () => {
   const [isClearingData, setIsClearingData] = useState(false);
   const api = useApiClient();
 
-  // Load properties on screen mount and when screen is focused
-  useEffect(() => {
-    loadProperties();
-  }, []);
+  // Load properties whenever screen gains focus (handles returning from edits)
+  useFocusEffect(
+    useCallback(() => {
+      loadProperties();
+    }, [api])
+  );
 
   const loadProperties = async () => {
     try {
