@@ -1,16 +1,18 @@
-import { useEffect, useState, useContext, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useUnifiedAuth } from '../context/UnifiedAuthContext'
-import { RoleContext } from '../context/RoleContext'
-import { useProfile } from '../context/ProfileContext'
 import { log } from '../lib/log'
 import { useApiClient } from '../services/api/client'
 import { PendingInviteService } from '../services/storage/PendingInviteService'
 
+/**
+ * useProfileSync - Ensures user profile is synced with database
+ *
+ * Simplified to use UnifiedAuthContext exclusively (no longer uses ProfileContext or RoleContext).
+ * UnifiedAuthContext already handles profile/role loading from the database.
+ */
 export function useProfileSync() {
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
-  const { isSignedIn, isLoading, user, processingInvite } = useUnifiedAuth()
-  const { setUserRole, userRole } = useContext(RoleContext)
-  const { profile, isLoading: profileLoading, refreshProfile } = useProfile()
+  const { isSignedIn, isLoading, user, processingInvite, updateRole, refreshUser } = useUnifiedAuth()
   const [ready, setReady] = useState(false)
   const api = useApiClient()
   const refreshedOnceRef = useRef(false)
@@ -20,10 +22,8 @@ export function useProfileSync() {
 
     async function run() {
       try {
-        // In auth-disabled mode, set a default role and exit
+        // In auth-disabled mode, set ready immediately
         if (authDisabled) {
-          const finalRole = userRole || 'landlord'
-          await setUserRole(finalRole as 'landlord' | 'tenant')
           if (!cancelled) {
             setReady(true)
           }
@@ -32,7 +32,7 @@ export function useProfileSync() {
 
         log.debug('useProfileSync: starting...', { isLoading, isSignedIn, userId: user?.id })
 
-        if (isLoading || profileLoading || !isSignedIn || !user) {
+        if (isLoading || !isSignedIn || !user) {
           return
         }
 
@@ -50,93 +50,68 @@ export function useProfileSync() {
 
         // Also check AsyncStorage directly as a backup (in case processingInvite flag isn't set yet)
         const pendingInvite = await PendingInviteService.getPendingInvite()
-        if (pendingInvite && !profile) {
+        if (pendingInvite && !user.role) {
           log.debug('useProfileSync: Skipping profile creation - pending invite detected in AsyncStorage', {
             inviteType: pendingInvite.type,
-            hasProfile: !!profile,
+            hasRole: !!user.role,
           })
           return
         }
 
-        const userId = user.id
         const email = user.email || ''
         const name = user.name || ''
         const avatarUrl = user.avatar || ''
 
-        // CRITICAL FIX: Wait for ProfileContext to provide a definitive answer
-        // ProfileContext state: undefined (not checked) → null (checked, no profile) OR object (checked, profile exists)
-        // profile === undefined means ProfileContext hasn't checked yet
-        // profile === null means ProfileContext checked DB and found no profile
-        // profile === object means ProfileContext found a profile
-
-        // If ProfileContext is still loading, wait
-        if (profileLoading) {
-          log.debug('useProfileSync: ProfileContext loading, waiting...')
-          return
-        }
-
-        // If profile is still undefined (initial state), ProfileContext hasn't finished yet
-        // This handles both cache and non-cache scenarios
-        if (profile === undefined) {
-          log.debug('useProfileSync: ProfileContext not ready yet (profile still undefined)')
-          return
-        }
-
-        log.debug('useProfileSync: ProfileContext ready, profile state:', {
-          profileType: profile === null ? 'null' : (profile ? 'object' : 'undefined'),
-          profileRole: profile?.role
+        log.debug('useProfileSync: User state:', {
+          hasRole: !!user.role,
+          role: user.role,
+          onboardingCompleted: user.onboarding_completed
         })
 
-        // If profile exists in database, ALWAYS use its role as source of truth
-        if (profile?.role) {
-          const dbRole = profile.role
-          log.debug('useProfileSync: Using database role (source of truth):', dbRole)
-
-          // Set the role in context so navigation works
-          if (!cancelled && userRole !== dbRole) {
-            await setUserRole(dbRole)
+        // If user already has a role from UnifiedAuthContext, we're ready
+        if (user.role) {
+          log.debug('useProfileSync: User has role from UnifiedAuth:', user.role)
+          if (!cancelled) {
             setReady(true)
           }
           return
         }
 
-        // Only reach here if profile doesn't exist or has no role
+        // User doesn't have a role yet - check if we need to create profile or set role
         // Check auth metadata for role before defaulting to 'landlord'
         const metadataRole = user?.user_metadata?.role as 'landlord' | 'tenant' | undefined
-        const finalRole = userRole || metadataRole || 'landlord'
+        const finalRole = metadataRole || 'landlord'
         log.debug('useProfileSync: role determination for new profile:', {
-          contextRole: userRole,
           metadataRole,
           finalRole
         })
 
-        // If ProfileContext found no profile yet, re-check once before creating
-        if (profile === null && !refreshedOnceRef.current) {
+        // Refresh once to ensure we have latest data before creating
+        if (!refreshedOnceRef.current) {
           refreshedOnceRef.current = true
-          log.debug('useProfileSync: profile null, refreshing once before creation')
-          await refreshProfile()
+          log.debug('useProfileSync: Refreshing user data once before profile creation')
+          await refreshUser()
           return
         }
 
-        if (profile === null) {
-          // Create new profile
-          log.debug('useProfileSync: Creating new profile with role:', finalRole)
-          await api.createUserProfile({ email, name, avatarUrl, role: finalRole })
-          // Refresh the profile cache after creation
-          await refreshProfile()
-        } else if (profile && !profile.role) {
-          // Only update role if user doesn't have one set yet
-          log.debug('useProfileSync: Updating profile role to:', finalRole)
-          await api.updateUserProfile({ role: finalRole, name, avatarUrl, email })
-          // Refresh the profile cache after update
-          await refreshProfile()
+        // If user still has no role after refresh, create/update profile
+        if (!user.role) {
+          try {
+            // Try to create profile (will fail if exists, that's ok)
+            log.debug('useProfileSync: Creating new profile with role:', finalRole)
+            await api.createUserProfile({ email, name, avatarUrl, role: finalRole })
+          } catch {
+            // Profile likely exists, try updating role
+            log.debug('useProfileSync: Updating profile role to:', finalRole)
+            await api.updateUserProfile({ role: finalRole, name, avatarUrl, email })
+          }
+          // Update role in UnifiedAuthContext
+          await updateRole(finalRole)
         }
 
         log.debug('useProfileSync: profile synced with role:', finalRole)
 
-        // Set the role in context so navigation works
         if (!cancelled) {
-          await setUserRole(finalRole as 'landlord' | 'tenant')
           setReady(true)
         }
       } catch (error) {
@@ -147,7 +122,7 @@ export function useProfileSync() {
 
     run()
     return () => { cancelled = true }
-  }, [isLoading, profileLoading, isSignedIn, user, userRole, api, profile, refreshProfile, setUserRole, authDisabled])
+  }, [isLoading, isSignedIn, user, api, processingInvite, updateRole, refreshUser, authDisabled])
 
   return { ready }
 }

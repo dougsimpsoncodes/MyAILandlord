@@ -35,7 +35,7 @@ interface Property {
   image: string;
   tenants: number;
   activeRequests: number;
-  property_code?: string;
+  property_code?: string | null;
 }
 
 const PropertyManagementScreen = () => {

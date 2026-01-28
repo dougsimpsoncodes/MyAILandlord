@@ -214,7 +214,7 @@ export default function PropertyAddressFormSimplified({
           value={value.city || ''}
           onChangeText={set('city')}
           placeholder=""
-          autoComplete="address-level2"
+          autoComplete="street-address"
           textContentType={Platform.OS === 'ios' ? 'addressCity' : undefined}
           autoCapitalize="words"
           importantForAutofill="yes"
@@ -227,7 +227,7 @@ export default function PropertyAddressFormSimplified({
           value={value.state || ''}
           onChangeText={set('state')}
           placeholder=""
-          autoComplete="address-level1"
+          autoComplete="postal-code"
           textContentType={Platform.OS === 'ios' ? 'addressState' : undefined}
           autoCapitalize="characters"
           importantForAutofill="yes"

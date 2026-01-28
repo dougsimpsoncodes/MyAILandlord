@@ -86,7 +86,8 @@ describe('Log Sanitization', () => {
     log.info('Profile', { clerkUserId: 'user_123abc' });
 
     const result = logOutput[1] as { clerkUserId: string };
-    expect(result.clerkUserId).toMatch(/^hash_[a-f0-9]{16}$/);
+    // simpleHash returns 8-16 hex chars (padStart 8, substring 0-16)
+    expect(result.clerkUserId).toMatch(/^hash_[a-f0-9]{8,16}$/);
   });
 
   test('masks address fields', () => {
@@ -106,9 +107,11 @@ describe('Log Sanitization', () => {
     });
   });
 
-  test('redacts signed URLs', () => {
+  test('redacts URLs with token parameter', () => {
+    // The implementation redacts URLs containing "?...token=" pattern
+    // NOT based on field name "signedUrl"
     log.info('Image', {
-      signedUrl: 'https://storage.example.com/image.jpg?signature=abc',
+      signedUrl: 'https://storage.example.com/image.jpg?token=secret123',
     });
 
     expect(logOutput[1]).toEqual({

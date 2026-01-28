@@ -689,29 +689,33 @@ const PropertyAssetsListScreen = () => {
   };
 
   const handleNext = async () => {
-    if (isSubmitting || isDraftLoading || !propertyData) return;
+    // For onboarding flow, need propertyData from draft
+    // For existing property flow, need routePropertyId
+    if (isSubmitting || isDraftLoading) return;
+    if (!propertyData && !routePropertyId) return;
 
     setIsSubmitting(true);
 
     try {
-      // Save current progress (including areas) to draft
-      if (draftState) {
+      // Save current progress (including areas) to draft - only for onboarding flow
+      if (draftState && effectiveDraftId) {
         updateAreas(selectedAreas);
         await saveDraft();
-      }
 
-      // Update current draft ID to step 3
-      if (user?.id && effectiveDraftId) {
-        await PropertyDraftService.setCurrentDraftId(user.id, effectiveDraftId, 3);
+        // Update current draft ID to step 3
+        if (user?.id) {
+          await PropertyDraftService.setCurrentDraftId(user.id, effectiveDraftId, 3);
+        }
       }
     } catch (error) {
       console.error('Error saving draft:', error);
       // Continue anyway - navigation can work without draft save
     }
 
-    // Navigate to PropertyReview with draft-only params
+    // Navigate to PropertyReview
+    // For existing properties (routePropertyId), draftId may be undefined
     navigation.navigate('PropertyReview', {
-      draftId: effectiveDraftId!,
+      draftId: effectiveDraftId,
       propertyId: routePropertyId,
     });
 

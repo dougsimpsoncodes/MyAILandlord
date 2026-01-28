@@ -10,7 +10,7 @@ const navigationRef = createNavigationContainerRef();
 
 function navigate(name: string, params?: object) {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name as never, params as never);
+    (navigationRef as any).navigate(name, params);
   } else {
     log.warn('📲 Navigation not ready, cannot navigate to', name);
   }

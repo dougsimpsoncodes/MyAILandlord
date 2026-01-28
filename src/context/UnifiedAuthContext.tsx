@@ -61,6 +61,10 @@ interface UnifiedAuthContextValue {
   updateRole: (role: 'landlord' | 'tenant') => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
 
+  // Backwards-compatible profile methods (migrated from ProfileContext)
+  refreshProfile: () => Promise<void>;
+  updateProfileCache: (updates: Partial<{ name: string; role: 'landlord' | 'tenant' | null }>) => void;
+
   // Pending invite state (for tenant invite flow)
   processingInvite: boolean;
   redirect: RedirectType;
@@ -235,7 +239,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
   }, [user, refreshUser]);
 
   /**
-   * Update user profile (name, phone)
+   * Update user profile (name, phone) with retry logic
    */
   const updateProfile = useCallback(async (data: { name?: string; phone?: string }) => {
     if (!user) {
@@ -247,26 +251,57 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
       setUser(prev => prev ? { ...prev, name: data.name! } : null);
     }
 
-    // Fire update to Supabase (don't await - response can hang on web)
+    // Fire update to Supabase with retry logic (don't await - response can hang on web)
     // Auth state listener will update state when server confirms
-    supabase.auth.updateUser({
-      data: {
-        name: data.name,
-        full_name: data.name,
-        phone: data.phone,
-      },
-    }).then(({ error }) => {
-      if (error) {
-        log.error('UnifiedAuth: Failed to update profile:', error);
-      } else {
+    const attemptUpdate = async (retryCount = 0): Promise<void> => {
+      try {
+        const { error } = await supabase.auth.updateUser({
+          data: {
+            name: data.name,
+            full_name: data.name,
+            phone: data.phone,
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
         log.debug('UnifiedAuth: Profile updated confirmed', { name: data.name });
+      } catch (err) {
+        if (retryCount < 2) {
+          log.warn('UnifiedAuth: Profile update failed, retrying...', { attempt: retryCount + 1 });
+          await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+          return attemptUpdate(retryCount + 1);
+        }
+        log.error('UnifiedAuth: Profile update failed after retries:', err);
       }
-    }).catch(err => {
+    };
+
+    attemptUpdate().catch(err => {
       log.error('UnifiedAuth: Profile update error:', err);
     });
 
     log.debug('UnifiedAuth: Profile update initiated', { name: data.name });
   }, [user]);
+
+  /**
+   * Backwards-compatible: Refresh profile (alias for refreshUser)
+   * Used by components migrated from ProfileContext
+   */
+  const refreshProfile = useCallback(async () => {
+    return refreshUser();
+  }, [refreshUser]);
+
+  /**
+   * Backwards-compatible: Update local profile cache optimistically
+   * Used by components migrated from ProfileContext
+   */
+  const updateProfileCache = useCallback((updates: Partial<{ name: string; role: 'landlord' | 'tenant' | null }>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      return { ...prev, ...updates };
+    });
+  }, []);
 
   /**
    * Sign out
@@ -408,6 +443,8 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     refreshUser,
     updateRole,
     updateProfile,
+    refreshProfile,
+    updateProfileCache,
     processingInvite,
     redirect,
     clearRedirect,

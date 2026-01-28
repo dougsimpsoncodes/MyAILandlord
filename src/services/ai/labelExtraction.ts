@@ -37,7 +37,7 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
     let base64Image: string;
     try {
       base64Image = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
     } catch {
       return {

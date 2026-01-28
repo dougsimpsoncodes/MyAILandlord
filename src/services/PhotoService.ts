@@ -182,7 +182,7 @@ export class PhotoService {
         uri: manipulatorResult.uri,
         width: manipulatorResult.width,
         height: manipulatorResult.height,
-        fileSize: fileInfo.size || photo.fileSize,
+        fileSize: (fileInfo as any).size || photo.fileSize,
         compressed: true,
       };
     } catch (error) {
@@ -217,7 +217,7 @@ export class PhotoService {
     }
 
     // Check format
-    if (!PHOTO_CONFIG.SUPPORTED_FORMATS.includes(photo.mimeType)) {
+    if (!PHOTO_CONFIG.SUPPORTED_FORMATS.includes(photo.mimeType as 'image/jpeg' | 'image/png')) {
       errors.push(`Unsupported format: ${photo.mimeType}. Use JPEG or PNG.`);
     }
 
@@ -284,7 +284,7 @@ export class PhotoService {
       uri: asset.uri,
       width: asset.width || 0,
       height: asset.height || 0,
-      fileSize: fileInfo.size || 0,
+      fileSize: (fileInfo as any).size || 0,
       mimeType: asset.mimeType || 'image/jpeg',
       timestamp: new Date(),
       compressed: false,

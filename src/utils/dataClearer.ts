@@ -116,9 +116,9 @@ export class DataClearer {
     allKeys: string[];
   }> {
     try {
-      const allKeys = await AsyncStorage.getAllKeys();
-      const draftKeys = allKeys.filter(key => 
-        key.includes('property_draft') || 
+      const allKeys = [...await AsyncStorage.getAllKeys()];
+      const draftKeys = allKeys.filter(key =>
+        key.includes('property_draft') ||
         key.includes('drafts_list') ||
         key.includes('user_drafts')
       );

@@ -151,12 +151,13 @@ export type LandlordStackParamList = {
   // New flow screens - use draftId only (no object params)
   PropertyBasics: { draftId?: string; propertyId?: string; isOnboarding?: boolean; firstName?: string } | undefined;
   PropertyAttributes: { draftId: string; isOnboarding?: boolean; firstName?: string };
-  PropertyAreas: { draftId: string; propertyId?: string; isOnboarding?: boolean; firstName?: string };
+  PropertyAreas: { draftId?: string; propertyId?: string; isOnboarding?: boolean; firstName?: string };
   // draftId is required for new properties, propertyId for existing properties (at least one required)
   PropertyAssets: { draftId?: string; propertyId?: string; newAsset?: InventoryItem };
-  PropertyReview: { draftId: string; propertyId?: string };
+  // draftId for new properties (onboarding), propertyId for existing properties (at least one required)
+  PropertyReview: { draftId?: string; propertyId?: string };
   AddAsset: {
-    draftId: string;
+    draftId?: string;  // Optional for existing properties
     areaId: string;
     areaName: string;
     propertyId?: string;
@@ -338,8 +339,8 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
-          // Expose testID for E2E login success check
-          tabBarTestID: 'nav-dashboard',
+          // Expose accessibilityLabel for E2E testing
+          tabBarAccessibilityLabel: 'nav-dashboard',
         }}
       />
       <LandlordTab.Screen
@@ -369,8 +370,8 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="business" size={size} color={color} />
           ),
-          // Expose testID for navigating to properties
-          tabBarTestID: 'nav-properties',
+          // Expose accessibilityLabel for E2E testing
+          tabBarAccessibilityLabel: 'nav-properties',
         }}
       />
       <LandlordTab.Screen
@@ -400,7 +401,7 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
-          tabBarTestID: 'nav-user-menu',
+          tabBarAccessibilityLabel: 'nav-user-menu',
         }}
       />
     </LandlordTab.Navigator>

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PropertyDraftService } from '../PropertyDraftService';
-import { PropertySetupState, PropertyAddress, PropertyData } from '../../../types/property';
+import { PropertySetupState } from '../../../types/property';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -33,7 +33,13 @@ describe('PropertyDraftService', () => {
       expect(draftState.status).toBe('draft');
       expect(draftState.currentStep).toBe(0);
       expect(draftState.propertyData.name).toBe('Test Property');
-      expect(draftState.propertyData.address).toBe('123 Test St');
+      // Address is preserved as an object, not flattened to a string
+      expect(draftState.propertyData.address).toEqual({
+        line1: '123 Test St',
+        city: 'Test City',
+        state: 'TS',
+        zipCode: '12345',
+      });
       expect(draftState.propertyData.type).toBe('apartment');
       expect(draftState.areas).toEqual([]);
       expect(draftState.assets).toEqual([]);

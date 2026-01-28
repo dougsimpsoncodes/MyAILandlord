@@ -294,6 +294,8 @@ export default function OnboardingAccountScreen() {
               onPress={() => setAcceptedTerms(!acceptedTerms)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: acceptedTerms }}
+              accessibilityLabel="Accept terms and privacy policy"
+              testID="terms-checkbox"
             >
               <View style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}>
                 {acceptedTerms && <Text style={styles.checkmark}>✓</Text>}

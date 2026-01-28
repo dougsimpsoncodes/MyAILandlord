@@ -1653,3 +1653,271 @@ Message: chore: sync learning log
 Guidance Applied: 
 Quality Score: 6
 ---
+Context reset for branch: fix/ios-keyboard-inset-auth
+[2026-01-04T03:10:04Z] Commit 07edc11460e323b3c9b626a6d1ea2d7710cb696a successful
+Message: refactor: consolidate auth context to UnifiedAuth
+
+- Replace useAppAuth (SupabaseAuthContext) with useUnifiedAuth across all screens
+- Replace useProfile/RoleContext with unified context access
+- Replace useUnreadMessages with useAppState for centralized state
+- Simplify RootNavigator bootstrap logic with single isLoading flag
+- Update all hooks to use UnifiedAuthContext
+
+This consolidation reduces context nesting and provides a single source
+of truth for authentication and user state throughout the app.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:10:19Z] Commit e9cf3c19923e4c0916ccef9126653f6bcec75df0 successful
+Message: fix: design system web shadow compatibility
+
+- Replace native shadow props with boxShadow CSS for web platform
+- Maintain elevation values for native platform fallback
+- Fixes shadow rendering issues on React Native Web
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:10:41Z] Commit dfb9426305526372d0323af1869f0150199daac9 successful
+Message: chore: reduce verbose logging and improve lib utilities
+
+- Add debug-level logging helpers to log.ts
+- Clean up haptics imports
+- Improve devExpose type safety
+- Standardize sentry error handling
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:11:04Z] Commit 3bfbf4d9a75c77757a8a7dec9f1e2bc0369358b8 successful
+Message: docs: add platform parity and architecture documentation
+
+- Add Android parity checklist for feature tracking
+- Add iOS MVP push notification setup guide
+- Add atomic RPC integration summary
+- Update onboarding redesign implementation guide
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:11:12Z] Commit d8375aac490082bc673f6a36e44e9324f5966a97 successful
+Message: chore: update agent definitions and project config
+
+- Add expo-expert and testflight-appstore-expert agents
+- Update AGENTS.md with new agent descriptions
+- Update CODEOWNERS
+- Add test-results/ to gitignore
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:11:20Z] Commit 15942845dac760d4277b8059fae2675bed0cff1e successful
+Message: chore: add Playwright E2E testing infrastructure
+
+- Add @playwright/test dependency
+- Add playwright.config.ts configuration
+- Update .env.example with test variables
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:11:38Z] Commit b3c020b69b37c902967d218a00f34c774ba96e19 successful
+Message: test: add Playwright E2E test flows
+
+- Add atomic RPC integration tests
+- Add tenant invite acceptance flow tests
+- Add landlord onboarding flow tests
+- Add Supabase test client utility
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:19:23Z] Commit 6f7298af298ce56918bc9112d948f9a4df5e4184 successful
+Message: chore: remove misplaced wellness and presentation docs
+
+These files were accidentally committed to the wrong repository.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:21:26Z] Commit 6963af8d363921596c0f3c905ba8fc1af3de58a7 successful
+Message: chore: remove Playwright E2E tests
+
+Removing E2E test infrastructure until proper CI setup is ready.
+Tests can be re-added when E2E testing strategy is established.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:26:48Z] Commit a6a4fefb8c785d4f2824a78080f3db170d626b8c successful
+Message: fix: remove references to deleted files
+
+- Remove AppCleanNavigator import from App.tsx (was deleted)
+- Create inline navigationRef in AppNavigator.tsx
+- Create inline navigate helper in usePushNotifications.ts
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:37:54Z] Commit d9bc7a983d250299875f3a4373c2a499747acaa2 successful
+Message: fix: login navigation - route to Bootstrap after successful login
+
+- Add navigation to Bootstrap after successful login in AuthScreen
+- Reset decidedRef when user signs in so BootstrapScreen re-evaluates
+- Fixes issue where login succeeded but user stayed on Auth screen
+
+The root cause was that BootstrapScreen was unmounted after navigating
+to Auth, so auth state changes weren't triggering navigation to Main.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-04T03:58:27Z] Commit 6c7f37840df44fe62e79325653593fe23f3ed2dc successful
+Message: security: remove files containing hardcoded credentials
+
+Removes debug/test guide files that contained:
+- PostgreSQL credentials
+- Google API Key
+
+These secrets should be rotated after this merge.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-12T16:00:00Z] Commit 6cc40b4b106873eac534c5857452bb7b68f05df8 successful
+Message: fix: resolve Add Asset navigation bug and EditProfile missing import
+
+Bug Fixes:
+- Fix Add Asset button failing silently for existing properties
+  (PropertyAssetsListScreen.tsx:630) - guard condition now allows
+  navigation when routePropertyId is present without requiring draftId
+- Fix EditProfileScreen missing updateProfile import - added useAppAuth
+  import from SupabaseAuthContext to enable profile updates
+
+Database Migration:
+- Add accept_invite RPC fix to preserve landlord role when accepting
+  invites (uses COALESCE to only set tenant role if no role exists)
+
+Tested via comprehensive E2E testing (Ralph Wiggum test suite):
+- Landlord signup, property creation, room/asset management
+- Tenant invite flow and signup
+- Maintenance request submission and landlord response
+- Bidirectional messaging between landlord and tenant
+- Profile editing for both roles
+- Asset deletion and cleanup verification
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-12T16:50:19Z] Commit ed5ce79153bb83dffeb38036e58aafa5b10191bd successful
+Message: fix: resolve profile refresh, property edit, tenant count, and messages badge issues
+
+- Fix 1: Profile name now refreshes after editing via UnifiedAuthContext.updateProfile
+- Fix 2: Property Edit button navigates to PropertyBasics with pre-filled data
+- Fix 3: Tenant count on LandlordHome queries tenant_property_links correctly
+- Fix 4: Messages badge updates correctly when messages are read
+- Bonus: PropertyManagement screen now also shows correct tenant counts
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-12T19:25:20Z] Commit 645839b5a497375202dda664853c822a5a86b99b successful
+Message: fix: convert empty property_type to null for database constraint
+
+The properties table has a CHECK constraint requiring property_type to be
+one of 'apartment', 'house', 'condo', 'townhouse' or NULL. During onboarding,
+property_type starts as empty string ('') which violated this constraint.
+
+This fix converts empty string to null before database insert.
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-12T19:29:33Z] Commit ccd22818368a17d9daa0a3ba60b81fe930adbbeb successful
+Message: fix: resolve three minor UI issues
+
+1. EditProfileScreen: Move setIsSaving(false) before showNotification
+   to ensure button state resets even if dialog callback doesn't fire
+
+2. PropertyAssetsListScreen: Add routePropertyId to useEffect dependency
+   array so focus listener properly captures the property ID for refetch
+
+3. PropertyAreasScreen: Add existence check before creating property
+   to prevent duplicates when user clicks Continue multiple times
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-12T20:09:26Z] Commit ab0da281fb7a41aa37053b10308c4a05997e51b9 successful
+Message: fix: make profile update non-blocking to prevent UI hang
+
+The Supabase auth.updateUser() and auth.refreshSession() calls were
+hanging indefinitely on web, causing the Save button to stay stuck on
+"Saving..." even though the update succeeded.
+
+Changes:
+- UnifiedAuthContext: Make updateProfile() non-blocking with optimistic
+  local state update. Fire Supabase call and handle response in callback.
+- EditProfileScreen: Fire refreshUser/refreshProfile without await since
+  they can have race conditions with fetchInProgress guards.
+
+The profile data is still saved correctly - we just don't block the UI
+waiting for the response.
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-13T00:15:49Z] Commit 088e6808b9b2a1587acdd0b59c6e56f6a882d123 successful
+Message: fix: wait for auth before loading property details
+
+PropertyDetailsScreen was hanging indefinitely because it made Supabase
+queries before the auth session was ready. Added isLoaded check from
+useSupabaseWithAuth hook to skip queries until auth is initialized.
+The query retries automatically when isLoaded becomes true.
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---

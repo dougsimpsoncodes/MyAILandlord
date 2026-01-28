@@ -80,9 +80,9 @@ const CaseDetailScreen = () => {
           area: request.area,
           asset: request.asset,
           issueType: request.issue_type,
-          priority: request.priority,
-          status: request.status,
-          createdAt: request.created_at,
+          priority: (request.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+          status: (request.status || 'pending') as 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled',
+          createdAt: request.created_at ?? new Date().toISOString(),
           images: request.images || [],
         };
 

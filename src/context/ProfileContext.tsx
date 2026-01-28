@@ -1,3 +1,13 @@
+/**
+ * @deprecated This context is deprecated. Use UnifiedAuthContext instead.
+ * User profile data is now managed by UnifiedAuthContext which provides:
+ * - user: Contains all profile data (id, email, name, role, etc.)
+ * - refreshUser() / refreshProfile(): Refresh user data
+ * - updateProfile(): Update user profile
+ * - updateProfileCache(): Optimistic update for local state
+ *
+ * Migration: Replace `useProfile()` with `useUnifiedAuth()` and use `user` object.
+ */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useUnifiedAuth } from './UnifiedAuthContext';
 import { useApiClient } from '../services/api/client';
@@ -89,9 +99,9 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
           email: profileData.email || user.email,
           name: profileData.name || user.name,
           role: profileData.role as 'landlord' | 'tenant' | null,
-          avatarUrl: profileData.avatar_url,
-          createdAt: profileData.created_at,
-          updatedAt: profileData.updated_at,
+          avatarUrl: profileData.avatar_url ?? undefined,
+          createdAt: profileData.created_at ?? undefined,
+          updatedAt: profileData.updated_at ?? undefined,
         };
         setProfile(mappedProfile);
         lastFetchTime.current = now;

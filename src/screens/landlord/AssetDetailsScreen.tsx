@@ -435,7 +435,7 @@ const AssetDetailsScreen = () => {
         </>
       }
     >
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
           {/* Asset Header */}
           <View style={styles.assetHeader}>
             <Text style={styles.assetName}>{currentAsset.name}</Text>

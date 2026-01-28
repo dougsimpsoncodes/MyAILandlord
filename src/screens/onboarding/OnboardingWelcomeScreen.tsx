@@ -10,6 +10,7 @@ type OnboardingStackParamList = {
   OnboardingAccount: { firstName: string };
   OnboardingRole: { firstName: string };
   Auth: { mode?: 'login' | 'signup' };
+  AuthForm: { initialMode?: 'login' | 'signup' };
 };
 
 type NavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'OnboardingWelcome'>;

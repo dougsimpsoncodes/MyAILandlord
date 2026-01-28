@@ -1,6 +1,6 @@
 // Base types
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
-export type RequestStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type RequestStatus = 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type UserRole = 'tenant' | 'landlord';
 export type MessageType = 'text' | 'image' | 'file';
 export type StorageBucket = 'maintenance-images' | 'voice-notes' | 'property-images' | 'documents';
@@ -96,26 +96,27 @@ export interface PaginatedResponse<T> {
 export interface Profile {
   id: string; // Supabase auth.users.id
   email: string;
-  name?: string;
-  avatar_url?: string;
-  role: UserRole;
-  created_at: string;
-  updated_at: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  role: UserRole | null;
+  created_at: string | null;
+  updated_at: string | null;
+  onboarding_completed?: boolean | null;
 }
 
 export interface Property {
   id: string;
-  landlord_id: string;
+  landlord_id: string | null;
   name: string;
-  address: string;
-  property_type: string;
-  bedrooms?: number;
-  bathrooms?: number;
-  property_code?: string;
-  allow_tenant_signup: boolean;
-  code_expires_at?: string;
-  created_at: string;
-  updated_at: string;
+  address: string | null;
+  property_type: string | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  property_code?: string | null;
+  allow_tenant_signup: boolean | null;
+  code_expires_at?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface MaintenanceRequest {
@@ -124,21 +125,30 @@ export interface MaintenanceRequest {
   tenant_id: string;
   title: string;
   description: string;
-  priority: Priority;
-  status: RequestStatus;
+  priority: Priority | null;
+  status: RequestStatus | null;
   area: string;
   asset: string;
   issue_type: string;
-  images?: string[];
-  voice_notes?: string[];
-  assigned_vendor_email?: string;
-  vendor_notes?: string;
-  estimated_cost?: number;
-  actual_cost?: number;
-  completion_notes?: string;
-  created_at: string;
-  updated_at: string;
-  completed_at?: string;
+  images?: string[] | null;
+  voice_notes?: string[] | null;
+  assigned_vendor_email?: string | null;
+  vendor_notes?: string | null;
+  estimated_cost?: number | null;
+  actual_cost?: number | null;
+  completion_notes?: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  completed_at?: string | null;
+  // Joined relations (from REST API with select)
+  profiles?: {
+    name?: string;
+    email?: string;
+  };
+  properties?: {
+    name?: string;
+    address?: string;
+  };
 }
 
 export interface Message {
@@ -146,11 +156,11 @@ export interface Message {
   sender_id: string;
   recipient_id: string;
   content: string;
-  message_type: MessageType;
-  attachment_url?: string;
-  property_id?: string;
-  read_at?: string;
-  created_at: string;
+  message_type: MessageType | null;
+  attachment_url?: string | null;
+  property_id?: string | null;
+  read_at?: string | null;
+  created_at: string | null;
 }
 
 export interface StorageFile {
@@ -203,11 +213,11 @@ export interface UseApiClientReturn {
   getTenantProperties: () => Promise<Array<{
     id: string;
     unit_number: string | null;
-    is_active: boolean;
+    is_active: boolean | null;
     properties: {
       id: string;
       name: string;
-      address: string;
+      address: string | null;
       landlord_id: string | null;
       wifi_network: string | null;
       wifi_password: string | null;
@@ -218,7 +228,8 @@ export interface UseApiClientReturn {
   linkTenantToPropertyById: (propertyId: string, unitNumber?: string) => Promise<boolean>;
 
   // Maintenance request methods
-  getMaintenanceRequests: () => Promise<MaintenanceRequest[]>;
+  getMaintenanceRequests: (opts?: { limit?: number; offset?: number }) => Promise<MaintenanceRequest[]>;
+  getMaintenanceRequestById: (id: string) => Promise<MaintenanceRequest | null>;
   createMaintenanceRequest: (data: CreateMaintenanceRequestData) => Promise<MaintenanceRequest>;
   updateMaintenanceRequest: (id: string, updates: UpdateMaintenanceRequestData) => Promise<MaintenanceRequest>;
 

@@ -4,7 +4,7 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { supabase as defaultSupabase } from './config';
+import { supabase as defaultSupabase, supabase } from './config';
 import { PropertyArea, InventoryItem, AssetCondition } from '../../types/property';
 import { storageService } from './storage';
 import log from '../../lib/log';

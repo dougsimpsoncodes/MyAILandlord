@@ -95,9 +95,10 @@ const LandlordCommunicationScreen = () => {
         const tenantId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
 
         if (!conversationMap.has(tenantId)) {
-          // Get tenant info from the message's sender/recipient data
-          const sender = msg.sender as any;
-          const recipient = msg.recipient as any;
+          // Get tenant info from the message's sender/recipient data (if expanded)
+          const msgWithRelations = msg as any;
+          const sender = msgWithRelations.sender;
+          const recipient = msgWithRelations.recipient;
           const tenantInfo = msg.sender_id === user.id ? recipient : sender;
 
           conversationMap.set(tenantId, {
@@ -182,11 +183,11 @@ const LandlordCommunicationScreen = () => {
   };
 
   const handleConversationPress = (conversation: Conversation) => {
-    navigation.navigate('LandlordChat' as never, {
+    (navigation as any).navigate('LandlordChat', {
       tenantId: conversation.id,
       tenantName: conversation.tenantName,
       tenantEmail: conversation.tenantEmail,
-    } as never);
+    });
   };
 
   const handleNewMessage = () => {

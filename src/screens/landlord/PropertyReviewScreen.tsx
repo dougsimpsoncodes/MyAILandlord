@@ -34,10 +34,15 @@ const PropertyReviewScreen = () => {
   const route = useRoute<PropertyReviewRouteProp>();
   const api = useApiClient();
   const { user, refreshUser } = useUnifiedAuth();
-  const { supabase } = useSupabaseWithAuth();
+  const { supabase, isLoaded } = useSupabaseWithAuth();
 
   // Get route params - only draftId and propertyId (no object params)
   const { draftId, propertyId } = route.params;
+
+  // State for existing property data (when no draft)
+  const [existingPropertyData, setExistingPropertyData] = useState<PropertyData | null>(null);
+  const [existingAreas, setExistingAreas] = useState<PropertyArea[]>([]);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(false);
 
   // Initialize draft management - this loads the draft including propertyData and areas
   const {
@@ -56,9 +61,58 @@ const PropertyReviewScreen = () => {
     autoSaveDelay: 2000
   });
 
-  // Property data and areas come from draft state
-  const propertyData = draftState?.propertyData;
-  const areas = draftState?.areas || [];
+  // Load existing property data when there's propertyId but no draft
+  useEffect(() => {
+    const loadExistingProperty = async () => {
+      // Wait for auth to be ready before making queries
+      if (!isLoaded) return;
+      // Only load if we have propertyId but no draft/draftId
+      if (!propertyId || draftId) return;
+
+      setIsLoadingExisting(true);
+      try {
+        // Load property details
+        const { data: property, error: propError } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('id', propertyId)
+          .single();
+
+        if (propError) throw propError;
+
+        // Map to PropertyData format
+        const mappedPropertyData: PropertyData = {
+          name: property.nickname || property.address || '',
+          address: {
+            line1: property.address || '',
+            city: property.city || '',
+            state: property.state || '',
+            zipCode: property.zip_code || '',
+          },
+          type: (property.property_type as PropertyData['type']) || '',
+          unit: property.unit_number || '',
+          bedrooms: property.bedrooms || 0,
+          bathrooms: property.bathrooms || 0,
+          photos: [],
+        };
+        setExistingPropertyData(mappedPropertyData);
+
+        // Load areas with assets
+        const areasWithAssets = await propertyAreasService.getAreasWithAssets(propertyId);
+        setExistingAreas(areasWithAssets || []);
+      } catch (error) {
+        log.error('PropertyReview: Error loading existing property', { error, propertyId });
+      } finally {
+        setIsLoadingExisting(false);
+      }
+    };
+
+    loadExistingProperty();
+  }, [propertyId, draftId, supabase, isLoaded]);
+
+  // Property data and areas - prefer draft state, fall back to existing property data
+  const propertyData = draftState?.propertyData || existingPropertyData;
+  const areas = draftState?.areas?.length ? draftState.areas : existingAreas;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
@@ -368,8 +422,8 @@ const PropertyReviewScreen = () => {
     />
   );
 
-  // Show loading state while draft is loading
-  if (isDraftLoading || !propertyData) {
+  // Show loading state while draft or existing property is loading
+  if (isDraftLoading || isLoadingExisting || !propertyData) {
     return (
       <ScreenContainer
         title="Review & Submit"

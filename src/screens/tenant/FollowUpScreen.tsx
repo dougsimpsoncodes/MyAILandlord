@@ -14,7 +14,7 @@ interface MaintenanceRequest {
   id: string;
   title: string;
   description: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   area?: string;
   asset?: string;
@@ -55,13 +55,13 @@ const FollowUpScreen = () => {
           id: found.id,
           title: found.title || 'Maintenance Request',
           description: found.description || '',
-          status: found.status || 'pending',
-          priority: found.priority || 'medium',
+          status: (found.status || 'pending') as 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled',
+          priority: (found.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
           area: found.area,
           asset: found.asset,
           issue_type: found.issue_type,
-          created_at: found.created_at,
-          updated_at: found.updated_at,
+          created_at: found.created_at ?? new Date().toISOString(),
+          updated_at: found.updated_at ?? undefined,
         });
       } else {
         setError('Request not found');

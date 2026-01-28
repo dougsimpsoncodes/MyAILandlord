@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useApiClient } from '../services/api/client';
 import { useUnifiedAuth } from './UnifiedAuthContext';
-import { useProfile } from './ProfileContext';
 import { supabase } from '../services/supabase/config';
 import log from '../lib/log';
 
@@ -28,7 +27,6 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
   const [pendingCount, setPendingCount] = useState(0);
   const [landlordId, setLandlordId] = useState<string | null>(null);
   const { user } = useUnifiedAuth();
-  const { profile } = useProfile();
   const apiClient = useApiClient();
 
   const refreshPendingCount = useCallback(async () => {
@@ -39,14 +37,14 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
     }
 
     try {
-      // Use cached profile from ProfileContext instead of API call
-      if (!profile || profile.role !== 'landlord') {
+      // Use user from UnifiedAuthContext (migrated from ProfileContext)
+      if (user.role !== 'landlord') {
         setNewCount(0);
         setPendingCount(0);
         return;
       }
 
-      setLandlordId(profile.id);
+      setLandlordId(user.id);
 
       // Get maintenance requests for landlord's properties
       const requests = await apiClient.getMaintenanceRequests();
@@ -67,7 +65,7 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
     } catch (error) {
       log.error('Error fetching pending requests count', { error: String(error) });
     }
-  }, [apiClient, user, profile]);
+  }, [apiClient, user]);
 
   // Fetch pending count on mount and when user changes
   useEffect(() => {

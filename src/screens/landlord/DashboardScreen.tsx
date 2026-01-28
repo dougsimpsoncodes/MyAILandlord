@@ -18,7 +18,7 @@ interface CaseFile {
   description: string;
   location: string;
   urgency: 'Emergency' | 'Very urgent' | 'Moderate' | 'Can wait' | 'Low priority';
-  status: 'submitted' | 'pending' | 'in_progress' | 'completed';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
   submittedAt: string;
   mediaCount: number;
   estimatedCost?: string;
@@ -30,7 +30,7 @@ interface MaintenanceRequestResponse {
   description: string;
   area: string;
   priority: string;
-  status: 'submitted' | 'pending' | 'in_progress' | 'completed';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
   created_at: string;
   estimated_cost?: number;
   images?: string[];
@@ -61,7 +61,7 @@ const DashboardScreen = () => {
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       
       // Transform API data to match the expected interface
-      const transformedCases = maintenanceRequests.map((request: MaintenanceRequestResponse) => ({
+      const transformedCases = maintenanceRequests.map((request: any) => ({
         id: request.id,
         tenantName: request.profiles?.name || 'Tenant User',
         tenantUnit: 'N/A', // TODO: Get from tenant_property_links

@@ -195,6 +195,7 @@ export const spacing = {
 
 export const typography = {
   sizes: {
+    // iOS-style naming
     caption2: 11,
     caption1: 12,
     footnote: 13,
@@ -206,6 +207,12 @@ export const typography = {
     title2: 22,
     title1: 28,
     largeTitle: 34,
+    // Short aliases for convenience
+    xs: 12,   // caption1
+    sm: 14,   // between caption1 and subheadline
+    md: 16,   // callout
+    lg: 20,   // title3
+    xl: 24,   // between title2 and title1
   },
   weights: {
     regular: '400' as const,

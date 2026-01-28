@@ -59,9 +59,10 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Refs for subscriptions
+  // Refs for subscriptions and concurrent request prevention
   const requestsChannel = useRef<RealtimeChannel | null>(null);
   const messagesChannel = useRef<RealtimeChannel | null>(null);
+  const fetchInProgress = useRef(false);
 
   /**
    * Fetch maintenance request counts (landlords only)
@@ -73,22 +74,37 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
       return;
     }
 
+    // Prevent concurrent requests
+    if (fetchInProgress.current) {
+      log.debug('AppState: Fetch already in progress, skipping');
+      return;
+    }
+
+    fetchInProgress.current = true;
+
     try {
-      // Get all maintenance requests for landlord's properties
+      // Get maintenance requests for landlord's properties with pagination limit
       const { data: requests, error: requestsError } = await supabase
         .from('maintenance_requests')
         .select('status, property_id, properties!inner(landlord_id)')
-        .eq('properties.landlord_id', user.id);
+        .eq('properties.landlord_id', user.id)
+        .limit(1000); // Prevent unbounded queries at scale
 
       if (requestsError) {
         throw requestsError;
       }
 
+      // Type-safe filtering for maintenance request status
+      interface MaintenanceRequestRow {
+        status: string;
+        property_id: string;
+      }
+
       // Count new requests (status = 'submitted')
-      const newCount = (requests || []).filter((r: any) => r.status === 'submitted').length;
+      const newCount = (requests || []).filter((r: MaintenanceRequestRow) => r.status === 'submitted').length;
 
       // Count pending requests (status = 'pending')
-      const pendingCount = (requests || []).filter((r: any) => r.status === 'pending').length;
+      const pendingCount = (requests || []).filter((r: MaintenanceRequestRow) => r.status === 'pending').length;
 
       setNewRequestsCount(newCount);
       setPendingRequestsCount(pendingCount);
@@ -96,6 +112,8 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
       log.debug('AppState: Request counts updated', { newCount, pendingCount });
     } catch (err) {
       log.error('AppState: Failed to fetch request counts:', err);
+    } finally {
+      fetchInProgress.current = false;
     }
   }, [user]);
 

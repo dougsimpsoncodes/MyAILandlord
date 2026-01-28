@@ -12,15 +12,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
-import { useProfile } from '../../context/ProfileContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 const EditProfileScreen = () => {
   const navigation = useNavigation();
-  const { user, refreshUser, updateProfile } = useUnifiedAuth();
-  const { refreshProfile, updateProfileCache } = useProfile();
+  const { user, refreshUser, updateProfile, refreshProfile, updateProfileCache } = useUnifiedAuth();
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');
