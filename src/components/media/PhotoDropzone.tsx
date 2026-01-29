@@ -10,6 +10,8 @@ type Props = {
   areaId: string;
   onUploaded: (photos: { path: string; url: string }[]) => void;
   onCameraPress?: () => void; // Optional camera handler for mobile
+  onPickerOpen?: () => void; // Called before picker opens (for preventing race conditions)
+  onPickerClose?: () => void; // Called after picker closes and upload completes
   disabled?: boolean;
   variant?: 'full' | 'compact' | 'inline'; // full = empty state, compact = has photos, inline = fits in scroll strip
   showCameraOption?: boolean; // Show camera option on mobile
@@ -89,6 +91,8 @@ export default function PhotoDropzone({
   areaId,
   onUploaded,
   onCameraPress,
+  onPickerOpen,
+  onPickerClose,
   disabled,
   variant = 'full',
   showCameraOption = true
@@ -142,11 +146,19 @@ export default function PhotoDropzone({
   };
 
   const handleBrowse = async () => {
-    let assets = Platform.OS === 'web'
-      ? await pickWeb(inputRef.current as HTMLInputElement)
-      : await pickNative();
+    // Notify parent that picker is opening (prevents race conditions with focus refetch)
+    onPickerOpen?.();
 
-    await processAndUpload(assets);
+    try {
+      let assets = Platform.OS === 'web'
+        ? await pickWeb(inputRef.current as HTMLInputElement)
+        : await pickNative();
+
+      await processAndUpload(assets);
+    } finally {
+      // Notify parent that picker flow is complete
+      onPickerClose?.();
+    }
   };
 
   // Web drag & drop handlers

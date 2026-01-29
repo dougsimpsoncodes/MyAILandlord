@@ -38,6 +38,8 @@ interface ExpandableAreaProps {
   onToggle: () => void;
   onAddPhoto: () => void;
   onPhotosUploaded: (photos: { path: string; url: string }[]) => void;
+  onPickerOpen?: () => void;
+  onPickerClose?: () => void;
   onAddAsset: () => void;
   onRemoveAsset: (assetId: string) => void;
   responsive: ReturnType<typeof useResponsive>;
@@ -50,6 +52,8 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
   onToggle,
   onAddPhoto,
   onPhotosUploaded,
+  onPickerOpen,
+  onPickerClose,
   onAddAsset,
   onRemoveAsset,
   responsive,
@@ -76,9 +80,10 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
     try {
       const res = await fetch(uri);
       const contentType = res.headers.get('content-type');
-      console.error('📸 Image probe', { label, status: res.status, contentType, finalUrl: res.url });
+      // Use console.log instead of console.error to avoid red error toast in simulator
+      console.log('📸 Image probe', { label, status: res.status, contentType, finalUrl: res.url });
     } catch (error) {
-      console.error('📸 Image probe failed', { label, error: String(error), uri });
+      console.warn('📸 Image probe failed', { label, error: String(error), uri });
     }
   }, []);
 
@@ -174,6 +179,8 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
               areaId={area.id}
               onUploaded={onPhotosUploaded}
               onCameraPress={onAddPhoto}
+              onPickerOpen={onPickerOpen}
+              onPickerClose={onPickerClose}
               variant="inline"
             />
           </ScrollView>
@@ -270,6 +277,7 @@ const PropertyAssetsListScreen = () => {
   // Refs to hold latest values for the focus listener
   const selectedAreasRef = useRef(selectedAreas);
   const draftAreasRef = useRef(draftState?.areas);
+  const isUploadingPhotosRef = useRef(false); // Prevents refetch during photo upload
   selectedAreasRef.current = selectedAreas;
   draftAreasRef.current = draftState?.areas;
 
@@ -325,6 +333,12 @@ const PropertyAssetsListScreen = () => {
     const refetchPropertyAreas = async () => {
       // For existing properties (not drafts), refetch areas from database when returning
       if (!routePropertyId || effectiveDraftId) return;
+
+      // Skip refetch if photo upload is in progress (prevents race condition)
+      if (isUploadingPhotosRef.current) {
+        console.log('Skipping refetch - photo upload in progress');
+        return;
+      }
 
       try {
         const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
@@ -775,6 +789,8 @@ const PropertyAssetsListScreen = () => {
               onToggle={() => {}}
               onAddPhoto={() => handleAddPhoto(area.id)}
               onPhotosUploaded={handlePhotosUploaded(area.id)}
+              onPickerOpen={() => { isUploadingPhotosRef.current = true; }}
+              onPickerClose={() => { isUploadingPhotosRef.current = false; }}
               onAddAsset={() => handleAddAsset(area.id, area.name)}
               onRemoveAsset={(assetId) => handleRemoveAsset(area.id, assetId)}
               responsive={responsive}
