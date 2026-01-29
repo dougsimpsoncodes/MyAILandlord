@@ -86,20 +86,27 @@ const PropertyManagementScreen = () => {
       }
 
       // Map database properties to screen interface
-      const mappedProperties = dbProperties.map((prop: DbProperty) => ({
-        id: prop.id,
-        name: prop.name || 'Unnamed Property',
-        address: typeof prop.address === 'string'
-          ? prop.address
-          : prop.address
-            ? formatAddressString(prop.address)
-            : 'No Address',
-        type: prop.property_type || 'Unknown',
-        image: '',
-        tenants: tenantCounts[prop.id] || 0,
-        property_code: prop.property_code,
-        activeRequests: 0, // TODO: Add maintenance request count
-      }));
+      const mappedProperties = dbProperties.map((prop: DbProperty) => {
+        // Format address from address_jsonb (preferred) or fall back to legacy address
+        let formattedAddress = 'No Address';
+        if (prop.address_jsonb) {
+          const addr = prop.address_jsonb;
+          formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim() || 'No Address';
+        } else if (prop.address) {
+          formattedAddress = prop.address;
+        }
+
+        return {
+          id: prop.id,
+          name: prop.name || 'Unnamed Property',
+          address: formattedAddress,
+          type: prop.property_type || 'Unknown',
+          image: '',
+          tenants: tenantCounts[prop.id] || 0,
+          property_code: prop.property_code,
+          activeRequests: 0, // TODO: Add maintenance request count
+        };
+      });
 
       setProperties(mappedProperties);
       setPage(1);
@@ -137,20 +144,27 @@ const PropertyManagementScreen = () => {
         }
       }
 
-      const mapped = more.map((prop: DbProperty) => ({
-        id: prop.id,
-        name: prop.name || 'Unnamed Property',
-        address: typeof prop.address === 'string'
-          ? prop.address
-          : prop.address
-            ? formatAddressString(prop.address)
-            : 'No Address',
-        type: prop.property_type || 'Unknown',
-        image: '',
-        tenants: tenantCounts[prop.id] || 0,
-        property_code: prop.property_code,
-        activeRequests: 0,
-      }));
+      const mapped = more.map((prop: DbProperty) => {
+        // Format address from address_jsonb (preferred) or fall back to legacy address
+        let formattedAddress = 'No Address';
+        if (prop.address_jsonb) {
+          const addr = prop.address_jsonb;
+          formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim() || 'No Address';
+        } else if (prop.address) {
+          formattedAddress = prop.address;
+        }
+
+        return {
+          id: prop.id,
+          name: prop.name || 'Unnamed Property',
+          address: formattedAddress,
+          type: prop.property_type || 'Unknown',
+          image: '',
+          tenants: tenantCounts[prop.id] || 0,
+          property_code: prop.property_code,
+          activeRequests: 0,
+        };
+      });
       setProperties(prev => [...prev, ...mapped]);
       setPage(prev => prev + 1);
       setHasMore(more.length === pageSize);

@@ -116,12 +116,13 @@ const HomeScreen = () => {
         const property = firstLink.properties as any;
 
         if (property) {
-          // Format address from address_jsonb if plain address is empty
-          let formattedAddress = property.address || '';
-          if (!formattedAddress && property.address_jsonb) {
+          // Format address from address_jsonb (preferred) or fall back to legacy address
+          let formattedAddress = '';
+          if (property.address_jsonb) {
             const addr = property.address_jsonb;
-            const parts = [addr.line1, addr.city, addr.state, addr.zipCode].filter(Boolean);
-            formattedAddress = parts.join(', ');
+            formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim();
+          } else if (property.address) {
+            formattedAddress = property.address;
           }
 
           setLinkedProperty({

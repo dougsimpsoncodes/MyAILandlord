@@ -82,14 +82,16 @@ const PropertyReviewScreen = () => {
 
           if (propError) throw propError;
 
-          // Map to PropertyData format
+          // Map to PropertyData format using address_jsonb
+          const addr = property.address_jsonb || {};
           const mappedPropertyData: PropertyData = {
-            name: property.nickname || property.address || '',
+            name: property.nickname || property.name || '',
             address: {
-              line1: property.address || '',
-              city: property.city || '',
-              state: property.state || '',
-              zipCode: property.zip_code || '',
+              line1: addr.line1 || '',
+              line2: addr.line2 || '',
+              city: addr.city || '',
+              state: addr.state || '',
+              zipCode: addr.zipCode || '',
             },
             type: (property.property_type as PropertyData['type']) || '',
             unit: property.unit_number || '',

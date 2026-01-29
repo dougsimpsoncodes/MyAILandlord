@@ -125,14 +125,25 @@ const LandlordHomeScreen = () => {
       });
 
       // Create property summaries with ACTIVE issue counts and tenant counts
-      const summaries: PropertySummary[] = userProperties.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        address: p.address,
-        type: p.property_type || 'house',
-        issueCount: filteredActiveRequests.filter(r => r.propertyId === p.id).length,
-        tenantCount: tenantCounts[p.id] || 0,
-      }));
+      const summaries: PropertySummary[] = userProperties.map((p: any) => {
+        // Format address from address_jsonb (preferred) or fall back to legacy address field
+        let formattedAddress = '';
+        if (p.address_jsonb) {
+          const addr = p.address_jsonb;
+          formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim();
+        } else if (p.address) {
+          formattedAddress = p.address;
+        }
+
+        return {
+          id: p.id,
+          name: p.name,
+          address: formattedAddress,
+          type: p.property_type || 'house',
+          issueCount: filteredActiveRequests.filter(r => r.propertyId === p.id).length,
+          tenantCount: tenantCounts[p.id] || 0,
+        };
+      });
       setProperties(summaries);
       setActiveRequests(filteredActiveRequests);
     } catch (error) {

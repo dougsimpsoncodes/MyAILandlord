@@ -109,6 +109,13 @@ export interface Property {
   landlord_id: string | null;
   name: string;
   address: string | null;
+  address_jsonb?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  } | null;
   property_type: string | null;
   bedrooms?: number | null;
   bathrooms?: number | null;

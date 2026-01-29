@@ -37,6 +37,16 @@ const getCategoryIcon = (category: string) => {
   }
 };
 
+// Format address from address_jsonb (preferred) or fall back to legacy address
+const formatPropertyAddress = (properties: any): string => {
+  if (!properties) return '';
+  if (properties.address_jsonb) {
+    const addr = properties.address_jsonb;
+    return `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim();
+  }
+  return properties.address || '';
+};
+
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
   const { isSignedIn } = useUnifiedAuth();
@@ -421,7 +431,7 @@ const ReportIssueScreen = () => {
               <Text style={styles.propertyName}>{selectedProperty.properties.name}</Text>
             </View>
             <Text style={styles.propertyAddress}>
-              {formatAddress(selectedProperty.properties.address)}
+              {formatAddress(formatPropertyAddress(selectedProperty.properties))}
               {selectedProperty.unit_number && ` • Unit ${selectedProperty.unit_number}`}
             </Text>
           </View>
