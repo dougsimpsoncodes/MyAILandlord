@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import log from '../lib/log';
 import { PropertySetupState } from '../types/property';
 import { PropertyDraftService } from '../services/storage/PropertyDraftService';
-import { useAppAuth } from '../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 interface UsePropertyDraftsReturn {
   drafts: PropertySetupState[];
@@ -18,7 +18,7 @@ interface UsePropertyDraftsReturn {
  * Custom hook for managing the list of property drafts for the current user
  */
 export function usePropertyDrafts(): UsePropertyDraftsReturn {
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const [drafts, setDrafts] = useState<PropertySetupState[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

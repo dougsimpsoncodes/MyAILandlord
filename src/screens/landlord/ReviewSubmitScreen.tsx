@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   Image,
 } from 'react-native';
@@ -15,7 +14,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -133,13 +132,13 @@ const ReviewSubmitScreen = () => {
         navigation.navigate('PropertyBasics');
         break;
       case 'photos':
-        navigation.navigate('PropertyPhotos', { propertyData });
+        navigation.navigate('PropertyPhotos', { draftId: draftState?.id || '' });
         break;
       case 'rooms':
-        navigation.navigate('RoomSelection', { propertyData });
+        navigation.navigate('RoomSelection', { draftId: draftState?.id || '' });
         break;
       case 'assets':
-        navigation.navigate('AssetScanning', { propertyData });
+        navigation.navigate('AssetScanning', { draftId: draftState?.id || '' });
         break;
     }
   };

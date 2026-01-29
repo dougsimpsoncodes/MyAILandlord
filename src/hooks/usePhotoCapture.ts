@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Photo, PHOTO_CONFIG } from '../types/photo';
 import { PhotoService } from '../services/PhotoService';
 
@@ -191,7 +192,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
         aspect: PHOTO_CONFIG.ASPECT_RATIO,
         quality: PHOTO_CONFIG.QUALITY,
         allowsEditing: true,
-        mediaTypes: 'photo',
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         exif: false,
       });
 
@@ -222,7 +223,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
         quality: PHOTO_CONFIG.QUALITY,
         allowsMultipleSelection: remainingSlots > 1,
         allowsEditing: false,
-        mediaTypes: 'photo',
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
       });
 
       if (selectedPhotos.length > 0) {

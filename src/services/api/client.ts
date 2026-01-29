@@ -3,7 +3,7 @@ import { SupabaseClient } from '../supabase/client';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
 import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { getMaintenanceRequests as getMaintenanceRequestsREST, getMaintenanceRequestById as getMaintenanceRequestByIdREST } from '../../lib/maintenanceClient';
 import {
   CreateProfileData,
@@ -38,7 +38,6 @@ import { FileValidation } from '../../types/api';
 import { ENV_CONFIG } from '../../utils/constants';
 import log from '../../lib/log';
 import { captureException } from '../../lib/monitoring';
-import { createMockApiClient } from './mockClient';
 
 const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL || 
   `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
@@ -48,8 +47,7 @@ const supabaseClientCache = new WeakMap<object, SupabaseClient>();
 
 // Hook for use in components - all API logic is contained within this hook
 export function useApiClient(): UseApiClientReturn | null {
-  const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1' || process.env.NODE_ENV === 'test';
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const { supabase: supabaseClient, getAccessToken } = useSupabaseWithAuth();
   const userId = user?.id;
 
@@ -57,7 +55,7 @@ export function useApiClient(): UseApiClientReturn | null {
   setStorageSupabaseClient(supabaseClient);
 
   // Helper to get authenticated Supabase client - cached to avoid RLS context spam
-  const getSupabaseClient = () => {
+  const getSupabaseClient = (): SupabaseClient | null => {
     if (!supabaseClient) return null;
     let cached = supabaseClientCache.get(supabaseClient);
     if (!cached) {
@@ -67,11 +65,28 @@ export function useApiClient(): UseApiClientReturn | null {
     return cached;
   };
 
+  // Helper that throws if client is not available
+  const requireSupabaseClient = (): SupabaseClient => {
+    const client = getSupabaseClient();
+    if (!client) {
+      throw new Error('Supabase client not available. Please ensure you are authenticated.');
+    }
+    return client;
+  };
+
+  // Helper that throws if userId is not available
+  const requireUserId = (): string => {
+    if (!userId) {
+      throw new Error('User ID not available. Please ensure you are authenticated.');
+    }
+    return userId;
+  };
+
   // ========== USER PROFILE METHODS ==========
   const getUserProfile = async () => {
     try {
-      const client = getSupabaseClient();
-      const profile = await client.getProfile(userId);
+      const client = requireSupabaseClient();
+      const profile = await client.getProfile(requireUserId());
       return profile; // Return null if no profile exists - let the calling code handle creation
     } catch (error) {
       log.error('Error getting user profile', { error: getErrorMessage(error) });
@@ -90,7 +105,7 @@ export function useApiClient(): UseApiClientReturn | null {
         sanitizeProfileData
       ) as CreateProfileData;
 
-      const client = getSupabaseClient();
+      const client = requireSupabaseClient();
       return await client.createProfile(validatedData);
     } catch (error) {
       log.error('Error creating user profile', { error: getErrorMessage(error) });
@@ -125,8 +140,8 @@ export function useApiClient(): UseApiClientReturn | null {
         finalUpdates.email = sanitizeString(updates.email);
       }
 
-      const client = getSupabaseClient();
-      return await client.updateProfile(userId, finalUpdates);
+      const client = requireSupabaseClient();
+      return await client.updateProfile(requireUserId(), finalUpdates);
     } catch (error) {
       log.error('Error updating user profile', { error: getErrorMessage(error) });
       throw new Error(`Failed to update profile: ${getErrorMessage(error)}`);
@@ -140,8 +155,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('Invalid role');
       }
 
-      const client = getSupabaseClient();
-      return await client.updateProfile(userId, { role });
+      const client = requireSupabaseClient();
+      return await client.updateProfile(requireUserId(), { role });
     } catch (error) {
       log.error('Error setting user role', { error: getErrorMessage(error) });
       throw new Error(`Failed to set role: ${getErrorMessage(error)}`);
@@ -150,8 +165,8 @@ export function useApiClient(): UseApiClientReturn | null {
 
   // ========== PROPERTY METHODS ==========
   const getUserProperties = async (opts?: { limit?: number; offset?: number }) => {
-    const client = getSupabaseClient();
-    return await client.getUserProperties(userId, opts);
+    const client = requireSupabaseClient();
+    return await client.getUserProperties(requireUserId(), opts);
   };
 
   const createProperty = async (payload: {
@@ -162,23 +177,28 @@ export function useApiClient(): UseApiClientReturn | null {
     bedrooms?: number;
     bathrooms?: number;
   }) => {
-    // Insert property; rely on DB triggers for code, with fallback if needed
+    // Insert property with user_id (required by RLS policy: user_id = auth_uid_compat())
+    // Convert empty property_type to null (database constraint requires specific values or NULL, not empty string)
+    const insertPayload = {
+      name: payload.name,
+      address_jsonb: payload.address_jsonb,
+      property_type: payload.property_type || null,
+      unit: payload.unit || null,
+      bedrooms: payload.bedrooms ?? null,
+      bathrooms: payload.bathrooms ?? null,
+      allow_tenant_signup: true,
+      user_id: userId, // RLS policy checks user_id = auth_uid_compat()
+      landlord_id: userId, // Also set landlord_id for foreign key
+    };
+    log.debug('createProperty: attempting insert', { userId, hasUserId: !!userId, payload, insertPayload });
     const { data, error } = await supabaseClient
       .from('properties')
-      .insert({
-        name: payload.name,
-        address_jsonb: payload.address_jsonb,
-        property_type: payload.property_type,
-        unit: payload.unit || null,
-        bedrooms: payload.bedrooms ?? null,
-        bathrooms: payload.bathrooms ?? null,
-        allow_tenant_signup: true,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
     if (error) {
-      log.error('Error creating property', { error: getErrorMessage(error) });
+      log.error('Error creating property', { error: getErrorMessage(error), fullError: error, insertPayload });
       captureException(error, { op: 'createProperty' });
       throw new Error(`Failed to create property: ${error.message}`);
     }
@@ -396,7 +416,7 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('Request ID is required');
       }
 
-      const client = getSupabaseClient();
+      const client = requireSupabaseClient();
       log.info('Calling supabase client updateMaintenanceRequest');
       const response = await client.updateMaintenanceRequest(requestId, updates);
       log.info('updateMaintenanceRequest success', { response });
@@ -415,8 +435,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('User ID is required');
       }
 
-      const client = getSupabaseClient();
-      return await client.getMessages(userId, otherUserId);
+      const client = requireSupabaseClient();
+      return await client.getMessages(requireUserId(), otherUserId);
     } catch (error) {
       log.error('Error getting messages', { error: getErrorMessage(error) });
       throw new Error(`Failed to get messages: ${getErrorMessage(error)}`);
@@ -434,7 +454,7 @@ export function useApiClient(): UseApiClientReturn | null {
         sanitizeMessageData
       ) as CreateMessageData;
 
-      const client = getSupabaseClient();
+      const client = requireSupabaseClient();
       return await client.sendMessage(validatedData);
     } catch (error) {
       log.error('Error sending message', { error: getErrorMessage(error) });
@@ -612,13 +632,13 @@ export function useApiClient(): UseApiClientReturn | null {
 
   // ========== REAL-TIME SUBSCRIPTIONS ==========
   const subscribeToMaintenanceRequests = async (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => {
-    const client = getSupabaseClient();
-    return client.subscribeToMaintenanceRequests(userId, callback);
+    const client = requireSupabaseClient();
+    return client.subscribeToMaintenanceRequests(requireUserId(), callback as any);
   };
 
   const subscribeToMessages = async (callback: (payload: RealtimePayload<Message>) => void) => {
-    const client = getSupabaseClient();
-    return client.subscribeToMessages(userId, callback);
+    const client = requireSupabaseClient();
+    return client.subscribeToMessages(requireUserId(), callback as any);
   };
 
   // ========== PROPERTY CODE METHODS ==========
@@ -628,8 +648,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('Property code must be exactly 6 characters');
       }
 
-      const client = getSupabaseClient();
-      const profile = await client.getProfile(userId);
+      const client = requireSupabaseClient();
+      const profile = await client.getProfile(requireUserId());
       if (!profile) {
         throw new Error('User profile not found');
       }
@@ -656,8 +676,8 @@ export function useApiClient(): UseApiClientReturn | null {
         throw new Error('Property code is required');
       }
 
-      const client = getSupabaseClient();
-      const profile = await client.getProfile(userId);
+      const client = requireSupabaseClient();
+      const profile = await client.getProfile(requireUserId());
       if (!profile) {
         throw new Error('User profile not found');
       }
@@ -665,7 +685,7 @@ export function useApiClient(): UseApiClientReturn | null {
       const { data, error } = await client.client.rpc('link_tenant_to_property', {
         input_code: sanitizeString(propertyCode).toUpperCase(),
         tenant_id: profile.id,
-        unit_number: unitNumber ? sanitizeString(unitNumber) : null
+        unit_number: unitNumber ? sanitizeString(unitNumber) : undefined
       });
 
       if (error) {
@@ -681,8 +701,8 @@ export function useApiClient(): UseApiClientReturn | null {
 
   const getTenantProperties = async () => {
     try {
-      const client = getSupabaseClient();
-      const profile = await client.getProfile(userId);
+      const client = requireSupabaseClient();
+      const profile = await client.getProfile(requireUserId());
       if (!profile) {
         throw new Error('User profile not found');
       }
@@ -743,11 +763,6 @@ export function useApiClient(): UseApiClientReturn | null {
   // MUST be called unconditionally to satisfy React's rules of hooks
   // Only recreate when userId, supabaseClient, or authDisabled changes
   return useMemo(() => {
-    // Return mock client for auth-disabled mode
-    if (authDisabled) {
-      return createMockApiClient('dev_user_1');
-    }
-
     // Return null if not authenticated
     if (!userId) {
       return null;
@@ -795,6 +810,6 @@ export function useApiClient(): UseApiClientReturn | null {
       // Subscriptions
       subscribeToMaintenanceRequests,
       subscribeToMessages,
-    };
-  }, [userId, supabaseClient, authDisabled]);
+    } as unknown as UseApiClientReturn;
+  }, [userId, supabaseClient]);
 }

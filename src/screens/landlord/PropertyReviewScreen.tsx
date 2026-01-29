@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   Alert,
   FlatList,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +18,13 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import log from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
+import { clearOnboardingInProgress } from '../../hooks/useOnboardingStatus';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -31,11 +32,19 @@ type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview
 const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
-  const { propertyData, areas, draftId } = route.params;
   const api = useApiClient();
-  const { supabase } = useSupabaseWithAuth();
+  const { user, refreshUser } = useUnifiedAuth();
+  const { supabase, isLoaded } = useSupabaseWithAuth();
 
-  // Initialize draft management
+  // Get route params - only draftId and propertyId (no object params)
+  const { draftId, propertyId } = route.params;
+
+  // State for existing property data (when no draft)
+  const [existingPropertyData, setExistingPropertyData] = useState<PropertyData | null>(null);
+  const [existingAreas, setExistingAreas] = useState<PropertyArea[]>([]);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(false);
+
+  // Initialize draft management - this loads the draft including propertyData and areas
   const {
     draftState,
     isLoading: isDraftLoading,
@@ -46,11 +55,69 @@ const PropertyReviewScreen = () => {
     saveDraft,
     deleteDraft,
     clearError,
-  } = usePropertyDraft({ 
+  } = usePropertyDraft({
     draftId,
     enableAutoSave: true,
-    autoSaveDelay: 2000 
+    autoSaveDelay: 2000
   });
+
+  // Load existing property data when there's propertyId but no draft
+  // Uses useFocusEffect to refresh data when returning from edit screens
+  useFocusEffect(
+    useCallback(() => {
+      const loadExistingProperty = async () => {
+        // Wait for auth to be ready before making queries
+        if (!isLoaded) return;
+        // Only load if we have propertyId but no draft/draftId
+        if (!propertyId || draftId) return;
+
+        setIsLoadingExisting(true);
+        try {
+          // Load property details
+          const { data: property, error: propError } = await supabase
+            .from('properties')
+            .select('*')
+            .eq('id', propertyId)
+            .single();
+
+          if (propError) throw propError;
+
+          // Map to PropertyData format using address_jsonb
+          const addr = property.address_jsonb || {};
+          const mappedPropertyData: PropertyData = {
+            name: property.nickname || property.name || '',
+            address: {
+              line1: addr.line1 || '',
+              line2: addr.line2 || '',
+              city: addr.city || '',
+              state: addr.state || '',
+              zipCode: addr.zipCode || '',
+            },
+            type: (property.property_type as PropertyData['type']) || '',
+            unit: property.unit_number || '',
+            bedrooms: property.bedrooms || 0,
+            bathrooms: property.bathrooms || 0,
+            photos: [],
+          };
+          setExistingPropertyData(mappedPropertyData);
+
+          // Load areas with assets
+          const areasWithAssets = await propertyAreasService.getAreasWithAssets(propertyId);
+          setExistingAreas(areasWithAssets || []);
+        } catch (error) {
+          log.error('PropertyReview: Error loading existing property', { error, propertyId });
+        } finally {
+          setIsLoadingExisting(false);
+        }
+      };
+
+      loadExistingProperty();
+    }, [propertyId, draftId, supabase, isLoaded])
+  );
+
+  // Property data and areas - prefer draft state, fall back to existing property data
+  const propertyData = draftState?.propertyData || existingPropertyData;
+  const areas = draftState?.areas?.length ? draftState.areas : existingAreas;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
@@ -77,42 +144,111 @@ const PropertyReviewScreen = () => {
   const handleEdit = (section: 'property' | 'areas' | 'assets') => {
     switch (section) {
       case 'property':
-        navigation.navigate('AddProperty', { draftId });
+        navigation.navigate('PropertyBasics', { draftId });
         break;
       case 'areas':
-        navigation.navigate('PropertyAreas', { propertyData, draftId });
+        navigation.navigate('PropertyAreas', { draftId, propertyId });
         break;
       case 'assets':
-        navigation.navigate('PropertyAssets', { propertyData, areas, draftId });
+        navigation.navigate('PropertyAssets', { draftId, propertyId });
         break;
     }
   };
 
   const handleSubmit = async () => {
-    
-    if (isSubmitting || isDraftLoading) {
+    if (isSubmitting || isDraftLoading || !propertyData) {
       return;
     }
 
-    
     try {
       setIsSubmitting(true);
-      
+
       // Ensure API is ready
       if (!api) throw new Error('Authentication required');
-      
+
       if (draftState) await saveDraft();
 
-      const propertyPayload = {
-        name: propertyData.name,
-        address_jsonb: propertyData.address,
-        property_type: propertyData.type,
-        unit: propertyData.unit || '',
-        bedrooms: propertyData.bedrooms || 0,
-        bathrooms: propertyData.bathrooms || 0
-      };
-      
-      const newProperty = await api.createProperty(propertyPayload);
+      // Check if this is first-time onboarding (use atomic RPC)
+      const isFirstProperty = !user?.onboarding_completed && !propertyId;
+
+      if (isFirstProperty) {
+        log.info('PropertyReview: First-time onboarding detected - using atomic RPC');
+
+        // Prepare area names for atomic RPC
+        const areaNames = areas?.map(area => area.name) || [];
+
+        // Call atomic onboarding RPC
+        const { data: rpcData, error: rpcError } = await supabase.rpc('signup_and_onboard_landlord', {
+          p_property_name: propertyData.name,
+          p_address_jsonb: propertyData.address,
+          p_property_type: propertyData.type || null,
+          p_bedrooms: propertyData.bedrooms || null,
+          p_bathrooms: propertyData.bathrooms || null,
+          p_areas: areaNames.length > 0 ? areaNames : null
+        });
+
+        if (rpcError) {
+          log.error('PropertyReview: Atomic RPC error', { error: rpcError });
+          throw new Error(rpcError.message || 'Failed to complete onboarding');
+        }
+
+        // RPC returns TABLE, so data is an array
+        const result = rpcData && rpcData.length > 0 ? rpcData[0] : null;
+
+        if (!result || !result.success) {
+          throw new Error(result?.error_message || 'Onboarding failed');
+        }
+
+        log.info('PropertyReview: Atomic onboarding successful', {
+          propertyId: result.property_id,
+          profileId: result.profile_id
+        });
+
+        // Refresh user to get updated onboarding_completed flag
+        await refreshUser();
+
+        // Set property ID for success navigation
+        const currentPropertyId = result.property_id;
+
+        // Show success and navigate
+        setSubmissionSuccess(true);
+        setIsSubmitting(false);
+
+        // Clean up draft
+        if (draftState) {
+          await deleteDraft();
+        }
+
+        // Navigate to PropertyDetails
+        setTimeout(() => {
+          navigation.navigate('PropertyDetails', {
+            propertyId: currentPropertyId,
+          });
+        }, 2000);
+
+        return; // Exit early - atomic RPC handled everything
+      }
+
+      // Continue with existing flow for non-onboarding property creation
+      let currentPropertyId = propertyId;
+
+      // Only create property if it doesn't already exist
+      if (!currentPropertyId) {
+        log.info('PropertyReview: Creating new property in database');
+        const propertyPayload = {
+          name: propertyData.name,
+          address_jsonb: propertyData.address,
+          property_type: propertyData.type,
+          unit: propertyData.unit || '',
+          bedrooms: propertyData.bedrooms || 0,
+          bathrooms: propertyData.bathrooms || 0
+        };
+
+        const newProperty = await api.createProperty(propertyPayload);
+        currentPropertyId = newProperty.id;
+      } else {
+        log.info('PropertyReview: Property already exists (onboarding flow), skipping creation', { propertyId: currentPropertyId });
+      }
 
       // Upload area photos to storage before saving areas to database
       let areasWithUploadedPhotos = areas;
@@ -127,7 +263,7 @@ const PropertyReviewScreen = () => {
               if (hasLocalPhotos) {
                 try {
                   const uploadedPhotos = await uploadPropertyPhotos(
-                    newProperty.id,
+                    currentPropertyId,
                     area.id,
                     area.photos.map(uri => ({ uri }))
                   );
@@ -150,16 +286,17 @@ const PropertyReviewScreen = () => {
         );
       }
 
-      // Save areas and assets to database
-      if (areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
+      // Save areas and assets to database (only if property was just created)
+      // In onboarding flow, areas/assets were already saved by PropertyAreasScreen
+      if (!propertyId && areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
         try {
           log.info('Saving property areas and assets to database', {
-            propertyId: newProperty.id,
+            propertyId: currentPropertyId,
             areaCount: areasWithUploadedPhotos.length,
             totalAssets: areasWithUploadedPhotos.reduce((sum, area) => sum + (area.assets?.length || 0), 0)
           });
 
-          await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
+          await propertyAreasService.saveAreasAndAssets(currentPropertyId, areasWithUploadedPhotos, supabase);
 
           log.info('Successfully saved areas and assets to database');
         } catch (areasError) {
@@ -168,11 +305,11 @@ const PropertyReviewScreen = () => {
         }
       }
       
-      
+
       // Show success state
       setSubmissionSuccess(true);
       setIsSubmitting(false);
-      
+
       // Clean up draft
       try {
         if (draftState) {
@@ -181,21 +318,19 @@ const PropertyReviewScreen = () => {
       } catch (error) {
         console.error('🏠 Error cleaning up draft:', error);
       }
-      
+
+      // Clear onboarding in-progress flag (property creation complete!)
+      try {
+        await clearOnboardingInProgress();
+        log.info('✅ Onboarding complete - property created successfully');
+      } catch (error) {
+        log.error('Error clearing onboarding flag:', error);
+      }
+
       // Navigate to PropertyDetails after 2 seconds to allow user to invite tenant
       setTimeout(() => {
-        // Format address as string for PropertyDetails
-        const addressString = `${propertyData.address.line1}${propertyData.address.line2 ? ', ' + propertyData.address.line2 : ''}, ${propertyData.address.city}, ${propertyData.address.state} ${propertyData.address.zipCode}`;
-
         navigation.navigate('PropertyDetails', {
-          property: {
-            id: newProperty.id,
-            name: propertyData.name,
-            address: addressString,
-            type: propertyData.type,
-            tenants: 0,
-            activeRequests: 0,
-          }
+          propertyId: currentPropertyId,
         });
       }, 2000);
     } catch (error) {
@@ -287,10 +422,28 @@ const PropertyReviewScreen = () => {
       type="primary"
       size="lg"
       fullWidth
-      disabled={isSubmitting || isDraftLoading}
+      disabled={isSubmitting || isDraftLoading || !propertyData}
       loading={isSubmitting}
     />
   );
+
+  // Show loading state while draft or existing property is loading
+  if (isDraftLoading || isLoadingExisting || !propertyData) {
+    return (
+      <ScreenContainer
+        title="Review & Submit"
+        subtitle="Step 4 of 4"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 16, color: '#7F8C8D' }}>Loading property data...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer

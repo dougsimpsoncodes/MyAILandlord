@@ -1,4 +1,4 @@
-import { useAppAuth } from '../context/SupabaseAuthContext'
+import { useUnifiedAuth } from '../context/UnifiedAuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { useEffect } from 'react'
 import { isTestMode } from '../lib/testMode'
@@ -6,7 +6,7 @@ import { isTestMode } from '../lib/testMode'
 export function useSupabaseWithAuth() {
   const authDisabled = process.env.EXPO_PUBLIC_AUTH_DISABLED === '1'
   const useTestClient = authDisabled || isTestMode
-  const { session, isSignedIn, isLoading } = useAppAuth()
+  const { session, isSignedIn, isLoading } = useUnifiedAuth()
 
   // Use the singleton Supabase client - DO NOT create new clients!
   // The singleton already handles auth tokens automatically via Supabase Auth

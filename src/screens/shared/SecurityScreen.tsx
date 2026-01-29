@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useAppAuth } from '../../context/SupabaseAuthContext';
 
 // Enable LayoutAnimation for Android
@@ -69,7 +70,8 @@ const Toast: React.FC<{ message: string; type: 'success' | 'error'; visible: boo
 
 const SecurityScreen = () => {
   const navigation = useNavigation();
-  const { user, resetPassword } = useAppAuth();
+  const { user } = useUnifiedAuth();
+  const { resetPassword } = useAppAuth();
 
   // Expandable section states
   const [expandedSection, setExpandedSection] = useState<string | null>(null);

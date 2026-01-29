@@ -10,6 +10,7 @@ type OnboardingStackParamList = {
   OnboardingAccount: { firstName: string };
   OnboardingRole: { firstName: string };
   Auth: { mode?: 'login' | 'signup' };
+  AuthForm: { initialMode?: 'login' | 'signup' };
 };
 
 type NavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'OnboardingWelcome'>;
@@ -22,7 +23,7 @@ export default function OnboardingWelcomeScreen() {
   };
 
   const handleSignIn = () => {
-    navigation.navigate('Auth', { mode: 'login' });
+    navigation.navigate('AuthForm', { initialMode: 'login' });
   };
 
   return (

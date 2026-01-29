@@ -152,7 +152,7 @@ describe('Area Photos Persistence Fix', () => {
   });
 
   test('should handle upload failures gracefully', async () => {
-    const mockUploadFailing = jest.fn(async () => {
+    const mockUploadFailing = jest.fn(async (): Promise<Array<{ url: string; path: string }>> => {
       throw new Error('Upload failed');
     });
 

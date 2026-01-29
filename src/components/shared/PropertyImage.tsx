@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Image, View, StyleSheet, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import log from '../../lib/log';
 
-const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const SUPABASE_FUNCTIONS_URL = process.env.EXPO_PUBLIC_SUPABASE_FUNCTIONS_URL;
 
 interface PropertyImageProps {
   address: string;
@@ -33,19 +34,31 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
 
+  // Track address changes with a cache-busting key
+  const [cacheKey, setCacheKey] = useState(Date.now());
+
+  // Reset error state and update cache key when address changes
+  React.useEffect(() => {
+    setHasError(false);
+    setIsLoading(true);
+    setCacheKey(Date.now()); // Force new image fetch
+  }, [address]);
+
   // Determine the API request size (Google allows up to 640x640 for free tier)
   const requestWidth = apiSize || (width === '100%' ? Math.min(screenWidth * 2, 640) : Math.min(width as number * 2, 640));
   const requestHeight = Math.min(height * 2, 640);
 
-  // Construct the Street View Static API URL
-  const getStreetViewUrl = () => {
-    if (!address || !GOOGLE_MAPS_API_KEY) return null;
+  // Use Supabase Edge Function proxy to fetch Street View images
+  // This avoids API key restrictions and provides better caching
+  const getPropertyImageUrl = () => {
+    if (!address || !SUPABASE_FUNCTIONS_URL) return null;
 
     const encodedAddress = encodeURIComponent(address);
-    return `https://maps.googleapis.com/maps/api/streetview?size=${Math.round(requestWidth)}x${requestHeight}&location=${encodedAddress}&key=${GOOGLE_MAPS_API_KEY}`;
+    // Include cacheKey to bust React Native's image cache when address changes
+    return `${SUPABASE_FUNCTIONS_URL}/get-property-image?address=${encodedAddress}&width=${Math.round(requestWidth)}&height=${requestHeight}&_=${cacheKey}`;
   };
 
-  const imageUrl = getStreetViewUrl();
+  const imageUrl = getPropertyImageUrl();
 
   // Determine container and image styles
   const isFullWidth = width === '100%';
@@ -57,7 +70,7 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
     ? { width: '100%' as const, height }
     : { width: width as number, height };
 
-  // If no address or API key, show placeholder
+  // If no address or functions URL, show placeholder
   if (!imageUrl) {
     return (
       <View style={[styles.placeholder, containerStyle, style]}>
@@ -86,7 +99,8 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
         source={{ uri: imageUrl }}
         style={[styles.image, imageStyle]}
         onLoad={() => setIsLoading(false)}
-        onError={() => {
+        onError={(error) => {
+          log.error('[PropertyImage] Image failed to load', { address, error });
           setIsLoading(false);
           setHasError(true);
         }}

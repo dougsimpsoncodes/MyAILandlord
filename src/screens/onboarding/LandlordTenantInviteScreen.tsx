@@ -14,7 +14,7 @@ import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-naviga
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { log } from '../../lib/log';
 
@@ -34,7 +34,7 @@ export default function LandlordTenantInviteScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<InviteRouteProp>();
   const { firstName, propertyId, propertyName } = route.params;
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const { supabase } = useSupabaseWithAuth();
 
   const [inviteUrl, setInviteUrl] = useState<string>('');
@@ -44,18 +44,11 @@ export default function LandlordTenantInviteScreen() {
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Log diagnostics for E2E debugging (DEV only)
-    if (__DEV__) {
-      console.log('[INVITES] 🔍 Screen mounted with:', {
-        userId: user?.id,
-        propertyId,
-        propertyName,
-        firstName,
-        userExists: !!user,
-        platform: Platform.OS,
-      });
-    }
-
+    log.debug('[INVITES] Screen mounted', {
+      propertyId,
+      propertyName,
+      platform: Platform.OS,
+    });
     generateInviteUrl();
   }, []);
 
@@ -65,17 +58,7 @@ export default function LandlordTenantInviteScreen() {
     try {
       const isWeb = Platform.OS === 'web';
 
-      // DIAGNOSTIC LOGGING (DEV only)
-      if (__DEV__) {
-        console.log('[INVITES] 🎟️ Generating simple invite for property:', {
-          userId: user?.id,
-          propertyId,
-          platform: isWeb ? 'web' : 'native',
-        });
-      }
-
-      // Generate invite using create_invite RPC (simple invites system)
-      log.info('🎟️ Generating invite for property:', propertyId);
+      log.debug('[INVITES] Generating invite', { propertyId, platform: isWeb ? 'web' : 'native' });
       const { data, error } = await supabase.rpc('create_invite', {
         p_property_id: propertyId,
         p_delivery_method: 'code',
@@ -84,29 +67,35 @@ export default function LandlordTenantInviteScreen() {
 
       if (error || !data || !Array.isArray(data) || !data[0]?.token) {
         const msg = error?.message || 'No token returned';
-        console.error('[INVITES] ❌ RPC error (create_invite):', error);
-        log.error('RPC error generating invite:', error || new Error(msg));
+        log.error('[INVITES] RPC error', error || new Error(msg));
         setGenerationError(msg);
         Alert.alert('Error', 'Failed to generate invite link. Please try again.');
         return;
       }
 
       const token = data[0].token;
-      if (__DEV__) console.log('[INVITES] ✅ Token generated:', { token_preview: token.substring(0, 4) + '...' });
+      log.debug('[INVITES] Token generated');
 
       // Build URL with token parameter
-      const origin = isWeb && typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://myailandlord.app';
-      const url = (isWeb ? origin : 'myailandlord://') + `/invite?t=${token}`;
+      // For development, just use the custom scheme directly - it will work with dev client
+      const isDevelopment = __DEV__;
+      let url: string;
+
+      if (isWeb) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
+        url = `${origin}/invite?t=${token}`;
+      } else {
+        // Both dev and production use the same custom scheme
+        // The expo-development-client will handle it properly
+        url = `myailandlord:///invite?t=${token}`;
+      }
 
       setInviteUrl(url);
       setGenerationError(null);
-      if (__DEV__) console.log('[INVITES] ✅ Invite URL set (simple):', url);
+      log.debug('[INVITES] Invite URL set');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate invite link';
-      console.error('[INVITES] ❌ Error generating invite URL:', error);
-      log.error('Error generating invite URL:', error as Error);
+      log.error('[INVITES] Error generating invite URL', error as Error);
       setGenerationError(errorMessage);
       Alert.alert('Error', 'Failed to generate invite link. Please try again.');
     } finally {

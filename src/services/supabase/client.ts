@@ -11,16 +11,21 @@ type Message = Database['public']['Tables']['messages']['Row'];
 type Announcement = Database['public']['Tables']['announcements']['Row'];
 
 export class SupabaseClient {
-  private client: SupabaseClientType<Database>;
+  private _client: SupabaseClientType<Database>;
   private currentUserId: string | null = null;
 
   constructor(client?: SupabaseClientType<Database>) {
-    this.client = client || supabase;
+    this._client = client || supabase;
+  }
+
+  // Public getter for direct Supabase client access (for RPC calls, etc.)
+  get client(): SupabaseClientType<Database> {
+    return this._client;
   }
 
   // Method to update the client with an authenticated instance
   setAuthenticatedClient(authenticatedClient: SupabaseClientType<Database>) {
-    this.client = authenticatedClient;
+    this._client = authenticatedClient;
   }
 
   // Method to set the RLS context for the current user
@@ -229,9 +234,9 @@ export class SupabaseClient {
       issue_type: requestData.issueType,
     });
     
-    // Test JWT context by querying auth functions
+    // Test JWT context by querying auth functions (debug only - may not exist)
     try {
-      const jwtTest = await this.client.rpc('test_jwt_context');
+      const jwtTest = await (this.client.rpc as any)('test_jwt_context');
       log.info('JWT context test result:', jwtTest);
     } catch (jwtError) {
       log.warn("JWT test failed (expected if function doesn't exist):", jwtError);

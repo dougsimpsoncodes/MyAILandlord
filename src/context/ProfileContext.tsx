@@ -1,5 +1,15 @@
+/**
+ * @deprecated This context is deprecated. Use UnifiedAuthContext instead.
+ * User profile data is now managed by UnifiedAuthContext which provides:
+ * - user: Contains all profile data (id, email, name, role, etc.)
+ * - refreshUser() / refreshProfile(): Refresh user data
+ * - updateProfile(): Update user profile
+ * - updateProfileCache(): Optimistic update for local state
+ *
+ * Migration: Replace `useProfile()` with `useUnifiedAuth()` and use `user` object.
+ */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { useAppAuth } from './SupabaseAuthContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 import { useApiClient } from '../services/api/client';
 import { log } from '../lib/log';
 
@@ -15,7 +25,7 @@ export interface UserProfile {
 }
 
 interface ProfileContextValue {
-  profile: UserProfile | null;
+  profile: UserProfile | null | undefined;
   isLoading: boolean;
   error: string | null;
   refreshProfile: () => Promise<void>;
@@ -24,7 +34,7 @@ interface ProfileContextValue {
 }
 
 const ProfileContext = createContext<ProfileContextValue>({
-  profile: null,
+  profile: undefined,
   isLoading: true,
   error: null,
   refreshProfile: async () => {},
@@ -40,10 +50,11 @@ interface ProfileProviderProps {
 }
 
 export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) => {
-  const { user, isSignedIn, isLoading: authLoading } = useAppAuth();
+  const { user, isSignedIn, isLoading: authLoading } = useUnifiedAuth();
   const apiClient = useApiClient();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  // CRITICAL: Use undefined as initial state to distinguish "not checked" from "checked and not found"
+  const [profile, setProfile] = useState<UserProfile | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,9 +63,13 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   const fetchInProgress = useRef<boolean>(false);
 
   const fetchProfile = useCallback(async (force = false) => {
-    // Don't fetch if not signed in or no API client
-    if (!isSignedIn || !apiClient || !user) {
-      setProfile(null);
+    // CRITICAL: Set loading immediately at the start to prevent race conditions
+    setIsLoading(true);
+
+    // Don't fetch if not signed in or API client not ready
+    // Keep profile as undefined ("not checked") so consumers wait instead of assuming "no profile"
+    if (!isSignedIn || !user || !apiClient) {
+      setProfile(undefined);
       setIsLoading(false);
       return;
     }
@@ -84,9 +99,9 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
           email: profileData.email || user.email,
           name: profileData.name || user.name,
           role: profileData.role as 'landlord' | 'tenant' | null,
-          avatarUrl: profileData.avatar_url,
-          createdAt: profileData.created_at,
-          updatedAt: profileData.updated_at,
+          avatarUrl: profileData.avatar_url ?? undefined,
+          createdAt: profileData.created_at ?? undefined,
+          updatedAt: profileData.updated_at ?? undefined,
         };
         setProfile(mappedProfile);
         lastFetchTime.current = now;
@@ -115,9 +130,10 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   // Clear profile on sign out
   useEffect(() => {
     if (!isSignedIn) {
-      setProfile(null);
+      setProfile(undefined); // Reset to "not checked" state
       lastFetchTime.current = 0;
       setError(null);
+      setIsLoading(false);
     }
   }, [isSignedIn]);
 
@@ -134,7 +150,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   }, []);
 
   const clearProfile = useCallback(() => {
-    setProfile(null);
+    setProfile(undefined); // Reset to "not checked" state
     lastFetchTime.current = 0;
     setError(null);
   }, []);

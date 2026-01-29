@@ -1,14 +1,15 @@
 import React from 'react';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { SupabaseAuthProvider } from './src/context/SupabaseAuthContext';
-import { RoleProvider } from './src/context/RoleContext';
-import { ProfileProvider } from './src/context/ProfileContext';
+// Unified contexts
+import { UnifiedAuthProvider } from './src/context/UnifiedAuthContext';
+import { AppStateProvider } from './src/context/AppStateContext';
+// OnboardingContext is still used by some legacy flows
 import { OnboardingProvider } from './src/context/OnboardingContext';
-import { UnreadMessagesProvider } from './src/context/UnreadMessagesContext';
-import { PendingRequestsProvider } from './src/context/PendingRequestsContext';
 import AppNavigator from './src/AppNavigator';
 import { initMonitoring } from './src/lib/monitoring';
+import { usePushNotifications } from './src/hooks/usePushNotifications';
 
 export default function App() {
   // Initialize monitoring (no-op without DSN)
@@ -17,22 +18,46 @@ export default function App() {
     initMonitoring({ dsn });
   }, []);
 
+  // iOS MVP: Register push notifications (safe no-op elsewhere)
+  const iosMvp = process.env.EXPO_PUBLIC_IOS_MVP === '1';
+  if (iosMvp && Platform.OS === 'ios') {
+    // Hook registers on mount
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    usePushNotifications();
+  }
+
   return (
     <SafeAreaProvider>
-      <SupabaseAuthProvider>
-        <RoleProvider>
-          <ProfileProvider>
-            <OnboardingProvider>
-              <UnreadMessagesProvider>
-                <PendingRequestsProvider>
-                  <AppNavigator />
-                  <StatusBar style="auto" />
-                </PendingRequestsProvider>
-              </UnreadMessagesProvider>
-            </OnboardingProvider>
-          </ProfileProvider>
-        </RoleProvider>
-      </SupabaseAuthProvider>
+      <UnifiedAuthProvider>
+        <AppStateProvider>
+          <OnboardingProvider>
+            <AppNavigator />
+            {iosMvp && (
+              <View style={[styles.mvpBanner, { pointerEvents: 'none' }]}>
+                <Text style={styles.mvpText}>iOS MVP mode</Text>
+              </View>
+            )}
+            <StatusBar style="auto" />
+          </OnboardingProvider>
+        </AppStateProvider>
+      </UnifiedAuthProvider>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  mvpBanner: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  mvpText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+});

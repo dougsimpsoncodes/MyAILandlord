@@ -6,7 +6,7 @@
 
 import * as Sentry from '@sentry/react-native';
 import { useEffect } from 'react';
-import { useAppAuth } from '../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 /**
  * Initialize Sentry with configuration
@@ -95,7 +95,7 @@ export function initSentry() {
  * Call this in your root component (App.tsx or navigation wrapper)
  */
 export function useSentryUser() {
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
 
   useEffect(() => {
     if (user) {
