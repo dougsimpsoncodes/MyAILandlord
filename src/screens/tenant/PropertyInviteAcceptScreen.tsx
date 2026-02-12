@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Platform, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, InteractionManager } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
@@ -8,7 +8,6 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import CustomButton from '../../components/shared/CustomButton';
 import { supabase } from '../../services/supabase/client';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
-import { useApiClient } from '../../services/api/client';
 
 interface RouteParams {
   t?: string; // Token parameter (NEW format)
@@ -27,7 +26,6 @@ const PropertyInviteAcceptScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, refreshUser } = useUnifiedAuth();
-  const api = useApiClient();
 
   const [token, setToken] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
@@ -154,11 +152,11 @@ const PropertyInviteAcceptScreen = () => {
         landlordName: result.landlord_name
       });
 
-    } catch (err: any) {
-      log.error('[PropertyInviteAccept] Validation error:', err);
+    } catch (error) {
+      log.error('[PropertyInviteAccept] Validation error', { error: String(error) });
       // Clear pending invite to prevent redirect loops on validation failure
       await PendingInviteService.clearPendingInvite();
-      setError(err.message || 'Failed to validate invite. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to validate invite. Please try again.');
     } finally {
       setIsValidating(false);
     }
@@ -185,7 +183,7 @@ const PropertyInviteAcceptScreen = () => {
       });
       // Navigate to Auth stack, then to OnboardingName screen
       // Pass fromInvite flag to skip role selection (they're obviously tenants)
-      (navigation as any).navigate('Auth', {
+      (navigation as unknown as { navigate: (routeName: string, params?: object) => void }).navigate('Auth', {
         screen: 'OnboardingName',
         params: { fromInvite: true }
       });
@@ -314,9 +312,9 @@ const PropertyInviteAcceptScreen = () => {
         });
       }
 
-    } catch (err: any) {
-      log.error('[PropertyInviteAccept] Accept error:', err);
-      setError(err.message || 'Failed to accept invite. Please try again.');
+    } catch (error) {
+      log.error('[PropertyInviteAccept] Accept error', { error: String(error) });
+      setError(error instanceof Error ? error.message : 'Failed to accept invite. Please try again.');
 
       // Keep user on this screen so they can see error and retry
       log.info('[PropertyInviteAccept] Keeping state on failure to allow retry');

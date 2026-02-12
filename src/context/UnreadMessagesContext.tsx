@@ -38,9 +38,9 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({ 
       const messages = await apiClient.getMessages();
 
       // Count messages where user is recipient and is_read is false
-      const unread = messages.filter(
-        (msg: any) => msg.recipient_id === user.id && !msg.is_read
-      ).length;
+      const unread = (messages as Array<{ recipient_id?: string | null; is_read?: boolean | null }>)
+        .filter((msg) => msg.recipient_id === user.id && !msg.is_read)
+        .length;
 
       log.info('Unread count updated', { unread, totalMessages: messages.length });
       setUnreadCount(unread);

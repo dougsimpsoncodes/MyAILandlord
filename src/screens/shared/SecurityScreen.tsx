@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -71,7 +71,6 @@ const Toast: React.FC<{ message: string; type: 'success' | 'error'; visible: boo
 const SecurityScreen = () => {
   const navigation = useNavigation();
   const { user } = useUnifiedAuth();
-  const { resetPassword } = useAppAuth();
 
   // Expandable section states
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -113,11 +112,19 @@ const SecurityScreen = () => {
     setPasswordFeedback(null);
 
     try {
-      await resetPassword(user.email);
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: 'myailandlord://reset-password',
+      });
+
+      if (error) {
+        throw error;
+      }
+
       setPasswordFeedback({ type: 'success', message: 'Password reset link sent! Check your email.' });
       showToast('Password reset email sent', 'success');
-    } catch (err: any) {
-      setPasswordFeedback({ type: 'error', message: err.message || 'Failed to send reset email.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to send reset email.';
+      setPasswordFeedback({ type: 'error', message });
     } finally {
       setIsResettingPassword(false);
     }

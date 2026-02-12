@@ -71,7 +71,7 @@ export default function TenantOnboardingWelcomeScreen() {
         log.info('[TenantOnboardingWelcome] Pending invite detected, redirecting to PropertyInviteAccept');
 
         // Navigate to the canonical invite handler (in AuthStack)
-        (navigation as any).navigate('PropertyInviteAccept', {
+        (navigation as unknown as { navigate: (routeName: string, params?: object) => void }).navigate('PropertyInviteAccept', {
           token: pendingInvite.value,
         });
       } else {

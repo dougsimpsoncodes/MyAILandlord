@@ -50,14 +50,10 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
       const requests = await apiClient.getMaintenanceRequests();
 
       // Count new requests (submitted - never reviewed)
-      const newRequests = requests.filter(
-        (req: any) => req.status === 'submitted'
-      ).length;
+      const newRequests = requests.filter((req) => req.status === 'submitted').length;
 
       // Count pending requests (seen but not resolved)
-      const pendingRequests = requests.filter(
-        (req: any) => req.status === 'pending'
-      ).length;
+      const pendingRequests = requests.filter((req) => req.status === 'pending').length;
 
       log.info('🔧 Request counts updated', { new: newRequests, pending: pendingRequests, total: requests.length });
       setNewCount(newRequests);

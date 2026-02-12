@@ -14,9 +14,9 @@ import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-naviga
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 
-import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { log } from '../../lib/log';
+import { buildInviteUrl } from '../../utils/inviteUrl';
 
 type LandlordOnboardingStackParamList = {
   LandlordOnboardingWelcome: { firstName: string };
@@ -34,7 +34,6 @@ export default function LandlordTenantInviteScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<InviteRouteProp>();
   const { firstName, propertyId, propertyName } = route.params;
-  const { user } = useUnifiedAuth();
   const { supabase } = useSupabaseWithAuth();
 
   const [inviteUrl, setInviteUrl] = useState<string>('');
@@ -57,7 +56,6 @@ export default function LandlordTenantInviteScreen() {
 
     try {
       const isWeb = Platform.OS === 'web';
-
       log.debug('[INVITES] Generating invite', { propertyId, platform: isWeb ? 'web' : 'native' });
       const { data, error } = await supabase.rpc('create_invite', {
         p_property_id: propertyId,
@@ -76,19 +74,7 @@ export default function LandlordTenantInviteScreen() {
       const token = data[0].token;
       log.debug('[INVITES] Token generated');
 
-      // Build URL with token parameter
-      // For development, just use the custom scheme directly - it will work with dev client
-      const isDevelopment = __DEV__;
-      let url: string;
-
-      if (isWeb) {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
-        url = `${origin}/invite?t=${token}`;
-      } else {
-        // Both dev and production use the same custom scheme
-        // The expo-development-client will handle it properly
-        url = `myailandlord:///invite?t=${token}`;
-      }
+      const url = buildInviteUrl(token);
 
       setInviteUrl(url);
       setGenerationError(null);
@@ -122,7 +108,7 @@ export default function LandlordTenantInviteScreen() {
       await Share.share({
         message: `You're invited to connect to ${propertyName} using the MyAI Landlord app!\n\nClick this link to get started:\n${inviteUrl}`,
       });
-    } catch (err) {
+    } catch {
       // Share canceled or failed
     }
   };

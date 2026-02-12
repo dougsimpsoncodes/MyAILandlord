@@ -10,11 +10,11 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Keyboard,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
+import { log } from '../../lib/log';
 import { supabase } from '../../services/supabase/client';
 
 type OnboardingStackParamList = {
@@ -95,8 +95,8 @@ export default function OnboardingAccountScreen() {
     try {
       const { Linking } = await import('react-native');
       await Linking.openURL(url);
-    } catch (err) {
-      console.error('Failed to open link:', err);
+    } catch (error) {
+      log.warn('Failed to open link', { error: String(error) });
     }
   };
 
@@ -139,7 +139,7 @@ export default function OnboardingAccountScreen() {
           });
         }
       }
-    } catch (err) {
+    } catch {
       setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);

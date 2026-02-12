@@ -1,13 +1,11 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, View, Text, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import { haptics } from '../lib/haptics';
 import { useAppState } from '../context/AppStateContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
-import { log } from '../lib/log';
 
 // Tenant Screens
 import HomeScreen from '../screens/tenant/HomeScreen';
@@ -48,7 +46,6 @@ import LandlordChatScreen from '../screens/landlord/LandlordChatScreen';
 
 // Landlord Onboarding Screens
 import {
-  LandlordOnboardingWelcomeScreen,
   LandlordPropertyIntroScreen,
   LandlordTenantInviteScreen,
   LandlordOnboardingSuccessScreen,
@@ -117,18 +114,12 @@ export type TenantStackParamList = {
   } | undefined;
   PropertyCodeEntry: undefined;
   PropertyInviteAccept: { t?: string; token?: string; propertyId?: string; property?: string };
-  UnitSelection: {
-    propertyCode: string;
-    propertyName: string;
-    propertyAddress: string;
-  };
   PropertyWelcome: {
     propertyName: string;
     propertyAddress: string;
     wifiNetwork?: string;
     wifiPassword?: string;
   };
-  PropertySearch: undefined;
 };
 
 export type LandlordTabParamList = {
@@ -454,6 +445,10 @@ const LandlordNavigator: React.FC<LandlordNavigatorProps> = ({ needsOnboarding, 
         component={PropertyAssetsListScreen}
       />
       <LandlordRootStack.Screen
+        name="PropertyReview"
+        component={PropertyReviewScreen}
+      />
+      <LandlordRootStack.Screen
         name="AddAsset"
         component={AddAssetScreen}
       />
@@ -618,8 +613,14 @@ const MainStackComponent: React.FC<MainStackProps> = ({
 };
 
 // Wrapper to extract route.params and pass to MainStackComponent
-const MainStack = ({ route }: { route: any }) => {
-  const { userRole, needsOnboarding, userFirstName } = route.params || {};
+interface MainStackRouteParams {
+  userRole: 'tenant' | 'landlord';
+  needsOnboarding?: boolean;
+  userFirstName?: string | null;
+}
+
+const MainStack = ({ route }: { route: { params?: MainStackRouteParams } }) => {
+  const { userRole, needsOnboarding, userFirstName } = route.params || { userRole: 'tenant' as const };
 
   return (
     <MainStackComponent

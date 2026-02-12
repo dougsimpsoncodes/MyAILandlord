@@ -80,8 +80,6 @@ const AppNavigator = () => {
     async getInitialURL() {
       const url = await Linking.getInitialURL();
       if (linkingRefactor) {
-        // Small delay to align with Expo docs on cold start timing
-        await new Promise(res => setTimeout(res, 250));
         if (url && url.includes('/invite')) {
           try {
             const parsed = Linking.parse(url);

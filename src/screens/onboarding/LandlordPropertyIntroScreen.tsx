@@ -9,12 +9,13 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
+import { PropertyData, PropertyArea } from '../../types/property';
 
 type LandlordOnboardingStackParamList = {
   LandlordOnboardingWelcome: { firstName: string };
   LandlordPropertyIntro: { firstName: string };
   PropertyBasics: { firstName?: string; isOnboarding?: boolean };
-  PropertyAreas: { propertyData: any; draftId?: string; propertyId?: string; existingAreas?: any[]; isOnboarding?: boolean };
+  PropertyAreas: { propertyData: PropertyData; draftId?: string; propertyId?: string; existingAreas?: PropertyArea[]; isOnboarding?: boolean };
   LandlordTenantInvite: { firstName: string; propertyId: string };
   LandlordOnboardingSuccess: { firstName: string };
 };
@@ -24,8 +25,10 @@ type IntroRouteProp = RouteProp<LandlordOnboardingStackParamList, 'LandlordPrope
 
 const steps = [
   { number: '1', title: 'Property Basics', description: 'Address, type, bedrooms & bathrooms' },
-  { number: '2', title: 'Property Areas', description: 'Rooms and spaces to document' },
-  { number: '3', title: 'Invite Tenant', description: 'Connect with your tenant (optional)' },
+  { number: '2', title: 'Property Details', description: 'Set bedrooms, bathrooms, and home type' },
+  { number: '3', title: 'Property Areas', description: 'Define rooms and spaces to manage' },
+  { number: '4', title: 'Inventory & Review', description: 'Add assets, then review before publish' },
+  { number: '5', title: 'Invite Tenant', description: 'Share invite link/code (optional)' },
 ];
 
 export default function LandlordPropertyIntroScreen() {

@@ -2,10 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { supabase } from '../lib/supabaseClient';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../navigation/AuthStack';
 import { log } from '../lib/log';
 
+type AuthCallbackScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AuthCallback'>;
+
 interface AuthCallbackScreenProps {
-  navigation: any;
+  navigation: AuthCallbackScreenNavigationProp;
 }
 
 /**
@@ -52,7 +56,7 @@ export const AuthCallbackScreen: React.FC<AuthCallbackScreenProps> = ({ navigati
             // Clear the hash from the URL to prevent issues on refresh
             window.history.replaceState(null, '', window.location.pathname);
 
-            // The auth state change listener in SupabaseAuthContext will handle the rest
+            // Unified auth listeners will propagate the authenticated session
             // Just wait a moment for the state to update, then navigate
             setTimeout(() => {
               navigation.reset({

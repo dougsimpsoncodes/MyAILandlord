@@ -1,10 +1,7 @@
 /**
  * UnifiedAuthContext - Consolidated authentication and profile management
  *
- * Combines the functionality of:
- * - SupabaseAuthContext (auth state, sessions)
- * - ProfileContext (user profile data)
- * - RoleContext (user role management)
+ * Consolidates auth session, profile, and role state in one provider
  *
  * Benefits:
  * - Single source of truth for user state
@@ -13,7 +10,7 @@
  * - Simpler component tree (one provider instead of three nested)
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,7 +27,7 @@ export interface UnifiedUser {
   email: string;
   name: string;
   avatar?: string;
-  user_metadata?: Record<string, any>;
+  user_metadata?: Record<string, unknown>;
 
   // Profile data (from profiles table)
   role: 'landlord' | 'tenant' | null;
@@ -61,7 +58,7 @@ interface UnifiedAuthContextValue {
   updateRole: (role: 'landlord' | 'tenant') => Promise<void>;
   updateProfile: (data: { name?: string; phone?: string }) => Promise<void>;
 
-  // Backwards-compatible profile methods (migrated from ProfileContext)
+  // Profile helpers retained for compatibility during migration
   refreshProfile: () => Promise<void>;
   updateProfileCache: (updates: Partial<{ name: string; role: 'landlord' | 'tenant' | null }>) => void;
 
@@ -286,7 +283,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
 
   /**
    * Backwards-compatible: Refresh profile (alias for refreshUser)
-   * Used by components migrated from ProfileContext
+   * Used by components that still call legacy profile helper names
    */
   const refreshProfile = useCallback(async () => {
     return refreshUser();
@@ -294,7 +291,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
 
   /**
    * Backwards-compatible: Update local profile cache optimistically
-   * Used by components migrated from ProfileContext
+   * Used by components that still call legacy profile helper names
    */
   const updateProfileCache = useCallback((updates: Partial<{ name: string; role: 'landlord' | 'tenant' | null }>) => {
     setUser(prev => {
@@ -434,7 +431,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     };
   }, [authDisabled, mapToUnifiedUser]);
 
-  const value: UnifiedAuthContextValue = {
+  const value: UnifiedAuthContextValue = useMemo(() => ({
     user,
     isLoading,
     isSignedIn: !!session,
@@ -449,7 +446,21 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     redirect,
     clearRedirect,
     error,
-  };
+  }), [
+    user,
+    isLoading,
+    session,
+    signOut,
+    refreshUser,
+    updateRole,
+    updateProfile,
+    refreshProfile,
+    updateProfileCache,
+    processingInvite,
+    redirect,
+    clearRedirect,
+    error,
+  ]);
 
   return (
     <UnifiedAuthContext.Provider value={value}>

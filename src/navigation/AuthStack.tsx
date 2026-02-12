@@ -27,6 +27,9 @@ import PropertyAttributesScreen from '../screens/landlord/PropertyAttributesScre
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
 import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScreen';
 import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
+import PropertyDetailsScreen from '../screens/landlord/PropertyDetailsScreen';
+import InviteTenantScreen from '../screens/landlord/InviteTenantScreen';
+import { PropertyData, PropertyArea, InventoryItem } from '../types/property';
 
 export type AuthStackParamList = {
   // Legacy screen for backwards compatibility
@@ -40,31 +43,37 @@ export type AuthStackParamList = {
   LandlordOnboardingWelcome: { firstName: string; role: 'landlord' };
   LandlordPropertyIntro: { firstName: string };
   PropertyBasics: { firstName?: string; isOnboarding?: boolean };
-  PropertyAttributes: { addressData: any; isOnboarding?: boolean; firstName?: string };
+  PropertyAttributes: { addressData: PropertyData; isOnboarding?: boolean; firstName?: string };
   PropertyAreas: {
-    propertyData: any; // PropertyData type
+    propertyData: PropertyData;
     draftId?: string;
     propertyId?: string;
-    existingAreas?: any[]; // PropertyArea[] type
+    existingAreas?: PropertyArea[];
     isOnboarding?: boolean;
     firstName?: string;
   };
   PropertyAssets: {
-    propertyData: any; // PropertyData type
-    areas: any[]; // PropertyArea[] type
+    propertyData: PropertyData;
+    areas: PropertyArea[];
     propertyId?: string;
     draftId?: string;
     isOnboarding?: boolean;
     firstName?: string;
-    newAsset?: any; // InventoryItem type
+    newAsset?: InventoryItem;
   };
   PropertyReview: {
-    propertyData: any; // PropertyData type
-    areas: any[]; // PropertyArea[] type
+    propertyData: PropertyData;
+    areas: PropertyArea[];
     draftId?: string;
     propertyId?: string;
     isOnboarding?: boolean;
     firstName?: string;
+  };
+  PropertyDetails: { propertyId: string };
+  InviteTenant: {
+    propertyId: string;
+    propertyName: string;
+    propertyCode?: string;
   };
   LandlordTenantInvite: { firstName: string; propertyId: string; propertyName: string };
   LandlordOnboardingSuccess: { firstName: string };
@@ -153,6 +162,8 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       <Stack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
       <Stack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
       <Stack.Screen name="PropertyReview" component={PropertyReviewScreen} />
+      <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+      <Stack.Screen name="InviteTenant" component={InviteTenantScreen} />
       <Stack.Screen name="LandlordTenantInvite" component={LandlordTenantInviteScreen} />
       <Stack.Screen name="LandlordOnboardingSuccess" component={LandlordOnboardingSuccessScreen} />
 

@@ -184,7 +184,7 @@ function BootstrapScreen() {
                   let token: string | undefined;
                   try {
                     const parsed = Linking.parse(text);
-                    const qp: any = parsed.queryParams || {};
+                    const qp = (parsed.queryParams || {}) as Record<string, string | string[] | undefined>;
                     token = (qp.t || qp.token) as string | undefined;
                   } catch {
                     // not a url, fall back to raw

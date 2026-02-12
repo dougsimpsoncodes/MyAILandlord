@@ -115,7 +115,7 @@ export function useProfileSync() {
           setReady(true)
         }
       } catch (error) {
-        log.error('useProfileSync error:', error as any)
+        log.error('useProfileSync error', { error: error instanceof Error ? error.message : String(error) })
         // Don't set ready to true on error
       }
     }

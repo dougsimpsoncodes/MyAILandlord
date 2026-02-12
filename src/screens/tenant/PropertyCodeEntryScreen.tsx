@@ -22,6 +22,17 @@ const PropertyCodeEntryScreen = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const navigateToTenantHome = () => {
+    navigation.getParent()?.navigate('TenantHome' as never);
+  };
+
+  const handleNoCode = () => {
+    Alert.alert(
+      'Need a Code?',
+      'Ask your landlord for an invite link or property code to continue setup.'
+    );
+  };
+
   const ensureProfileExists = async () => {
     if (!user || !apiClient) {
       throw new Error('User not authenticated');
@@ -60,14 +71,11 @@ const PropertyCodeEntryScreen = () => {
         return;
       }
 
-      // Check if multi-unit property
+      // Multi-unit flow is not implemented in the current navigator.
+      // Prevent crash and guide user to the supported invite-code path.
       if (validation.is_multi_unit) {
-        // Navigate to unit selection
-        navigation.navigate('UnitSelection', {
-          propertyCode: propertyCode.trim(),
-          propertyName: validation.property_name ?? 'Property',
-          propertyAddress: validation.property_address ?? '',
-        });
+        setError('This property requires a unit-specific invite. Ask your landlord for a direct invite link.');
+        return;
       } else {
         // Link tenant directly to property
         const linkResult = await apiClient.linkTenantToProperty(propertyCode.trim());
@@ -93,7 +101,7 @@ const PropertyCodeEntryScreen = () => {
         }
       }
     } catch (error) {
-      log.error('Property code validation error:', error as any);
+      log.error('Property code validation error:', error instanceof Error ? error : new Error(String(error)));
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
       if (errorMessage.includes('authentication') || errorMessage.includes('token')) {
@@ -114,7 +122,7 @@ const PropertyCodeEntryScreen = () => {
       'You can link to your property later in Settings. Some features may be limited.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Skip', onPress: () => navigation.navigate('Home') }
+        { text: 'Skip', onPress: navigateToTenantHome }
       ]
     );
   };
@@ -167,7 +175,7 @@ const PropertyCodeEntryScreen = () => {
 
         <CustomButton
           title="Don't have a code?"
-          onPress={() => navigation.navigate('PropertySearch')}
+          onPress={handleNoCode}
           variant="outline"
           style={styles.searchButton}
           icon="search"

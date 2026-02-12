@@ -32,7 +32,7 @@ const AuthScreen = () => {
   const route = useRoute<AuthScreenRouteProp>();
 
   // Get initial mode from route params, default to 'login'
-  const initialMode = (route.params as any)?.initialMode || 'login';
+  const initialMode = route.params?.initialMode || 'login';
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
@@ -40,6 +40,8 @@ const AuthScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(0);
+  const [loginLockedUntil, setLoginLockedUntil] = useState<number | null>(null);
 
   const clearForm = () => {
     setEmailAddress('');
@@ -53,19 +55,39 @@ const AuthScreen = () => {
   };
 
   const handleLogin = async () => {
+    const now = Date.now();
+    if (loginLockedUntil && now < loginLockedUntil) {
+      const waitSeconds = Math.max(1, Math.ceil((loginLockedUntil - now) / 1000));
+      setError(`Too many login attempts. Try again in ${waitSeconds}s.`);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+      const { error: loginError } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
 
       if (loginError) {
-        setError(loginError.message);
+        const nextAttempts = failedLoginAttempts + 1;
+        setFailedLoginAttempts(nextAttempts);
+
+        if (nextAttempts >= 3) {
+          const backoffSeconds = Math.min(60, 5 * Math.pow(2, nextAttempts - 3));
+          setLoginLockedUntil(Date.now() + backoffSeconds * 1000);
+          setError(`Too many login attempts. Try again in ${backoffSeconds}s.`);
+        } else {
+          setError('Invalid email or password.');
+        }
         return;
       }
+
+      setFailedLoginAttempts(0);
+      setLoginLockedUntil(null);
+
       // Session is set by Supabase - navigate to Bootstrap which will route to Main
       navigation.dispatch(
         CommonActions.reset({
@@ -73,9 +95,8 @@ const AuthScreen = () => {
           routes: [{ name: 'Bootstrap' as never }],
         })
       );
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in. Please try again.';
-      setError(errorMessage);
+    } catch {
+      setError('Failed to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -118,7 +139,7 @@ const AuthScreen = () => {
       // Optional fallback for environments where Supabase doesn't return session
       // even when email confirmation is disabled (e.g., E2E). When enabled via
       // EXPO_PUBLIC_SIGNUP_AUTOLOGIN=1, attempt password sign-in immediately.
-      if (AUTO_LOGIN_AFTER_SIGNUP) {
+      if (AUTO_LOGIN_AFTER_SIGNUP && __DEV__) {
         const delays = [150, 300, 600, 1000];
         for (const delay of delays) {
           const { error: pwError } = await supabase.auth.signInWithPassword({

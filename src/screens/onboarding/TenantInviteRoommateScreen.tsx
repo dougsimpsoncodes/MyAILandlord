@@ -8,7 +8,6 @@ import {
   Share,
   Alert,
   Clipboard,
-  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,7 +25,7 @@ type InviteRouteProp = RouteProp<TenantOnboardingStackParamList, 'TenantInviteRo
 export default function TenantInviteRoommateScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<InviteRouteProp>();
-  const { firstName, propertyId, propertyName, inviteCode } = route.params;
+  const { firstName, propertyName, inviteCode } = route.params;
 
   const [copied, setCopied] = useState(false);
 
@@ -49,7 +48,7 @@ export default function TenantInviteRoommateScreen() {
       await Share.share({
         message: `Join me at ${propertyName} on the MyAI Landlord app!\n\nUse this code to connect: ${inviteCode}`,
       });
-    } catch (err) {
+    } catch {
       // Share canceled or failed
     }
   };

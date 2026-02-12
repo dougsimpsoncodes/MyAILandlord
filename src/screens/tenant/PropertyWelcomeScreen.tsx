@@ -22,7 +22,7 @@ const PropertyWelcomeScreen = () => {
   const { propertyName, propertyAddress, wifiNetwork, wifiPassword } = route.params as RouteParams;
 
   const handleContinue = () => {
-    navigation.navigate('Home');
+    navigation.getParent()?.navigate('TenantHome' as never);
   };
 
   const handleReportIssue = () => {

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { log } from '../../lib/log';
 
@@ -15,15 +16,29 @@ interface PendingInvite {
   };
 }
 
+const redactValue = (value: string): string => {
+  if (!value) return '';
+  if (value.length <= 8) return '***';
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
+
 /**
- * Platform-aware storage: localStorage on web (cross-tab), AsyncStorage on native
+ * Platform-aware storage:
+ * - web: localStorage (cross-tab)
+ * - native: expo-secure-store (encrypted), with AsyncStorage fallback
  */
 const storage = {
   async getItem(key: string): Promise<string | null> {
     if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
       return window.localStorage.getItem(key);
     }
-    return await AsyncStorage.getItem(key);
+
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      log.warn('SecureStore get failed, falling back to AsyncStorage', { error });
+      return await AsyncStorage.getItem(key);
+    }
   },
 
   async setItem(key: string, value: string): Promise<void> {
@@ -31,7 +46,13 @@ const storage = {
       window.localStorage.setItem(key, value);
       return;
     }
-    await AsyncStorage.setItem(key, value);
+
+    try {
+      await SecureStore.setItemAsync(key, value);
+    } catch (error) {
+      log.warn('SecureStore set failed, falling back to AsyncStorage', { error });
+      await AsyncStorage.setItem(key, value);
+    }
   },
 
   async removeItem(key: string): Promise<void> {
@@ -39,7 +60,13 @@ const storage = {
       window.localStorage.removeItem(key);
       return;
     }
-    await AsyncStorage.removeItem(key);
+
+    try {
+      await SecureStore.deleteItemAsync(key);
+    } catch (error) {
+      log.warn('SecureStore delete failed, falling back to AsyncStorage', { error });
+      await AsyncStorage.removeItem(key);
+    }
   },
 };
 
@@ -47,8 +74,6 @@ const storage = {
  * Service to persist property invite context through authentication flow.
  * When an unauthenticated user opens an invite link and needs to sign up,
  * we store the invite data (token or propertyId) so we can complete the invite after auth.
- *
- * Uses localStorage on web (cross-tab support) and AsyncStorage on native.
  */
 export const PendingInviteService = {
   /**
@@ -69,9 +94,13 @@ export const PendingInviteService = {
         timestamp: Date.now(),
         metadata,
       };
+
       await storage.setItem(PENDING_INVITE_KEY, JSON.stringify(invite));
-      const storageType = Platform.OS === 'web' ? 'localStorage' : 'AsyncStorage';
-      log.info(`📥 Saved pending ${type} invite (${storageType}):`, value, metadata);
+      const storageType = Platform.OS === 'web' ? 'localStorage' : 'SecureStore';
+      log.info(`📥 Saved pending ${type} invite (${storageType})`, {
+        value: redactValue(value),
+        metadata,
+      });
     } catch (error) {
       log.error('Failed to save pending invite:', error as Error);
     }
@@ -88,12 +117,20 @@ export const PendingInviteService = {
         return null;
       }
 
-      const invite: PendingInvite = JSON.parse(stored);
+      const parsed: unknown = JSON.parse(stored);
 
       // Backward compatibility: handle old format (just propertyId string)
-      if (typeof invite === 'string' || (invite && !invite.type)) {
+      if (typeof parsed === 'string' || (parsed && typeof parsed === 'object' && !('type' in parsed))) {
         log.info('📦 Migrating old pending invite format to new structure');
-        const legacyPropertyId = typeof invite === 'string' ? invite : (invite as any).propertyId;
+        const legacyPropertyId = typeof parsed === 'string'
+          ? parsed
+          : String((parsed as { propertyId?: unknown }).propertyId || '');
+
+        if (!legacyPropertyId) {
+          await this.clearPendingInvite();
+          return null;
+        }
+
         const migratedInvite: PendingInvite = {
           type: 'legacy',
           value: legacyPropertyId,
@@ -103,6 +140,8 @@ export const PendingInviteService = {
         return migratedInvite;
       }
 
+      const invite = parsed as PendingInvite;
+
       // Expire after 1 hour
       const oneHour = 60 * 60 * 1000;
       if (Date.now() - invite.timestamp > oneHour) {
@@ -111,8 +150,10 @@ export const PendingInviteService = {
         return null;
       }
 
-      const storageType = Platform.OS === 'web' ? 'localStorage' : 'AsyncStorage';
-      log.info(`📤 Retrieved pending ${invite.type} invite (${storageType}):`, invite.value);
+      const storageType = Platform.OS === 'web' ? 'localStorage' : 'SecureStore';
+      log.info(`📤 Retrieved pending ${invite.type} invite (${storageType})`, {
+        value: redactValue(invite.value),
+      });
       return invite;
     } catch (error) {
       log.error('Failed to get pending invite:', error as Error);
