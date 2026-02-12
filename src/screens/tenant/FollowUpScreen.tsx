@@ -6,6 +6,7 @@ import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
+import { log } from '../../lib/log';
 
 type FollowUpScreenRouteProp = RouteProp<TenantStackParamList, 'FollowUp'>;
 type FollowUpScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'FollowUp'>;
@@ -48,7 +49,7 @@ const FollowUpScreen = () => {
       setIsLoading(true);
       // Get all requests and find the one we need
       const requests = await apiClient.getMaintenanceRequests();
-      const found = requests.find((r: any) => r.id === issueId);
+      const found = requests.find((r) => r.id === issueId);
 
       if (found) {
         setRequest({
@@ -67,7 +68,7 @@ const FollowUpScreen = () => {
         setError('Request not found');
       }
     } catch (err) {
-      console.error('Error loading request:', err);
+      log.error('Error loading request', { error: String(err) });
       setError('Failed to load request details');
     } finally {
       setIsLoading(false);
@@ -86,7 +87,7 @@ const FollowUpScreen = () => {
   };
 
   const getStatusDisplay = (status: string) => {
-    const statusMap: { [key: string]: { label: string; color: string; bgColor: string; icon: string } } = {
+    const statusMap: Record<string, { label: string; color: string; bgColor: string; icon: keyof typeof Ionicons.glyphMap }> = {
       pending: { label: 'Pending', color: '#F39C12', bgColor: '#FEF5E7', icon: 'time-outline' },
       in_progress: { label: 'In Progress', color: '#3498DB', bgColor: '#EBF5FB', icon: 'construct-outline' },
       completed: { label: 'Completed', color: '#27AE60', bgColor: '#E8F8F0', icon: 'checkmark-circle-outline' },
@@ -152,7 +153,7 @@ const FollowUpScreen = () => {
     >
       {/* Status Banner */}
       <View style={[styles.statusBanner, { backgroundColor: statusDisplay.bgColor }]}>
-        <Ionicons name={statusDisplay.icon as any} size={24} color={statusDisplay.color} />
+        <Ionicons name={statusDisplay.icon} size={24} color={statusDisplay.color} />
         <View style={styles.statusBannerContent}>
           <Text style={[styles.statusLabel, { color: statusDisplay.color }]}>
             {statusDisplay.label}

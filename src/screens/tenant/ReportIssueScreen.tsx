@@ -1,20 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import * as Speech from 'expo-speech';
 import Constants from 'expo-constants';
-import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useApiClient } from '../../services/api/client';
 import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
-import { getAssetsByRoom, ASSET_TEMPLATES_BY_ROOM } from '../../data/assetTemplates';
-import { AreaType } from '../../models/Property';
+import { getAssetsByRoom } from '../../data/assetTemplates';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { formatAddress } from '../../utils/helpers';
+import { log } from '../../lib/log';
 
 type ReportIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReportIssue'>;
 
@@ -38,7 +36,10 @@ const getCategoryIcon = (category: string) => {
 };
 
 // Format address from address_jsonb (preferred) or fall back to legacy address
-const formatPropertyAddress = (properties: any): string => {
+const formatPropertyAddress = (properties: {
+  address_jsonb?: { line1?: string; line2?: string; city?: string; state?: string; zipCode?: string } | null;
+  address?: string | null;
+} | null | undefined): string => {
   if (!properties) return '';
   if (properties.address_jsonb) {
     const addr = properties.address_jsonb;
@@ -49,22 +50,36 @@ const formatPropertyAddress = (properties: any): string => {
 
 const ReportIssueScreen = () => {
   const navigation = useNavigation<ReportIssueScreenNavigationProp>();
-  const { isSignedIn } = useUnifiedAuth();
-
   const handleGoBack = () => {
     navigation.goBack();
   };
   const apiClient = useApiClient();
   const [issueDescription, setIssueDescription] = useState('');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRecording] = useState(false);
   const [title, setTitle] = useState('');
   
   // Property context
-  const [tenantProperties, setTenantProperties] = useState<any[]>([]);
-  const [selectedProperty, setSelectedProperty] = useState<any>(null);
-  const [loadingProperties, setLoadingProperties] = useState(true);
+  type TenantProperty = {
+    id: string;
+    name?: string | null;
+    unit_number?: string | null;
+    is_active?: boolean | null;
+    properties?: {
+      id: string;
+      name?: string | null;
+      address_jsonb?: { line1?: string; line2?: string; city?: string; state?: string; zipCode?: string } | null;
+      address?: string | null;
+      landlord_id?: string | null;
+      wifi_network?: string | null;
+      wifi_password?: string | null;
+      emergency_contact?: string | null;
+      emergency_phone?: string | null;
+    } | null;
+  };
+
+  const [tenantProperties, setTenantProperties] = useState<TenantProperty[]>([]);
+  const [selectedProperty, setSelectedProperty] = useState<TenantProperty | null>(null);
   
   // Smart dropdown states
   const [selectedArea, setSelectedArea] = useState<string>('');
@@ -75,7 +90,6 @@ const ReportIssueScreen = () => {
   const [selectedTiming, setSelectedTiming] = useState<string>('');
   const [otherIssueDescription, setOtherIssueDescription] = useState<string>('');
   
-  const speechRecognitionRef = useRef<object | null>(null);
 
   // Load tenant properties on component mount
   useEffect(() => {
@@ -84,7 +98,6 @@ const ReportIssueScreen = () => {
 
   const loadTenantProperties = async () => {
     if (!apiClient) {
-      setLoadingProperties(false);
       return;
     }
 
@@ -96,16 +109,14 @@ const ReportIssueScreen = () => {
       if (properties && properties.length === 1) {
         setSelectedProperty(properties[0]);
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to load your properties. Please try again.');
-    } finally {
-      setLoadingProperties(false);
     }
   };
 
   // Get dropdown options based on selections
   const areaOptions = AREA_TEMPLATES.map(area => ({
-    value: area.type,
+    value: String(area.type),
     label: area.displayName,
     icon: area.icon,
     description: area.description
@@ -321,7 +332,7 @@ const ReportIssueScreen = () => {
         setMediaItems(prev => [...prev, newMedia]);
       }
     } catch (error) {
-      console.error('Camera error:', error);
+      log.error('Camera error', { error: String(error) });
       Alert.alert(
         'Camera Error',
         'There was an issue accessing the camera. Please try again or use "Choose from Library".',
@@ -350,8 +361,8 @@ const ReportIssueScreen = () => {
 
     const reviewData = {
       propertyId: selectedProperty.properties?.id || selectedProperty.id,
-      propertyName: selectedProperty.properties?.name || selectedProperty.name,
-      unitNumber: selectedProperty.unit_number,
+      propertyName: selectedProperty.properties?.name ?? selectedProperty.name ?? undefined,
+      unitNumber: selectedProperty.unit_number ?? undefined,
       area: selectedArea,
       asset: selectedAsset,
       issueType: selectedIssueType === 'other' ? otherIssueDescription.trim() : selectedIssueType,
@@ -410,14 +421,14 @@ const ReportIssueScreen = () => {
               placeholder="Choose which property has the issue"
               options={tenantProperties.map(prop => ({
                 value: prop.properties?.id || prop.id,
-                label: `${prop.properties.name}${prop.unit_number ? ` - Unit ${prop.unit_number}` : ''}`,
+                label: ((prop.properties?.name ?? prop.name ?? "Property") + (prop.unit_number ? " - Unit " + prop.unit_number : "")),
                 icon: 'home',
-                description: prop.properties.address
+                description: prop.properties?.address ?? ""
               }))}
               value={selectedProperty?.properties?.id || selectedProperty?.id || ''}
               onSelect={(value) => {
                 const property = tenantProperties.find(p => p.properties?.id === value || p.id === value);
-                setSelectedProperty(property);
+                setSelectedProperty(property ?? null);
               }}
             />
           </View>
@@ -428,7 +439,7 @@ const ReportIssueScreen = () => {
           <View style={styles.propertyDisplay}>
             <View style={styles.propertyHeader}>
               <Ionicons name="home" size={20} color="#007AFF" />
-              <Text style={styles.propertyName}>{selectedProperty.properties.name}</Text>
+              <Text style={styles.propertyName}>{selectedProperty.properties?.name ?? selectedProperty.name ?? "Property"}</Text>
             </View>
             <Text style={styles.propertyAddress}>
               {formatAddress(formatPropertyAddress(selectedProperty.properties))}

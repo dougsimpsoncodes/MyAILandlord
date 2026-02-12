@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -74,7 +73,7 @@ const EditProfileScreen = () => {
       refreshProfile().catch(() => {});
       setIsSaving(false);
       showNotification('Success', 'Profile updated successfully', 'default', () => navigation.goBack());
-    } catch (error) {
+    } catch {
       setIsSaving(false);
       showNotification('Error', 'Failed to update profile', 'destructive');
     }

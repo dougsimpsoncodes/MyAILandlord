@@ -7,11 +7,12 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, NavigationProp } from "@react-navigation/native";
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
+import { log } from '../../lib/log';
 
 interface ProfileScreenProps {
   route?: {
@@ -31,7 +32,7 @@ interface MenuItem {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp<Record<string, object | undefined>>>();
   const { user, signOut, refreshUser } = useUnifiedAuth();
   const role = route?.params?.userRole || user?.role;
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
@@ -65,7 +66,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
         });
       }
     } catch (error) {
-      console.error('Error signing out:', error);
+      log.error('Error signing out', { error: String(error) });
       setShowSignOutDialog(false);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     } finally {

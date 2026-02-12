@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { log } from '../../lib/log';
 // import { ASSET_TEMPLATES } from '../../data/nulls'; // TODO: Fix import
 
 type ReviewIssueScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'ReviewIssue'>;
@@ -32,7 +33,7 @@ const ReviewIssueScreen = () => {
   
   // Safety check for reviewData
   if (!reviewData || typeof reviewData !== 'object') {
-    console.error('Invalid reviewData received:', reviewData);
+    log.error('Invalid reviewData received', { reviewData });
     // Navigate back or show error
     return (
       <ScreenContainer title="Error" userRole="tenant" showBackButton onBackPress={() => navigation.goBack()}>
@@ -51,7 +52,6 @@ const ReviewIssueScreen = () => {
   
   const apiClient = useApiClient();
 
-  const [selectedTimeSlots, setSelectedTimeSlots] = useState<TimeSlot[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAIAnalysis, setShowAIAnalysis] = useState(false);
   const [vendorComment, setVendorComment] = useState('');
@@ -147,9 +147,7 @@ const ReviewIssueScreen = () => {
     }, 0);
   };
 
-  const getAIAnalysis = () => {
-    const areaName = AREA_TEMPLATES.find((a: {type: string, displayName?: string}) => a.type === reviewData.area)?.displayName || reviewData.area;
-    // const assetTemplate = null; // ASSET_TEMPLATES integration disabled
+  const getAIAnalysis = () => {    // const assetTemplate = null; // ASSET_TEMPLATES integration disabled
     
     // Simple AI analysis based on issue data
     const analysisMap: { [key: string]: { what: string; timeline: string; vendor: string } } = {
@@ -231,49 +229,13 @@ const ReviewIssueScreen = () => {
 
       const structuredDescription = descriptionParts.join('\n');
 
-      // Format selected time slots
-      const availableSlots = timeSlots
-        .filter(slot => Object.values(slot.periods).some(Boolean))
-        .map(slot => {
-          const periods = Object.entries(slot.periods)
-            .filter(([_, selected]) => selected)
-            .map(([period, _]) => period);
-          return `${slot.day} ${slot.date}: ${periods.join(', ')}`;
-        });
-
-      // Create case data
-      const caseData = {
-        title: reviewData.title || reviewData.issueType || reviewData.asset || 'Maintenance Request',
-        description: structuredDescription,
-        category: 'General'?.toLowerCase().replace(/\s+/g, '_') || 'other',
-        priority: priorityValue,
-        propertyAddress: 'Default Property Address',
-        location: reviewData.area || 'general',
-
-        structuredData: {
-          area: reviewData.area || 'general',
-          areaDisplayName: areaName,
-          asset: reviewData.asset || 'General',
-          issueType: reviewData.issueType || 'needs attention',
-          priority: priorityValue,
-          duration: reviewData.duration || 'unknown',
-          timing: reviewData.timing || 'unknown',
-          assetCategory: 'General',
-          vendorType: 'specialist',
-          additionalDetails: reviewData.additionalDetails || null,
-          availableTimeSlots: availableSlots
-        },
-
-        images: []
-      };
-
       if (!apiClient) {
-        console.error('API client not available');
+        log.error('API client not available');
         return;
       }
 
       if (!reviewData.propertyId) {
-        console.error('Property ID is missing');
+        log.error('Property ID is missing');
         const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
         if (isWeb) {
           window.alert('Property information is missing. Please try again.');
@@ -295,7 +257,7 @@ const ReviewIssueScreen = () => {
       };
       
       
-      const response = await apiClient.createMaintenanceRequest(maintenanceRequestData);
+      await apiClient.createMaintenanceRequest(maintenanceRequestData);
 
       // Navigate to success screen with summary data
       navigation.navigate('SubmissionSuccess', {
@@ -308,7 +270,7 @@ const ReviewIssueScreen = () => {
         }
       });
     } catch (error) {
-      console.error('Error creating maintenance request:', error);
+      log.error('Error creating maintenance request', { error: String(error) });
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       const isWeb = typeof window !== 'undefined' && typeof window.alert === 'function';
       if (isWeb) {

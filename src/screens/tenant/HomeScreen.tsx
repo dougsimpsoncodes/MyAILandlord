@@ -5,7 +5,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
-import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import Button from '../../components/shared/Button';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
@@ -23,6 +22,34 @@ interface MaintenanceRequest {
   location: string;
   submittedAt: string;
   status: 'pending' | 'in_progress' | 'completed';
+}
+
+interface TenantPropertyLinkRow {
+  unit_number?: string | null;
+  properties?: {
+    id: string;
+    name: string;
+    address?: string | null;
+    address_jsonb?: {
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    } | null;
+    wifi_network?: string | null;
+    wifi_password?: string | null;
+    emergency_contact?: string | null;
+    emergency_phone?: string | null;
+  } | null;
+}
+
+interface MaintenanceRequestRow {
+  id: string;
+  title?: string | null;
+  area?: string | null;
+  created_at: string;
+  status?: string | null;
 }
 
 interface LinkedProperty {
@@ -63,7 +90,6 @@ const HomeScreen = () => {
           log.info('🎟️ Redirecting to PropertyInviteAcceptScreen for token:', pendingInvite.value);
 
           // Navigate to PropertyInviteAcceptScreen with token
-          // @ts-ignore - PropertyInviteAccept is in tenant stack but types might not be perfect
           navigation.navigate('PropertyInviteAccept', { token: pendingInvite.value });
         } else {
           // LEGACY: Direct property linking (deprecated but supported)
@@ -87,7 +113,7 @@ const HomeScreen = () => {
               await PendingInviteService.clearPendingInvite();
               loadData();
             } else {
-              log.error('Failed to auto-link tenant to property:', linkError as any);
+              log.error('Failed to auto-link tenant to property', { error: String(linkError) });
               // Still clear the invite to prevent infinite loops
               await PendingInviteService.clearPendingInvite();
             }
@@ -107,13 +133,13 @@ const HomeScreen = () => {
 
     try {
       // Load tenant's linked properties
-      const tenantProperties = await apiClient.getTenantProperties();
+      const tenantProperties = await apiClient.getTenantProperties() as TenantPropertyLinkRow[];
       log.info('Loaded tenant properties', { count: tenantProperties.length });
 
       if (tenantProperties.length > 0) {
         // Use the first active property (most apps link tenant to one property)
         const firstLink = tenantProperties[0];
-        const property = firstLink.properties as any;
+        const property = firstLink.properties;
 
         if (property) {
           // Format address from address_jsonb (preferred) or fall back to legacy address
@@ -141,18 +167,18 @@ const HomeScreen = () => {
       }
 
       // Load maintenance requests for this tenant
-      const maintenanceRequests = await apiClient.getMaintenanceRequests();
+      const maintenanceRequests = await apiClient.getMaintenanceRequests() as MaintenanceRequestRow[];
       log.info('Loaded maintenance requests', { count: maintenanceRequests.length });
 
       // Map to our local interface format, filtering out completed requests
       const mappedRequests: MaintenanceRequest[] = maintenanceRequests
-        .filter((req: any) => req.status !== 'completed')
-        .map((req: any) => ({
+        .filter((req) => req.status !== 'completed')
+        .map((req) => ({
           id: req.id,
           title: req.title || 'Maintenance Request',
           location: req.area || 'Unknown',
           submittedAt: new Date(req.created_at).toLocaleDateString(),
-          status: req.status as 'pending' | 'in_progress' | 'completed',
+          status: req.status === 'in_progress' ? 'in_progress' : 'pending',
         }));
 
       setRequests(mappedRequests);
@@ -287,7 +313,7 @@ const HomeScreen = () => {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Your Requests</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MaintenanceStatus')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('TenantRequests' as never)}>
               <Text style={styles.sectionLink}>View All</Text>
             </TouchableOpacity>
           </View>

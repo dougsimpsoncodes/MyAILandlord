@@ -8,6 +8,7 @@ import { useApiClient } from '../../services/api/client';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import Button from '../../components/shared/Button';
+import { log } from '../../lib/log';
 
 type MaintenanceStatusScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'MaintenanceStatus'>;
 
@@ -18,16 +19,6 @@ interface MaintenanceRequest {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   createdAt: Date;
   location: string;
-  description: string;
-}
-
-interface MaintenanceRequestResponse {
-  id: string;
-  title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  created_at: string;
-  area: string;
   description: string;
 }
 
@@ -46,23 +37,23 @@ const MaintenanceStatusScreen = () => {
   const loadRequests = async () => {
     try {
       if (!apiClient) {
-        console.error('API client not available');
+        log.error('API client not available');
         return;
       }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       // Transform the response data to match our interface
-      const transformedRequests = maintenanceRequests.map((request: any) => ({
+      const transformedRequests: MaintenanceRequest[] = (maintenanceRequests as Array<{ id: string; title: string | null; status: MaintenanceRequest['status'] | null; priority: MaintenanceRequest['priority'] | null; created_at: string | null; area: string | null; description: string | null }>).map((request) => ({
         id: request.id,
-        title: request.title,
-        status: request.status,
-        priority: request.priority,
-        createdAt: new Date(request.created_at),
+        title: request.title ?? 'Maintenance Request',
+        status: (request.status ?? 'pending') as MaintenanceRequest['status'],
+        priority: (request.priority ?? 'medium') as MaintenanceRequest['priority'],
+        createdAt: new Date(request.created_at ?? Date.now()),
         location: request.area || 'Not specified',
-        description: request.description
+        description: request.description ?? ''
       }));
       setRequests(transformedRequests);
     } catch (error) {
-      console.error('Error loading maintenance hub:', error);
+      log.error('Error loading maintenance hub', { error: String(error) });
       setRequests([]);
     } finally {
       setIsLoading(false);
@@ -93,16 +84,6 @@ const MaintenanceStatusScreen = () => {
       cancelled: 'Cancelled'
     };
     return texts[status] || status;
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    const icons: { [key: string]: { name: string; color: string } } = {
-      low: { name: 'arrow-down', color: '#27AE60' },
-      medium: { name: 'remove', color: '#F39C12' },
-      high: { name: 'arrow-up', color: '#E67E22' },
-      emergency: { name: 'alert', color: '#E74C3C' }
-    };
-    return icons[priority] || icons.medium;
   };
 
   const formatDate = (date: Date) => {

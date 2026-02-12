@@ -79,7 +79,7 @@ const CommunicationHubScreen = () => {
       // First get the tenant's linked property to find the landlord
       const tenantProperties = await apiClient.getTenantProperties();
       if (tenantProperties.length > 0) {
-        const property = tenantProperties[0].properties as any;
+        const property = tenantProperties[0].properties as { id: string; landlord_id?: string } | null;
         if (property) {
           setPropertyId(property.id);
           // Get landlord ID from property
@@ -95,12 +95,12 @@ const CommunicationHubScreen = () => {
       log.info('Loaded messages from database', { count: dbMessages.length });
 
       // Map database messages to local format
-      const mappedMessages: Message[] = dbMessages.map((msg: any) => ({
+      const mappedMessages: Message[] = (dbMessages as Array<{ id: string; content: string; sender_id: string | null; created_at: string | null; is_read?: boolean | null }>).map((msg) => ({
         id: msg.id,
         text: msg.content,
         sender: msg.sender_id === user?.id ? 'tenant' : 'landlord',
-        timestamp: new Date(msg.created_at),
-        read: msg.is_read || false,
+        timestamp: new Date(msg.created_at ?? Date.now()),
+        read: msg.is_read ?? false,
       }));
 
       // Sort by timestamp
