@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { log } from '../../lib/log';
 
 type DashboardScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'Dashboard'>;
 
@@ -24,6 +25,8 @@ interface CaseFile {
   estimatedCost?: string;
 }
 
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 interface MaintenanceRequestResponse {
   id: string;
   issue_type: string;
@@ -39,6 +42,58 @@ interface MaintenanceRequestResponse {
   };
 }
 
+interface CaseRequestCardProps {
+  caseItem: CaseFile;
+  statusText: string;
+  statusColor: string;
+  onPress: (caseId: string) => void;
+}
+
+const CaseRequestCard = React.memo(({ caseItem, statusText, statusColor, onPress }: CaseRequestCardProps) => (
+  <TouchableOpacity
+    style={[
+      styles.requestCard,
+      caseItem.status === 'completed' && styles.resolvedCard
+    ]}
+    onPress={() => onPress(caseItem.id)}
+    activeOpacity={0.7}
+  >
+    <View style={styles.requestHeader}>
+      <Text style={[
+        styles.requestTitle,
+        caseItem.status === 'completed' && styles.resolvedTitle
+      ]}>
+        {caseItem.issueType}
+      </Text>
+      <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+        <Text style={[styles.statusText, { color: statusColor }]}>
+          {statusText}
+        </Text>
+      </View>
+    </View>
+
+    <Text style={[
+      styles.requestMeta,
+      caseItem.status === 'completed' && styles.resolvedText
+    ]}>
+      {caseItem.location} • {caseItem.tenantName}
+    </Text>
+
+    <Text style={[
+      styles.requestTime,
+      caseItem.status === 'completed' && styles.resolvedText
+    ]}>
+      {caseItem.status === 'completed' ? 'Completed ' : ''}{caseItem.submittedAt}
+    </Text>
+
+    {caseItem.description && caseItem.status !== 'completed' && (
+      <Text style={styles.requestDescription} numberOfLines={2}>
+        {caseItem.description}
+      </Text>
+    )}
+  </TouchableOpacity>
+));
+
 const DashboardScreen = () => {
   const navigation = useNavigation<DashboardScreenNavigationProp>();
   const apiClient = useApiClient();
@@ -46,6 +101,8 @@ const DashboardScreen = () => {
   const [selectedFilter, setSelectedFilter] = useState<'new' | 'in_progress' | 'completed'>('new');
   const [cases, setCases] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const cacheRef = useRef<{ timestamp: number; cases: CaseFile[] } | null>(null);
 
   // Refresh cases whenever screen gains focus (handles returning from case updates)
   useFocusEffect(
@@ -54,17 +111,28 @@ const DashboardScreen = () => {
     }, [apiClient])
   );
 
-  const loadCases = async () => {
+  const loadCases = async (options?: { force?: boolean }) => {
+    const force = options?.force ?? false;
+
     try {
       setLoading(true);
       if (!apiClient) {
-        console.error('API client not available');
+        setLoadError('Unable to load requests right now.');
         return;
       }
-      const maintenanceRequests = await apiClient.getMaintenanceRequests();
+
+      const cached = cacheRef.current;
+      if (!force && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        setCases(cached.cases);
+        setLoadError(null);
+        setLoading(false);
+        return;
+      }
+
+      const maintenanceRequests = await apiClient.getMaintenanceRequests() as MaintenanceRequestResponse[];
       
       // Transform API data to match the expected interface
-      const transformedCases = maintenanceRequests.map((request: any) => ({
+      const transformedCases = maintenanceRequests.map((request) => ({
         id: request.id,
         tenantName: request.profiles?.name || 'Tenant User',
         tenantUnit: 'N/A', // TODO: Get from tenant_property_links
@@ -79,8 +147,11 @@ const DashboardScreen = () => {
       }));
       
       setCases(transformedCases);
+      setLoadError(null);
+      cacheRef.current = { timestamp: Date.now(), cases: transformedCases };
     } catch (error) {
-      console.error('Error loading cases:', error);
+      setLoadError('Failed to load requests. Pull to retry.');
+      log.error('Error loading cases', { error: String(error) });
       Alert.alert('Error', 'Failed to load cases. Please try again.');
     } finally {
       setLoading(false);
@@ -117,7 +188,7 @@ const DashboardScreen = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCases();
+    await loadCases({ force: true });
     setRefreshing(false);
   };
 
@@ -162,9 +233,9 @@ const DashboardScreen = () => {
   const inProgressCount = cases.filter(case_ => case_.status === 'pending' || case_.status === 'in_progress').length;
   const completedCount = cases.filter(case_ => case_.status === 'completed').length;
 
-  const handleCasePress = (caseId: string) => {
+  const handleCasePress = useCallback((caseId: string) => {
     navigation.navigate('CaseDetail', { caseId });
-  };
+  }, [navigation]);
 
   const getEmptyStateMessage = () => {
     switch (selectedFilter) {
@@ -180,6 +251,30 @@ const DashboardScreen = () => {
   };
 
   const emptyState = getEmptyStateMessage();
+
+  if (!loading && loadError && cases.length === 0) {
+    return (
+      <ScreenContainer
+        title="Requests"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+      >
+        <View style={styles.emptyContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#E67E22" />
+          <Text style={styles.emptyTitle}>Unable to load requests</Text>
+          <Text style={styles.emptySubtitle}>{loadError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => loadCases({ force: true })}
+            testID="retry-dashboard-load"
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer
@@ -260,50 +355,14 @@ const DashboardScreen = () => {
         </View>
       ) : (
         /* Request Cards - Simple clickable design */
-        filteredCases.map((case_) => (
-          <TouchableOpacity
-            key={case_.id}
-            style={[
-              styles.requestCard,
-              case_.status === 'completed' && styles.resolvedCard
-            ]}
-            onPress={() => handleCasePress(case_.id)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.requestHeader}>
-              <Text style={[
-                styles.requestTitle,
-                case_.status === 'completed' && styles.resolvedTitle
-              ]}>
-                {case_.issueType}
-              </Text>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(case_.status) + '20' }]}>
-                <Text style={[styles.statusText, { color: getStatusColor(case_.status) }]}>
-                  {getStatusText(case_.status)}
-                </Text>
-              </View>
-            </View>
-
-            <Text style={[
-              styles.requestMeta,
-              case_.status === 'completed' && styles.resolvedText
-            ]}>
-              {case_.location} • {case_.tenantName}
-            </Text>
-
-            <Text style={[
-              styles.requestTime,
-              case_.status === 'completed' && styles.resolvedText
-            ]}>
-              {case_.status === 'completed' ? 'Completed ' : ''}{case_.submittedAt}
-            </Text>
-
-            {case_.description && case_.status !== 'completed' && (
-              <Text style={styles.requestDescription} numberOfLines={2}>
-                {case_.description}
-              </Text>
-            )}
-          </TouchableOpacity>
+        filteredCases.map((caseItem) => (
+          <CaseRequestCard
+            key={caseItem.id}
+            caseItem={caseItem}
+            statusText={getStatusText(caseItem.status)}
+            statusColor={getStatusColor(caseItem.status)}
+            onPress={handleCasePress}
+          />
         ))
       )}
     </ScreenContainer>
@@ -373,6 +432,36 @@ const styles = StyleSheet.create({
     color: DesignSystem.colors.textSecondary,
   },
   // Empty State
+  emptyContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 40,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: DesignSystem.colors.text,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: DesignSystem.colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: 12,
+    backgroundColor: DesignSystem.colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
   emptyState: {
     backgroundColor: '#fff',
     borderRadius: 12,

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Image,
   Alert,
   FlatList,
@@ -139,7 +138,6 @@ const PropertyReviewScreen = () => {
   }, [draftError, clearError]);
 
   const totalAssets = areas.reduce((total, area) => total + (area.assets || []).length, 0);
-  const areasWithAssets = areas.filter(area => (area.assets || []).length > 0);
 
   const handleEdit = (section: 'property' | 'areas' | 'assets') => {
     switch (section) {
@@ -155,6 +153,28 @@ const PropertyReviewScreen = () => {
     }
   };
 
+  const ensureOnboardingCompleted = async () => {
+    if (!user?.id || user.onboarding_completed) {
+      return;
+    }
+
+    log.info('PropertyReview: Marking onboarding as completed for landlord');
+    const { error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({
+        role: 'landlord',
+        onboarding_completed: true,
+      })
+      .eq('id', user.id);
+
+    if (profileUpdateError) {
+      log.error('PropertyReview: Failed to mark onboarding completed', { error: profileUpdateError });
+      throw new Error(profileUpdateError.message || 'Failed to complete onboarding');
+    }
+
+    await refreshUser();
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting || isDraftLoading || !propertyData) {
       return;
@@ -168,8 +188,11 @@ const PropertyReviewScreen = () => {
 
       if (draftState) await saveDraft();
 
+      const draftPropertyId = draftState?.propertyData?.propertyId;
+      const existingPropertyId = propertyId || draftPropertyId;
+
       // Check if this is first-time onboarding (use atomic RPC)
-      const isFirstProperty = !user?.onboarding_completed && !propertyId;
+      const isFirstProperty = !user?.onboarding_completed && !existingPropertyId;
 
       if (isFirstProperty) {
         log.info('PropertyReview: First-time onboarding detected - using atomic RPC');
@@ -230,7 +253,7 @@ const PropertyReviewScreen = () => {
       }
 
       // Continue with existing flow for non-onboarding property creation
-      let currentPropertyId = propertyId;
+      let currentPropertyId = existingPropertyId;
 
       // Only create property if it doesn't already exist
       if (!currentPropertyId) {
@@ -288,7 +311,7 @@ const PropertyReviewScreen = () => {
 
       // Save areas and assets to database (only if property was just created)
       // In onboarding flow, areas/assets were already saved by PropertyAreasScreen
-      if (!propertyId && areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
+      if (!existingPropertyId && areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
         try {
           log.info('Saving property areas and assets to database', {
             propertyId: currentPropertyId,
@@ -304,7 +327,10 @@ const PropertyReviewScreen = () => {
           // Continue anyway - property is created, areas can be added later
         }
       }
-      
+
+      // If onboarding has already created the property before review, make sure we still
+      // complete profile onboarding state in a single place.
+      await ensureOnboardingCompleted();
 
       // Show success state
       setSubmissionSuccess(true);
@@ -316,7 +342,7 @@ const PropertyReviewScreen = () => {
           await deleteDraft();
         }
       } catch (error) {
-        console.error('🏠 Error cleaning up draft:', error);
+        log.error('PropertyReview: Error cleaning up draft', { error: String(error) });
       }
 
       // Clear onboarding in-progress flag (property creation complete!)
@@ -334,7 +360,7 @@ const PropertyReviewScreen = () => {
         });
       }, 2000);
     } catch (error) {
-      console.error('🏠 PropertyReviewScreen: Submit error:', error);
+      log.error('PropertyReview: Submit error', { error: String(error) });
       setIsSubmitting(false);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

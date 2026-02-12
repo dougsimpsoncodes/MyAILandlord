@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Clipboard, Platform, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Clipboard, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -9,6 +9,8 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { supabase } from '../../services/supabase/client';
 import log from '../../lib/log';
+import { buildInviteUrl } from '../../utils/inviteUrl';
+import { validateEmail } from '../../utils/helpers';
 
 type InviteTenantNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'InviteTenant'>;
 
@@ -18,6 +20,13 @@ interface RouteParams {
 }
 
 type DeliveryMode = 'email' | 'code' | null;
+
+const redactToken = (token: string) => token ? `${token.slice(0, 4)}...${token.slice(-4)}` : '';
+
+type InviteEmailInvokeResponse = {
+  data?: { error?: string };
+  error?: { message?: string } | null;
+};
 
 const InviteTenantScreen = () => {
   const navigation = useNavigation<InviteTenantNavigationProp>();
@@ -46,22 +55,6 @@ const InviteTenantScreen = () => {
       message: msg,
       confirmStyle: style,
     });
-  };
-
-  const buildInviteUrl = (token: string): string => {
-    const isDevelopment = __DEV__;
-    const isWeb = Platform.OS === 'web';
-
-    if (isWeb) {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081';
-      return `${origin}/invite?t=${token}`;
-    } else if (isDevelopment) {
-      // Development build uses expo-development-client scheme
-      return `exp+myailandlord://expo-development-client/?url=http://192.168.0.14:8081/--/invite?t=${token}`;
-    } else {
-      // Production build uses custom scheme
-      return `myailandlord:///invite?t=${token}`;
-    }
   };
 
   const handleGenerateCode = async () => {
@@ -101,7 +94,7 @@ const InviteTenantScreen = () => {
       setInviteUrl(url);
       setMode('code');
 
-      log.info('[InviteTenant] Code invite created:', { token, url });
+      log.info('[InviteTenant] Code invite created', { token: redactToken(token) });
     } catch (err) {
       log.error('[InviteTenant] Exception generating code invite:', err);
       showNotification('Error', 'An unexpected error occurred. Please try again.', 'destructive');
@@ -111,7 +104,9 @@ const InviteTenantScreen = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!email || !email.includes('@')) {
+    const normalizedEmail = email.trim();
+
+    if (!validateEmail(normalizedEmail)) {
       showNotification('Invalid Email', 'Please enter a valid email address.', 'destructive');
       return;
     }
@@ -124,7 +119,7 @@ const InviteTenantScreen = () => {
       const { data, error } = await supabase.rpc('create_invite', {
         p_property_id: propertyId,
         p_delivery_method: 'email',
-        p_intended_email: email
+        p_intended_email: normalizedEmail
       });
 
       if (error) {
@@ -142,7 +137,7 @@ const InviteTenantScreen = () => {
       const token = data[0].token;
       const url = buildInviteUrl(token);
 
-      log.info('[InviteTenant] Email invite token created:', { token, url });
+      log.info('[InviteTenant] Email invite token created', { token: redactToken(token) });
 
       // Step 2: Send email via Edge Function (with timeout)
       const { data: userData } = await supabase.auth.getUser();
@@ -153,19 +148,19 @@ const InviteTenantScreen = () => {
         setTimeout(() => reject(new Error('Email service timeout')), 10000)
       );
 
-      let edgeResponse;
+      let edgeResponse: InviteEmailInvokeResponse | undefined;
       try {
         edgeResponse = await Promise.race([
           supabase.functions.invoke('send-invite-email', {
             body: {
-              recipientEmail: email,
+              recipientEmail: normalizedEmail,
               propertyName: propertyName,
               inviteUrl: url,
               landlordName: landlordName,
             },
           }),
           timeoutPromise,
-        ]) as any;
+        ]) as InviteEmailInvokeResponse;
       } catch (timeoutErr) {
         log.warn('[InviteTenant] Email service timeout or error:', timeoutErr);
         showNotification(
@@ -194,7 +189,7 @@ const InviteTenantScreen = () => {
         return;
       }
 
-      log.info('[InviteTenant] Email sent successfully to:', email);
+      log.info('[InviteTenant] Email sent successfully', { email: normalizedEmail });
 
       setInviteToken(token);
       setInviteUrl(url);
@@ -203,7 +198,7 @@ const InviteTenantScreen = () => {
 
       showNotification(
         'Email Sent!',
-        `Invitation email sent to ${email}`,
+        `Invitation email sent to ${normalizedEmail}`,
         'default'
       );
     } catch (err) {

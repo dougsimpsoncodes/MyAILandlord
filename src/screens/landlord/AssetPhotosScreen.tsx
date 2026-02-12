@@ -7,6 +7,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  type DimensionValue,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -135,7 +136,7 @@ const AssetPhotosScreen = () => {
           })
         );
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
       setIsUploading(false);
@@ -222,7 +223,7 @@ const AssetPhotosScreen = () => {
 
   // Dynamic styles that use responsive values
   const dynamicStyles = {
-    photoCardWidth: responsive.select({
+    photoCardWidth: responsive.select<DimensionValue>({
       mobile: '48%',
       tablet: '31%',
       default: '48%'
@@ -674,7 +675,7 @@ const AssetPhotosScreen = () => {
                 
                 if (photo) {
                   return (
-                    <View key={index} style={[styles.photoCard, styles.photoCardFilled, { width: dynamicStyles.photoCardWidth } as any]}>
+                    <View key={index} style={[styles.photoCard, styles.photoCardFilled, { width: dynamicStyles.photoCardWidth }]}>
                       <Image source={{ uri: photo }} style={styles.photoImage} />
                       <View style={styles.photoOverlay}>
                         <TouchableOpacity
@@ -690,7 +691,7 @@ const AssetPhotosScreen = () => {
                   return (
                     <TouchableOpacity
                       key={index}
-                      style={[styles.photoCard, { width: dynamicStyles.photoCardWidth } as any]}
+                      style={[styles.photoCard, { width: dynamicStyles.photoCardWidth }]}
                       onPress={() => {
                         Alert.alert(
                           'Add Photo',
@@ -711,7 +712,7 @@ const AssetPhotosScreen = () => {
                     </TouchableOpacity>
                   );
                 } else {
-                  return <View key={index} style={[styles.photoCard, { width: dynamicStyles.photoCardWidth } as any]} />;
+                  return <View key={index} style={[styles.photoCard, { width: dynamicStyles.photoCardWidth }]} />;
                 }
               })}
             </View>

@@ -28,14 +28,13 @@ import Card from '../../components/shared/Card';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveBody } from '../../components/shared/ResponsiveText';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { log } from '../../lib/log';
 
 type PropertyAssetsListNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyAssetsListRouteProp = RouteProp<LandlordStackParamList, 'PropertyAssets'>;
 
 interface ExpandableAreaProps {
   area: PropertyArea;
-  isSelected: boolean;
-  onToggle: () => void;
   onAddPhoto: () => void;
   onPhotosUploaded: (photos: { path: string; url: string }[]) => void;
   onPickerOpen?: () => void;
@@ -48,8 +47,6 @@ interface ExpandableAreaProps {
 
 const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
   area,
-  isSelected,
-  onToggle,
   onAddPhoto,
   onPhotosUploaded,
   onPickerOpen,
@@ -80,10 +77,9 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
     try {
       const res = await fetch(uri);
       const contentType = res.headers.get('content-type');
-      // Use console.log instead of console.error to avoid red error toast in simulator
-      console.log('📸 Image probe', { label, status: res.status, contentType, finalUrl: res.url });
+      log.debug('Image probe', { label, status: res.status, contentType, finalUrl: res.url });
     } catch (error) {
-      console.warn('📸 Image probe failed', { label, error: String(error), uri });
+      log.warn('Image probe failed', { label, error: String(error), uri });
     }
   }, []);
 
@@ -166,7 +162,7 @@ const ExpandableAreaCard: React.FC<ExpandableAreaProps> = ({
                   style={styles.photoThumbImage}
                   onError={(e) => {
                     const label = `${area.name}[${index}]`;
-                    console.error(`📸 Image load failed for ${label}:`, { error: e.nativeEvent.error, uri: photo });
+                    log.warn('Image load failed', { label, error: e.nativeEvent.error, uri: photo });
                     probeImageUrl(photo, label);
                   }}
                 />
@@ -260,7 +256,6 @@ const PropertyAssetsListScreen = () => {
     updateCurrentStep,
     saveDraft,
     clearError,
-    loadDraft,
   } = usePropertyDraft({
     draftId: effectiveDraftId,
     enableAutoSave: true,
@@ -336,7 +331,7 @@ const PropertyAssetsListScreen = () => {
 
       // Skip refetch if photo upload is in progress (prevents race condition)
       if (isUploadingPhotosRef.current) {
-        console.log('Skipping refetch - photo upload in progress');
+        log.debug('Skipping refetch during photo upload');
         return;
       }
 
@@ -348,7 +343,7 @@ const PropertyAssetsListScreen = () => {
           setSelectedAreas(freshAreas);
         }
       } catch (error) {
-        console.error('Error refetching property areas:', error);
+        log.error('Error refetching property areas', { error: String(error) });
       }
     };
 
@@ -416,7 +411,7 @@ const PropertyAssetsListScreen = () => {
               try {
                 const url = await storageService.getDisplayUrl('property-images', path);
                 return url || '';
-              } catch (e) {
+              } catch {
                 return '';
               }
             })
@@ -596,6 +591,7 @@ const PropertyAssetsListScreen = () => {
         updateAreas(updatedAreas);
       }
     } catch (error) {
+      log.error('Error taking photo', { error: String(error) });
       Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
@@ -634,7 +630,7 @@ const PropertyAssetsListScreen = () => {
             });
           }
         } catch (error) {
-          console.error('Failed to save area photos to database:', error);
+          log.error('Failed to save area photos to database', { error: String(error) });
           // Don't show error to user - photos are still in local state
         }
       }
@@ -698,7 +694,7 @@ const PropertyAssetsListScreen = () => {
         updateAreas(updatedAreas);
       }
     } catch (error) {
-      console.error('Error deleting asset:', error);
+      log.error('Error deleting asset', { error: String(error) });
       window.alert(`Failed to delete asset: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
@@ -723,7 +719,7 @@ const PropertyAssetsListScreen = () => {
         }
       }
     } catch (error) {
-      console.error('Error saving draft:', error);
+      log.error('Error saving draft', { error: String(error) });
       // Continue anyway - navigation can work without draft save
     }
 
@@ -785,8 +781,6 @@ const PropertyAssetsListScreen = () => {
             <ExpandableAreaCard
               key={area.id}
               area={area}
-              isSelected={false}
-              onToggle={() => {}}
               onAddPhoto={() => handleAddPhoto(area.id)}
               onPhotosUploaded={handlePhotosUploaded(area.id)}
               onPickerOpen={() => { isUploadingPhotosRef.current = true; }}

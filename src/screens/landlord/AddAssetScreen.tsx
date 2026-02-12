@@ -33,6 +33,9 @@ type AddAssetRouteProp = RouteProp<LandlordStackParamList, 'AddAsset'>;
 
 const { width: screenWidth } = Dimensions.get('window');
 
+const toErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 const AddAssetScreen = () => {
   const navigation = useNavigation<AddAssetNavigationProp>();
   const route = useRoute<AddAssetRouteProp>();
@@ -81,10 +84,10 @@ const AddAssetScreen = () => {
           // Clean up storage after recovery
           await AsyncStorage.removeItem(storageKey);
         } else {
-          console.warn('📦 AddAssetScreen: No stored params found for key:', storageKey);
+          log.warn('AddAssetScreen: No stored params found', { storageKey });
         }
       } catch (error) {
-        console.error('📦 AddAssetScreen: Failed to recover params:', error);
+        log.error('AddAssetScreen: Failed to recover params', { error: toErrorMessage(error) });
       }
 
       setIsParamsLoaded(true);
@@ -181,7 +184,7 @@ const AddAssetScreen = () => {
         throw new Error(result.error || 'Extraction failed');
       }
     } catch (error) {
-      console.error('Label processing error:', error);
+      log.error('AddAssetScreen: Label processing error', { error: toErrorMessage(error) });
       Alert.alert(
         'Extraction Failed', 
         'Could not extract data from the image. Please ensure the label is well-lit and clearly visible, then try again or fill in manually.',
@@ -220,6 +223,7 @@ const AddAssetScreen = () => {
         setPhotos(prev => [...prev, imageUri]);
       }
     } catch (error) {
+      log.error('AddAssetScreen: Failed to take photo', { error: toErrorMessage(error) });
       Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
@@ -277,6 +281,7 @@ const AddAssetScreen = () => {
         }
       }
     } catch (error) {
+      log.error('AddAssetScreen: Failed to select photos', { error: toErrorMessage(error) });
       Alert.alert('Error', 'Failed to select photos. Please try again.');
     }
   };
@@ -314,6 +319,7 @@ const AddAssetScreen = () => {
         ]
       );
     } catch (error) {
+      log.error('AddAssetScreen: Failed to access camera', { error: toErrorMessage(error) });
       Alert.alert('Error', 'Failed to access camera. Please try again.');
     }
   };
@@ -379,16 +385,16 @@ const AddAssetScreen = () => {
           setTimeout(() => {
             navigation.goBack();
           }, 1500);
-        } catch (dbError: any) {
-          console.error('📦 ❌ DATABASE ERROR:', dbError);
-          console.error('📦 Error name:', dbError?.name);
-          console.error('📦 Error message:', dbError?.message);
-          console.error('📦 Error code:', dbError?.code);
-          console.error('📦 Error details:', dbError?.details);
-          console.error('📦 Error hint:', dbError?.hint);
-          console.error('📦 Full error:', JSON.stringify(dbError, null, 2));
+        } catch (dbError: unknown) {
+          const dbDetails = dbError as { message?: string; details?: string; code?: string; hint?: string };
+          log.error('AddAssetScreen: Database error saving asset', {
+            error: toErrorMessage(dbError),
+            code: dbDetails.code,
+            details: dbDetails.details,
+            hint: dbDetails.hint,
+          });
 
-          const errorMsg = `Failed to save asset: ${dbError?.message || dbError?.details || 'Unknown error'}`;
+          const errorMsg = `Failed to save asset: ${dbDetails.message || dbDetails.details || 'Unknown error'}`;
           setSaveError(errorMsg);
         }
         return;
@@ -399,14 +405,13 @@ const AddAssetScreen = () => {
         await AsyncStorage.setItem(`pending_asset_${draftId}`, JSON.stringify(newAsset));
         navigation.goBack();
       } else {
-        console.warn('📦 WARNING: No propertyId or draftId - cannot persist asset!');
+        log.warn('AddAssetScreen: No propertyId or draftId; cannot persist asset');
         Alert.alert('Warning', 'Unable to save asset - no property context found. Please go back and try again.');
       }
 
-    } catch (error: any) {
-      console.error('📦 ERROR saving asset:', error);
-      console.error('📦 Error details:', error?.message || String(error));
-      Alert.alert('Error', `Failed to save asset: ${error?.message || 'Unknown error'}`);
+    } catch (error: unknown) {
+      log.error('AddAssetScreen: Error saving asset', { error: toErrorMessage(error) });
+      Alert.alert('Error', `Failed to save asset: ${toErrorMessage(error) || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -934,7 +939,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   dropdownBackdrop: {
-    position: 'fixed' as any,
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,

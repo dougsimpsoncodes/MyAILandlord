@@ -458,10 +458,10 @@ const CaseDetailScreen = () => {
               styles.tab,
               selectedTab === tab.key && styles.tabActive,
             ]}
-            onPress={() => setSelectedTab(tab.key as any)}
+            onPress={() => setSelectedTab(tab.key as 'overview' | 'details' | 'media')}
           >
             <Ionicons
-              name={tab.icon as any}
+              name={tab.icon as React.ComponentProps<typeof Ionicons>['name']}
               size={20}
               color={selectedTab === tab.key ? '#34495E' : '#95A5A6'}
             />

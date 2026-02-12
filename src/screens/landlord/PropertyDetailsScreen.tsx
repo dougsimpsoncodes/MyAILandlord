@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -15,8 +14,6 @@ import Card from '../../components/shared/Card';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { PropertyImage } from '../../components/shared/PropertyImage';
 import { DesignSystem } from '../../theme/DesignSystem';
-import { PropertyArea } from '../../types/property';
-import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import log from '../../lib/log';
 import { formatAddress } from '../../utils/helpers';
@@ -40,7 +37,7 @@ const PropertyDetailsScreen = () => {
   // State for property data loaded from database
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [areas, setAreas] = useState<PropertyArea[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Load property and areas from database when screen comes into focus
   const loadPropertyData = useCallback(async () => {
@@ -52,6 +49,7 @@ const PropertyDetailsScreen = () => {
 
     try {
       setIsLoading(true);
+      setLoadError(null);
       log.debug('Loading property from database', { propertyId });
 
       // Fetch property details
@@ -74,12 +72,9 @@ const PropertyDetailsScreen = () => {
         type: propertyData.property_type || 'house',
       });
 
-      // Fetch areas
-      const loadedAreas = await propertyAreasService.getAreasWithAssets(propertyId, supabase);
-      setAreas(loadedAreas);
     } catch (error) {
       log.error('Failed to load property', { error: String(error) });
-      Alert.alert('Error', 'Failed to load property details');
+      setLoadError('Failed to load property details. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -122,8 +117,7 @@ const PropertyDetailsScreen = () => {
     navigation.getParent()?.navigate('LandlordRequests');
   };
 
-  // Loading state
-  if (isLoading || !property) {
+  if (isLoading) {
     return (
       <ScreenContainer
         title="Property Details"
@@ -134,6 +128,25 @@ const PropertyDetailsScreen = () => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={DesignSystem.colors.primary} />
           <Text style={styles.loadingText}>Loading property...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!property) {
+    return (
+      <ScreenContainer
+        title="Property Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+      >
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Unable to load property</Text>
+          <Text style={styles.errorText}>{loadError || 'Please try again.'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadPropertyData}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       </ScreenContainer>
     );
@@ -234,6 +247,34 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: DesignSystem.colors.textSecondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: DesignSystem.colors.text,
+  },
+  errorText: {
+    fontSize: 15,
+    color: DesignSystem.colors.textSecondary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: DesignSystem.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
   },
   editText: {
     fontSize: 16,

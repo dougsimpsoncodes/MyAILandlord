@@ -206,7 +206,7 @@ const PropertyAttributesScreen = () => {
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name={type.icon as any}
+                  name={type.icon as keyof typeof Ionicons.glyphMap}
                   size={32}
                   color={selectedType === type.id ? '#28A745' : '#6C757D'}
                   style={styles.typeIcon}

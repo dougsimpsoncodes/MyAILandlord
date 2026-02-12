@@ -16,6 +16,7 @@ import { useAppState } from '../../context/AppStateContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
+import { Database } from '../../services/supabase/types';
 
 type LandlordChatRouteParams = {
   LandlordChat: {
@@ -24,6 +25,8 @@ type LandlordChatRouteParams = {
     tenantEmail?: string;
   };
 };
+
+type DbMessage = Database['public']['Tables']['messages']['Row'];
 
 interface Message {
   id: string;
@@ -36,7 +39,7 @@ interface Message {
 const LandlordChatScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<LandlordChatRouteParams, 'LandlordChat'>>();
-  const { tenantId, tenantName, tenantEmail } = route.params;
+  const { tenantId, tenantName } = route.params;
   const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
   const { refreshNotificationCounts } = useAppState();
@@ -60,21 +63,21 @@ const LandlordChatScreen = () => {
     if (!apiClient || !user) return;
 
     try {
-      const dbMessages = await apiClient.getMessages();
+      const dbMessages = (await apiClient.getMessages()) as unknown as DbMessage[];
 
       // Filter messages for this specific conversation
-      const conversationMessages = dbMessages.filter((msg: any) =>
+      const conversationMessages = dbMessages.filter((msg: DbMessage) =>
         (msg.sender_id === tenantId && msg.recipient_id === user.id) ||
         (msg.sender_id === user.id && msg.recipient_id === tenantId)
       );
 
       // Map database messages to local format
-      const mappedMessages: Message[] = conversationMessages.map((msg: any) => ({
+      const mappedMessages: Message[] = conversationMessages.map((msg: DbMessage) => ({
         id: msg.id,
         text: msg.content,
         sender: msg.sender_id === user.id ? 'landlord' : 'tenant',
-        timestamp: new Date(msg.created_at),
-        read: msg.is_read || false,
+        timestamp: new Date(msg.created_at || Date.now()),
+        read: msg.is_read ?? false,
       }));
 
       // Deduplicate by ID (in case of race conditions)

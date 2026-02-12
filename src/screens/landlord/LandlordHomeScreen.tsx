@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -6,10 +6,8 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
-import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useAppState } from '../../context/AppStateContext';
 import { log } from '../../lib/log';
-import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { PropertyImage } from '../../components/shared/PropertyImage';
 import { haptics } from '../../lib/haptics';
@@ -38,9 +36,99 @@ interface PropertySummary {
   tenantCount: number;
 }
 
+interface PropertyRow {
+  id: string;
+  name: string;
+  address?: string | null;
+  property_type?: string | null;
+  address_jsonb?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  } | null;
+}
+
+interface MaintenanceRow {
+  id: string;
+  title?: string | null;
+  area?: string | null;
+  property_id: string;
+  priority?: 'urgent' | 'medium' | 'low' | null;
+  status?: 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled' | null;
+  created_at: string;
+  properties?: { name?: string | null } | null;
+}
+
+interface TenantLinkRow {
+  property_id: string;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface PropertyListItemProps {
+  property: PropertySummary;
+  onPress: (property: PropertySummary) => void;
+}
+
+const PropertyListItem = React.memo(({ property, onPress }: PropertyListItemProps) => {
+  const statusColor = property.issueCount === 0 ? '#2ECC71' : property.issueCount <= 2 ? '#F1C40F' : '#E74C3C';
+
+  return (
+    <TouchableOpacity
+      style={styles.propertyItem}
+      onPress={() => onPress(property)}
+      activeOpacity={0.7}
+    >
+      <PropertyImage
+        address={property.address}
+        width={60}
+        height={60}
+        borderRadius={10}
+      />
+      <View style={styles.propertyInfo}>
+        <Text style={styles.propertyName}>{property.name}</Text>
+        <Text style={styles.propertyAddress}>
+          {formatAddress(property.address)} • {property.tenantCount} {property.tenantCount === 1 ? 'Tenant' : 'Tenants'}
+        </Text>
+      </View>
+      <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+    </TouchableOpacity>
+  );
+});
+
+interface MaintenanceRequestCardProps {
+  request: MaintenanceRequest;
+  onPress: (request: MaintenanceRequest) => void;
+}
+
+const MaintenanceRequestCard = React.memo(({ request, onPress }: MaintenanceRequestCardProps) => (
+  <TouchableOpacity
+    style={styles.requestCard}
+    onPress={() => onPress(request)}
+    activeOpacity={0.7}
+  >
+    <View style={styles.requestHeader}>
+      <Text style={styles.requestTitle}>{request.title}</Text>
+      <View style={styles.requestHeaderRight}>
+        {request.status === 'submitted' && (
+          <Text style={styles.requestTime}>{request.timeAgo}</Text>
+        )}
+        <View style={[
+          styles.statusDot,
+          { backgroundColor: request.status === 'submitted' ? '#E74C3C' : '#F39C12' }
+        ]} />
+      </View>
+    </View>
+    <Text style={styles.requestLocation}>
+      {request.location} • {request.propertyName}
+    </Text>
+  </TouchableOpacity>
+));
+
 const LandlordHomeScreen = () => {
   const navigation = useNavigation<LandlordHomeNavigationProp>();
-  const { user } = useUnifiedAuth();
   const api = useApiClient();
   const { supabase } = useSupabaseWithAuth();
   const { drafts, isLoading: isDraftsLoading } = usePropertyDrafts();
@@ -52,23 +140,43 @@ const LandlordHomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showPropertyPicker, setShowPropertyPicker] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const hasRedirectedToDraft = useRef(false);
+  const cacheRef = useRef<{
+    timestamp: number;
+    properties: PropertySummary[];
+    requests: MaintenanceRequest[];
+  } | null>(null);
 
   // Filter requests based on selected property
   const filteredRequests = selectedProperty === 'all'
     ? activeRequests
     : activeRequests.filter(r => r.propertyId === selectedProperty);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options?: { force?: boolean }) => {
+    const force = options?.force ?? false;
+
     try {
-      if (!api || !supabase) return;
+      if (!api || !supabase) {
+        setLoadError('Unable to load data right now.');
+        return;
+      }
+
+      const cached = cacheRef.current;
+      if (!force && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        setProperties(cached.properties);
+        setActiveRequests(cached.requests);
+        setLoadError(null);
+        setIsLoading(false);
+        return;
+      }
 
       // Load properties and maintenance requests together
-      const userProperties = await api.getUserProperties();
-      const maintenanceData = await api.getMaintenanceRequests({ limit: 20 });
+      const userProperties = await api.getUserProperties() as PropertyRow[];
+      const maintenanceData = await api.getMaintenanceRequests({ limit: 20 }) as MaintenanceRow[];
 
       // Get tenant counts for all properties
-      const propertyIds = userProperties.map((p: any) => p.id);
+      const propertyIds = userProperties.map((p) => p.id);
       let tenantCounts: Record<string, number> = {};
 
       if (propertyIds.length > 0) {
@@ -80,7 +188,7 @@ const LandlordHomeScreen = () => {
 
         if (!tenantError && tenantLinks) {
           // Count tenants per property
-          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: any) => {
+          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: TenantLinkRow) => {
             acc[link.property_id] = (acc[link.property_id] || 0) + 1;
             return acc;
           }, {});
@@ -88,7 +196,7 @@ const LandlordHomeScreen = () => {
       }
 
       // Map API data to UI format
-      const mappedRequests: MaintenanceRequest[] = maintenanceData.map((req: any) => {
+      const mappedRequests: MaintenanceRequest[] = maintenanceData.map((req) => {
         // Calculate time ago
         const createdAt = new Date(req.created_at);
         const now = new Date();
@@ -106,26 +214,31 @@ const LandlordHomeScreen = () => {
           timeAgo = `${diffMins}m ago`;
         }
 
+        const normalizedStatus: MaintenanceRequest['status'] =
+          req.status === 'submitted' || req.status === 'pending' || req.status === 'in_progress' || req.status === 'completed'
+            ? req.status
+            : 'pending';
+
         return {
           id: req.id,
           title: req.title || 'Maintenance Request',
           location: req.area || 'Unknown',
           propertyId: req.property_id,
           propertyName: req.properties?.name || 'Unknown Property',
-          priority: req.priority || 'medium',
-          status: req.status || 'pending',
+          priority: req.priority === 'urgent' || req.priority === 'low' ? req.priority : 'medium',
+          status: normalizedStatus,
           timeAgo,
         };
       });
 
       // Filter to only active requests (not completed/cancelled)
-      const filteredActiveRequests = mappedRequests.filter((r: any) => {
-        const originalReq = maintenanceData.find((m: any) => m.id === r.id);
+      const filteredActiveRequests = mappedRequests.filter((r) => {
+        const originalReq = maintenanceData.find((m) => m.id === r.id);
         return originalReq?.status !== 'completed' && originalReq?.status !== 'cancelled';
       });
 
       // Create property summaries with ACTIVE issue counts and tenant counts
-      const summaries: PropertySummary[] = userProperties.map((p: any) => {
+      const summaries: PropertySummary[] = userProperties.map((p) => {
         // Format address from address_jsonb (preferred) or fall back to legacy address field
         let formattedAddress = '';
         if (p.address_jsonb) {
@@ -146,8 +259,15 @@ const LandlordHomeScreen = () => {
       });
       setProperties(summaries);
       setActiveRequests(filteredActiveRequests);
+      setLoadError(null);
+      cacheRef.current = {
+        timestamp: Date.now(),
+        properties: summaries,
+        requests: filteredActiveRequests,
+      };
     } catch (error) {
-      console.error('Error loading data:', error);
+      setLoadError('Failed to load home data. Pull to retry.');
+      log.error('Error loading data', { error: String(error) });
     } finally {
       setIsLoading(false);
     }
@@ -192,18 +312,10 @@ const LandlordHomeScreen = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData({ force: true });
     setRefreshing(false);
   }, [loadData]);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return '#E74C3C';
-      case 'medium': return '#F39C12';
-      case 'low': return '#2ECC71';
-      default: return '#7F8C8D';
-    }
-  };
 
   const getPropertyIcon = (type: string) => {
     switch (type) {
@@ -214,17 +326,46 @@ const LandlordHomeScreen = () => {
     }
   };
 
-  const handlePropertyPress = (property: PropertySummary) => {
+  const handlePropertyPress = useCallback((property: PropertySummary) => {
     haptics.light();
     navigation.navigate('PropertyDetails', {
       propertyId: property.id,
     });
-  };
+  }, [navigation]);
 
-  const handleRequestPress = (request: MaintenanceRequest) => {
+  const handleRequestPress = useCallback((request: MaintenanceRequest) => {
     haptics.light();
     navigation.navigate('CaseDetail', { caseId: request.id });
-  };
+  }, [navigation]);
+
+  if (!isLoading && loadError && properties.length === 0 && activeRequests.length === 0) {
+    return (
+      <ScreenContainer
+        title="My AI Landlord"
+        userRole="landlord"
+        scrollable={false}
+      >
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyState}>
+            <Ionicons name="alert-circle-outline" size={48} color="#E67E22" />
+            <Text style={styles.emptyTitle}>Unable to load data</Text>
+            <Text style={styles.emptySubtitle}>{loadError}</Text>
+            <TouchableOpacity
+              style={styles.addPropertyBtn}
+              onPress={() => {
+                haptics.light();
+                void loadData({ force: true });
+              }}
+              testID="retry-home-load"
+            >
+              <Ionicons name="refresh" size={20} color="#fff" />
+              <Text style={styles.addPropertyBtnText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   // Empty state for new users with no properties
   if (!isLoading && properties.length === 0) {
@@ -363,29 +504,11 @@ const LandlordHomeScreen = () => {
           </View>
 
           {properties.map((property) => (
-          <TouchableOpacity
-            key={property.id}
-            style={styles.propertyItem}
-            onPress={() => handlePropertyPress(property)}
-            activeOpacity={0.7}
-          >
-            <PropertyImage
-              address={property.address}
-              width={60}
-              height={60}
-              borderRadius={10}
+            <PropertyListItem
+              key={property.id}
+              property={property}
+              onPress={handlePropertyPress}
             />
-            <View style={styles.propertyInfo}>
-              <Text style={styles.propertyName}>{property.name}</Text>
-              <Text style={styles.propertyAddress}>
-                {formatAddress(property.address)} • {property.tenantCount} {property.tenantCount === 1 ? 'Tenant' : 'Tenants'}
-              </Text>
-            </View>
-            <View style={[
-              styles.statusDot,
-              { backgroundColor: property.issueCount === 0 ? '#2ECC71' : property.issueCount <= 2 ? '#F1C40F' : '#E74C3C' }
-            ]} />
-          </TouchableOpacity>
           ))}
         </View>
 
@@ -410,28 +533,11 @@ const LandlordHomeScreen = () => {
           </View>
         ) : (
           filteredRequests.map((request) => (
-            <TouchableOpacity
+            <MaintenanceRequestCard
               key={request.id}
-              style={styles.requestCard}
-              onPress={() => handleRequestPress(request)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.requestHeader}>
-                <Text style={styles.requestTitle}>{request.title}</Text>
-                <View style={styles.requestHeaderRight}>
-                  {request.status === 'submitted' && (
-                    <Text style={styles.requestTime}>{request.timeAgo}</Text>
-                  )}
-                  <View style={[
-                    styles.statusDot,
-                    { backgroundColor: request.status === 'submitted' ? '#E74C3C' : '#F39C12' }
-                  ]} />
-                </View>
-              </View>
-              <Text style={styles.requestLocation}>
-                {request.location} • {request.propertyName}
-              </Text>
-            </TouchableOpacity>
+              request={request}
+              onPress={handleRequestPress}
+            />
           ))
         )}
         </View>

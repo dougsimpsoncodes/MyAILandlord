@@ -127,8 +127,7 @@ const PropertyBasicsScreen = () => {
         country: 'US'
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftState?.propertyData]); // Only react to propertyData changes, and only if form is empty
+  }, [draftState?.propertyData, addressData.propertyName]); // Only react to propertyData changes, and only if form is empty
 
   const handleContinue = async () => {
     setIsValidating(true);

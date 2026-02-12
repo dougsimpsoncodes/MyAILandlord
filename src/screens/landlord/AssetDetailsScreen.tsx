@@ -12,7 +12,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
-import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
@@ -46,7 +45,6 @@ const AssetDetailsScreen = () => {
   const navigation = useNavigation<AssetDetailsNavigationProp>();
   const route = useRoute();
   const { propertyData } = route.params as { propertyData: PropertyData };
-  const responsive = useResponsive();
   
   // State
   const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
@@ -192,13 +190,6 @@ const AssetDetailsScreen = () => {
     });
   };
 
-  const getProgressPercentage = () => {
-    const completedAssets = assetDetails.filter(asset => asset.name.trim()).length;
-    const totalAssets = assetDetails.length || 1;
-    const baseProgress = 500; // Previous steps complete
-    const detailProgress = Math.round((completedAssets / totalAssets) * 100);
-    return Math.round(((baseProgress + detailProgress) / 8) * 100);
-  };
 
   const getRoomName = (roomId: string) => {
     return propertyData.rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';

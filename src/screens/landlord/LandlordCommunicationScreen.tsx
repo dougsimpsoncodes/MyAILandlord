@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,11 @@ import {
   TextInput,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
+import { LandlordStackParamList } from '../../navigation/MainStack';
+import { Database } from '../../services/supabase/types';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useAppState } from '../../context/AppStateContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
@@ -18,6 +21,12 @@ import { useApiErrorHandling } from '../../hooks/useErrorHandling';
 import { formatRelativeTime } from '../../utils/helpers';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { log } from '../../lib/log';
+
+type ConversationFilter = 'all' | 'unread' | 'urgent';
+type MessageWithRelations = Database['public']['Tables']['messages']['Row'] & {
+  sender?: { name?: string | null; email?: string | null } | null;
+  recipient?: { name?: string | null; email?: string | null } | null;
+};
 
 interface Conversation {
   id: string;
@@ -31,7 +40,7 @@ interface Conversation {
 }
 
 const LandlordCommunicationScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<LandlordStackParamList>>();
   const apiClient = useApiClient();
   const { user } = useUnifiedAuth();
   const { refreshNotificationCounts } = useAppState();
@@ -41,7 +50,7 @@ const LandlordCommunicationScreen = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'urgent'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<ConversationFilter>('all');
 
   // Mark messages as read when screen is focused
   useFocusEffect(
@@ -78,7 +87,7 @@ const LandlordCommunicationScreen = () => {
       }
 
       // Load messages from API
-      const messages = await apiClient.getMessages();
+      const messages = (await apiClient.getMessages()) as MessageWithRelations[];
       log.info('Landlord loaded messages', { count: messages.length });
 
       // Group messages by the other party (tenant)
@@ -87,7 +96,7 @@ const LandlordCommunicationScreen = () => {
         tenantName: string;
         tenantEmail: string;
         property: string;
-        messages: any[];
+        messages: MessageWithRelations[];
       }>();
 
       for (const msg of messages) {
@@ -96,9 +105,8 @@ const LandlordCommunicationScreen = () => {
 
         if (!conversationMap.has(tenantId)) {
           // Get tenant info from the message's sender/recipient data (if expanded)
-          const msgWithRelations = msg as any;
-          const sender = msgWithRelations.sender;
-          const recipient = msgWithRelations.recipient;
+          const sender = msg.sender;
+          const recipient = msg.recipient;
           const tenantInfo = msg.sender_id === user.id ? recipient : sender;
 
           conversationMap.set(tenantId, {
@@ -118,7 +126,7 @@ const LandlordCommunicationScreen = () => {
       for (const [tenantId, data] of conversationMap.entries()) {
         // Sort messages by time to get latest
         data.messages.sort((a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
 
         const latestMsg = data.messages[0];
@@ -132,7 +140,7 @@ const LandlordCommunicationScreen = () => {
           tenantEmail: data.tenantEmail,
           property: data.property,
           lastMessage: latestMsg?.content || '',
-          lastMessageTime: latestMsg ? formatRelativeTime(new Date(latestMsg.created_at)) : '',
+          lastMessageTime: latestMsg ? formatRelativeTime(new Date(latestMsg.created_at || 0)) : '',
           unreadCount,
           priority: unreadCount > 0 ? 'high' : 'low',
         });
@@ -183,7 +191,7 @@ const LandlordCommunicationScreen = () => {
   };
 
   const handleConversationPress = (conversation: Conversation) => {
-    (navigation as any).navigate('LandlordChat', {
+    navigation.navigate('LandlordChat', {
       tenantId: conversation.id,
       tenantName: conversation.tenantName,
       tenantEmail: conversation.tenantEmail,
@@ -251,7 +259,7 @@ const LandlordCommunicationScreen = () => {
                   styles.filterButton,
                   selectedFilter === filter.key && styles.filterButtonActive,
                 ]}
-                onPress={() => setSelectedFilter(filter.key as any)}
+                onPress={() => setSelectedFilter(filter.key as ConversationFilter)}
               >
                 <Text
                   style={[

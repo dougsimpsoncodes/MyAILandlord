@@ -10,18 +10,13 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-// Import barcode scanner conditionally to handle Expo Go limitations
-let BarCodeScanner: typeof import('expo-barcode-scanner').BarCodeScanner | null = null;
-try {
-  BarCodeScanner = require('expo-barcode-scanner').BarCodeScanner;
-} catch (error) {
-}
+import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as ImagePicker from 'expo-image-picker';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData, DetectedAsset } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -29,7 +24,14 @@ type AssetScanningNavigationProp = NativeStackNavigationProp<LandlordStackParamL
 
 // Using DetectedAsset from shared types
 
-const assetCategories = [
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const assetCategories: Array<{
+  id: string;
+  name: string;
+  icon: IoniconName;
+  color: string;
+}> = [
   { id: 'appliances', name: 'Appliances', icon: 'restaurant-outline', color: '#28A745' },
   { id: 'hvac', name: 'HVAC', icon: 'thermometer-outline', color: '#17A2B8' },
   { id: 'plumbing', name: 'Plumbing', icon: 'water-outline', color: '#007BFF' },
@@ -51,7 +53,6 @@ const AssetScanningScreen = () => {
   const [scannerActive, setScannerActive] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
   // Draft management
   const {
@@ -97,7 +98,7 @@ const AssetScanningScreen = () => {
     return () => clearTimeout(timer);
   }, [detectedAssets]);
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = ({ data }: { type: string; data: string }) => {
     setIsScanning(true);
     setScannerActive(false);
 
@@ -200,12 +201,12 @@ const AssetScanningScreen = () => {
               extractionResult.error || 'Could not extract details automatically. Please add information manually.'
             );
           }
-        } catch (extractionError) {
+        } catch {
           setIsScanning(false);
           Alert.alert('Error', 'Failed to analyze photo. Please try again or add the asset manually.');
         }
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to select photo. Please try again.');
       setIsScanning(false);
     }
@@ -488,7 +489,7 @@ const AssetScanningScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
+      paddingBottom: 16,
     },
     saveStatus: {
       flexDirection: 'row',
@@ -685,7 +686,7 @@ const AssetScanningScreen = () => {
                   onPress={() => addManualAsset(category.id)}
                 >
                   <Ionicons 
-                    name={category.icon as any} 
+                    name={category.icon} 
                     size={24} 
                     color={category.color} 
                     style={styles.categoryIcon}
@@ -708,7 +709,7 @@ const AssetScanningScreen = () => {
                   return (
                     <View key={asset.id} style={styles.assetCard}>
                       <Ionicons 
-                        name={category?.icon as any || 'cube-outline'} 
+                        name={category?.icon || 'cube-outline'} 
                         size={32} 
                         color={category?.color || '#6C757D'} 
                         style={styles.assetIcon}
