@@ -1921,3 +1921,129 @@ Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
 Guidance Applied: 
 Quality Score: 6
 ---
+[2026-01-28T22:34:39Z] Commit e4e3366274ee75dd0eb681b1db6c44e58ca6cda6 successful
+Message: chore: major codebase cleanup and test fixes
+
+Test fixes (42 pre-existing failures resolved):
+- Fix validation test error message expectations to match constants
+- Fix log test hash regex and signedUrl test behavior
+- Fix rest tests env var loading with jest.resetModules()
+- Fix storage test to use setStorageSupabaseClient properly
+- Simplify Button/Card tests for React 19 compatibility
+- Install react-test-renderer@19.1.0 to match React 19
+
+Dependency cleanup:
+- Remove unused expo-image-loader
+- Remove unused @react-native-community/netinfo
+
+Deleted unused code (~11,600 lines):
+- Components: AddressForm, PropertyAddressForm, ResponsiveGrid, TextInputField, PhotoPicker
+- Services: rateLimiter.ts, BiometricSettingsService.ts, PushNotificationService.ts
+- Utilities: devExpose.ts, InviteDiag.ts, webStyles.ts, responsiveHelpers.ts
+- Screens: QuickRoleSwitch.tsx, RoleSelectScreen.tsx
+- Remove unused helpers: sanitizeForDisplay, formatCurrency, throttle, safeParseInt, safeParseFloat, withRetry
+
+Documentation cleanup:
+- Delete 18 stale progress reports from docs/archived/
+- Remove obsolete testing docs and protocols
+- Remove obsolete firestore.indexes.json
+
+Organization:
+- Move 5 debug scripts to scripts/debug/
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-28T23:52:05Z] Commit 5570f55d9a044686f183cc6f27cfe255cb7930a8 successful
+Message: fix: resolve caching and stale data issues across app
+
+- Add cache-busting to PropertyImage component when address changes
+- Add useFocusEffect to PropertyManagementScreen for auto-refresh
+- Add useFocusEffect to DashboardScreen for maintenance request refresh
+- Add useFocusEffect to PropertyReviewScreen for existing property refresh
+- Fix PropertyAssetsListScreen loading condition for onboarding flow
+- Remove incorrect "No Areas Selected" error page
+- Fix iOS password field keyboard issue with textContentType
+- Remove dead devExpose import from App.tsx
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-29T00:36:38Z] Commit 315d97dff774080504208c18820f989a93d881d7 successful
+Message: fix: use address_jsonb consistently across all screens
+
+The database has two address fields: 'address' (legacy string) and
+'address_jsonb' (current structured data). Screens were inconsistently
+using the legacy field, causing stale address data to display.
+
+Fixed screens to prefer address_jsonb:
+- LandlordHomeScreen: property list
+- PropertyManagementScreen: property list with pagination
+- PropertyReviewScreen: existing property loading
+- tenant/HomeScreen: linked property display
+- tenant/ReportIssueScreen: property selection
+- maintenanceClient: maintenance request property address
+- types/api.ts: added address_jsonb to Property interface
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-01-29T00:52:21Z] Commit c2ca99bd6ae2ed15ba39dd5d31a538b835ecd950 successful
+Message: fix: prevent race condition when uploading photos to areas
+
+When user opens image picker, screen loses focus. On regaining focus,
+a refetch from database was running BEFORE photo upload completed,
+causing:
+1. Photos to not appear (overwritten by stale data)
+2. Area order to reset to database order
+
+Fix:
+- Add onPickerOpen/onPickerClose callbacks to PhotoDropzone
+- Set flag when picker opens, clear when upload completes
+- Skip database refetch while flag is set
+- Change debug probe from console.error to console.log (fixes red toast)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Guidance Applied: 
+Quality Score: 6
+---
+Context reset for branch: fix/ios-keyboard-inset-auth
+Context reset for branch: fix/ios-keyboard-inset-auth
+[2026-02-12T17:23:33Z] Commit 3d368f2eb1ace37399a0e0e6025bc89c7d21da2e successful
+Message: chore(ci): add stability gate workflow and lint tooling
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-02-12T17:23:48Z] Commit f20d31e8a00374a877afeefa7473ec4e5a2d0689 successful
+Message: docs(ux): add user flow wireframes and review notes
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-02-12T17:24:13Z] Commit 45580f03fd382c835ed0693e14f492470dd3132a successful
+Message: feat(auth): unify onboarding and invite routing flows
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-02-12T17:24:27Z] Commit 679566f7d5852c5e6ae8b0a3e89a13017592c537 successful
+Message: feat(landlord): refine property setup and management screens
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-02-12T17:24:41Z] Commit b719d59b36dc7103856767260e4743ab6d02e234 successful
+Message: feat(tenant): stabilize reporting, messaging, and profile flows
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-02-12T17:27:20Z] Commit 2e8338b55092a9121f4969b90d5490f109f19733 successful
+Message: refactor(app): tighten typing and logging safety across client code
+Guidance Applied: 
+Quality Score: 6
+---
+[2026-02-12T17:27:43Z] Commit 8760ed0592325b2a67a6e126514cc21d5bec9ff9 successful
+Message: fix(edge): harden auth, CORS, and logging in Supabase functions
+Guidance Applied: 
+Quality Score: 6
+---
