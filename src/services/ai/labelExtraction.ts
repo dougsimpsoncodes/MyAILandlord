@@ -3,6 +3,7 @@
 
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '../supabase/config';
+import { log } from '../../lib/log';
 
 export interface ExtractedAssetData {
   brand?: string;
@@ -79,7 +80,7 @@ export async function extractAssetDataFromImage(imageUri: string): Promise<Label
       data: enhancedData
     };
 
-  } catch (error) {
+  } catch {
     return {
       success: false,
       error: 'Failed to process image. Please try again.'
@@ -134,7 +135,7 @@ export function validateAndEnhanceData(data: ExtractedAssetData): ExtractedAsset
   if (data.model && patterns.modelPatterns) {
     const isValidModel = patterns.modelPatterns.some(pattern => pattern.test(data.model!));
     if (!isValidModel) {
-      console.warn(`Model validation failed for brand pattern`);
+      log.warn('Model validation failed for brand pattern', { brand: data.brand, model: data.model });
     }
   }
   
@@ -142,7 +143,7 @@ export function validateAndEnhanceData(data: ExtractedAssetData): ExtractedAsset
   if (data.serialNumber && patterns.serialPatterns) {
     const isValidSerial = patterns.serialPatterns.some(pattern => pattern.test(data.serialNumber!));
     if (!isValidSerial) {
-      console.warn(`Serial number validation failed for brand pattern`);
+      log.warn('Serial number validation failed for brand pattern', { brand: data.brand, serialNumber: data.serialNumber });
     }
   }
   

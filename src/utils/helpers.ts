@@ -57,6 +57,7 @@ export const sanitizeString = (input: string): string => {
     // Remove null bytes (can bypass filters)
     .replace(/\0/g, '')
     // Remove control characters (except newlines and tabs for text areas)
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Remove Unicode direction override characters (text spoofing)
     .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')

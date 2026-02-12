@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { log } from '../../lib/log';
 
 interface UserProfileProps {
   userRole: 'tenant' | 'landlord';
@@ -22,7 +23,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
     try {
       await signOut();
     } catch (error) {
-      console.error('[UserProfile] Error signing out:', error);
+      log.error('[UserProfile] Error signing out', { error: String(error) });
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };

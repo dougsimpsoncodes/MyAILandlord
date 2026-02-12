@@ -53,7 +53,7 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
             <View style={styles.selectedOption}>
               {selectedOption.icon && (
                 <Ionicons 
-                  name={selectedOption.icon as any} 
+                  name={selectedOption.icon as keyof typeof Ionicons.glyphMap} 
                   size={20} 
                   color="#2C3E50" 
                   style={styles.optionIcon}
@@ -108,7 +108,7 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
                   <View style={styles.optionContent}>
                     {option.icon && (
                       <Ionicons 
-                        name={option.icon as any} 
+                        name={option.icon as keyof typeof Ionicons.glyphMap} 
                         size={24} 
                         color={value === option.value ? "#3498DB" : "#7F8C8D"} 
                         style={styles.optionIcon}

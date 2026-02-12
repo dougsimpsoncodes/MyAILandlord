@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-globals */
-
 /**
  * Centralized Logging with Data Sanitization
  *
@@ -185,7 +183,7 @@ function sanitizeArgs(args: unknown[]): unknown[] {
 /**
  * Send logs to external service (Sentry, LogRocket, etc.)
  */
-function sendToLoggingService(level: 'info' | 'warn' | 'error', args: unknown[]) {
+function sendToLoggingService(_level: 'info' | 'warn' | 'error', _args: unknown[]) {
   // TODO: Integrate with Sentry or other logging service
   // Example:
   // if (typeof Sentry !== 'undefined') {

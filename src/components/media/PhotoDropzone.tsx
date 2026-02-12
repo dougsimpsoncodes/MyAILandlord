@@ -5,6 +5,15 @@ import * as ImagePicker from 'expo-image-picker';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
 import { log } from '../../lib/log';
 
+type UploadAsset = {
+  uri: string;
+  width?: number;
+  height?: number;
+  fileName?: string;
+  mimeType?: string;
+  file?: File;
+};
+
 type Props = {
   propertyId: string;
   areaId: string;
@@ -21,7 +30,7 @@ async function pickNative() {
   const res = await ImagePicker.launchImageLibraryAsync({
     allowsMultipleSelection: true,
     quality: 1,
-    mediaTypes: (ImagePicker as any).MediaType?.Images ?? (ImagePicker as any).MediaTypeOptions?.Images
+    mediaTypes: ImagePicker.MediaTypeOptions.Images
   });
 
   if (res.canceled) return [];
@@ -30,8 +39,8 @@ async function pickNative() {
     uri: a.uri,
     width: a.width,
     height: a.height,
-    fileName: (a as any).fileName,
-    mimeType: (a as any).mimeType
+    fileName: a.fileName ?? undefined,
+    mimeType: ('mimeType' in a ? (a as { mimeType?: string }).mimeType : undefined)
   })) ?? [];
 }
 
@@ -114,7 +123,7 @@ export default function PhotoDropzone({
     inputRef.current = el;
   }
 
-  const processAndUpload = async (assets: any[]) => {
+  const processAndUpload = async (assets: UploadAsset[]) => {
     if (!assets.length) return;
 
     setIsUploading(true);
@@ -150,7 +159,7 @@ export default function PhotoDropzone({
     onPickerOpen?.();
 
     try {
-      let assets = Platform.OS === 'web'
+      const assets = Platform.OS === 'web'
         ? await pickWeb(inputRef.current as HTMLInputElement)
         : await pickNative();
 
@@ -162,19 +171,19 @@ export default function PhotoDropzone({
   };
 
   // Web drag & drop handlers
-  const handleDragOver = useCallback((e: any) => {
+  const handleDragOver = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
   }, []);
 
-  const handleDragLeave = useCallback((e: any) => {
+  const handleDragLeave = useCallback((e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback(async (e: any) => {
+  const handleDrop = useCallback(async (e: DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);

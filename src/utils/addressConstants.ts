@@ -58,13 +58,13 @@ export const US_STATES = [
 export const ADDRESS_PATTERNS = {
   // US ZIP Code: 5 digits or 5+4 format
   US_ZIP_CODE: /^\d{5}(-\d{4})?$/,
-  
+
   // Basic street address (flexible format allowing various street address patterns)
-  STREET_ADDRESS: /^[\w\d\s\-\.\#\/\&\(\)\'\"]+$/,
-  
+  STREET_ADDRESS: /^[\w\d\s\-./#&()'"]+$/,
+
   // City name (letters, spaces, hyphens, apostrophes)
-  CITY_NAME: /^[a-zA-Z\s\-\'\.]+$/,
-  
+  CITY_NAME: /^[a-zA-Z\s\-'.]+$/,
+
   // State code (2 uppercase letters)
   STATE_CODE: /^[A-Z]{2}$/
 };
@@ -90,7 +90,7 @@ export const ADDRESS_VALIDATION_RULES = {
   state: {
     required: true,
     pattern: ADDRESS_PATTERNS.STATE_CODE,
-    validValues: US_STATES.map(s => s.code)
+    validValues: US_STATES.map((s) => s.code)
   },
   zipCode: {
     required: true,

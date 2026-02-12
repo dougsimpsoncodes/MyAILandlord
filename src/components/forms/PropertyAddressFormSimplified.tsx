@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { Platform, View, Text, TextInput as RNTextInput, KeyboardTypeOptions, TextInputIOSProps } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, View, Text, TextInput as RNTextInput, KeyboardTypeOptions, TextInputProps } from 'react-native';
 import Button from '../shared/Button';
 import { DesignSystem } from '../../theme/DesignSystem';
 
@@ -49,11 +49,11 @@ const Field = ({
   onBlur?: () => void;
   placeholder?: string;
   id: string;
-  autoComplete: string;
-  textContentType?: TextInputIOSProps['textContentType'];
+  autoComplete: TextInputProps['autoComplete'];
+  textContentType?: TextInputProps['textContentType'];
   keyboardType?: KeyboardTypeOptions;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  importantForAutofill?: 'auto' | 'yes' | 'no' | 'noExcludeDescendants' | 'yesExcludeDescendants';
+  importantForAutofill?: TextInputProps['importantForAutofill'];
   autoCorrect?: boolean;
   nameAttr?: string;
   required?: boolean;
@@ -81,13 +81,13 @@ const Field = ({
         onChangeText={onChangeText}
         onBlur={onBlur}
         placeholder={placeholder}
-        autoComplete={autoComplete as any}
+        autoComplete={autoComplete}
         textContentType={textContentType}
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
-        importantForAutofill={importantForAutofill as any}
+        importantForAutofill={importantForAutofill}
         autoCorrect={autoCorrect}
-        style={baseStyle as any}
+        style={baseStyle}
         returnKeyType="next"
         {...(Platform.OS === 'web' ? { name: nameAttr || id } : {})}
       />
@@ -115,7 +115,7 @@ const WebFormWrapper = ({ children, onSubmit }: { children: React.ReactNode; onS
   </form>
 );
 
-const NativeFormWrapper = ({ children, onSubmit }: { children: React.ReactNode; onSubmit?: () => void }) => (
+const NativeFormWrapper = ({ children }: { children: React.ReactNode }) => (
   <View style={{ width: '100%' }}>{children}</View>
 );
 
@@ -123,7 +123,6 @@ export default function PropertyAddressFormSimplified({
   value,
   onChange,
   onSubmit,
-  sectionId = 'property',
   submitLabel = 'Save Address',
   loading,
   disabled,
@@ -131,9 +130,6 @@ export default function PropertyAddressFormSimplified({
 }: Props) {
   // Use parent state directly - no local state complexity
   const [errors, setErrors] = useState<Partial<Record<keyof Address,string>>>({});
-
-  // Use consistent autocomplete section to prevent duplicates
-  const section = 'property-address';
 
   // Direct state setter - updates parent immediately
   const set = (k: keyof Address) => (t: string) => {

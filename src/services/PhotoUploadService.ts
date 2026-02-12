@@ -11,6 +11,8 @@ type PickedAsset = {
   mimeType?: string;
 };
 
+type StorageBucketName = Parameters<typeof storageService.uploadFile>[0]['bucket'];
+
 type UploadedPhoto = {
   path: string;
   url: string;
@@ -45,6 +47,8 @@ export async function uploadPropertyPhotos(
 ): Promise<UploadedPhoto[]> {
   const out: UploadedPhoto[] = [];
   
+  const storageBucket = bucket as StorageBucketName;
+
   for (const a of assets) {
     let work = a.uri;
     let w = a.width;
@@ -71,15 +75,15 @@ export async function uploadPropertyPhotos(
       : fileNameFor(propertyId, areaId, a.fileName, mime);
     try {
       // Try primary name
-      await storageService.uploadFile({ bucket: bucket as any, path: name, file: blob, contentType: mime || 'image/jpeg' });
-      const signed = await storageService.getDisplayUrl(bucket as any, name);
+      await storageService.uploadFile({ bucket: storageBucket, path: name, file: blob, contentType: mime || 'image/jpeg' });
+      const signed = await storageService.getDisplayUrl(storageBucket, name);
       out.push({ path: name, url: signed || '', width: w, height: h, size: blob.size });
-    } catch (e) {
+    } catch {
       // If exists, retry with alt name
       const alt = fileNameFor(propertyId, areaId, undefined, mime);
       try {
-        await storageService.uploadFile({ bucket: bucket as any, path: alt, file: blob, contentType: mime || 'image/jpeg' });
-        const signed = await storageService.getDisplayUrl(bucket as any, alt);
+        await storageService.uploadFile({ bucket: storageBucket, path: alt, file: blob, contentType: mime || 'image/jpeg' });
+        const signed = await storageService.getDisplayUrl(storageBucket, alt);
         out.push({ path: alt, url: signed || '', width: w, height: h, size: blob.size });
       } catch (e2) {
         log.error('PhotoUploadService: Failed to upload file', { error: String(e2) });

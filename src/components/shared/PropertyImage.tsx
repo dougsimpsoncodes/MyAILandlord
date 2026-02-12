@@ -34,14 +34,15 @@ export const PropertyImage: React.FC<PropertyImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const { width: screenWidth } = useWindowDimensions();
 
-  // Track address changes with a cache-busting key
-  const [cacheKey, setCacheKey] = useState(Date.now());
+  const normalizeAddressKey = (value: string) => value.trim().toLowerCase();
 
-  // Reset error state and update cache key when address changes
+  // Keep cache key stable for identical addresses to avoid needless refetches
+  const [cacheKey, setCacheKey] = useState(() => normalizeAddressKey(address));
+
   React.useEffect(() => {
     setHasError(false);
     setIsLoading(true);
-    setCacheKey(Date.now()); // Force new image fetch
+    setCacheKey(normalizeAddressKey(address));
   }, [address]);
 
   // Determine the API request size (Google allows up to 640x640 for free tier)

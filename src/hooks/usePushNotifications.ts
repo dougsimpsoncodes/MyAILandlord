@@ -10,7 +10,7 @@ const navigationRef = createNavigationContainerRef();
 
 function navigate(name: string, params?: object) {
   if (navigationRef.isReady()) {
-    (navigationRef as any).navigate(name, params);
+    (navigationRef as unknown as { navigate: (routeName: string, routeParams?: object) => void }).navigate(name, params);
   } else {
     log.warn('📲 Navigation not ready, cannot navigate to', name);
   }
@@ -22,9 +22,6 @@ export function usePushNotifications() {
     if (Platform.OS === 'web') {
       return;
     }
-
-    let mounted = true;
-
     async function register() {
       try {
         // iOS permission prompt
@@ -43,7 +40,7 @@ export function usePushNotifications() {
     // Basic response listener (navigating later via route data)
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
       try {
-        const data = response.notification.request.content.data as any;
+        const data = response.notification.request.content.data as Record<string, unknown>;
         log.info('📲 Push tapped, data:', data);
         // Preferred: direct deeplink provided by server
         if (data?.deeplink && typeof data.deeplink === 'string') {
@@ -68,7 +65,6 @@ export function usePushNotifications() {
     register();
 
     return () => {
-      mounted = false;
       responseSub.remove();
     };
   }, []);

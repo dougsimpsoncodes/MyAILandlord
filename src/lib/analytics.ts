@@ -10,7 +10,7 @@ import { sanitizeToken, sanitizeEmail } from '../utils/sanitize';
 
 export interface AnalyticsEvent {
   event: string;
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   timestamp?: number;
   correlationId?: string;
 }
@@ -32,20 +32,14 @@ export interface AnalyticsEvent {
 export const analytics = {
   track(
     event: string,
-    properties: Record<string, any> = {},
+    properties: Record<string, unknown> = {},
     correlationId?: string
   ): void {
     const sanitizedProperties = sanitizeProperties(properties);
-
-    const analyticsEvent: AnalyticsEvent = {
-      event,
-      properties: sanitizedProperties,
-      timestamp: Date.now(),
-      correlationId
-    };
+    const eventPayload = correlationId ? { ...sanitizedProperties, correlationId } : sanitizedProperties;
 
     // Log event locally (development)
-    log.info(`📊 Analytics: ${event}`, sanitizedProperties);
+    log.info('Analytics event', { event, ...eventPayload });
 
     // TODO: Send to analytics service (production)
     // In production, you might send to Mixpanel, Amplitude, PostHog, etc.
@@ -139,8 +133,8 @@ export const analytics = {
 /**
  * Sanitize event properties to prevent logging sensitive data
  */
-function sanitizeProperties(properties: Record<string, any>): Record<string, any> {
-  const sanitized: Record<string, any> = {};
+function sanitizeProperties(properties: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(properties)) {
     // Sanitize tokens

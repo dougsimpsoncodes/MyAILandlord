@@ -12,19 +12,42 @@ export interface PropertyAddress {
   country?: string;        // Default to 'US' for now
 }
 
+export interface AssetDetail {
+  id: string;
+  name: string;
+  brand: string;
+  model: string;
+  serialNumber: string;
+  purchaseDate: string;
+  purchasePrice: string;
+  warrantyExpiry: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor';
+  notes: string;
+  category: string;
+  roomId: string;
+}
+
+export interface AssetPhoto {
+  assetId: string;
+  photos: string[];
+  conditionPhotos: string[];
+  serialNumberPhoto?: string;
+}
+
 export interface PropertyData {
   name: string;
   address: PropertyAddress;  // Multi-field address structure
   type: 'apartment' | 'house' | 'condo' | 'townhouse' | '';
   unit: string;             // Keep for backward compatibility, will be deprecated
+  propertyId?: string;       // Set once a draft is persisted as a property
   bedrooms: number;
   bathrooms: number;
   photos: string[];
   // Optional, used by landlord asset flows
   rooms?: Room[];
   detectedAssets?: DetectedAsset[];
-  assetDetails?: any[]; // Detailed per-asset entries collected in AssetDetailsScreen
-  assetPhotos?: any[];  // Per-asset photos collected in AssetPhotosScreen
+  assetDetails?: AssetDetail[]; // Detailed per-asset entries collected in AssetDetailsScreen
+  assetPhotos?: AssetPhoto[];  // Per-asset photos collected in AssetPhotosScreen
   // Optional: room-level photos used in some flows
   roomPhotos?: { roomId: string; photos: string[] }[];
 }

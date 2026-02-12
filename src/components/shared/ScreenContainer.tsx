@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   ViewStyle,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DesignSystem } from '../../theme/DesignSystem';
 
@@ -59,7 +59,6 @@ const ScreenContainer: React.FC<ScreenContainerProps> = ({
   contentStyle,
   userRole = 'landlord',
 }) => {
-  const insets = useSafeAreaInsets();
 
   // Theme colors based on user role
   const themeColor = userRole === 'tenant' ? '#2ECC71' : '#3498DB';

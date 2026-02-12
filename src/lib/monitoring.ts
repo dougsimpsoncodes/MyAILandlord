@@ -59,9 +59,21 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
       log.error('Original message', payload)
     }
   } else if (__DEV__) {
-    level === 'error' ? log.error('captureMessage (dev)', payload) : level === 'warning' ? log.warn('captureMessage (dev)', payload) : log.info('captureMessage (dev)', payload)
+    if (level === 'error') {
+      log.error('captureMessage (dev)', payload);
+    } else if (level === 'warning') {
+      log.warn('captureMessage (dev)', payload);
+    } else {
+      log.info('captureMessage (dev)', payload);
+    }
   } else if (configured) {
-    level === 'error' ? log.error('captureMessage', payload) : level === 'warning' ? log.warn('captureMessage', payload) : log.info('captureMessage', payload)
+    if (level === 'error') {
+      log.error('captureMessage', payload);
+    } else if (level === 'warning') {
+      log.warn('captureMessage', payload);
+    } else {
+      log.info('captureMessage', payload);
+    }
   }
 }
 

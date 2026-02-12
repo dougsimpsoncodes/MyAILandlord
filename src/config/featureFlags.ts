@@ -1,3 +1,5 @@
+import { log } from '../lib/log';
+
 /**
  * Feature Flags Configuration
  *
@@ -84,7 +86,7 @@ export function logFeatureFlags(): void {
   // Uses console.log directly as this is an intentional diagnostic function
   // called explicitly during debugging
   if (__DEV__) {
-    console.log('🚩 Feature Flags:', {
+    log.info('🚩 Feature Flags:', {
       tokenizedInvitesEnabled: featureFlags.TOKENIZED_INVITES_ENABLED,
       tokenizedInvitesRollout: `${featureFlags.TOKENIZED_INVITES_ROLLOUT_PERCENT}%`,
     });

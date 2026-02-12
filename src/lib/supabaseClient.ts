@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { log } from './log'
 
 declare global { var __sb: SupabaseClient | undefined }
 
@@ -22,7 +23,7 @@ function createSupabaseClient() {
 export const supabase = globalThis.__sb || createSupabaseClient()
 if (!globalThis.__sb) {
   globalThis.__sb = supabase
-  console.log('✅ Supabase singleton client created (this should only appear ONCE per tab)')
+  log.info('✅ Supabase singleton client created (this should only appear ONCE per tab)')
 }
 
 export const authenticatedClient = {

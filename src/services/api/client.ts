@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { SupabaseClient } from '../supabase/client';
 import { storageService, uploadMaintenanceImage, uploadVoiceNote, setStorageSupabaseClient } from '../supabase/storage';
-import { supabase } from '../supabase/config';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { getMaintenanceRequests as getMaintenanceRequestsREST, getMaintenanceRequestById as getMaintenanceRequestByIdREST } from '../../lib/maintenanceClient';
@@ -11,12 +10,9 @@ import {
   CreateMaintenanceRequestData,
   UpdateMaintenanceRequestData,
   CreateMessageData,
-  FileUploadData,
-  AnalyzeMaintenanceRequestData,
   StorageBucket,
   UseApiClientReturn,
   UserRole,
-  Priority,
   RealtimePayload,
   MaintenanceRequest,
   Message
@@ -35,12 +31,8 @@ import {
 } from '../../utils/validation';
 import { validateImageFile, validateAudioFile, getErrorMessage, validateRequired, validateLength, sanitizeString, sanitizePath, sanitizeUrl } from '../../utils/helpers';
 import { FileValidation } from '../../types/api';
-import { ENV_CONFIG } from '../../utils/constants';
 import log from '../../lib/log';
 import { captureException } from '../../lib/monitoring';
-
-const SUPABASE_FUNCTIONS_URL = ENV_CONFIG.SUPABASE_FUNCTIONS_URL || 
-  `${ENV_CONFIG.SUPABASE_URL}/functions/v1`;
 
 // Cache for SupabaseClient instances to avoid recreating and resetting RLS context
 const supabaseClientCache = new WeakMap<object, SupabaseClient>();
@@ -311,7 +303,7 @@ export function useApiClient(): UseApiClientReturn | null {
 
       if (error) {
         log.error('=== DIRECT SUPABASE INSERT ERROR ===');
-        log.error('Error:', error as any);
+        log.error('Error', { error });
         throw new Error(`Failed to create maintenance request: ${error.message}`);
       }
 
@@ -385,7 +377,7 @@ export function useApiClient(): UseApiClientReturn | null {
           .eq('id', maintenanceRequest.id);
 
         if (updateError) {
-          console.error('Failed to update maintenance request with file paths:', updateError);
+          log.error('Failed to update maintenance request with file paths', { error: updateError });
           // Don't throw here - the request was created successfully
         }
       }
@@ -633,12 +625,14 @@ export function useApiClient(): UseApiClientReturn | null {
   // ========== REAL-TIME SUBSCRIPTIONS ==========
   const subscribeToMaintenanceRequests = async (callback: (payload: RealtimePayload<MaintenanceRequest>) => void) => {
     const client = requireSupabaseClient();
-    return client.subscribeToMaintenanceRequests(requireUserId(), callback as any);
+    const maintenanceCallback = callback as unknown as Parameters<SupabaseClient['subscribeToMaintenanceRequests']>[1];
+    return client.subscribeToMaintenanceRequests(requireUserId(), maintenanceCallback);
   };
 
   const subscribeToMessages = async (callback: (payload: RealtimePayload<Message>) => void) => {
     const client = requireSupabaseClient();
-    return client.subscribeToMessages(requireUserId(), callback as any);
+    const messageCallback = callback as unknown as Parameters<SupabaseClient['subscribeToMessages']>[1];
+    return client.subscribeToMessages(requireUserId(), messageCallback);
   };
 
   // ========== PROPERTY CODE METHODS ==========

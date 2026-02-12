@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Photo, PHOTO_CONFIG } from '../types/photo';
 import { PhotoService } from '../services/PhotoService';
+import { log } from '../lib/log';
 
 interface UsePhotoCaptureOptions {
   maxPhotos?: number;
@@ -40,7 +41,6 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     maxPhotos = PHOTO_CONFIG.MAX_PHOTOS.PROPERTY,
     initialPhotos = [],
     onPhotosChange,
-    autoSave = false,
   } = options;
 
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
@@ -126,7 +126,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     
     // Delete from device storage if it's a local file
     PhotoService.deletePhoto(photoToDelete.uri).catch(error => {
-      console.warn('Failed to delete photo from storage:', error);
+      log.warn('Failed to delete photo from storage', { error: String(error) });
     });
 
     setPhotos(prev => prev.filter((_, i) => i !== index));
@@ -146,7 +146,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     
     // Delete old photo from storage
     PhotoService.deletePhoto(oldPhoto.uri).catch(error => {
-      console.warn('Failed to delete old photo from storage:', error);
+      log.warn('Failed to delete old photo from storage', { error: String(error) });
     });
 
     setPhotos(prev => prev.map((photo, i) => i === index ? newPhoto : photo));
@@ -170,7 +170,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
     // Delete all photos from storage
     photos.forEach(photo => {
       PhotoService.deletePhoto(photo.uri).catch(error => {
-        console.warn('Failed to delete photo from storage:', error);
+        log.warn('Failed to delete photo from storage', { error: String(error) });
       });
     });
 
@@ -200,7 +200,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
         addPhoto(photo);
       }
     } catch (error: unknown) {
-      console.error('Photo capture error:', error);
+      log.error('Photo capture error', { error: String(error) });
       setError('Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -230,7 +230,7 @@ export const usePhotoCapture = (options: UsePhotoCaptureOptions = {}): UsePhotoC
         addPhotos(selectedPhotos);
       }
     } catch (error: unknown) {
-      console.error('Gallery selection error:', error);
+      log.error('Gallery selection error', { error: String(error) });
       setError('Failed to select photos. Please try again.');
     } finally {
       setIsSelecting(false);

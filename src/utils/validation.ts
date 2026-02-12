@@ -236,8 +236,8 @@ export const validateFileUpload = (data: {
   if (!validateRequired(data.bucket)) {
     errors.push('Storage bucket is required');
   } else {
-    const validBuckets = Object.values(APP_CONSTANTS.STORAGE_BUCKETS);
-    if (!validBuckets.includes(data.bucket as any)) {
+    const validBuckets = Object.values(APP_CONSTANTS.STORAGE_BUCKETS) as string[];
+    if (typeof data.bucket !== 'string' || !validBuckets.includes(data.bucket)) {
       errors.push(`Invalid storage bucket. Must be one of: ${validBuckets.join(', ')}`);
     }
   }

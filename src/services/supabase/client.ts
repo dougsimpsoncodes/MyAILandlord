@@ -8,7 +8,6 @@ type Profile = Database['public']['Tables']['profiles']['Row'];
 type MaintenanceRequest = Database['public']['Tables']['maintenance_requests']['Row'];
 type Property = Database['public']['Tables']['properties']['Row'];
 type Message = Database['public']['Tables']['messages']['Row'];
-type Announcement = Database['public']['Tables']['announcements']['Row'];
 
 export class SupabaseClient {
   private _client: SupabaseClientType<Database>;
@@ -236,7 +235,8 @@ export class SupabaseClient {
     
     // Test JWT context by querying auth functions (debug only - may not exist)
     try {
-      const jwtTest = await (this.client.rpc as any)('test_jwt_context');
+      const testJwtContext = this.client.rpc as unknown as (fn: string) => Promise<unknown>;
+      const jwtTest = await testJwtContext('test_jwt_context');
       log.info('JWT context test result:', jwtTest);
     } catch (jwtError) {
       log.warn("JWT test failed (expected if function doesn't exist):", jwtError);

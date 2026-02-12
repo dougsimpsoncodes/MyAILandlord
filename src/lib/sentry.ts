@@ -7,6 +7,7 @@
 import * as Sentry from '@sentry/react-native';
 import { useEffect } from 'react';
 import { useUnifiedAuth } from '../context/UnifiedAuthContext';
+import { log } from '../lib/log';
 
 /**
  * Initialize Sentry with configuration
@@ -14,7 +15,7 @@ import { useUnifiedAuth } from '../context/UnifiedAuthContext';
  */
 export function initSentry() {
   if (!process.env.EXPO_PUBLIC_SENTRY_DSN) {
-    console.warn('Sentry DSN not configured - error tracking disabled');
+    log.warn('Sentry DSN not configured - error tracking disabled');
     return;
   }
 
@@ -196,7 +197,7 @@ export function addBreadcrumb(
  */
 export function testSentryIntegration() {
   if (process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT === 'production') {
-    console.warn('Cannot test Sentry in production');
+    log.warn('Cannot test Sentry in production');
     return;
   }
 
@@ -214,7 +215,7 @@ export function testSentryIntegration() {
     transaction.finish();
   }, 1000);
 
-  console.log('Sentry test events sent - check dashboard');
+  log.info('Sentry test events sent - check dashboard');
 }
 
 export default {

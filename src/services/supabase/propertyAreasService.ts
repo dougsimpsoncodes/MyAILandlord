@@ -288,7 +288,7 @@ export const propertyAreasService = {
         return dbArea;
       });
 
-      const { data: insertedAreas, error: areasInsertError } = await supabase
+      const { error: areasInsertError } = await supabase
         .from('property_areas')
         .insert(areasToInsert)
         .select();
