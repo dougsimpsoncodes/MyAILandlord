@@ -2,6 +2,34 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://myailandlord.app',
+  'https://www.myailandlord.app',
+  'http://localhost:8081',
+  'http://localhost:19006',
+];
+
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const resolvedAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : DEFAULT_ALLOWED_ORIGINS;
+
+const getCorsHeaders = (req: Request) => {
+  const requestOrigin = req.headers.get('origin');
+  const allowOrigin = requestOrigin && resolvedAllowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : resolvedAllowedOrigins[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Vary': 'Origin',
+  };
+};
+
 interface InviteEmailRequest {
   recipientEmail: string;
   recipientName?: string;
@@ -11,15 +39,11 @@ interface InviteEmailRequest {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -30,7 +54,7 @@ serve(async (req) => {
     if (!recipientEmail || !propertyName || !inviteUrl) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: recipientEmail, propertyName, inviteUrl' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -39,7 +63,7 @@ serve(async (req) => {
     if (!emailRegex.test(recipientEmail)) {
       return new Response(
         JSON.stringify({ error: 'Invalid email address' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -47,7 +71,7 @@ serve(async (req) => {
       console.error('RESEND_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'Email service not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -166,10 +190,7 @@ If you didn't expect this invitation, you can safely ignore this email.
         }),
         {
           status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -183,10 +204,7 @@ If you didn't expect this invitation, you can safely ignore this email.
       }),
       {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
 
@@ -199,10 +217,7 @@ If you didn't expect this invitation, you can safely ignore this email.
       }),
       {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }

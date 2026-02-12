@@ -29,7 +29,6 @@ function rateLimited(key: string) {
 interface RequestBody {
   description: string
   images?: string[]
-  userId: string
 }
 
 serve(async (req) => {
@@ -52,7 +51,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Too Many Requests' }), { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const { description, images, userId } = await req.json() as RequestBody
+    const { description, images } = await req.json() as RequestBody
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -68,11 +67,12 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Verify profile exists for provided userId
+    // Bind profile lookup to verified JWT subject (never trust body userId)
+    const authenticatedUserId = userRes.data.user.id
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
-      .eq('id', userId)
+      .eq('id', authenticatedUserId)
       .single()
 
     if (!profile) {

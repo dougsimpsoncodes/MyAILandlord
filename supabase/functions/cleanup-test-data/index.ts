@@ -1,13 +1,36 @@
 // Cleanup Test Data Edge Function
 // Purpose: Remove test users and associated data from staging/production
-// Security: Requires service role key authorization
+// Security: Requires exact Bearer service role authorization
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://myailandlord.app',
+  'https://www.myailandlord.app',
+  'http://localhost:8081',
+  'http://localhost:19006',
+];
+
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const resolvedAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : DEFAULT_ALLOWED_ORIGINS;
+
+const getCorsHeaders = (req: Request) => {
+  const requestOrigin = req.headers.get('origin');
+  const allowOrigin = requestOrigin && resolvedAllowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : resolvedAllowedOrigins[0];
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
 };
 
 interface CleanupRequest {
@@ -31,6 +54,8 @@ interface CleanupResult {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -38,10 +63,20 @@ serve(async (req) => {
 
   try {
     // Verify authorization (service role only)
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.includes(Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    if (!serviceRoleKey) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - service role key required' }),
+        JSON.stringify({ error: 'Server misconfiguration: missing service role key' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const expectedHeader = `Bearer ${serviceRoleKey}`;
+    if (!authHeader || authHeader.trim() !== expectedHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - exact Bearer service role key required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -54,7 +89,7 @@ serve(async (req) => {
     // Create admin Supabase client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      serviceRoleKey,
       {
         auth: {
           autoRefreshToken: false,
