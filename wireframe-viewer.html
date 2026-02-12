@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyAI Landlord - Wireframe Map</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0f172a;color:#e2e8f0}
+.topbar{position:sticky;top:0;z-index:100;background:#1e293b;border-bottom:1px solid #334155;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.topbar h1{font-size:18px;color:#f8fafc}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.fbtn{padding:5px 12px;border-radius:16px;border:1px solid #475569;background:transparent;color:#94a3b8;cursor:pointer;font-size:12px}
+.fbtn:hover{border-color:#818cf8;color:#c7d2fe}
+.fbtn.on{background:#4f46e5;border-color:#4f46e5;color:#fff}
+.container{padding:24px;max-width:1600px;margin:0 auto}
+.sec{margin-bottom:36px}
+.sec-title{font-size:14px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #1e293b}
+.sec-title b{background:#334155;color:#e2e8f0;padding:2px 8px;border-radius:10px;font-size:11px;margin-left:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:10px;cursor:pointer;transition:all .2s;overflow:hidden}
+.card:hover{border-color:#818cf8;transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.card.hl{border-color:#f59e0b;box-shadow:0 0 10px rgba(245,158,11,.3)}
+.ch{padding:8px 10px;background:#0f172a;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between}
+.ch h3{font-size:12px;font-weight:600;color:#f8fafc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp{font-size:9px;padding:2px 5px;border-radius:3px;font-weight:600}
+.tp-a{background:#7c3aed20;color:#a78bfa}.tp-o{background:#05966920;color:#34d399}
+.tp-l{background:#2563eb20;color:#60a5fa}.tp-t{background:#d9770620;color:#fb923c}
+.tp-s{background:#64748b20;color:#94a3b8}
+.cb{padding:8px 10px;min-height:120px}
+.wh{background:#334155;border-radius:3px;padding:3px 6px;margin-bottom:4px;font-size:10px;color:#e2e8f0;font-weight:600;text-align:center}
+.wi{background:#0f172a;border:1px solid #475569;border-radius:3px;padding:2px 5px;font-size:9px;color:#64748b;margin:2px 0;width:100%}
+.wb{border-radius:3px;padding:2px 6px;font-size:9px;text-align:center;margin:2px 0}
+.wb-p{background:#4f46e5;color:#fff}.wb-s{background:transparent;border:1px solid #475569;color:#94a3b8}
+.wb-g{background:#059669;color:#fff}.wb-d{background:#dc2626;color:#fff}
+.wc{background:#0f172a;border:1px solid #334155;border-radius:3px;padding:3px 5px;margin:2px 0;font-size:9px;color:#94a3b8}
+.ws{font-size:9px;color:#64748b;font-weight:600;margin-top:4px;text-transform:uppercase}
+.wt{display:flex;gap:2px;margin:3px 0}
+.wt span{flex:1;background:#334155;border-radius:2px;padding:2px;font-size:8px;color:#94a3b8;text-align:center}
+.wt span:first-child{background:#4f46e5;color:#fff}
+.wim{background:#334155;border-radius:3px;height:30px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#64748b;margin:3px 0}
+.wtg{display:flex;align-items:center;justify-content:space-between;font-size:9px;color:#94a3b8;padding:1px 0}
+.wtg i{width:20px;height:11px;border-radius:6px;background:#4f46e5;display:inline-block}
+.cn{padding:6px 10px;border-top:1px solid #334155;display:flex;flex-wrap:wrap;gap:3px}
+.nt{font-size:8px;padding:2px 5px;border-radius:2px;background:#1e293b;border:1px solid #475569;color:#818cf8;cursor:pointer}
+.nt:hover{background:#4f46e520;border-color:#818cf8}
+.more{font-size:9px;color:#475569;margin-top:2px}
+/* Modal */
+.mo{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:200;justify-content:center;align-items:center;padding:24px}
+.mo.open{display:flex}
+.md{background:#1e293b;border:1px solid #334155;border-radius:14px;max-width:460px;width:100%;max-height:90vh;overflow-y:auto}
+.mx{position:sticky;top:0;background:#1e293b;padding:16px 16px 10px;border-bottom:1px solid #334155;display:flex;justify-content:space-between;align-items:flex-start;z-index:5}
+.mx h2{font-size:16px;color:#f8fafc}
+.mx small{font-size:10px;color:#64748b;font-family:monospace;display:block;margin-top:2px}
+.mx button{background:#334155;border:none;color:#e2e8f0;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;flex-shrink:0}
+.mx button:hover{background:#475569}
+.mb{padding:14px 16px}
+.mb .wh{font-size:12px;padding:6px 10px}.mb .wi{font-size:11px;padding:4px 7px}
+.mb .wb{font-size:11px;padding:4px 8px}.mb .wc{font-size:10px;padding:4px 6px}
+.mb .ws{font-size:10px;margin-top:8px}.mb .wt span{font-size:9px;padding:3px}
+.mb .wim{height:45px;font-size:10px}.mb .wtg{font-size:10px}
+.mn{padding:12px 16px;border-top:1px solid #334155}
+.mn h4{font-size:11px;color:#64748b;margin-bottom:6px}
+.mn .nt{font-size:10px;padding:3px 7px}
+.ms{padding:0 16px 12px}
+.ms h4{font-size:11px;color:#64748b;margin-bottom:4px}
+.ms div{font-size:10px;color:#94a3b8;padding:1px 0}
+/* Flows */
+.fs{margin-top:40px;padding:20px;background:#1e293b;border-radius:10px;border:1px solid #334155}
+.fs h2{font-size:16px;color:#f8fafc;margin-bottom:14px}
+.fg{margin-bottom:18px}
+.fg h3{font-size:13px;color:#94a3b8;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #334155}
+.fr{display:flex;align-items:center;gap:6px;padding:4px 0;flex-wrap:wrap}
+.fp{padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s}
+.fp:hover{filter:brightness(1.3)}
+.fp-a{background:#7c3aed30;color:#a78bfa;border:1px solid #7c3aed50}
+.fp-o{background:#05966930;color:#34d399;border:1px solid #05966950}
+.fp-l{background:#2563eb30;color:#60a5fa;border:1px solid #2563eb50}
+.fp-t{background:#d9770630;color:#fb923c;border:1px solid #d9770650}
+.fp-s{background:#64748b30;color:#94a3b8;border:1px solid #64748b50}
+.fa{color:#475569;font-size:14px}.fl{font-size:9px;color:#64748b;font-style:italic}
+</style>
+</head>
+<body>
+<div class="topbar">
+<h1>MyAI Landlord &mdash; Wireframe Map (54 Screens)</h1>
+<div class="filters">
+<button class="fbtn on" onclick="filt('all',this)">All (54)</button>
+<button class="fbtn" onclick="filt('auth',this)">Auth (5)</button>
+<button class="fbtn" onclick="filt('onboarding',this)">Onboarding (11)</button>
+<button class="fbtn" onclick="filt('landlord',this)">Landlord (21)</button>
+<button class="fbtn" onclick="filt('tenant',this)">Tenant (12)</button>
+<button class="fbtn" onclick="filt('shared',this)">Shared (6)</button>
+</div>
+</div>
+<div class="container" id="app"></div>
+<div class="mo" id="mo" onclick="if(event.target===this)cm()"><div class="md" id="mc"></div></div>
+<script>
+const S=[
+// AUTH
+{i:"welcome",n:"Welcome",s:"auth",f:"src/screens/WelcomeScreen.tsx",h:"My AI Landlord",
+e:[["im","Logo (house icon)"],["tx","My AI Landlord"],["tx","Simplifying maintenance with AI"],["li","Quick Issue Reporting|AI-Powered Support|Photo & Voice"],["bp","Get Started"],["bs","Sign In"],["bd","Sign Out (if signed in)"]],
+st:["Default: Get Started + Sign In","Signed in: Continue + Sign Out"],
+nv:["AuthScreen","LoginScreen"]},
+{i:"auth-screen",n:"Auth Screen",s:"auth",f:"src/screens/AuthScreen.tsx",h:"MyAI Landlord",
+e:[["ta","Log In|Sign Up"],["in","Email Address"],["in","Password (eye toggle)"],["bp","Log In / Create Account"],["dv","or continue with"],["bs","Google"],["bs","Apple"],["tx","Terms & Privacy Policy"]],
+st:["Login/Signup toggle","Loading","Error banner","Email verification modal"],
+nv:["Bootstrap"]},
+{i:"auth-callback",n:"Auth Callback",s:"auth",f:"src/screens/AuthCallbackScreen.tsx",h:null,
+e:[["tx","Loading spinner"],["tx","Completing sign in..."],["tx","Error: Authentication Error"],["bs","Go to Login"]],
+st:["Loading","Error with login link"],nv:["LoginScreen","Welcome"]},
+{i:"login",n:"Login",s:"auth",f:"src/screens/LoginScreen.tsx",h:"Sign In",
+e:[["im","House icon"],["tx","Welcome Back"],["in","Email address"],["in","Password (eye toggle)"],["bp","Sign In"],["dv","or"],["bs","Google"],["bs","Apple"],["tx","Don't have an account? Sign Up"]],
+st:["Loading","Error banner"],nv:["SignUpScreen","Bootstrap"]},
+{i:"signup",n:"Sign Up",s:"auth",f:"src/screens/SignUpScreen.tsx",h:"Sign Up",
+e:[["im","House icon"],["tx","Create Account"],["in","Email address"],["in","Password (eye toggle)"],["bp","Create Account"],["dv","or"],["bs","Google"],["bs","Apple"],["tx","Have an account? Sign In"]],
+st:["Loading","Error","Email verification modal"],nv:["LoginScreen","Bootstrap"]},
+// ONBOARDING
+{i:"onb-welcome",n:"Onboarding Welcome",s:"onboarding",f:"src/screens/onboarding/OnboardingWelcomeScreen.tsx",h:null,
+e:[["im","House icon (80px)"],["tx","My AI Landlord"],["tx","Property management, simplified"],["bp","Get Started"],["tx","Have an account? Sign In"]],
+st:[],nv:["OnboardingName","AuthScreen"]},
+{i:"onb-name",n:"Onboarding Name",s:"onboarding",f:"src/screens/onboarding/OnboardingNameScreen.tsx",h:"Step 1 of 4",
+e:[["tx","What should we call you?"],["in","Your first name"],["wc","Your info stays private"],["bp","Continue"]],
+st:["Validation","Disabled button"],nv:["OnboardingAccount"]},
+{i:"onb-account",n:"Onboarding Account",s:"onboarding",f:"src/screens/onboarding/OnboardingAccountScreen.tsx",h:"Step 2 of 4",
+e:[["tx","Nice to meet you, [name]!"],["in","Email"],["in","Password (strength bar)"],["in","Confirm Password"],["tg","I agree to Terms"],["bp","Create Account"]],
+st:["Loading","Validation","Password strength"],nv:["OnboardingRole"]},
+{i:"onb-role",n:"Onboarding Role",s:"onboarding",f:"src/screens/onboarding/OnboardingRoleScreen.tsx",h:"Step 3 of 4",
+e:[["tx","How will you use MyAI Landlord?"],["wc","I'm a Landlord (radio)"],["wc","I'm a Tenant (radio)"],["wc","Switch roles later"],["bp","Continue"]],
+st:["Role highlight","Loading"],nv:["LandlordOnbWelcome","TenantOnbWelcome"]},
+{i:"ll-onb-welcome",n:"Landlord Onb Welcome",s:"onboarding",f:"src/screens/onboarding/LandlordOnboardingWelcomeScreen.tsx",h:"Step 4 of 4",
+e:[["tx","Welcome, [name]!"],["wc","Property Management"],["wc","Maintenance Tracking"],["wc","Easy Communication"],["wc","Smart Insights"],["bp","Set Up First Property"]],
+st:[],nv:["LandlordPropertyIntro"]},
+{i:"ll-prop-intro",n:"Landlord Property Intro",s:"onboarding",f:"src/screens/onboarding/LandlordPropertyIntro.tsx",h:null,
+e:[["tx","Let's add your property"],["wc","1. Property Basics"],["wc","2. Property Areas"],["wc","3. Invite Tenant"],["wc","Edit details later"],["bp","Start Property Setup"]],
+st:[],nv:["PropertyBasics"]},
+{i:"ll-tenant-invite",n:"Landlord Tenant Invite",s:"onboarding",f:"src/screens/onboarding/LandlordTenantInviteScreen.tsx",h:"Step 4 of 4",
+e:[["tx","Invite your tenant"],["wc","Invite Link"],["bs","Copy Link"],["bs","Share"],["bp","Continue"],["bs","I'll invite later"]],
+st:["Loading","Copy success"],nv:["LandlordOnbSuccess"]},
+{i:"ll-onb-success",n:"Landlord Onb Success",s:"onboarding",f:"src/screens/onboarding/LandlordOnboardingSuccessScreen.tsx",h:null,
+e:[["tx","You're all set!"],["bg","Setup Complete"],["wc","Add photos"],["wc","Review requests"],["wc","Chat with tenants"],["bp","Go to Dashboard"]],
+st:["Animation","Loading"],nv:["MainStack"]},
+{i:"tn-onb-welcome",n:"Tenant Onb Welcome",s:"onboarding",f:"src/screens/onboarding/TenantOnboardingWelcomeScreen.tsx",h:"Step 4 of 4",
+e:[["tx","Welcome, [name]!"],["wc","Report Issues"],["wc","Track Repairs"],["wc","Communication"],["wc","Property Info"],["bp","Connect to Property"]],
+st:["Loading"],nv:["PropertyInviteAccept"]},
+{i:"tn-invite-rm",n:"Tenant Invite Roommate",s:"onboarding",f:"src/screens/onboarding/TenantInviteRoommateScreen.tsx",h:null,
+e:[["tx","Share with roommate?"],["wc","Invite Code: ABC123"],["bs","Copy Code"],["bs","Share"],["bp","Continue"],["bs","I'll do this later"]],
+st:["Copy success"],nv:["TenantOnbSuccess"]},
+{i:"tn-onb-success",n:"Tenant Onb Success",s:"onboarding",f:"src/screens/onboarding/TenantOnboardingSuccessScreen.tsx",h:null,
+e:[["tx","You're all set!"],["bg","Setup Complete"],["wc","Report issue"],["wc","Message landlord"],["wc","View property"],["bp","Go to Home"]],
+st:["Animation","Loading"],nv:["MainStack"]},
+// LANDLORD
+{i:"ll-home",n:"Landlord Home",s:"landlord",f:"src/screens/landlord/LandlordHomeScreen.tsx",h:"My AI Landlord",
+e:[["ws","Properties (count)"],["wc","Property + name + address"],["ws","Maintenance (count)"],["wc","Request + priority + time"],["ws","Messages (count)"],["wc","Message icon + badge"],["bp","Add Property"]],
+st:["Loading","Empty","Pull-to-refresh"],nv:["PropertyDetails","CaseDetail","Dashboard","PropertyBasics"]},
+{i:"ll-dashboard",n:"Dashboard / Requests",s:"landlord",f:"src/screens/landlord/DashboardScreen.tsx",h:"Requests",
+e:[["ta","New|Pending|Complete"],["wc","Request: title + status + tenant"],["wc","Request: title + status + tenant"],["wc","Request: title + status + tenant"]],
+st:["Loading","Empty per tab","Pull-to-refresh"],nv:["CaseDetail"]},
+{i:"ll-prop-mgmt",n:"Property Management",s:"landlord",f:"src/screens/landlord/PropertyManagementScreen.tsx",h:"Properties",
+e:[["ws","Drafts (collapsible)"],["wc","Draft: name + % + time"],["ws","Properties"],["wc","Property image + stats"],["wc","Property image + stats"],["bp","Add Another Property"]],
+st:["Loading","Empty","Delete mode","Delete modal"],nv:["PropertyDetails","PropertyBasics","InviteTenant"]},
+{i:"ll-prop-details",n:"Property Details",s:"landlord",f:"src/screens/landlord/PropertyDetailsScreen.tsx",h:"Property Details",
+e:[["im","Property hero image"],["tx","Formatted address"],["ws","Quick Actions"],["wc","Rooms & Inventory"],["wc","Invite Tenant"],["wc","Maintenance Requests"]],
+st:["Loading"],nv:["PropertyBasics","PropertyAssets","InviteTenant"]},
+{i:"ll-prop-basics",n:"Property Basics",s:"landlord",f:"src/screens/landlord/PropertyBasicsScreen.tsx",h:"Property Address",
+e:[["tx","Where is this property?"],["in","Property Name *"],["in","Address Line 1 *"],["in","City *"],["in","State *"],["in","Postal Code *"],["in","Country"],["bp","Continue"]],
+st:["Edit mode","Create mode","Validation"],nv:["PropertyAttributes"]},
+{i:"ll-prop-attrs",n:"Property Attributes",s:"landlord",f:"src/screens/landlord/PropertyAttributesScreen.tsx",h:"Property Details",
+e:[["ws","Property Type"],["ta","House|Apartment|Condo|Townhouse"],["wc","Bedrooms: [-] 3 [+]"],["wc","Bathrooms: [-] 2 [+]"],["bp","Continue"]],
+st:["Validation"],nv:["PropertyAreas"]},
+{i:"ll-prop-photos",n:"Property Photos",s:"landlord",f:"src/screens/landlord/PropertyPhotosScreen.tsx",h:"Property Photos",
+e:[["tx","Add up to 5 exterior photos"],["wc","Camera / Gallery buttons"],["im","Photo grid (2 columns)"],["wc","Photo Tips"],["bs","Skip"],["bp","Continue to Rooms"]],
+st:["Capturing","Selecting","Previewing"],nv:["PropertyAreas"]},
+{i:"ll-prop-areas",n:"Property Areas",s:"landlord",f:"src/screens/landlord/PropertyAreasScreen.tsx",h:"Select Rooms (2/4)",
+e:[["ws","Additional Areas"],["wc","Kitchen [-] 1 [+]"],["wc","Living Room [-] 1 [+]"],["wc","Garage [-] 0 [+]"],["bs","+ Add Custom Room"],["wc","Total areas: X"],["bp","Continue"]],
+st:["Loading","Saving","Add Room modal"],nv:["PropertyAssets"]},
+{i:"ll-prop-assets",n:"Property Assets List",s:"landlord",f:"src/screens/landlord/PropertyAssetsListScreen.tsx",h:"Rooms & Inventory (3/4)",
+e:[["ws","Living Room (expand)"],["im","Photo strip"],["wc","Asset: name + brand"],["bs","+ Add Asset"],["ws","Kitchen (expand)"],["bp","Continue"]],
+st:["Loading","Saving","Expanded/collapsed"],nv:["AddAsset","PropertyReview"]},
+{i:"ll-prop-review",n:"Property Review",s:"landlord",f:"src/screens/landlord/PropertyReviewScreen.tsx",h:"Review & Submit (4/4)",
+e:[["ws","Property Info [Edit]"],["wc","Name + Address + Type"],["ws","Rooms [Edit]"],["wc","Rooms | Photos | Equipment"],["wc","Ready to Submit!"],["bp","Submit Property"]],
+st:["Loading","Submitting","Success"],nv:["PropertyBasics","PropertyAreas","PropertyAssets","PropertyDetails"]},
+{i:"ll-add-asset",n:"Add Asset",s:"landlord",f:"src/screens/landlord/AddAssetScreen.tsx",h:"Add Item",
+e:[["bp","Scan Asset Label with AI"],["in","Asset Name *"],["in","Brand (dropdown)"],["in","Model Number"],["ws","Condition"],["ta","Excellent|Good|Fair|Poor"],["im","Photo dropzone"],["bg","Add Asset"]],
+st:["Processing scan","Saving","Success/error"],nv:["PropertyAssets"]},
+{i:"ll-asset-details",n:"Asset Details",s:"landlord",f:"src/screens/landlord/AssetDetailsScreen.tsx",h:"Item Details",
+e:[["wc","Asset X of Y - Room"],["in","Asset Name *"],["in","Brand + Model"],["in","Serial Number"],["in","Purchase Date + Price"],["ta","Excellent|Good|Fair|Poor"],["in","Notes"],["bs","Skip"],["bp","Continue to Photos"]],
+st:["Loading","Saving","Validation"],nv:["AssetPhotos"]},
+{i:"ll-asset-photos",n:"Asset Photos",s:"landlord",f:"src/screens/landlord/AssetPhotosScreen.tsx",h:"Item Photos (7/8)",
+e:[["wc","Progress 75%"],["wc","Asset X of Y"],["ta","General|Condition|Serial #"],["im","Photo grid slots"],["bs","Skip Asset"],["bp","Continue to Review"]],
+st:["Uploading","Saving"],nv:["ReviewSubmit"]},
+{i:"ll-asset-scan",n:"Asset Scanning",s:"landlord",f:"src/screens/landlord/AssetScanningScreen.tsx",h:"Item Detection (5/8)",
+e:[["wc","Progress 50%"],["bp","Scan Barcode"],["bs","AI Photo Analysis"],["ws","Add Manually"],["ta","Appliances|HVAC|Plumbing|Electrical"],["ws","Detected Assets"],["wc","Asset + confidence %"],["bp","Continue to Details"]],
+st:["Scanning","Scanner active"],nv:["AssetDetails"]},
+{i:"ll-room-select",n:"Room Selection",s:"landlord",f:"src/screens/landlord/RoomSelectionScreen.tsx",h:"Select Rooms (3/8)",
+e:[["wc","Rooms Selected: count"],["ta","Living|Kitchen|Master|Bath"],["ta","Bed 2|Dining|Garage|Basement"],["bs","+ Add Custom Room"],["bp","Continue to Photos"]],
+st:["Loading","Saving"],nv:["RoomPhotography"]},
+{i:"ll-room-photo",n:"Room Photography",s:"landlord",f:"src/screens/landlord/RoomPhotographyScreen.tsx",h:"Room Photos (4/8)",
+e:[["wc","Room X of Y"],["ws","Photos (up to 3)"],["im","3 photo slots"],["ws","Room Condition"],["ta","Excellent|Good|Fair|Poor"],["bs","Skip Room"],["bp","Next Room"]],
+st:["Uploading","Empty photos"],nv:["AssetScanning"]},
+{i:"ll-review-submit",n:"Review & Submit",s:"landlord",f:"src/screens/landlord/ReviewSubmitScreen.tsx",h:"Review & Submit (8/8)",
+e:[["wc","Progress 100%"],["ws","Property Basics [Edit]"],["ws","Photos [Edit]"],["ws","Rooms [Edit]"],["ws","Assets [Edit]"],["bp","Submit Property Inventory"]],
+st:["Submitting","Incomplete warning","Success"],nv:["PropertyBasics","RoomSelection","AssetScanning","PropertyManagement"]},
+{i:"ll-invite-tenant",n:"Invite Tenant",s:"landlord",f:"src/screens/landlord/InviteTenantScreen.tsx",h:"Invite Tenant",
+e:[["wc","Property name"],["ws","Choose invite method"],["wc","Send via Email"],["wc","Get Shareable Code"],["in","Tenant Email"],["bp","Send Invitation"],["wc","Invite Code (copy)"]],
+st:["Mode selection","Email entry","Code display"],nv:["Back"]},
+{i:"ll-case-detail",n:"Case Detail",s:"landlord",f:"src/screens/landlord/CaseDetailScreen.tsx",h:"Case Details",
+e:[["wc","Property + Tenant + Status"],["ta","Overview|Details|Media"],["ws","Issue Summary"],["wc","Description text"],["ws","Quick Actions"],["bp","Message Tenant"],["bs","Email Tenant"],["bg","Mark Resolved"]],
+st:["Loading","Error","Tab switching"],nv:["LandlordChat"]},
+{i:"ll-comm",n:"Landlord Messages",s:"landlord",f:"src/screens/landlord/LandlordCommunicationScreen.tsx",h:"Messages",
+e:[["in","Search tenants..."],["ta","All|Unread|Urgent"],["wc","Avatar + Tenant + Unread"],["wc","Last message + time ago"],["wc","Avatar + Tenant + Priority"],["wc","Last message + time ago"]],
+st:["Loading","Empty","Filtered"],nv:["LandlordChat"]},
+{i:"ll-chat",n:"Landlord Chat",s:"landlord",f:"src/screens/landlord/LandlordChatScreen.tsx",h:"Messages",
+e:[["wc","Tenant msg (left, white)"],["wc","Landlord msg (right, dark)"],["wc","Tenant msg (left, white)"],["in","Type a message..."],["bp","Send"]],
+st:["Loading","Empty","Sending"],nv:["Back"]},
+// TENANT
+{i:"tn-home",n:"Tenant Home",s:"tenant",f:"src/screens/tenant/HomeScreen.tsx",h:"My AI Landlord",
+e:[["im","Property banner + address"],["ws","Your Requests"],["wc","Request: title + status"],["ws","Quick Links"],["bp","Report Issue"],["bs","Message Landlord"],["bs","Property Info"]],
+st:["Empty (no property)","No requests"],nv:["PropertyInfo","MaintenanceStatus","ReportIssue","CommunicationHub"]},
+{i:"tn-maint-status",n:"Maintenance Status",s:"tenant",f:"src/screens/tenant/MaintenanceStatusScreen.tsx",h:"Requests",
+e:[["ta","New|In Progress|Completed"],["wc","Request: title + status"],["wc","Request: title + status"],["bp","Report New Issue"]],
+st:["Loading","Empty per tab"],nv:["ReportIssue","FollowUp"]},
+{i:"tn-report",n:"Report Issue",s:"tenant",f:"src/screens/tenant/ReportIssueScreen.tsx",h:"Report Issue (1/2)",
+e:[["wc","Property card"],["in","1. Where? (dropdown)"],["in","2. What? (dropdown)"],["in","3. Problem? (dropdown)"],["in","4. Urgency? (dropdown)"],["in","5. Duration? (dropdown)"],["in","6. Timing? (dropdown)"],["in","7. Details"],["ws","Photos/Videos"],["bs","Camera"],["bs","Gallery"]],
+st:["Form validation","Media preview"],nv:["ReviewIssue"]},
+{i:"tn-review",n:"Review Issue",s:"tenant",f:"src/screens/tenant/ReviewIssueScreen.tsx",h:"Review Request (2/2)",
+e:[["wc","Request summary + Edit"],["wc","AI Analysis (expand)"],["ws","Availability"],["tg","Same times all days"],["wc","Time slot grid (5x3)"],["in","Comments (optional)"],["bp","Submit"]],
+st:["Submitting","Validation"],nv:["SubmissionSuccess"]},
+{i:"tn-success",n:"Submission Success",s:"tenant",f:"src/screens/tenant/SubmissionSuccessScreen.tsx",h:"Request Submitted",
+e:[["tx","Green checkmark"],["wc","Request: location + issue + priority"],["ws","What happens next?"],["wc","Landlord notified"],["wc","Vendor coordination"],["wc","Scheduled by availability"],["bp","Report Another Issue"],["bs","View Your Requests"]],
+st:[],nv:["ReportIssue","MaintenanceStatus"]},
+{i:"tn-followup",n:"Follow Up",s:"tenant",f:"src/screens/tenant/FollowUpScreen.tsx",h:"Request Details",
+e:[["wc","Status banner (colored)"],["ws","Request Summary"],["wc","Title + location + priority"],["ws","What's happening"],["wc","Progress steps (checks)"],["bp","Message Landlord"]],
+st:["Loading","Error + retry"],nv:["CommunicationHub"]},
+{i:"tn-confirm",n:"Confirm Submission",s:"tenant",f:"src/screens/tenant/ConfirmSubmissionScreen.tsx",h:"Confirm Request (2/2)",
+e:[["tx","Green checkmark"],["wc","Issue Summary"],["ws","Preferred Repair Times"],["wc","Time slots (6 toggles)"],["wc","AI Summary (purple)"],["bp","Submit"]],
+st:["Submitting"],nv:["ReportIssue"]},
+{i:"tn-comm",n:"Communication Hub",s:"tenant",f:"src/screens/tenant/CommunicationHubScreen.tsx",h:"Messages",
+e:[["ta","Messages|Announcements"],["wc","Landlord msg (left)"],["wc","Tenant msg (right, blue)"],["wc","Landlord msg (left)"],["in","Type a message..."],["bp","Send"]],
+st:["Loading","Empty","Sending"],nv:[]},
+{i:"tn-prop-info",n:"Property Info",s:"tenant",f:"src/screens/tenant/PropertyInfoScreen.tsx",h:"Property Info",
+e:[["im","Property street view"],["tx","Property name + address"],["ws","WiFi & Internet"],["wc","Network (copy) + Password (copy)"],["ws","Emergency Contacts"],["wc","Contact + phone (call)"],["wc","For emergencies: 911"]],
+st:["No WiFi info","No contact info"],nv:[]},
+{i:"tn-code-entry",n:"Property Code Entry",s:"tenant",f:"src/screens/tenant/PropertyCodeEntryScreen.tsx",h:"Connect to Property",
+e:[["in","Property Code (6 chars)"],["tx","Example: ABC123"],["bp","Continue"],["bs","Don't have a code?"],["bs","Skip for now"],["wc","Codes from landlord"],["wc","Codes may expire"]],
+st:["Loading","Validation error"],nv:["PropertyWelcome","Home"]},
+{i:"tn-prop-welcome",n:"Property Welcome",s:"tenant",f:"src/screens/tenant/PropertyWelcomeScreen.tsx",h:"Welcome!",
+e:[["tx","Green checkmark"],["tx","Linked to [property]"],["wc","Address + WiFi (copy)"],["ws","What you can do"],["wc","Report Issues"],["wc","Communicate"],["wc","View Property Info"],["bp","Report First Issue"],["bs","Go to Dashboard"]],
+st:[],nv:["ReportIssue","TenantHome"]},
+{i:"tn-invite-accept",n:"Invite Accept",s:"tenant",f:"src/screens/tenant/PropertyInviteAcceptScreen.tsx",h:null,
+e:[["im","Home icon (blue)"],["tx","Property name"],["wc","Address + Unit + Landlord"],["wc","You're invited! (blue)"],["bp","Accept Invite"],["bs","Decline"]],
+st:["Loading","Error + retry","Accepting overlay"],nv:["Main (Tenant)","Auth"]},
+// SHARED
+{i:"sh-profile",n:"Profile",s:"shared",f:"src/screens/shared/ProfileScreen.tsx",h:"Profile",
+e:[["im","Avatar (initials)"],["tx","Name + email"],["bg","Landlord / Tenant"],["wc","Edit Profile"],["wc","Security"],["wc","Notifications"],["wc","Help Center"],["wc","Contact Support"],["bd","Sign Out"],["tx","v1.0.0"]],
+st:["Sign out dialog"],nv:["EditProfile","Security","Notifications","HelpCenter","ContactSupport"]},
+{i:"sh-edit-profile",n:"Edit Profile",s:"shared",f:"src/screens/shared/EditProfileScreen.tsx",h:"Edit Profile",
+e:[["im","Avatar (100px)"],["bs","Change Photo"],["in","Full Name"],["in","Email (read-only)"],["in","Phone Number"],["bp","Save Changes"]],
+st:["Saving","Dialog"],nv:["Back"]},
+{i:"sh-security",n:"Security",s:"shared",f:"src/screens/shared/SecurityScreen.tsx",h:"Security",
+e:[["ws","Password"],["wc","Change Password (expand)"],["bp","Send Reset Link"],["ws","Two-Factor Auth"],["wc","Authenticator (Coming Soon)"],["ws","Biometric Login"],["wc","Face ID (Coming Soon)"]],
+st:["Expanded","Toast","Sending"],nv:["Back"]},
+{i:"sh-notifications",n:"Notifications",s:"shared",f:"src/screens/shared/NotificationsScreen.tsx",h:"Notifications",
+e:[["ws","Push Notifications"],["tg","Maintenance Updates"],["tg","Messages"],["tg","Reminders"],["ws","Email Notifications"],["tg","Weekly Summary"],["tg","Product Updates"],["wc","Important alerts always sent"]],
+st:[],nv:["Back"]},
+{i:"sh-help",n:"Help Center",s:"shared",f:"src/screens/shared/HelpCenterScreen.tsx",h:"Help Center",
+e:[["in","Search help articles..."],["ws","Quick Links"],["wc","Getting Started"],["wc","Maintenance Guide"],["wc","Payments & Billing"],["ws","FAQs (accordion)"],["wc","Still need help?"]],
+st:["Search filtering","FAQ expanded"],nv:["Back"]},
+{i:"sh-contact",n:"Contact Support",s:"shared",f:"src/screens/shared/ContactSupportScreen.tsx",h:"Contact Support",
+e:[["wc","Email: support@..."],["ws","Category"],["ta","General|Bug|Billing|Feature|Account"],["in","Subject"],["in","Message"],["bp","Send Message"],["wc","Response: 24-48 hours"]],
+st:["Sending","Validation"],nv:["Back"]}
+];
+
+const F=[
+{n:"New User Registration",items:[
+["welcome","Welcome","auth"],["Get Started"],["onb-welcome","Onboarding","onboarding"],["Continue"],
+["onb-name","Enter Name","onboarding"],["Continue"],["onb-account","Create Account","onboarding"],
+["Sign Up"],["onb-role","Choose Role","onboarding"]]},
+{n:"Landlord Onboarding",items:[
+["onb-role","Choose Role","onboarding"],["Landlord"],["ll-onb-welcome","LL Welcome","onboarding"],
+["Continue"],["ll-prop-intro","Property Intro","onboarding"],["Start"],["ll-prop-basics","Address","landlord"],
+["Continue"],["ll-prop-attrs","Attributes","landlord"],["Continue"],["ll-prop-areas","Rooms","landlord"],
+["Continue"],["ll-prop-assets","Assets","landlord"],["Continue"],["ll-prop-review","Review","landlord"],
+["Submit"],["ll-tenant-invite","Invite","onboarding"],["Done"],["ll-onb-success","Success!","onboarding"],
+["Dashboard"],["ll-home","Landlord Home","landlord"]]},
+{n:"Tenant Onboarding",items:[
+["onb-role","Choose Role","onboarding"],["Tenant"],["tn-onb-welcome","TN Welcome","onboarding"],
+["Connect"],["tn-invite-accept","Accept Invite","tenant"],["Accept"],
+["tn-onb-success","Success!","onboarding"],["Home"],["tn-home","Tenant Home","tenant"]]},
+{n:"Landlord: Property Setup (Post-Onboarding)",items:[
+["ll-home","Home","landlord"],["Add Property"],["ll-prop-basics","Address","landlord"],
+["Continue"],["ll-prop-attrs","Attributes","landlord"],["Continue"],["ll-prop-areas","Rooms","landlord"],
+["Continue"],["ll-prop-assets","Assets","landlord"],["Continue"],["ll-prop-review","Review","landlord"],
+["Submit"],["ll-prop-details","Details","landlord"]]},
+{n:"Landlord: Extended Documentation",items:[
+["ll-prop-photos","Photos","landlord"],["Continue"],["ll-room-select","Room Select","landlord"],
+["Continue"],["ll-room-photo","Room Photos","landlord"],["Continue"],["ll-asset-scan","Scan","landlord"],
+["Continue"],["ll-asset-details","Details","landlord"],["Continue"],["ll-asset-photos","Photos","landlord"],
+["Continue"],["ll-review-submit","Submit","landlord"]]},
+{n:"Landlord: Maintenance Handling",items:[
+["ll-home","Home","landlord"],["View Request"],["ll-dashboard","Requests","landlord"],["Select"],
+["ll-case-detail","Case Detail","landlord"],["Message"],["ll-chat","Chat","landlord"]]},
+{n:"Tenant: Report Issue",items:[
+["tn-home","Home","tenant"],["Report"],["tn-report","Report Issue","tenant"],["Review"],
+["tn-review","Review","tenant"],["Submit"],["tn-success","Success!","tenant"],["View"],
+["tn-maint-status","Status","tenant"],["Details"],["tn-followup","Follow Up","tenant"],
+["Message"],["tn-comm","Messages","tenant"]]},
+{n:"Tenant: Link Property (Code)",items:[
+["tn-home","Home","tenant"],["No Property"],["tn-code-entry","Enter Code","tenant"],
+["Submit"],["tn-prop-welcome","Welcome","tenant"],["Home"],["tn-home","Home","tenant"]]},
+{n:"Profile & Settings",items:[
+["sh-profile","Profile","shared"],["Edit"],["sh-edit-profile","Edit Profile","shared"],
+["Back"],["sh-profile","Profile","shared"],["Security"],["sh-security","Security","shared"],
+["Back"],["sh-profile","Profile","shared"],["Notif."],["sh-notifications","Notifications","shared"]]},
+{n:"Landlord Tab Bar (5 tabs)",items:[
+["ll-home","Home","landlord"],["tab"],["ll-dashboard","Requests","landlord"],["tab"],
+["ll-prop-mgmt","Properties","landlord"],["tab"],["ll-comm","Messages","landlord"],
+["tab"],["sh-profile","Profile","shared"]]},
+{n:"Tenant Tab Bar (4 tabs)",items:[
+["tn-home","Home","tenant"],["tab"],["tn-maint-status","Requests","tenant"],["tab"],
+["tn-comm","Messages","tenant"],["tab"],["sh-profile","Profile","shared"]]}
+];
+
+// Render
+function re(e){
+  switch(e[0]){
+    case'tx':return'<div class="wire-el"><span style="width:12px;text-align:center;color:#475569;font-size:9px">T</span> '+esc(e[1])+'</div>';
+    case'in':return'<div class="wi">'+esc(e[1])+'</div>';
+    case'bp':return'<div class="wb wb-p">'+esc(e[1])+'</div>';
+    case'bs':return'<div class="wb wb-s">'+esc(e[1])+'</div>';
+    case'bg':return'<div class="wb wb-g">'+esc(e[1])+'</div>';
+    case'bd':return'<div class="wb wb-d">'+esc(e[1])+'</div>';
+    case'wc':return'<div class="wc">'+esc(e[1])+'</div>';
+    case'ws':return'<div class="ws">'+esc(e[1])+'</div>';
+    case'im':return'<div class="wim">'+esc(e[1])+'</div>';
+    case'ta':return'<div class="wt">'+e[1].split('|').map(function(t,i){return'<span'+(i===0?' style="background:#4f46e5;color:#fff"':'')+'>'+esc(t.trim())+'</span>'}).join('')+'</div>';
+    case'tg':return'<div class="wtg">'+esc(e[1])+'<i></i></div>';
+    case'dv':return'<div style="text-align:center;color:#475569;font-size:9px;padding:2px 0">&mdash; '+esc(e[1])+' &mdash;</div>';
+    case'li':return'<div style="border-left:2px solid #334155;padding-left:6px;margin:2px 0">'+e[1].split('|').map(function(x){return'<div style="font-size:9px;color:#94a3b8;padding:1px 0">'+esc(x.trim())+'</div>'}).join('')+'</div>';
+    default:return'<div class="wire-el">'+esc(e[1])+'</div>';
+  }
+}
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function tp(s){return{auth:['tp-a','Auth'],onboarding:['tp-o','Onboarding'],landlord:['tp-l','Landlord'],tenant:['tp-t','Tenant'],shared:['tp-s','Shared']}[s]||['tp-s','?'];}
+function fp(s){return{auth:'fp-a',onboarding:'fp-o',landlord:'fp-l',tenant:'fp-t',shared:'fp-s'}[s]||'fp-s';}
+
+function build(){
+  var app=document.getElementById('app');
+  var secs={auth:'Auth & Login',onboarding:'Onboarding',landlord:'Landlord Screens',tenant:'Tenant Screens',shared:'Shared Screens'};
+  var html='';
+  for(var k in secs){
+    var items=S.filter(function(s){return s.s===k});
+    html+='<div class="sec" data-section="'+k+'"><div class="sec-title">'+secs[k]+' <b>'+items.length+'</b></div><div class="grid">';
+    items.forEach(function(s){
+      var t=tp(s.s);
+      html+='<div class="card" data-section="'+s.s+'" data-id="'+s.i+'" onclick="om(\''+s.i+'\')">';
+      html+='<div class="ch"><h3>'+esc(s.n)+'</h3><span class="tp '+t[0]+'">'+t[1]+'</span></div>';
+      html+='<div class="cb">';
+      if(s.h)html+='<div class="wh">'+esc(s.h)+'</div>';
+      s.e.slice(0,8).forEach(function(el){html+=re(el)});
+      if(s.e.length>8)html+='<div class="more">+'+( s.e.length-8)+' more...</div>';
+      html+='</div>';
+      if(s.nv.length){
+        html+='<div class="cn">';
+        s.nv.slice(0,4).forEach(function(n){html+='<span class="nt" onclick="event.stopPropagation();hl(\''+esc(n)+'\')">'+esc(n)+'</span>'});
+        if(s.nv.length>4)html+='<span class="nt">+'+( s.nv.length-4)+'</span>';
+        html+='</div>';
+      }
+      html+='</div>';
+    });
+    html+='</div></div>';
+  }
+  // Flows
+  html+='<div class="fs sec" data-section="all"><h2>User Flows</h2>';
+  F.forEach(function(f){
+    html+='<div class="fg"><h3>'+esc(f.n)+'</h3><div class="fr">';
+    f.items.forEach(function(it){
+      if(typeof it==='string'||it.length===1){
+        var lbl=typeof it==='string'?it:it[0];
+        html+='<span class="fa">&rarr;</span><span class="fl">'+esc(lbl)+'</span><span class="fa">&rarr;</span>';
+      }else{
+        html+='<span class="fp '+fp(it[2])+'" onclick="om(\''+it[0]+'\')">'+esc(it[1])+'</span>';
+      }
+    });
+    html+='</div></div>';
+  });
+  html+='</div>';
+  // Use createRange to avoid innerHTML
+  var range=document.createRange();
+  var frag=range.createContextualFragment(html);
+  app.appendChild(frag);
+}
+
+function om(id){
+  var s=S.find(function(x){return x.i===id});
+  if(!s)return;
+  var t=tp(s.s);
+  var html='<button class="mx" style="position:absolute;top:12px;right:12px;background:#334155;border:none;color:#e2e8f0;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px" onclick="cm()">&times;</button>';
+  html+='<div class="mx"><div><h2>'+esc(s.n)+' <span class="tp '+t[0]+'">'+t[1]+'</span></h2><small>'+esc(s.f)+'</small></div></div>';
+  html+='<div class="mb">';
+  if(s.h)html+='<div class="wh">'+esc(s.h)+'</div>';
+  s.e.forEach(function(el){html+=re(el)});
+  html+='</div>';
+  if(s.st.length){
+    html+='<div class="ms"><h4>States</h4>';
+    s.st.forEach(function(st){html+='<div>&bull; '+esc(st)+'</div>'});
+    html+='</div>';
+  }
+  if(s.nv.length){
+    html+='<div class="mn"><h4>Navigates To</h4><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    s.nv.forEach(function(n){html+='<span class="nt" onclick="cm();hl(\''+esc(n)+'\')">'+esc(n)+'</span>'});
+    html+='</div></div>';
+  }
+  var mc=document.getElementById('mc');
+  var range=document.createRange();
+  var frag=range.createContextualFragment(html);
+  while(mc.firstChild)mc.removeChild(mc.firstChild);
+  mc.appendChild(frag);
+  document.getElementById('mo').classList.add('open');
+}
+
+function cm(){document.getElementById('mo').classList.remove('open')}
+function hl(name){
+  document.querySelectorAll('.card').forEach(function(c){c.classList.remove('hl')});
+  var nl=name.toLowerCase().replace(/[^a-z]/g,'');
+  document.querySelectorAll('.card').forEach(function(c){
+    var cn=c.querySelector('h3');
+    if(!cn)return;
+    var ct=cn.textContent.toLowerCase().replace(/[^a-z]/g,'');
+    if(ct.indexOf(nl)>=0||nl.indexOf(ct)>=0){c.classList.add('hl');c.scrollIntoView({behavior:'smooth',block:'center'})}
+  });
+  setTimeout(function(){document.querySelectorAll('.card.hl').forEach(function(c){c.classList.remove('hl')})},3000);
+}
+function filt(s,btn){
+  document.querySelectorAll('.fbtn').forEach(function(b){b.classList.remove('on')});
+  btn.classList.add('on');
+  document.querySelectorAll('.sec').forEach(function(el){
+    if(s==='all')el.style.display='';
+    else el.style.display=(el.dataset.section===s||el.dataset.section==='all')?'':'none';
+  });
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')cm()});
+build();
+</script>
+</body>
+</html>

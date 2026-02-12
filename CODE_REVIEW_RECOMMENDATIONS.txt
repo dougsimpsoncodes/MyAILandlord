@@ -1,0 +1,266 @@
+═══════════════════════════════════════════════════════════════════
+  MyAILandlord / MiCasa — Code Review Recommendations
+  Generated: Feb 11, 2026
+  Scope: 54 screens, 5 review categories, React Native + Supabase
+═══════════════════════════════════════════════════════════════════
+
+This document consolidates findings from 5 independent code review
+agents covering Architecture, Security, Performance, Navigation/UX,
+and TypeScript Type Safety.
+
+Total issues found: 17 Critical, 19 High, 28 Medium, 12 Low
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHASE 1 — IMMEDIATE (Crash Prevention & Security)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. ROTATE EXPOSED SECRETS [CRITICAL/SECURITY]
+   Files: .env:5-31
+   - EXPO_PUBLIC_GEMINI_API_KEY is bundled into client JS (extractable)
+   - Service role key + DB password sit alongside client code
+   - Test credentials (email/password) in plaintext
+   Fix: Move service keys to .env.server, proxy Gemini/Maps through
+   Edge Functions, rotate all keys, add pre-commit hook for JWT patterns
+
+2. FIX userId TRUST IN EDGE FUNCTION [HIGH/SECURITY]
+   File: supabase/functions/analyze-maintenance-request/index.ts:55-78
+   - userId taken from request body (untrusted) instead of JWT
+   - Authenticated attacker can probe other users' profiles
+   Fix: Replace `userId` with `userRes.data.user.id` from verified JWT
+
+3. FIX WILDCARD CORS ON 3 EDGE FUNCTIONS [HIGH/SECURITY]
+   Files: send-invite-email:18, extract-asset-label:5, cleanup-test-data:9
+   - Access-Control-Allow-Origin: '*' on all three
+   - cleanup-test-data also has weak auth (.includes() check that
+     passes if env var is empty)
+   Fix: Implement origin allowlisting, use exact Bearer match for auth
+
+4. REMOVE/IMPLEMENT ORPHANED SCREENS [CRITICAL/NAV]
+   File: navigation/MainStack.tsx:120-131
+   - UnitSelection and PropertySearch defined in TenantStackParamList
+     but never registered as screens — navigation will crash the app
+   Fix: Either implement the screens or remove navigation calls in
+   PropertyCodeEntryScreen.tsx:66,170
+
+5. FIX SCREEN NAME MISMATCHES [HIGH/NAV]
+   - SubmissionSuccessScreen.tsx:24 navigates to 'MaintenanceStatus'
+     but screen is registered as 'TenantRequestsMain'
+   - PropertyWelcomeScreen.tsx:25 navigates to 'Home' but screen
+     is registered as 'TenantHomeMain'
+   Fix: Update all navigation targets to match registered names
+
+6. FIX SILENT FAILURES [CRITICAL/UX]
+   File: screens/landlord/PropertyDetailsScreen.tsx:75-83
+   - Error caught and logged but user sees infinite loading spinner
+   - Multiple screens have loading states but no error states
+   Fix: Add error state + retry button to all data-loading screens
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHASE 2 — THIS WEEK (Architecture & Performance)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. EXTRACT COMPONENT DEFINED INSIDE RENDER [CRITICAL/ARCH]
+   File: screens/landlord/PropertyAreasScreen.tsx:250-380
+   - PropertyPhotosManager defined inside PropertyAreasScreen
+   - React recreates it on every render → unmount/remount, state loss
+   Fix: Move to separate file, wrap with React.memo
+
+8. MEMOIZE AUTH CONTEXT VALUE [CRITICAL/PERF]
+   File: context/UnifiedAuthContext.tsx:437-452
+   - Context value object created inline without useMemo
+   - Every state change cascades re-renders across entire app tree
+   Fix: Wrap value in useMemo with proper dependency array
+
+9. DELETE DEPRECATED AUTH CONTEXTS [HIGH/ARCH]
+   Files: context/SupabaseAuthContext.tsx, context/ProfileContext.tsx
+   - Both marked deprecated but still imported in 10+ files
+   - Both fetch profile data independently → race conditions
+   - SupabaseAuthContext exposes debug state on globalThis:256-264
+   Fix: Migrate all useAppAuth()/useProfile() → useUnifiedAuth(),
+   delete deprecated files, remove from provider tree
+
+10. CONSOLIDATE DUPLICATE ROOM GENERATION [HIGH/ARCH]
+    File: screens/landlord/PropertyAreasScreen.tsx:500-710
+    - incrementRoom (500-596) and decrementRoom (604-710) contain
+      210 lines of identical area generation logic
+    Fix: Extract to useGeneratedAreas() hook, single source of truth
+
+11. ADD React.memo TO LIST ITEMS [CRITICAL/PERF]
+    Finding: ZERO uses of React.memo in entire codebase
+    - Every list item re-renders when parent state changes
+    - PropertyManagementScreen: 20 property cards, ~400-500ms per change
+    Fix: Create PropertyCard, RequestCard, MessageBubble as
+    React.memo components with stable callback props
+
+12. ADD DATA CACHING [CRITICAL/PERF]
+    Files: PropertyManagementScreen, DashboardScreen, LandlordHomeScreen
+    - Every useFocusEffect refetches ALL data (no cache)
+    - ~500ms network delay on every tab switch
+    Fix: Implement React Query with 5-min staleTime, or add
+    simple TTL cache layer
+
+13. FIX IMAGE CACHE-BUSTING [HIGH/PERF]
+    File: components/shared/PropertyImage.tsx:38-45
+    - setCacheKey(Date.now()) forces new fetch even if address unchanged
+    Fix: Only update cache key when address actually changes
+
+14. SPLIT MONOLITH FILES [CRITICAL/ARCH]
+    13 files over 300-line limit:
+    - PropertyAreasScreen.tsx: 2,322 lines (8x limit)
+    - AddAssetScreen.tsx: 1,188 lines (4x limit)
+    - PropertyAssetsListScreen.tsx: 1,129 lines (4x limit)
+    - PropertyManagementScreen.tsx: 923 lines (3x limit)
+    - + 9 more files between 593-757 lines
+    Fix: Break into component/hook/util directories per screen
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHASE 3 — NEXT SPRINT (Hardening & Type Safety)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+15. ADD BRUTE FORCE PROTECTION [HIGH/SECURITY]
+    File: screens/AuthScreen.tsx:55-82
+    - No rate limiting on login attempts
+    - Error messages from Supabase reveal valid vs invalid emails
+    Fix: Add exponential backoff after 3 failures, normalize errors
+    to "Invalid email or password" regardless of actual error
+
+16. FIX INVITE TOKEN LOGGING [HIGH/SECURITY]
+    File: screens/landlord/InviteTenantScreen.tsx:104,145
+    - Invite URL logged unsanitized (custom scheme bypasses sanitizer)
+    - Email validation only checks .includes('@')
+    Fix: Don't log invite URLs, use validateEmail() from utils/helpers
+
+17. REPLACE DIRECT console.log CALLS [MEDIUM/SECURITY]
+    Finding: 40+ console.log/warn/error calls bypass centralized logger
+    Files: supabaseClient.ts:25, PropertyAssetsListScreen.tsx:84,
+    PropertyAreasScreen.tsx:996, LandlordHomeScreen.tsx:150, + more
+    Fix: Replace all with log.* from src/lib/log.ts, add ESLint no-console rule
+
+18. FIX NAVIGATION PARAM TYPES [CRITICAL/TS]
+    File: navigation/AuthStack.tsx:43-68
+    - All route params typed as `any` (8 occurrences)
+    - PropertyData, PropertyArea, InventoryItem used as `any`
+    Fix: Import proper types from types/property.ts for all params
+
+19. TYPE API RESPONSES [CRITICAL/TS]
+    File: screens/landlord/LandlordHomeScreen.tsx:71-91
+    - .map((p: any) => ...) on API responses throughout codebase
+    - 158 total `any` types across 55 files
+    Fix: Define return types in api/client.ts, create types/api.ts
+
+20. FIX ERROR HANDLING TYPES [HIGH/TS]
+    Files: 35+ catch blocks use `error: any` instead of `error: unknown`
+    - Worst: PhotoService.ts (4 occurrences), retryWithBackoff.ts (2),
+      dataClearer.ts (4)
+    Fix: Change all to `catch (error: unknown)`, use instanceof Error
+
+21. REPLACE BOOLEAN FLAGS WITH STATE MACHINE [MEDIUM/ARCH]
+    File: screens/landlord/PropertyAreasScreen.tsx
+    - 5 boolean flags: isSubmitting, isValidating, isDraftLoading,
+      isSaving, uploadingPhoto — mutually exclusive but not enforced
+    Fix: Single ScreenState discriminated union type
+
+22. FIX DEEP LINK RACE CONDITION [HIGH/NAV]
+    File: AppNavigator.tsx:80-99
+    - 250ms artificial delay for "Expo cold start timing"
+    - Missing deep link routes for PropertyDetails, CaseDetail, FollowUp
+    Fix: Event-driven approach, add missing screen paths
+
+23. STANDARDIZE FORM VALIDATION [HIGH/UX]
+    Finding: Screens use different validation methods:
+    - Alert.alert, custom ConfirmDialog, inline error state, no validation
+    Fix: Validate on blur, show inline errors, prevent submit if invalid
+
+24. ADD MISSING ERROR STATES [HIGH/UX]
+    Screens with loading but no error states:
+    - PropertyDetailsScreen, PropertyManagementScreen,
+      LandlordHomeScreen, PropertyAreasScreen
+    Fix: Add error state variable + retry button to all loading screens
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PHASE 4 — CLEANUP (Technical Debt)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+25. REMOVE DEAD CODE
+    - SupabaseWrapper export (0 usages)
+    - Unused functions in PropertyAreasScreen
+    - Deprecated context files after migration
+
+26. CONSOLIDATE DUPLICATE HELPERS
+    Functions duplicated in 3+ screens:
+    - formatDate, capitalizeFirst, getStatusColor, getStatusText
+    Fix: Create src/utils/formatting.ts with single implementations
+
+27. FIX MISSING DEPENDENCY ARRAYS
+    - DashboardScreen.tsx:51-55 (loadCases missing)
+    - PropertyManagementScreen.tsx:57-61 (loadProperties missing)
+    - PropertyAreasScreen.tsx:234-238 (draftState, updateCurrentStep missing)
+    Fix: Add proper deps, add ESLint react-hooks/exhaustive-deps rule
+
+28. STORE INVITE TOKENS SECURELY [MEDIUM/SECURITY]
+    File: services/storage/PendingInviteService.ts:66-72
+    - Raw token stored in plaintext AsyncStorage
+    Fix: Use expo-secure-store on native
+
+29. CONSOLIDATE RLS MIGRATIONS [MEDIUM/SECURITY]
+    Finding: 10+ RLS migration files, risk of legacy Clerk-based
+    policies still active alongside Supabase Auth policies
+    Fix: Verify live policies with pg_policies query, consolidate
+    into single definitive migration for SwiftUI rebuild
+
+30. FIX PUSH NOTIFICATION AUTH [MEDIUM/SECURITY]
+    File: supabase/functions/push-notification/index.ts:30-33
+    - Authorization header existence-only check (not verified)
+    - Full webhook payload logged in plaintext
+    Fix: Verify auth header matches service role key, reduce logging
+
+31. ADD AUTO-LOGIN DEV GUARD [LOW/SECURITY]
+    File: screens/AuthScreen.tsx:121-133
+    - AUTO_LOGIN_AFTER_SIGNUP retry loop could leak to production
+    Fix: Guard with `if (AUTO_LOGIN_AFTER_SIGNUP && __DEV__)`
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ KEY METRICS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Architecture:
+  - 13 files over 300-line limit (worst: 2,322 lines)
+  - 3 auth contexts (only 1 needed)
+  - 210 lines duplicated code in room generation
+  - Zero React.memo usage in entire codebase
+
+Security:
+  - 2 critical (exposed API keys, client-bundled secrets)
+  - 7 high (userId trust, wildcard CORS, weak auth, no rate limiting)
+  - 8 medium (plaintext tokens, bypassed logging, RLS drift)
+
+Performance:
+  - Zero data caching (every focus refetches)
+  - Auth context cascades re-renders to entire tree
+  - Image cache-busting with Date.now()
+  - No list item memoization
+
+Navigation:
+  - 2 orphaned screens (will crash)
+  - 2 screen name mismatches (will fail silently)
+  - Deep link race condition with 250ms delay
+  - Missing deep link routes for key screens
+
+TypeScript:
+  - 158 `any` types across 55 files
+  - 35+ catch blocks with `error: any`
+  - Navigation params typed as `any` (8 route definitions)
+  - API responses untyped throughout
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ NOTE: This React Native app is being retired in favor of a
+ SwiftUI rebuild (MiCasa). These fixes should inform the SwiftUI
+ architecture to avoid repeating the same patterns. The Supabase
+ backend (Edge Functions, RLS, migrations) carries forward and
+ the security/backend fixes are still relevant.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

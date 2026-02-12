@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MyAI Landlord - User Flow Wireframe (Current)</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --accent: #0f766e;
+      --accent-2: #1d4ed8;
+      --warn: #b45309;
+      --danger: #b91c1c;
+      --shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top right, #e0ecff 0%, var(--bg) 40%, #edf4f7 100%);
+      color: var(--ink);
+      font-family: "Avenir Next", "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .header {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(1.3rem, 2.3vw, 1.9rem);
+      letter-spacing: 0.01em;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .badge {
+      background: #e0f2fe;
+      border: 1px solid #bae6fd;
+      color: #0c4a6e;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: 1.35fr 1fr;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+    }
+
+    .panel p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .step {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f9fafb;
+      padding: 10px 10px 10px 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      bottom: -14px;
+      width: 2px;
+      height: 14px;
+      background: var(--line);
+    }
+
+    .step:last-child::after { display: none; }
+
+    .step-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .num {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #ecfeff;
+      border: 1px solid #99f6e4;
+      color: #115e59;
+      flex: 0 0 auto;
+    }
+
+    .name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-right: auto;
+    }
+
+    .route {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+
+    .minimap {
+      border: 1px solid #d4d4d8;
+      border-radius: 8px;
+      background: white;
+      min-height: 78px;
+      display: grid;
+      grid-template-rows: 16px 1fr 14px;
+      overflow: hidden;
+    }
+
+    .mini-header { background: #e2e8f0; }
+
+    .mini-body {
+      display: grid;
+      gap: 4px;
+      padding: 7px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .mini-box {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 4px;
+      min-height: 15px;
+    }
+
+    .mini-footer { background: #f1f5f9; }
+
+    .step-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 10px;
+      background: #ffffff;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    button:hover { border-color: var(--accent-2); }
+
+    button.primary {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1e3a8a;
+    }
+
+    .inventory {
+      display: grid;
+      gap: 12px;
+      max-height: 760px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .group {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #fafafa;
+    }
+
+    .group h3 {
+      margin: 0 0 8px;
+      font-size: 0.93rem;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+
+    .card {
+      border: 1px solid #d4d4d8;
+      border-radius: 8px;
+      background: white;
+      padding: 8px;
+      display: grid;
+      gap: 5px;
+      min-height: 86px;
+    }
+
+    .card .r {
+      font-size: 0.68rem;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .card .t {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .card button {
+      margin-top: auto;
+      font-size: 0.75rem;
+      padding: 4px 6px;
+    }
+
+    .review {
+      display: grid;
+      gap: 8px;
+    }
+
+    .review-item {
+      border-left: 4px solid var(--danger);
+      background: #fff7ed;
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 0.86rem;
+    }
+
+    .review-item.medium {
+      border-left-color: var(--warn);
+      background: #fffbeb;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      z-index: 1000;
+    }
+
+    .modal.open { display: flex; }
+
+    .dialog {
+      width: min(980px, 98vw);
+      max-height: 94vh;
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 20px 46px rgba(2, 6, 23, 0.36);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .dialog-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wire {
+      border: 2px solid #9ca3af;
+      border-radius: 12px;
+      background: #fcfcfd;
+      min-height: 520px;
+      display: grid;
+      grid-template-rows: 58px 1fr 64px;
+      overflow: hidden;
+    }
+
+    .wire-header {
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid #cbd5e1;
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .wire-body {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      align-content: start;
+      grid-template-columns: repeat(12, 1fr);
+    }
+
+    .block {
+      border: 1px dashed #94a3b8;
+      background: #f8fafc;
+      border-radius: 8px;
+      min-height: 60px;
+      padding: 6px;
+      font-size: 0.74rem;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .wire-footer {
+      border-top: 1px solid #cbd5e1;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      font-size: 0.81rem;
+      color: #374151;
+    }
+
+    .pill {
+      border: 1px solid #93c5fd;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      padding: 2px 8px;
+      font-size: 0.74rem;
+    }
+
+    @media (max-width: 1020px) {
+      .grid { grid-template-columns: 1fr; }
+      .inventory { max-height: none; }
+      .wire { min-height: 460px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="header">
+      <h1 class="title">MyAI Landlord: Current User-Flow Wireframe</h1>
+      <div class="meta">
+        <span class="badge">Primary Journey: First-Time Landlord</span>
+        <span>Branch: <strong>fix/ios-keyboard-inset-auth</strong></span>
+        <span>Commit: <strong>c2ca99b</strong></span>
+        <span>Scope: current wired screens only</span>
+      </div>
+      <p>This is a clickable flow audit. Click any minimized page to open a full-page wireframe and review transitions.</p>
+    </section>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Step Flow (Happy Path + Invite Sent State)</h2>
+        <p>Numbers show sequence from app launch to invite-created/sent state.</p>
+        <div id="timeline" class="timeline"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Flow Risks Found in Code Review</h2>
+        <div class="review">
+          <div class="review-item">
+            <strong>High:</strong> `PropertyReview` navigates to `PropertyDetails`, but `AuthStack` does not register `PropertyDetails`.
+          </div>
+          <div class="review-item">
+            <strong>High:</strong> `LandlordRootStack` onboarding path omits `PropertyReview`, but `PropertyAssets` navigates there.
+          </div>
+          <div class="review-item">
+            <strong>High:</strong> onboarding completion logic diverges because property can be created before review.
+          </div>
+          <div class="review-item medium">
+            <strong>Medium:</strong> two invite implementations with conflicting URL strategies; one uses hardcoded dev IP.
+          </div>
+          <div class="review-item medium">
+            <strong>Low:</strong> intro copy says 3 steps, but implemented flow has extra screens.
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel">
+      <h2>All Current Pages (Inventory)</h2>
+      <p>Every screen currently wired in Root/Auth/Main navigation files. Click any card for a full-page wireframe.</p>
+      <div id="inventory" class="inventory"></div>
+    </section>
+  </div>
+
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <div class="dialog-top">
+        <div>
+          <div id="dialogTitle" style="font-weight: 800; font-size: 1rem;">Page Wireframe</div>
+          <div id="dialogMeta" style="font-size: 0.85rem; color: var(--muted);"></div>
+        </div>
+        <button id="closeModal" class="primary">Close</button>
+      </div>
+
+      <div class="wire">
+        <div class="wire-header">
+          <span id="wireHeader">Header</span>
+          <span class="pill" id="wireRoute">route</span>
+        </div>
+        <div class="wire-body" id="wireBody"></div>
+        <div class="wire-footer">
+          <span id="wireState">State</span>
+          <span id="wireNext">Next</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const primaryFlow = [
+      { step: 1, route: "Bootstrap", screen: "BootstrapScreen", group: "Root", state: "App launch decision", next: "Auth" },
+      { step: 2, route: "OnboardingWelcome", screen: "OnboardingWelcomeScreen", group: "Auth", state: "Entry CTA", next: "OnboardingName" },
+      { step: 3, route: "OnboardingName", screen: "OnboardingNameScreen", group: "Auth", state: "Name collected", next: "OnboardingAccount" },
+      { step: 4, route: "OnboardingAccount", screen: "OnboardingAccountScreen", group: "Auth", state: "Account created", next: "OnboardingRole" },
+      { step: 5, route: "OnboardingRole", screen: "OnboardingRoleScreen", group: "Auth", state: "Role = landlord", next: "LandlordOnboardingWelcome" },
+      { step: 6, route: "LandlordOnboardingWelcome", screen: "LandlordOnboardingWelcomeScreen", group: "Auth", state: "Role intro", next: "LandlordPropertyIntro" },
+      { step: 7, route: "LandlordPropertyIntro", screen: "LandlordPropertyIntroScreen", group: "Auth", state: "Property setup intro", next: "PropertyBasics" },
+      { step: 8, route: "PropertyBasics", screen: "PropertyBasicsScreen", group: "Auth/Main", state: "Address + name", next: "PropertyAttributes" },
+      { step: 9, route: "PropertyAttributes", screen: "PropertyAttributesScreen", group: "Auth/Main", state: "Type + bed/bath", next: "PropertyAreas" },
+      { step: 10, route: "PropertyAreas", screen: "PropertyAreasScreen", group: "Auth/Main", state: "Rooms configured", next: "PropertyAssets" },
+      { step: 11, route: "PropertyAssets", screen: "PropertyAssetsListScreen", group: "Auth/Main", state: "Inventory added", next: "PropertyReview" },
+      { step: 12, route: "PropertyReview", screen: "PropertyReviewScreen", group: "Auth/Main", state: "Submit property", next: "PropertyDetails (intended)" },
+      { step: 13, route: "PropertyDetails", screen: "PropertyDetailsScreen", group: "Main", state: "Property live", next: "InviteTenant" },
+      { step: 14, route: "InviteTenant", screen: "InviteTenantScreen", group: "Main", state: "Invite code/link generated", next: "Invite status visible (sent/pending)" }
+    ];
+
+    const allScreens = [
+      { group: "Root", items: [
+        ["Bootstrap", "BootstrapScreen"], ["Auth", "AuthStack"], ["PropertyInviteAccept", "PropertyInviteAcceptScreen"], ["Main", "MainStack"]
+      ]},
+      { group: "Auth / Onboarding", items: [
+        ["Welcome", "WelcomeScreen"], ["OnboardingWelcome", "OnboardingWelcomeScreen"], ["OnboardingName", "OnboardingNameScreen"], ["OnboardingAccount", "OnboardingAccountScreen"],
+        ["OnboardingRole", "OnboardingRoleScreen"], ["LandlordOnboardingWelcome", "LandlordOnboardingWelcomeScreen"], ["LandlordPropertyIntro", "LandlordPropertyIntroScreen"],
+        ["PropertyBasics", "PropertyBasicsScreen"], ["PropertyAttributes", "PropertyAttributesScreen"], ["PropertyAreas", "PropertyAreasScreen"], ["PropertyAssets", "PropertyAssetsListScreen"],
+        ["PropertyReview", "PropertyReviewScreen"], ["LandlordTenantInvite", "LandlordTenantInviteScreen"], ["LandlordOnboardingSuccess", "LandlordOnboardingSuccessScreen"],
+        ["TenantOnboardingWelcome", "TenantOnboardingWelcomeScreen"], ["TenantInviteRoommate", "TenantInviteRoommateScreen"], ["TenantOnboardingSuccess", "TenantOnboardingSuccessScreen"],
+        ["AuthForm", "AuthScreen"], ["Login", "AuthScreen"], ["SignUp", "AuthScreen"], ["AuthCallback", "AuthCallbackScreen"], ["PropertyInviteAccept", "PropertyInviteAcceptScreen"]
+      ]},
+      { group: "Landlord Main", items: [
+        ["LandlordHomeMain", "LandlordHomeScreen"], ["Dashboard", "DashboardScreen"], ["PropertyManagement", "PropertyManagementScreen"], ["PropertyManagementMain", "PropertyManagementScreen"],
+        ["AddProperty", "PropertyBasicsScreen"], ["PropertyDetails", "PropertyDetailsScreen"], ["PropertyBasics", "PropertyBasicsScreen"], ["PropertyAttributes", "PropertyAttributesScreen"],
+        ["PropertyAreas", "PropertyAreasScreen"], ["PropertyAssets", "PropertyAssetsListScreen"], ["PropertyReview", "PropertyReviewScreen"], ["AddAsset", "AddAssetScreen"],
+        ["InviteTenant", "InviteTenantScreen"], ["PropertyPhotos", "PropertyPhotosScreen"], ["RoomSelection", "RoomSelectionScreen"], ["RoomPhotography", "RoomPhotographyScreen"],
+        ["AssetScanning", "AssetScanningScreen"], ["AssetDetails", "AssetDetailsScreen"], ["AssetPhotos", "AssetPhotosScreen"], ["ReviewSubmit", "ReviewSubmitScreen"],
+        ["LandlordMessagesMain", "LandlordCommunicationScreen"], ["LandlordRequestsMain", "DashboardScreen"], ["CaseDetail", "CaseDetailScreen"], ["LandlordChat", "LandlordChatScreen"],
+        ["LandlordProfileMain", "ProfileScreen"], ["EditProfile", "EditProfileScreen"], ["Security", "SecurityScreen"], ["Notifications", "NotificationsScreen"],
+        ["HelpCenter", "HelpCenterScreen"], ["ContactSupport", "ContactSupportScreen"], ["LandlordTenantInvite", "LandlordTenantInviteScreen"], ["LandlordOnboardingSuccess", "LandlordOnboardingSuccessScreen"]
+      ]},
+      { group: "Tenant Main", items: [
+        ["TenantHomeMain", "HomeScreen"], ["ReportIssue", "ReportIssueScreen"], ["ReviewIssue", "ReviewIssueScreen"], ["SubmissionSuccess", "SubmissionSuccessScreen"],
+        ["FollowUp", "FollowUpScreen"], ["ConfirmSubmission", "ConfirmSubmissionScreen"], ["PropertyCodeEntry", "PropertyCodeEntryScreen"], ["PropertyInviteAccept", "PropertyInviteAcceptScreen"],
+        ["PropertyWelcome", "PropertyWelcomeScreen"], ["PropertyInfo", "PropertyInfoScreen"], ["CommunicationHub", "CommunicationHubScreen"], ["TenantRequestsMain", "MaintenanceStatusScreen"],
+        ["TenantMessagesMain", "CommunicationHubScreen"], ["TenantProfileMain", "ProfileScreen"], ["EditProfile", "EditProfileScreen"], ["Security", "SecurityScreen"],
+        ["Notifications", "NotificationsScreen"], ["HelpCenter", "HelpCenterScreen"], ["ContactSupport", "ContactSupportScreen"]
+      ]}
+    ];
+
+    const blocksFor = (route) => {
+      const base = [
+        { w: 12, h: 56, t: "Top Navigation / Header" },
+        { w: 8, h: 110, t: "Primary Content" },
+        { w: 4, h: 110, t: "Secondary Panel" },
+        { w: 12, h: 84, t: "Form / List / CTA Region" },
+        { w: 6, h: 74, t: "Status / Validation" },
+        { w: 6, h: 74, t: "Context / Tips" },
+        { w: 12, h: 62, t: "Bottom Action Bar" }
+      ];
+
+      if (route.includes("Invite")) {
+        return [
+          { w: 12, h: 56, t: "Header + Property Name" },
+          { w: 6, h: 140, t: "Invite Mode (Email vs Code)" },
+          { w: 6, h: 140, t: "Invite Token / URL Card" },
+          { w: 12, h: 90, t: "Send / Copy / Share Actions" },
+          { w: 12, h: 64, t: "Post-send status (sent/pending)" }
+        ];
+      }
+
+      if (route.includes("PropertyReview")) {
+        return [
+          { w: 12, h: 56, t: "Header + Step 4" },
+          { w: 12, h: 88, t: "Property Summary" },
+          { w: 6, h: 150, t: "Areas + Photo Summary" },
+          { w: 6, h: 150, t: "Asset Summary" },
+          { w: 12, h: 72, t: "Submit + Success Transition" }
+        ];
+      }
+
+      if (route.includes("Onboarding")) {
+        return [
+          { w: 12, h: 56, t: "Progress Bar + Header" },
+          { w: 12, h: 98, t: "Hero + Primary Value" },
+          { w: 8, h: 150, t: "Main Form / Selection" },
+          { w: 4, h: 150, t: "Trust / Info Panel" },
+          { w: 12, h: 68, t: "Primary CTA" }
+        ];
+      }
+
+      return base;
+    };
+
+    const renderTimeline = () => {
+      const root = document.getElementById("timeline");
+      root.innerHTML = "";
+
+      primaryFlow.forEach(item => {
+        const el = document.createElement("article");
+        el.className = "step";
+        el.innerHTML = `
+          <div class="step-top">
+            <span class="num">${item.step}</span>
+            <span class="name">${item.route}</span>
+            <span class="route">${item.group}</span>
+          </div>
+          <div class="minimap" aria-hidden="true">
+            <div class="mini-header"></div>
+            <div class="mini-body">
+              <div class="mini-box"></div><div class="mini-box"></div>
+              <div class="mini-box"></div><div class="mini-box"></div>
+            </div>
+            <div class="mini-footer"></div>
+          </div>
+          <div class="step-actions">
+            <button class="primary" data-open="${item.route}" data-screen="${item.screen}" data-state="${item.state}" data-next="${item.next}">Open Full Wireframe</button>
+          </div>
+        `;
+        root.appendChild(el);
+      });
+    };
+
+    const renderInventory = () => {
+      const root = document.getElementById("inventory");
+      root.innerHTML = "";
+
+      allScreens.forEach(section => {
+        const g = document.createElement("section");
+        g.className = "group";
+        g.innerHTML = `<h3>${section.group}</h3>`;
+
+        const cards = document.createElement("div");
+        cards.className = "cards";
+
+        section.items.forEach(([route, screen]) => {
+          const c = document.createElement("article");
+          c.className = "card";
+          c.innerHTML = `
+            <div class="r">${screen}</div>
+            <div class="t">${route}</div>
+            <button data-open="${route}" data-screen="${screen}" data-state="Current wired screen" data-next="Depends on navigator context">Open</button>
+          `;
+          cards.appendChild(c);
+        });
+
+        g.appendChild(cards);
+        root.appendChild(g);
+      });
+    };
+
+    const modal = document.getElementById("modal");
+    const closeModal = document.getElementById("closeModal");
+
+    const openWireframe = (route, screen, state, next) => {
+      document.getElementById("dialogTitle").textContent = `${route} Wireframe`;
+      document.getElementById("dialogMeta").textContent = `${screen} • ${state}`;
+      document.getElementById("wireHeader").textContent = `${route} - Screen Header`;
+      document.getElementById("wireRoute").textContent = route;
+      document.getElementById("wireState").textContent = `State: ${state}`;
+      document.getElementById("wireNext").textContent = `Next: ${next}`;
+
+      const body = document.getElementById("wireBody");
+      body.innerHTML = "";
+      blocksFor(route).forEach(b => {
+        const block = document.createElement("div");
+        block.className = "block";
+        block.style.gridColumn = `span ${b.w}`;
+        block.style.minHeight = `${b.h}px`;
+        block.textContent = b.t;
+        body.appendChild(block);
+      });
+
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+    };
+
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-open]");
+      if (!btn) return;
+      openWireframe(
+        btn.getAttribute("data-open"),
+        btn.getAttribute("data-screen"),
+        btn.getAttribute("data-state"),
+        btn.getAttribute("data-next")
+      );
+    });
+
+    closeModal.addEventListener("click", () => {
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.classList.remove("open");
+        modal.setAttribute("aria-hidden", "true");
+      }
+    });
+
+    renderTimeline();
+    renderInventory();
+  </script>
+</body>
+</html>
