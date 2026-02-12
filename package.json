@@ -31,7 +31,10 @@
     "test:e2e:full": "./scripts/run-live-tests.sh full",
     "test:e2e:mobile": "./scripts/run-live-tests.sh mobile",
     "test:e2e:maintenance": "./scripts/run-live-tests.sh maintenance",
-    "scan:secrets:all": "gitleaks detect --no-git --source . --redact --config .gitleaks.toml --report-path .reports/gitleaks-all.json"
+    "scan:secrets:all": "gitleaks detect --no-git --source . --redact --config .gitleaks.toml --report-path .reports/gitleaks-all.json",
+    "lint:new-lines": "node scripts/ci/lint-new-lines.js",
+    "test:unit:ci": "jest --passWithNoTests --testPathIgnorePatterns=src/__tests__/security/rls/",
+    "stability:gate": "bash scripts/ci/stability-gate.sh"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

@@ -1,47 +1,107 @@
-# CI/CD Pipeline - Quality Gates
-name: CI/CD
+name: Quality Gates
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, ios-mvp]
   push:
     branches: [main]
 
 env:
   NODE_VERSION: '20.x'
 
+concurrency:
+  group: quality-gates-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   typecheck:
-    name: TypeScript Type Check
+    name: Typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
       - run: npm ci --legacy-peer-deps
-      - run: npx tsc --noEmit
+      - run: npm run typecheck
+
+  lint-new-lines:
+    name: Lint (New Lines)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - name: Run lint gate on changed lines
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            npm run lint:new-lines -- "origin/${{ github.base_ref }}"
+          else
+            npm run lint:new-lines -- "${{ github.event.before }}"
+          fi
 
   unit-tests:
-    name: Unit Tests
+    name: Unit Tests (Fast)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
       - run: npm ci --legacy-peer-deps
-      - run: npm run test -- --coverage --passWithNoTests
+      - run: npm run test:unit:ci
 
-  rls-suite:
-    name: RLS Isolation Suite
+  rls-secrets-check:
+    name: RLS Secrets Configured
     runs-on: ubuntu-latest
-    if: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL != '' && secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY != '' && secrets.TEST_TENANT1_JWT != '' && secrets.TEST_TENANT2_JWT != '' }}
+    if: ${{
+      (github.event_name == 'push' && (
+        secrets.STAGING_SUPABASE_URL == '' ||
+        secrets.STAGING_SUPABASE_ANON_KEY == '' ||
+        secrets.TEST_TENANT1_JWT == '' ||
+        secrets.TEST_TENANT2_JWT == ''
+      )) ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name == github.repository && (
+        secrets.STAGING_SUPABASE_URL == '' ||
+        secrets.STAGING_SUPABASE_ANON_KEY == '' ||
+        secrets.TEST_TENANT1_JWT == '' ||
+        secrets.TEST_TENANT2_JWT == ''
+      ))
+    }}
+    steps:
+      - run: |
+          echo "Missing required RLS secrets for internal gate:"
+          echo "- STAGING_SUPABASE_URL"
+          echo "- STAGING_SUPABASE_ANON_KEY"
+          echo "- TEST_TENANT1_JWT"
+          echo "- TEST_TENANT2_JWT"
+          exit 1
+
+  rls-smoke:
+    name: RLS Smoke
+    runs-on: ubuntu-latest
+    needs: [typecheck, lint-new-lines, unit-tests]
+    if: ${{
+      secrets.STAGING_SUPABASE_URL != '' &&
+      secrets.STAGING_SUPABASE_ANON_KEY != '' &&
+      secrets.TEST_TENANT1_JWT != '' &&
+      secrets.TEST_TENANT2_JWT != ''
+    }}
+    timeout-minutes: 15
     env:
-      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
       TEST_TENANT1_JWT: ${{ secrets.TEST_TENANT1_JWT }}
       TEST_TENANT2_JWT: ${{ secrets.TEST_TENANT2_JWT }}
     steps:
@@ -49,21 +109,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: npm
       - run: npm ci --legacy-peer-deps
-      - run: node scripts/ci/rls-suite.js
-
-  rls-tests:
-    name: RLS Security Tests
-    runs-on: ubuntu-latest
-    env:
-      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-      - run: npm ci --legacy-peer-deps
-      - run: npm run test -- src/__tests__/security/rls/ --passWithNoTests
+      - run: npm run test:rls

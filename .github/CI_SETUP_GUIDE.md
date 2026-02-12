@@ -1,3 +1,13 @@
+# CI Stability Note
+
+This guide has legacy Playwright references. Current required merge gates are defined by:
+
+- `.github/workflows/ci.yml` (`Quality Gates`)
+- `.github/workflows/pr-checklist-gate.yml` (`PR Stability Checklist`)
+- `docs/STABILITY_PROGRAM.md`
+
+---
+
 # GitHub Actions CI/CD Setup Guide
 
 Quick reference for setting up E2E testing in GitHub Actions.
