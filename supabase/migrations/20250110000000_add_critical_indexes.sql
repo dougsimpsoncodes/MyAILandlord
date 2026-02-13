@@ -47,21 +47,18 @@ CREATE INDEX IF NOT EXISTS idx_properties_landlord_created
 COMMENT ON INDEX idx_properties_landlord_created IS
   'Optimize paginated property queries for specific landlord';
 
--- Property code lookups (tenant invite flow)
-CREATE INDEX IF NOT EXISTS idx_properties_property_code
-  ON properties(property_code)
-  WHERE property_code IS NOT NULL;
+-- Property code indexes (columns added by later migration)
+DO $$ BEGIN
+  CREATE INDEX IF NOT EXISTS idx_properties_property_code
+    ON properties(property_code)
+    WHERE property_code IS NOT NULL;
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
 
-COMMENT ON INDEX idx_properties_property_code IS
-  'Optimize property code validation for tenant signup';
-
--- Active property codes only
-CREATE INDEX IF NOT EXISTS idx_properties_active_codes
-  ON properties(property_code, code_expires_at)
-  WHERE allow_tenant_signup = true AND code_expires_at > NOW();
-
-COMMENT ON INDEX idx_properties_active_codes IS
-  'Optimize lookup of valid, non-expired property codes';
+DO $$ BEGIN
+  CREATE INDEX IF NOT EXISTS idx_properties_active_codes
+    ON properties(property_code, code_expires_at)
+    WHERE allow_tenant_signup = true AND code_expires_at > NOW();
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
 
 -- ============================================================================
 -- TENANT-PROPERTY LINK INDEXES
@@ -138,7 +135,7 @@ COMMENT ON INDEX idx_mr_property_status_created IS
 -- Open requests only (partial index - most common query)
 CREATE INDEX IF NOT EXISTS idx_mr_open_requests
   ON maintenance_requests(property_id, created_at DESC)
-  WHERE status = 'open';
+  WHERE status = 'submitted';
 
 COMMENT ON INDEX idx_mr_open_requests IS
   'Optimize landlord dashboard open requests - most frequently accessed';
@@ -176,23 +173,22 @@ CREATE INDEX IF NOT EXISTS idx_messages_thread
 COMMENT ON INDEX idx_messages_thread IS
   'Optimize conversation thread queries between two users';
 
--- Unread messages (partial index)
-CREATE INDEX IF NOT EXISTS idx_messages_unread
-  ON messages(recipient_id, created_at DESC)
-  WHERE read_at IS NULL;
-
-COMMENT ON INDEX idx_messages_unread IS
-  'Optimize unread message count and display';
+-- Unread messages (partial index - read_at added by later migration)
+DO $$ BEGIN
+  CREATE INDEX IF NOT EXISTS idx_messages_unread
+    ON messages(recipient_id, created_at DESC)
+    WHERE read_at IS NULL;
+EXCEPTION WHEN undefined_column THEN NULL; END $$;
 
 -- ============================================================================
 -- PROPERTY AREAS INDEXES
 -- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_property_areas_property_id
-  ON property_areas(property_id);
-
-COMMENT ON INDEX idx_property_areas_property_id IS
-  'Optimize property area lookups for asset management';
+-- property_areas created by later migration
+DO $$ BEGIN
+  CREATE INDEX IF NOT EXISTS idx_property_areas_property_id
+    ON property_areas(property_id);
+EXCEPTION WHEN undefined_table THEN NULL; END $$;
 
 -- ============================================================================
 -- ANNOUNCEMENTS INDEXES

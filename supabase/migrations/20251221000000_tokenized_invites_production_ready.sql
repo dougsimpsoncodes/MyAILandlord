@@ -52,8 +52,7 @@ CREATE TABLE IF NOT EXISTS public.invite_tokens (
 CREATE INDEX idx_invite_tokens_active
   ON public.invite_tokens(token)
   WHERE revoked_at IS NULL
-    AND used_at IS NULL
-    AND expires_at > NOW();
+    AND used_at IS NULL;
 
 -- Property lookup (for landlord UI - list/revoke)
 CREATE INDEX idx_invite_tokens_property
@@ -412,11 +411,6 @@ GRANT EXECUTE ON FUNCTION public.revoke_invite_token(UUID) TO authenticated;
 -- ============================================================
 -- STEP 9: Migration Complete
 -- ============================================================
-
--- Add migration record
-INSERT INTO public.schema_migrations (version, name)
-VALUES ('20251221000000', 'tokenized_invites_production_ready')
-ON CONFLICT (version) DO NOTHING;
 
 COMMENT ON TABLE public.invite_tokens IS 'Tokenized property invite links with expiration, revocation, and usage limits';
 COMMENT ON FUNCTION public.accept_invite_token IS 'Atomic invite acceptance with race condition protection (SELECT FOR UPDATE)';

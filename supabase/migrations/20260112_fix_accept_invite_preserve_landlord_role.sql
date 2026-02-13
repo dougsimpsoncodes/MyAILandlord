@@ -31,7 +31,7 @@ BEGIN
   JOIN public.properties AS p ON p.id = i.property_id
   WHERE i.deleted_at IS NULL
     AND (i.expires_at IS NULL OR i.expires_at > now())
-    AND i.token_hash = encode(digest(p_token || i.token_salt, 'sha256'), 'hex');
+    AND i.token_hash = encode(extensions.digest(p_token || i.token_salt, 'sha256'), 'hex');
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT FALSE, 'INVALID', NULL::UUID, NULL::TEXT, 'Invalid or expired invite';

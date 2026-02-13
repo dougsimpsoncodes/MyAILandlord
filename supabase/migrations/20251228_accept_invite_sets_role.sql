@@ -46,7 +46,7 @@ BEGIN
   INTO v_invite
   FROM public.invites i
   JOIN public.properties p ON p.id = i.property_id
-  WHERE i.token_hash = encode(digest(p_token || i.token_salt, 'sha256'::text), 'hex')
+  WHERE i.token_hash = encode(extensions.digest(p_token || i.token_salt, 'sha256'::text), 'hex')
     AND i.deleted_at IS NULL
     AND i.expires_at > NOW()
   FOR UPDATE;  -- Row-level lock prevents concurrent accepts
@@ -56,7 +56,7 @@ BEGIN
     -- Check if it's expired vs invalid
     IF EXISTS (
       SELECT 1 FROM public.invites i
-      WHERE i.token_hash = encode(digest(p_token || i.token_salt, 'sha256'::text), 'hex')
+      WHERE i.token_hash = encode(extensions.digest(p_token || i.token_salt, 'sha256'::text), 'hex')
         AND i.deleted_at IS NULL
         AND i.expires_at <= NOW()
     ) THEN
@@ -141,7 +141,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.accept_invite(TEXT) TO authenticated;
 
-COMMENT ON FUNCTION public.accept_invite IS
+COMMENT ON FUNCTION public.accept_invite(TEXT) IS
 'Accepts invite token (authenticated users only).
 Race-protected with FOR UPDATE lock.
 Sets tenant role atomically with link creation (only if role is NULL).

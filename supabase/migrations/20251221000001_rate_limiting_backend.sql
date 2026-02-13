@@ -161,12 +161,24 @@ BEGIN
 END;
 $$;
 
--- Schedule cleanup job (run daily at 4 AM UTC)
-SELECT cron.schedule(
-  'cleanup-rate-limits',
-  '0 4 * * *',
-  $$SELECT public.cleanup_rate_limits();$$
-);
+-- Schedule cleanup job (run daily at 4 AM UTC) when pg_cron is available
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'cron') THEN
+    BEGIN
+      PERFORM cron.schedule(
+        'cleanup-rate-limits',
+        '0 4 * * *',
+        $job$SELECT public.cleanup_rate_limits();$job$
+      );
+    EXCEPTION WHEN insufficient_privilege THEN
+      RAISE NOTICE 'Skipping cron.schedule for cleanup_rate_limits: insufficient privilege';
+    END;
+  ELSE
+    RAISE NOTICE 'Skipping cron.schedule for cleanup_rate_limits: cron schema not available';
+  END IF;
+END
+$$;
 
 -- ============================================================
 -- Comments

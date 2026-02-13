@@ -40,6 +40,38 @@ CREATE TABLE IF NOT EXISTS public.invites (
   last_validation_attempt TIMESTAMPTZ
 );
 
+-- Compatibility for upgrades from v1 table definition
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS token_hash TEXT;
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS token_salt TEXT;
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS intended_email TEXT;
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS delivery_method TEXT;
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS validation_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.invites ADD COLUMN IF NOT EXISTS last_validation_attempt TIMESTAMPTZ;
+
+-- Backfill values for existing rows created by v1
+UPDATE public.invites
+SET
+  token_salt = COALESCE(token_salt, encode(extensions.gen_random_bytes(16), 'hex')),
+  intended_email = COALESCE(intended_email, email),
+  delivery_method = COALESCE(delivery_method, CASE WHEN email IS NOT NULL THEN 'email' ELSE 'code' END)
+WHERE token_salt IS NULL
+   OR intended_email IS NULL
+   OR delivery_method IS NULL;
+
+UPDATE public.invites
+SET token_hash = encode(extensions.digest(COALESCE(invite_code, id::text) || token_salt, 'sha256'), 'hex')
+WHERE token_hash IS NULL AND token_salt IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS invites_token_hash_unique_idx
+  ON public.invites(token_hash)
+  WHERE token_hash IS NOT NULL;
+
+DO $$ BEGIN
+  ALTER TABLE public.invites
+    ADD CONSTRAINT invites_delivery_method_check
+    CHECK (delivery_method IN ('email', 'code'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 -- ============================================================================
 -- INDEXES: Fast, secure lookups
 -- ============================================================================
@@ -65,6 +97,11 @@ CREATE INDEX IF NOT EXISTS idx_invites_rate_limit ON public.invites(last_validat
 
 ALTER TABLE public.invites ENABLE ROW LEVEL SECURITY;
 
+-- Drop v1 policies if they already exist
+DROP POLICY IF EXISTS landlords_create_own_invites ON public.invites;
+DROP POLICY IF EXISTS landlords_view_own_invites ON public.invites;
+DROP POLICY IF EXISTS landlords_update_own_invites ON public.invites;
+
 -- Landlords can create invites for properties they own
 CREATE POLICY landlords_create_own_invites ON public.invites
   FOR INSERT
@@ -86,6 +123,16 @@ CREATE POLICY landlords_update_own_invites ON public.invites
   FOR UPDATE
   USING (created_by = auth.uid())
   WITH CHECK (created_by = auth.uid());
+
+-- Drop v1 function signatures before redefining
+DROP TRIGGER IF EXISTS on_invite_created ON public.invites;
+DROP FUNCTION IF EXISTS public.create_invite(UUID, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.validate_invite(TEXT);
+DROP FUNCTION IF EXISTS public.validate_invite(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.accept_invite(TEXT);
+DROP FUNCTION IF EXISTS public.accept_invite(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.cleanup_old_invites();
+DROP FUNCTION IF EXISTS public.send_invite_email_trigger();
 
 -- ============================================================================
 -- RPC FUNCTION 1: create_invite
@@ -158,7 +205,7 @@ BEGIN
 
   -- Hash token with salt: sha256(token || salt)
   v_token_hash := encode(
-    digest(v_token || v_salt, 'sha256'),
+    extensions.digest(v_token || v_salt, 'sha256'),
     'hex'
   );
 
@@ -193,7 +240,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.create_invite(UUID, TEXT, TEXT) TO authenticated;
 
-COMMENT ON FUNCTION public.create_invite IS 'Creates a new invite with hashed 12-char token. Returns plaintext token only to caller (never stored).';
+COMMENT ON FUNCTION public.create_invite(UUID, TEXT, TEXT) IS 'Creates a new invite with hashed 12-char token. Returns plaintext token only to caller (never stored).';
 
 -- ============================================================================
 -- RPC FUNCTION 2: validate_invite
@@ -247,7 +294,7 @@ BEGIN
     i.token_salt
   INTO v_invite
   FROM public.invites i
-  WHERE i.token_hash = encode(digest(p_token || i.token_salt, 'sha256'), 'hex')
+  WHERE i.token_hash = encode(extensions.digest(p_token || i.token_salt, 'sha256'), 'hex')
     AND i.accepted_at IS NULL
     AND i.deleted_at IS NULL
     AND i.expires_at > NOW()
@@ -294,7 +341,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.validate_invite(TEXT) TO anon, authenticated;
 
-COMMENT ON FUNCTION public.validate_invite IS 'Validates invite token (hashed comparison) and returns property details. Rate-limited to 20 attempts/minute globally.';
+COMMENT ON FUNCTION public.validate_invite(TEXT) IS 'Validates invite token (hashed comparison) and returns property details. Rate-limited to 20 attempts/minute globally.';
 
 -- ============================================================================
 -- RPC FUNCTION 3: accept_invite
@@ -328,7 +375,7 @@ BEGIN
     i.accepted_by
   INTO v_invite
   FROM public.invites i
-  WHERE i.token_hash = encode(digest(p_token || i.token_salt, 'sha256'), 'hex')
+  WHERE i.token_hash = encode(extensions.digest(p_token || i.token_salt, 'sha256'), 'hex')
     AND i.deleted_at IS NULL
     AND i.expires_at > NOW()
   FOR UPDATE;  -- Row-level lock prevents concurrent accepts
@@ -382,7 +429,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.accept_invite(TEXT) TO authenticated;
 
-COMMENT ON FUNCTION public.accept_invite IS 'Accepts invite token (authenticated users only). Race-protected with FOR UPDATE lock. Idempotent: same user accepting = success.';
+COMMENT ON FUNCTION public.accept_invite(TEXT) IS 'Accepts invite token (authenticated users only). Race-protected with FOR UPDATE lock. Idempotent: same user accepting = success.';
 
 -- ============================================================================
 -- RPC FUNCTION 4: cleanup_old_invites
@@ -418,7 +465,7 @@ $$;
 -- Only service role can run cleanup (run via cron or manual admin call)
 GRANT EXECUTE ON FUNCTION public.cleanup_old_invites() TO service_role;
 
-COMMENT ON FUNCTION public.cleanup_old_invites IS 'Soft-deletes old invites: accepted >30 days or expired >7 days. Run via cron or manually.';
+COMMENT ON FUNCTION public.cleanup_old_invites() IS 'Soft-deletes old invites: accepted >30 days or expired >7 days. Run via cron or manually.';
 
 -- ============================================================================
 -- DATABASE TRIGGER: Send email on invite creation

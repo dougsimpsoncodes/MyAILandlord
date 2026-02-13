@@ -44,15 +44,13 @@ CREATE TABLE IF NOT EXISTS public.invites (
 CREATE INDEX IF NOT EXISTS idx_invites_code ON public.invites(invite_code)
   WHERE invite_code IS NOT NULL
     AND accepted_at IS NULL
-    AND deleted_at IS NULL
-    AND expires_at > NOW();
+    AND deleted_at IS NULL;
 
 -- Index for email-based invite lookups
 CREATE INDEX IF NOT EXISTS idx_invites_email ON public.invites(email)
   WHERE email IS NOT NULL
     AND accepted_at IS NULL
-    AND deleted_at IS NULL
-    AND expires_at > NOW();
+    AND deleted_at IS NULL;
 
 -- Index for cleanup queries (find old accepted invites)
 CREATE INDEX IF NOT EXISTS idx_invites_cleanup ON public.invites(accepted_at)
@@ -419,7 +417,7 @@ COMMENT ON COLUMN public.invites.email IS 'Email address for email-based invites
 COMMENT ON COLUMN public.invites.expires_at IS 'Invite expiration time (default: 48 hours from creation)';
 COMMENT ON COLUMN public.invites.deleted_at IS 'Soft delete timestamp (set by cleanup_old_invites after 30 days)';
 
-COMMENT ON FUNCTION public.create_invite IS 'Creates a new invite (email or code-based) for a property. Landlords only.';
-COMMENT ON FUNCTION public.validate_invite IS 'Validates an invite and returns property details. Public access (no auth required).';
-COMMENT ON FUNCTION public.accept_invite IS 'Accepts an invite and links tenant to property. Authenticated users only.';
-COMMENT ON FUNCTION public.cleanup_old_invites IS 'Soft-deletes accepted invites older than 30 days. Run via cron or manual admin call.';
+COMMENT ON FUNCTION public.create_invite(UUID, TEXT, TEXT) IS 'Creates a new invite (email or code-based) for a property. Landlords only.';
+COMMENT ON FUNCTION public.validate_invite(TEXT, TEXT) IS 'Validates an invite and returns property details. Public access (no auth required).';
+COMMENT ON FUNCTION public.accept_invite(TEXT, TEXT) IS 'Accepts an invite and links tenant to property. Authenticated users only.';
+COMMENT ON FUNCTION public.cleanup_old_invites() IS 'Soft-deletes accepted invites older than 30 days. Run via cron or manual admin call.';

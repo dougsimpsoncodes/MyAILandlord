@@ -49,7 +49,7 @@ CHECK (property_type IN ('apartment', 'house', 'condo', 'townhouse') OR property
 
 -- Step 8: Create property_areas table
 CREATE TABLE IF NOT EXISTS property_areas (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     area_type TEXT NOT NULL, -- kitchen, bedroom, bathroom, living_room, laundry, garage, outdoor, other
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS property_areas (
 
 -- Step 9: Create property_assets table
 CREATE TABLE IF NOT EXISTS property_assets (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     area_id UUID NOT NULL REFERENCES property_areas(id) ON DELETE CASCADE,
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     name TEXT NOT NULL,

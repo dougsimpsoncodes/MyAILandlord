@@ -10,10 +10,6 @@ SELECT
   created_at
 FROM properties;
 
--- Allow anonymous users to read from this view
-ALTER TABLE public_property_invite_info ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Allow anonymous property invite preview" ON public_property_invite_info
-FOR SELECT 
-TO anon
-USING (true);
+-- Views do not support table RLS. Expose read access via grants.
+GRANT SELECT ON public_property_invite_info TO anon;
+GRANT SELECT ON public_property_invite_info TO authenticated;

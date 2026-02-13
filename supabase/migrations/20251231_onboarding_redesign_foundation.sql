@@ -166,7 +166,7 @@ BEGIN
   v_user_name := COALESCE(p_name, v_user_name);
 
   -- Compute token hash
-  v_token_hash := encode(digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex');
+  v_token_hash := encode(extensions.digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex');
 
   -- Find valid invite
   SELECT i.*, p.name AS property_name

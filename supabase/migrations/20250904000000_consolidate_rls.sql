@@ -324,76 +324,96 @@ create policy announcements_delete_landlord on public.announcements
 -- Note: Storage policies depend on bucket configuration
 -- This is a template - adjust based on actual bucket setup
 
--- Enable RLS for storage objects if not already enabled
-alter table storage.objects enable row level security;
+DO $$
+BEGIN
+  BEGIN
+    -- Enable RLS for storage objects if not already enabled
+    EXECUTE 'ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY';
 
--- Drop existing storage policies
-do $$
-begin
-  drop policy if exists "Users can upload maintenance images" on storage.objects;
-  drop policy if exists "Users can view maintenance images" on storage.objects;
-  drop policy if exists "Users can update their own maintenance images" on storage.objects;
-  drop policy if exists "Users can delete their own maintenance images" on storage.objects;
-  drop policy if exists storage_property_images_insert_landlord on storage.objects;
-  drop policy if exists storage_property_images_select_public on storage.objects;
-exception when others then
-  null; -- Ignore if policies don't exist
-end $$;
+    -- Drop existing storage policies
+    EXECUTE 'DROP POLICY IF EXISTS "Users can upload maintenance images" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "Users can view maintenance images" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "Users can update their own maintenance images" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "Users can delete their own maintenance images" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_property_images_insert_landlord ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_property_images_select_public ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_maintenance_images_insert ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_maintenance_images_select ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_voice_notes_insert ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_voice_notes_select ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_documents_insert ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS storage_documents_select ON storage.objects';
 
--- Property images: Public read, landlord write
-create policy storage_property_images_insert_landlord on storage.objects 
-  for insert with check (
-    bucket_id = 'property-images' 
-    and exists (
-      select 1 from public.profiles p
-      where p.clerk_user_id = auth.jwt() ->> 'sub' and p.role = 'landlord'
-    )
-  );
+    -- Property images: Public read, landlord write
+    EXECUTE $POL$
+      CREATE POLICY storage_property_images_insert_landlord ON storage.objects
+      FOR INSERT WITH CHECK (
+        bucket_id = 'property-images'
+        AND EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.clerk_user_id = auth.jwt() ->> 'sub' AND p.role = 'landlord'
+        )
+      )
+    $POL$;
 
-create policy storage_property_images_select_public on storage.objects 
-  for select using (bucket_id = 'property-images');
+    EXECUTE $POL$
+      CREATE POLICY storage_property_images_select_public ON storage.objects
+      FOR SELECT USING (bucket_id = 'property-images')
+    $POL$;
 
--- Maintenance images: Tenants upload for their requests, all participants can view
-create policy storage_maintenance_images_insert on storage.objects 
-  for insert with check (
-    bucket_id = 'maintenance-images' 
-    and exists (
-      select 1 from public.profiles p
-      where p.clerk_user_id = auth.jwt() ->> 'sub'
-    )
-  );
+    -- Maintenance images: Tenants upload for their requests, all participants can view
+    EXECUTE $POL$
+      CREATE POLICY storage_maintenance_images_insert ON storage.objects
+      FOR INSERT WITH CHECK (
+        bucket_id = 'maintenance-images'
+        AND EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.clerk_user_id = auth.jwt() ->> 'sub'
+        )
+      )
+    $POL$;
 
-create policy storage_maintenance_images_select on storage.objects 
-  for select using (
-    bucket_id = 'maintenance-images'
-    -- Could add more granular checks based on path structure if needed
-  );
+    EXECUTE $POL$
+      CREATE POLICY storage_maintenance_images_select ON storage.objects
+      FOR SELECT USING (bucket_id = 'maintenance-images')
+    $POL$;
 
--- Voice notes: Similar to maintenance images
-create policy storage_voice_notes_insert on storage.objects 
-  for insert with check (
-    bucket_id = 'voice-notes' 
-    and exists (
-      select 1 from public.profiles p
-      where p.clerk_user_id = auth.jwt() ->> 'sub'
-    )
-  );
+    -- Voice notes: Similar to maintenance images
+    EXECUTE $POL$
+      CREATE POLICY storage_voice_notes_insert ON storage.objects
+      FOR INSERT WITH CHECK (
+        bucket_id = 'voice-notes'
+        AND EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.clerk_user_id = auth.jwt() ->> 'sub'
+        )
+      )
+    $POL$;
 
-create policy storage_voice_notes_select on storage.objects 
-  for select using (bucket_id = 'voice-notes');
+    EXECUTE $POL$
+      CREATE POLICY storage_voice_notes_select ON storage.objects
+      FOR SELECT USING (bucket_id = 'voice-notes')
+    $POL$;
 
--- Documents: Private, user-specific access
-create policy storage_documents_insert on storage.objects 
-  for insert with check (
-    bucket_id = 'documents' 
-    and exists (
-      select 1 from public.profiles p
-      where p.clerk_user_id = auth.jwt() ->> 'sub'
-    )
-  );
+    -- Documents: Private, user-specific access
+    EXECUTE $POL$
+      CREATE POLICY storage_documents_insert ON storage.objects
+      FOR INSERT WITH CHECK (
+        bucket_id = 'documents'
+        AND EXISTS (
+          SELECT 1 FROM public.profiles p
+          WHERE p.clerk_user_id = auth.jwt() ->> 'sub'
+        )
+      )
+    $POL$;
 
-create policy storage_documents_select on storage.objects 
-  for select using (
-    bucket_id = 'documents'
-    -- Add path-based checks if documents are organized by user
-  );
+    EXECUTE $POL$
+      CREATE POLICY storage_documents_select ON storage.objects
+      FOR SELECT USING (bucket_id = 'documents')
+    $POL$;
+
+    RAISE NOTICE 'Storage policy consolidation applied successfully';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE NOTICE 'Skipping storage policy consolidation: insufficient privilege on storage.objects';
+  END;
+END $$;

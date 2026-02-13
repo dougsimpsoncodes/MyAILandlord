@@ -9,20 +9,20 @@ BEGIN;
 -- Ensure helper exists (used by policies below)
 -- public.auth_uid_compat() returns a UUID for the current user, compatible with Clerk ids.
 -- If not present, fallback to auth.uid().
-DO $$
+DO $do$
 BEGIN
   PERFORM 1 FROM pg_proc
    WHERE pronamespace = 'public'::regnamespace
      AND proname = 'auth_uid_compat';
   IF NOT FOUND THEN
-    EXECUTE $$
+    EXECUTE $create_fn$
       CREATE OR REPLACE FUNCTION public.auth_uid_compat()
-      RETURNS uuid LANGUAGE sql STABLE AS $$
+      RETURNS uuid LANGUAGE sql STABLE AS $body$
         SELECT auth.uid();
-      $$;
-    $$;
+      $body$;
+    $create_fn$;
   END IF;
-END $$;
+END $do$;
 
 -- ============================
 -- properties: drop duplicates

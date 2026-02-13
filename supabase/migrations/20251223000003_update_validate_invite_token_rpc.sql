@@ -1,6 +1,8 @@
 -- Update validate_invite_token RPC to return additional fields for edge case handling
 -- Returns: intended_email, max_uses, use_count for client-side validation
 
+DROP FUNCTION IF EXISTS public.validate_invite_token(TEXT);
+
 CREATE OR REPLACE FUNCTION public.validate_invite_token(p_token TEXT)
 RETURNS TABLE(
   valid BOOLEAN,

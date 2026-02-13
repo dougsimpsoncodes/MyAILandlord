@@ -1,7 +1,8 @@
 -- ============================================================================
--- Migration: Atomic accept_invite() with correct schema
--- Date: 2025-12-29 (v2)
--- Purpose: Fixed to match actual invites and tenant_property_links schemas
+-- Migration: Fix accept_invite() to use salted token hashing
+-- Date: 2025-12-29
+-- Purpose: Fix hash mismatch - create_invite uses hash(token+salt),
+--          but accept_invite was using hash(token) without salt
 -- ============================================================================
 
 DROP FUNCTION IF EXISTS public.accept_invite(TEXT);
@@ -20,7 +21,6 @@ SET search_path = public, extensions
 AS $$
 DECLARE
   v_user_id UUID := auth.uid();
-  v_token_hash TEXT;
   v_invite RECORD;
   v_already_linked BOOLEAN := FALSE;
 BEGIN
@@ -34,17 +34,15 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Compute hex-encoded SHA-256 of the token to match invites.token_hash (TEXT)
-  v_token_hash := encode(digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex');
-
-  -- Find a valid, non-deleted, non-expired invite and join property for display name
+  -- Find invite by computing hash WITH salt for each candidate
+  -- This matches how create_invite generates token_hash: hash(token + salt)
   SELECT i.*, p.name AS property_name
   INTO v_invite
   FROM public.invites AS i
   JOIN public.properties AS p ON p.id = i.property_id
-  WHERE i.token_hash = v_token_hash
-    AND i.deleted_at IS NULL
-    AND (i.expires_at IS NULL OR i.expires_at > now());
+  WHERE i.deleted_at IS NULL
+    AND (i.expires_at IS NULL OR i.expires_at > now())
+    AND i.token_hash = encode(extensions.digest(p_token || i.token_salt, 'sha256'), 'hex');
 
   IF NOT FOUND THEN
     RETURN QUERY SELECT FALSE, 'INVALID', NULL::UUID, NULL::TEXT, 'Invalid or expired invite';
@@ -92,32 +90,5 @@ GRANT EXECUTE ON FUNCTION public.accept_invite(TEXT) TO authenticated;
 
 COMMENT ON FUNCTION public.accept_invite(TEXT) IS
 'Accepts an invite atomically: creates tenant_property_link, updates invite acceptance, and sets role=tenant if unset.
- Returns (success, out_status, out_property_id, out_property_name, out_error).';
-
--- Ensure trigger function to set landlord_id has safe search_path
-CREATE OR REPLACE FUNCTION public.set_tenant_link_landlord_id()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  -- Populate landlord_id from properties whenever a link is inserted
-  NEW.landlord_id := (
-    SELECT p.landlord_id FROM public.properties AS p WHERE p.id = NEW.property_id
-  );
-  RETURN NEW;
-END;
-$$;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'set_tenant_link_landlord_id_trg'
-  ) THEN
-    CREATE TRIGGER set_tenant_link_landlord_id_trg
-    BEFORE INSERT ON public.tenant_property_links
-    FOR EACH ROW
-    EXECUTE FUNCTION public.set_tenant_link_landlord_id();
-  END IF;
-END $$;
+Uses salted token hashing to match how create_invite generates tokens: hash(token + salt).
+Returns (success, out_status, out_property_id, out_property_name, out_error).';

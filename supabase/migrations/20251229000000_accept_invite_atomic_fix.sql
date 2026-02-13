@@ -45,7 +45,7 @@ BEGIN
   END IF;
 
   -- Compute hex-encoded SHA-256 of the token to match invites.token_hash (TEXT)
-  v_token_hash := encode(digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex');
+  v_token_hash := encode(extensions.digest(convert_to(p_token, 'UTF8'), 'sha256'), 'hex');
 
   -- Find a valid, non-revoked, non-expired invite and join property for display name
   SELECT i.*, p.name AS property_name
