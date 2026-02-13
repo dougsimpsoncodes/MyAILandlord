@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useUnifiedAuth } from '../context/UnifiedAuthContext';
@@ -14,7 +14,7 @@ import MainStack from './MainStack';
 export type RootStackParamList = {
   Bootstrap: undefined;
   Auth: undefined;
-  PropertyInviteAccept: undefined;
+  PropertyInviteAccept: { token?: string; t?: string; propertyId?: string; property?: string } | undefined;
   Main: { userRole: 'tenant' | 'landlord'; needsOnboarding?: boolean; userFirstName?: string | null };
 };
 
@@ -35,8 +35,6 @@ function BootstrapScreen() {
   const { user, isSignedIn, isLoading } = useUnifiedAuth();
   const decidedRef = useRef(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [devBusy, setDevBusy] = useState(false);
-
   // Derived ready flag (Codex recommendation)
   const isBootstrapReady = !isLoading;
 
@@ -119,7 +117,13 @@ function BootstrapScreen() {
           decidedRef.current = true;
           navigation.reset({
             index: 0,
-            routes: [{ name: 'PropertyInviteAccept' }],
+            routes: [{
+              name: 'PropertyInviteAccept',
+              params: {
+                token: pendingInvite.value,
+                propertyId: pendingInvite.metadata?.propertyId,
+              },
+            }],
           });
           return;
         }
@@ -163,74 +167,6 @@ function BootstrapScreen() {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#3498DB" />
-      {__DEV__ && (
-        <View style={styles.devPanel}>
-          <Text style={styles.devTitle}>Dev Tools</Text>
-          <View style={styles.devRow}>
-            <TouchableOpacity
-              accessibilityLabel="Paste invite from clipboard"
-              onPress={async () => {
-                if (devBusy) return;
-                try {
-                  setDevBusy(true);
-                  const Clipboard = await import('expo-clipboard');
-                  const Linking = await import('expo-linking');
-                  const text = await Clipboard.getStringAsync();
-                  if (!text) {
-                    log.warn('📋 Clipboard empty');
-                    setDevBusy(false);
-                    return;
-                  }
-                  let token: string | undefined;
-                  try {
-                    const parsed = Linking.parse(text);
-                    const qp = (parsed.queryParams || {}) as Record<string, string | string[] | undefined>;
-                    token = (qp.t || qp.token) as string | undefined;
-                  } catch {
-                    // not a url, fall back to raw
-                  }
-                  if (!token) {
-                    token = text.trim();
-                  }
-                  if (!token) {
-                    log.warn('🎟️ No token found in clipboard');
-                    setDevBusy(false);
-                    return;
-                  }
-                  const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
-                  log.info('🧪 [Dev] Saving pending invite from clipboard', { tokenHash });
-                  await PendingInviteService.savePendingInvite(token, 'token');
-                  decidedRef.current = true;
-                  navigation.reset({ index: 0, routes: [{ name: 'PropertyInviteAccept' }] });
-                } catch (e) {
-                  log.error('🧪 [Dev] Failed to paste + route to invite', e as Error);
-                } finally {
-                  setDevBusy(false);
-                }
-              }}
-              style={[styles.devButton, devBusy && { opacity: 0.6 }]}
-            >
-              <Text style={styles.devButtonText}>{devBusy ? 'Working…' : 'Paste Invite'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityLabel="Clear pending invite"
-              onPress={async () => {
-                if (devBusy) return;
-                try {
-                  setDevBusy(true);
-                  await PendingInviteService.clearPendingInvite();
-                  log.info('🧪 [Dev] Cleared pending invite');
-                } finally {
-                  setDevBusy(false);
-                }
-              }}
-              style={styles.devSecondary}
-            >
-              <Text style={styles.devSecondaryText}>Clear</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
@@ -275,51 +211,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
-  },
-  devPanel: {
-    position: 'absolute',
-    bottom: 16,
-    right: 16,
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#F2F7FF',
-    borderWidth: 1,
-    borderColor: '#D6E4FF',
-  },
-  devTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1B3A57',
-    marginBottom: 8,
-  },
-  devRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  devButton: {
-    backgroundColor: '#2D6CDF',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-  },
-  devButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  devSecondary: {
-    backgroundColor: '#EEF3FF',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#D6E4FF',
-    marginLeft: 8,
-  },
-  devSecondaryText: {
-    color: '#6B7A90',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });
