@@ -10,6 +10,30 @@ import { PendingInviteService } from './services/storage/PendingInviteService';
 import { log } from './lib/log';
 import RootNavigator from './navigation/RootNavigator';
 
+type InviteParams = {
+  token: string;
+  propertyId?: string;
+};
+
+const extractInviteFromUrl = (url?: string | null): InviteParams | null => {
+  if (!url || !url.includes('/invite')) {
+    return null;
+  }
+
+  const parsed = Linking.parse(url);
+  const tokenParam = parsed.queryParams?.t || parsed.queryParams?.token;
+  const propertyParam = parsed.queryParams?.property || parsed.queryParams?.propertyId;
+
+  const token = typeof tokenParam === 'string' ? tokenParam : undefined;
+  const propertyId = typeof propertyParam === 'string' ? propertyParam : undefined;
+
+  if (!token) {
+    return null;
+  }
+
+  return { token, propertyId };
+};
+
 /**
  * AppNavigator - Simplified root component
  *
@@ -36,18 +60,16 @@ const AppNavigator = () => {
       try {
         const url = await Linking.getInitialURL();
         log.info('🔗 Initial URL detected:', url);
-        if (url && url.includes('/invite')) {
-          try {
-            const parsed = Linking.parse(url);
-            const token = (parsed.queryParams?.t || parsed.queryParams?.token) as string | undefined;
-            if (token) {
-              const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
-              log.info('🎟️ Saving pending invite token', { tokenHash });
-              await PendingInviteService.savePendingInvite(token, 'token');
-            }
-          } catch (e) {
-            log.warn('🔗 Failed parsing initialURL', e);
-          }
+        const inviteParams = extractInviteFromUrl(url);
+        if (inviteParams) {
+          const tokenHash = inviteParams.token.substring(0, 4) + '...' + inviteParams.token.substring(inviteParams.token.length - 4);
+          log.info('🎟️ Saving pending invite token', {
+            tokenHash,
+            hasPropertyId: !!inviteParams.propertyId,
+          });
+          await PendingInviteService.savePendingInvite(inviteParams.token, 'token', {
+            propertyId: inviteParams.propertyId,
+          });
         }
       } catch (error) {
         log.warn('🔗 Could not get initial URL:', error);
@@ -80,18 +102,16 @@ const AppNavigator = () => {
     async getInitialURL() {
       const url = await Linking.getInitialURL();
       if (linkingRefactor) {
-        if (url && url.includes('/invite')) {
-          try {
-            const parsed = Linking.parse(url);
-            const token = (parsed.queryParams?.t || parsed.queryParams?.token) as string | undefined;
-            if (token) {
-              const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
-              log.info('🎟️ Saving pending invite from initialURL', { tokenHash });
-              await PendingInviteService.savePendingInvite(token, 'token');
-            }
-          } catch (e) {
-            log.warn('🔗 Failed parsing initialURL', e);
-          }
+        const inviteParams = extractInviteFromUrl(url);
+        if (inviteParams) {
+          const tokenHash = inviteParams.token.substring(0, 4) + '...' + inviteParams.token.substring(inviteParams.token.length - 4);
+          log.info('🎟️ Saving pending invite from initialURL', {
+            tokenHash,
+            hasPropertyId: !!inviteParams.propertyId,
+          });
+          await PendingInviteService.savePendingInvite(inviteParams.token, 'token', {
+            propertyId: inviteParams.propertyId,
+          });
         }
       }
       return url;
@@ -100,14 +120,16 @@ const AppNavigator = () => {
       const subscription = Linking.addEventListener('url', async ({ url }) => {
         if (linkingRefactor) {
           try {
-            if (url && url.includes('/invite')) {
-              const parsed = Linking.parse(url);
-              const token = (parsed.queryParams?.t || parsed.queryParams?.token) as string | undefined;
-              if (token) {
-                const tokenHash = token.substring(0, 4) + '...' + token.substring(token.length - 4);
-                log.info('🎟️ Saving pending invite from subscribe', { tokenHash });
-                await PendingInviteService.savePendingInvite(token, 'token');
-              }
+            const inviteParams = extractInviteFromUrl(url);
+            if (inviteParams) {
+              const tokenHash = inviteParams.token.substring(0, 4) + '...' + inviteParams.token.substring(inviteParams.token.length - 4);
+              log.info('🎟️ Saving pending invite from subscribe', {
+                tokenHash,
+                hasPropertyId: !!inviteParams.propertyId,
+              });
+              await PendingInviteService.savePendingInvite(inviteParams.token, 'token', {
+                propertyId: inviteParams.propertyId,
+              });
             }
           } catch (e) {
             log.warn('🔗 Failed parsing subscribe URL', e);
@@ -142,6 +164,7 @@ const AppNavigator = () => {
             t: (t: string) => t,           // Short form token parameter
             token: (token: string) => token, // Legacy token parameter
             property: (property: string) => property, // Legacy propertyId flow
+            propertyId: (propertyId: string) => propertyId, // Explicit propertyId parameter
           }
         },
 
@@ -240,6 +263,19 @@ const AppNavigator = () => {
                 ContactSupport: 'landlord-support',
               }
             },
+
+            // Onboarding flow screens (direct children of LandlordRootStack)
+            // These use 'onboarding-' prefixed paths to distinguish from
+            // the same screen names inside tab navigators.
+            LandlordPropertyIntro: 'onboarding-property-intro',
+            PropertyBasics: 'onboarding-basics',
+            PropertyAttributes: 'onboarding-attributes',
+            PropertyAreas: 'onboarding-areas',
+            PropertyAssets: 'onboarding-assets',
+            PropertyReview: 'onboarding-review',
+            AddAsset: 'onboarding-add-asset',
+            LandlordTenantInvite: 'onboarding-tenant-invite',
+            LandlordOnboardingSuccess: 'onboarding-success',
           }
         },
       }

@@ -12,6 +12,8 @@ import { PendingInviteService } from '../../services/storage/PendingInviteServic
 interface RouteParams {
   t?: string; // Token parameter (NEW format)
   token?: string; // Legacy token parameter
+  property?: string; // Legacy propertyId parameter
+  propertyId?: string; // Optional explicit propertyId parameter
 }
 
 interface PropertyData {
@@ -33,9 +35,13 @@ const PropertyInviteAcceptScreen = () => {
   const [property, setProperty] = useState<PropertyData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
   // Idempotent guard: prevent duplicate accepts
   const acceptAttemptedRef = useRef(false);
   const acceptInProgressRef = useRef(false);
+  const expectedPropertyIdRef = useRef<string | null>(null);
 
   // Log only on actual mount (not every render)
   useEffect(() => {
@@ -51,6 +57,11 @@ const PropertyInviteAcceptScreen = () => {
       // Priority 1: Route params (handle undefined params gracefully)
       const params = (route.params || {}) as RouteParams;
       const extractedToken = params.t || params.token;
+      const extractedPropertyId = params.propertyId || params.property;
+
+      if (extractedPropertyId) {
+        expectedPropertyIdRef.current = extractedPropertyId;
+      }
 
       if (extractedToken) {
         log.info('[PropertyInviteAccept] Token extracted from route params:', { token_preview: extractedToken.substring(0, 4) + '...' });
@@ -61,6 +72,9 @@ const PropertyInviteAcceptScreen = () => {
       // Priority 2: Pending invite storage (fallback)
       const pendingInvite = await PendingInviteService.getPendingInvite();
       if (pendingInvite && pendingInvite.type === 'token') {
+        if (pendingInvite.metadata?.propertyId) {
+          expectedPropertyIdRef.current = pendingInvite.metadata.propertyId;
+        }
         log.info('[PropertyInviteAccept] Token loaded from pending invite storage:', { token_preview: pendingInvite.value.substring(0, 4) + '...' });
         setToken(pendingInvite.value);
         return;
@@ -106,6 +120,65 @@ const PropertyInviteAcceptScreen = () => {
     autoAcceptInvite();
   }, [user, property, token]);
 
+  const callRpc = async (
+    functionName: string,
+    payload: Record<string, unknown>,
+    options: { requireAuth?: boolean; timeoutMs?: number } = {}
+  ): Promise<unknown> => {
+    if (!supabaseUrl || !supabaseAnon) {
+      throw new Error('Supabase is not configured. Missing URL or anon key.');
+    }
+
+    const timeoutMs = options.timeoutMs ?? 15000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const headers: Record<string, string> = {
+        apikey: supabaseAnon,
+        Authorization: `Bearer ${supabaseAnon}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      };
+
+      if (options.requireAuth) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          throw new Error('Not authenticated. Please sign in again.');
+        }
+        headers.Authorization = `Bearer ${session.access_token}`;
+      }
+
+      const response = await fetch(`${supabaseUrl}/rest/v1/rpc/${functionName}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const detail =
+          typeof body?.message === 'string'
+            ? body.message
+            : typeof body?.error === 'string'
+              ? body.error
+              : `HTTP ${response.status}`;
+        throw new Error(detail);
+      }
+
+      return body;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${Math.floor(timeoutMs / 1000)} seconds`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   const validateInvite = async () => {
     if (!token) return;
 
@@ -115,17 +188,10 @@ const PropertyInviteAcceptScreen = () => {
     try {
       log.info('[PropertyInviteAccept] Validating invite token');
 
-      // Call validate_invite RPC function (public, no auth required)
-      const { data, error: rpcError } = await supabase.rpc('validate_invite', {
+      const data = await callRpc('validate_invite', {
         p_token: token
       });
 
-      if (rpcError) {
-        log.error('[PropertyInviteAccept] RPC error:', rpcError);
-        throw new Error('Failed to validate invite. Please try again.');
-      }
-
-      // RPC returns TABLE, so data is an array
       if (!data || !Array.isArray(data) || data.length === 0) {
         log.error('[PropertyInviteAccept] No data returned from validate_invite');
         throw new Error('Invalid invite token');
@@ -135,15 +201,21 @@ const PropertyInviteAcceptScreen = () => {
 
       if (!result.valid) {
         log.error('[PropertyInviteAccept] Token invalid');
-        // CRITICAL: Clear pending invite to prevent redirect loops
-        // Bootstrap checks for pending invites and would redirect here again
         await PendingInviteService.clearPendingInvite();
         throw new Error('This invite link is invalid or has expired.');
       }
 
+      if (expectedPropertyIdRef.current && result.property_id !== expectedPropertyIdRef.current) {
+        log.error('[PropertyInviteAccept] Token/property mismatch', {
+          expectedPropertyId: expectedPropertyIdRef.current,
+          resolvedPropertyId: result.property_id,
+        });
+        await PendingInviteService.clearPendingInvite();
+        throw new Error('This invite link does not match the expected property. Ask your landlord for a fresh invite.');
+      }
+
       log.info('[PropertyInviteAccept] Token valid, property:', result.property_name);
 
-      // Set property data
       setProperty({
         id: result.property_id,
         name: result.property_name,
@@ -151,11 +223,8 @@ const PropertyInviteAcceptScreen = () => {
         unit: result.property_unit,
         landlordName: result.landlord_name
       });
-
     } catch (error) {
       log.error('[PropertyInviteAccept] Validation error', { error: String(error) });
-      // Clear pending invite to prevent redirect loops on validation failure
-      await PendingInviteService.clearPendingInvite();
       setError(error instanceof Error ? error.message : 'Failed to validate invite. Please try again.');
     } finally {
       setIsValidating(false);
@@ -178,7 +247,7 @@ const PropertyInviteAcceptScreen = () => {
       // Save pending invite before redirecting to signup
       log.info('[PropertyInviteAccept] User not authenticated, saving pending invite and redirecting to tenant onboarding');
       await PendingInviteService.savePendingInvite(token, 'token', {
-        propertyId: property?.id,
+        propertyId: property?.id || expectedPropertyIdRef.current || undefined,
         propertyName: property?.name,
       });
       // Navigate to Auth stack, then to OnboardingName screen
@@ -202,6 +271,14 @@ const PropertyInviteAcceptScreen = () => {
         userRole: user?.role,
       });
 
+      // CRITICAL: Clear pending invite BEFORE the RPC call. This prevents a race
+      // condition where Bootstrap reads the pending invite from storage and mounts
+      // a second PropertyInviteAccept instance while our RPC is in flight. The
+      // second instance would then try to validate an already-consumed token.
+      // The token is still in this component's local state for retry if the RPC fails.
+      log.info('[PropertyInviteAccept] Clearing pending invite before RPC to prevent Bootstrap race');
+      await PendingInviteService.clearPendingInvite();
+
       // With UnifiedAuth, profile is created automatically on auth
       // Just ensure we have fresh user data before accepting
       if (!user?.id) {
@@ -218,15 +295,10 @@ const PropertyInviteAcceptScreen = () => {
           tokenHash: token.substring(0, 4) + '...' + token.substring(token.length - 4),
         });
 
-        const { data, error: atomicError } = await supabase.rpc('signup_and_accept_invite', {
+        const data = await callRpc('signup_and_accept_invite', {
           p_token: token,
           p_name: user?.name || null,
-        });
-
-        if (atomicError) {
-          log.error('[PropertyInviteAccept] Atomic RPC error:', atomicError);
-          throw new Error('Failed to accept invite. Please try again.');
-        }
+        }, { requireAuth: true, timeoutMs: 20000 });
 
         // RPC returns TABLE, so data is an array
         if (!data || !Array.isArray(data) || data.length === 0) {
@@ -253,14 +325,9 @@ const PropertyInviteAcceptScreen = () => {
           tokenHash: token.substring(0, 4) + '...' + token.substring(token.length - 4),
         });
 
-        const { data, error: acceptError } = await supabase.rpc('accept_invite', {
+        const data = await callRpc('accept_invite', {
           p_token: token
-        });
-
-        if (acceptError) {
-          log.error('[PropertyInviteAccept] Accept RPC error:', acceptError);
-          throw new Error('Failed to accept invite. Please try again.');
-        }
+        }, { requireAuth: true, timeoutMs: 20000 });
 
         if (!data || !Array.isArray(data) || data.length === 0) {
           log.error('[PropertyInviteAccept] No data returned from accept_invite');
@@ -279,12 +346,6 @@ const PropertyInviteAcceptScreen = () => {
           property_name: result.out_property_name
         });
       }
-
-      // CRITICAL: Clear pending invite BEFORE navigation to prevent race conditions.
-      // Other components (useProfileSync, Bootstrap) check for pending invites on mount
-      // and would redirect back here with a stale token that's already been consumed.
-      log.info('[PropertyInviteAccept] Clearing pending invite BEFORE navigation');
-      await PendingInviteService.clearPendingInvite();
 
       // Navigate IMMEDIATELY to tenant home (zero-flash navigation pattern)
       // IMPORTANT: navigation.reset() replaces the entire navigation state.
@@ -316,8 +377,13 @@ const PropertyInviteAcceptScreen = () => {
       log.error('[PropertyInviteAccept] Accept error', { error: String(error) });
       setError(error instanceof Error ? error.message : 'Failed to accept invite. Please try again.');
 
-      // Keep user on this screen so they can see error and retry
-      log.info('[PropertyInviteAccept] Keeping state on failure to allow retry');
+      // Re-save pending invite so Bootstrap can recover if user leaves this screen
+      if (token) {
+        PendingInviteService.savePendingInvite(token, 'token', {
+          propertyId: property?.id || expectedPropertyIdRef.current || undefined,
+          propertyName: property?.name,
+        }).catch(() => {});
+      }
 
       // Reset in-progress flag to allow manual retry
       acceptInProgressRef.current = false;
