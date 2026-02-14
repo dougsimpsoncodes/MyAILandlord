@@ -21,12 +21,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { log } from '../../lib/log';
 import { AssetTemplate, AssetCondition, InventoryItem } from '../../types/property';
 import { validateImageFile } from '../../utils/propertyValidation';
+import { formatDateInputMMDDYY, isValidMMDDYY, toIsoDateFromMMDDYY } from '../../utils/dateInput';
 import { extractAssetDataFromImage, validateAndEnhanceData } from '../../services/ai/labelExtraction';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
+import { validate as uuidValidate } from 'uuid';
 
 type AddAssetNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type AddAssetRouteProp = RouteProp<LandlordStackParamList, 'AddAsset'>;
@@ -48,38 +51,57 @@ const AddAssetScreen = () => {
   // Route params - only simple primitives, no object params
   const { areaId: routeAreaId, areaName: routeAreaName, draftId: routeDraftId, propertyId: routePropertyId } = route.params || {};
 
+  // Web URL fallback (route params can be lost on page refresh)
+  const webQuery = Platform.OS === 'web' && typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search)
+    : null;
+  const webPropertyId = webQuery?.get('propertyId') || webQuery?.get('property') || undefined;
+  const webAreaId = webQuery?.get('areaId') || undefined;
+  const webAreaName = webQuery?.get('areaName') || undefined;
+  const resolvedPropertyId = routePropertyId || webPropertyId;
+  const resolvedAreaId = routeAreaId || webAreaId;
+
   // Compute effective userId from auth context
   const effectiveUserId = user?.id;
 
   // Effective params (recovered from storage on web if needed)
-  const [areaId, setAreaId] = useState(routeAreaId || '');
-  const [areaName, setAreaName] = useState(routeAreaName || '');
+  const [areaId, setAreaId] = useState(resolvedAreaId || '');
+  const [areaName, setAreaName] = useState(routeAreaName || webAreaName || '');
   const [template, setTemplate] = useState<AssetTemplate | null>(null);
   const [draftId, setDraftId] = useState<string | undefined>(routeDraftId);
-  const [propertyId, setPropertyId] = useState<string | undefined>(routePropertyId);
+  const [propertyId, setPropertyId] = useState<string | undefined>(resolvedPropertyId);
   const [isParamsLoaded, setIsParamsLoaded] = useState(false);
 
   // Recover params from AsyncStorage on web (URL params lose complex objects)
   useEffect(() => {
     const recoverParams = async () => {
-      if (!routeAreaId) {
+      const effectiveAreaId = resolvedAreaId;
+      if (!effectiveAreaId) {
+        log.warn('AddAssetScreen: No areaId from route or URL — cannot recover from storage');
+        setIsParamsLoaded(true);
         return;
       }
 
       // Try to recover extended params from AsyncStorage
       // (complex objects are stored there for web compatibility)
-      const storageKey = `add_asset_params_${routeAreaId}`;
+      const storageKey = `add_asset_params_${effectiveAreaId}`;
 
       try {
         const storedParams = await AsyncStorage.getItem(storageKey);
         if (storedParams) {
           const params = JSON.parse(storedParams);
 
-          setAreaId(params.areaId || routeAreaId);
-          setAreaName(params.areaName || routeAreaName || '');
+          setAreaId(params.areaId || effectiveAreaId);
+          setAreaName(params.areaName || routeAreaName || webAreaName || '');
           setTemplate(params.template || null);
           setDraftId(params.draftId || routeDraftId);
-          setPropertyId(params.propertyId || routePropertyId);
+          setPropertyId(params.propertyId || resolvedPropertyId);
+
+          log.debug('AddAssetScreen: Recovered params from storage', {
+            hasPropertyId: Boolean(params.propertyId || resolvedPropertyId),
+            hasDraftId: Boolean(params.draftId || routeDraftId),
+            areaId: params.areaId || effectiveAreaId,
+          });
 
           // Clean up storage after recovery
           await AsyncStorage.removeItem(storageKey);
@@ -94,7 +116,7 @@ const AddAssetScreen = () => {
     };
 
     recoverParams();
-  }, [routeAreaId, routeAreaName, routeDraftId, routePropertyId]);
+  }, [resolvedAreaId, routeAreaName, webAreaName, routeDraftId, resolvedPropertyId]);
 
   // Form state
   const [assetName, setAssetName] = useState(template?.name || '');
@@ -117,6 +139,11 @@ const AddAssetScreen = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const dropdownRef = useRef<View>(null);
   const webFileInputRef = useRef<HTMLInputElement | null>(null);
+  const showAddAssetDebug = __DEV__ && process.env.EXPO_PUBLIC_SHOW_ADD_ASSET_DEBUG === '1';
+  const handleWarrantyEndDateChange = (text: string) => {
+    setWarrantyEndDate(formatDateInputMMDDYY(text));
+  };
+
 
   // Create hidden file input for web multi-select
   useEffect(() => {
@@ -329,7 +356,14 @@ const AddAssetScreen = () => {
     setSaveError(null);
     setSaveSuccess(false);
 
-    log.debug('[AddAsset] Save attempt', { hasUser: !!effectiveUserId, propertyId, areaId });
+    log.debug('[AddAsset] Save attempt', {
+      hasUser: !!effectiveUserId,
+      propertyId: propertyId || '(missing)',
+      areaId: areaId || '(missing)',
+      draftId: draftId || '(missing)',
+      routePropertyId: routePropertyId || '(missing)',
+      webPropertyId: webPropertyId || '(missing)',
+    });
 
     if (!effectiveUserId) {
       setSaveError('User not authenticated. Please sign in again.');
@@ -346,16 +380,34 @@ const AddAssetScreen = () => {
       return;
     }
 
+    // Hard rule: if areaId is a UUID, the room came from the database (existing
+    // property). In that case, propertyId is required — draft-only save would
+    // silently lose the asset. Block early with a clear recovery instruction.
+    if (uuidValidate(areaId) && !propertyId) {
+      log.error('[AddAsset] Existing-property room detected but propertyId is missing', { areaId });
+      setSaveError(
+        'Property context was lost (this room is from an existing property). ' +
+        'Please go back to Property Details and re-open Rooms & Inventory.'
+      );
+      return;
+    }
+
     if (!assetName.trim()) {
       const error = 'Please enter an asset name.';
       setSaveError(error);
       return;
     }
 
+    if (warrantyEndDate && !isValidMMDDYY(warrantyEndDate)) {
+      setSaveError('Warranty end date must use MM/DD/YY.');
+      return;
+    }
+
     setIsSaving(true);
 
     try {
-      const newAsset: InventoryItem = {
+      const warrantyEndDateIso = warrantyEndDate ? toIsoDateFromMMDDYY(warrantyEndDate) : null;
+      const baseAsset: InventoryItem = {
         id: `asset_${Date.now()}`,
         areaId,
         name: assetName.trim(),
@@ -366,18 +418,47 @@ const AddAssetScreen = () => {
         brand: selectedBrand || customBrand || undefined,
         model: model.trim() || undefined,
         serialNumber: serialNumber.trim() || undefined,
-        warrantyEndDate: warrantyEndDate || undefined,
+        warrantyEndDate: warrantyEndDateIso || undefined,
         notes: notes.trim() || undefined,
         photos,
         purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
         isActive: true,
       };
 
-
-      // For EXISTING properties (propertyId), save directly to database
+      // For EXISTING properties (propertyId), upload local photos first, then save paths to database.
       if (propertyId) {
         try {
-          const savedAsset = await propertyAreasService.addAsset(propertyId, newAsset, supabase);
+          const localPhotoUris = photos.filter(uri =>
+            uri && (uri.startsWith('file://') || uri.startsWith('blob:'))
+          );
+          const existingRemotePhotos = photos.filter(uri =>
+            uri && !uri.startsWith('file://') && !uri.startsWith('blob:')
+          );
+
+          let uploadedPhotoPaths: string[] = [];
+          if (localPhotoUris.length > 0) {
+            const uploaded = await uploadPropertyPhotos(
+              propertyId,
+              areaId,
+              localPhotoUris.map(uri => ({ uri }))
+            );
+
+            uploadedPhotoPaths = uploaded.map(photo => photo.path);
+
+            if (uploaded.length < localPhotoUris.length) {
+              Alert.alert(
+                'Upload Incomplete',
+                'Some asset photos could not be uploaded. You can add more photos after saving.'
+              );
+            }
+          }
+
+          const assetForDb: InventoryItem = {
+            ...baseAsset,
+            photos: [...uploadedPhotoPaths, ...existingRemotePhotos],
+          };
+
+          const savedAsset = await propertyAreasService.addAsset(propertyId, assetForDb, supabase);
           log.debug('[AddAsset] Asset saved', { assetId: savedAsset.id });
           setSaveSuccess(true);
 
@@ -400,13 +481,19 @@ const AddAssetScreen = () => {
         return;
       }
 
-      // For DRAFTS (draftId), save to AsyncStorage for later
+      // For DRAFTS (draftId), save to AsyncStorage for later sync when property is created.
+      // This is ONLY valid during onboarding when the property hasn't been created in the DB yet.
+      // The UUID guard above already blocks this branch for existing-property rooms.
       if (draftId) {
-        await AsyncStorage.setItem(`pending_asset_${draftId}`, JSON.stringify(newAsset));
+        log.debug('[AddAsset] Saving asset to draft storage (onboarding, no propertyId yet)', { draftId, areaId });
+        await AsyncStorage.setItem(`pending_asset_${draftId}`, JSON.stringify(baseAsset));
         navigation.goBack();
       } else {
-        log.warn('AddAssetScreen: No propertyId or draftId; cannot persist asset');
-        Alert.alert('Warning', 'Unable to save asset - no property context found. Please go back and try again.');
+        log.error('[AddAsset] No propertyId AND no draftId — asset cannot be saved', { areaId });
+        setSaveError(
+          'Unable to save asset — property context was lost. ' +
+          'Please go back to Property Details and re-open Rooms & Inventory.'
+        );
       }
 
     } catch (error: unknown) {
@@ -493,14 +580,14 @@ const AddAssetScreen = () => {
         </TouchableOpacity>
       }
     >
-        {/* DIAGNOSTIC: Show IDs for E2E testing */}
-        {__DEV__ && (
+        {/* Optional developer diagnostics. Disabled by default. */}
+        {showAddAssetDebug && (
           <View style={{ padding: 8, backgroundColor: '#f0f0f0', marginBottom: 8 }}>
             <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-user-id">
               User: {effectiveUserId || 'NO_USER'} (from context)
             </Text>
             <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-property-id">
-              Property: {propertyId || 'NO_PROPERTY_ID'}
+              Property: {propertyId || 'NO_PROPERTY_ID'} {!routePropertyId && webPropertyId ? '(from URL)' : ''}
             </Text>
             <Text style={{ fontSize: 10, fontFamily: 'monospace' }} testID="debug-area-id">
               Area: {areaId || 'NO_AREA_ID'}
@@ -793,12 +880,13 @@ const AddAssetScreen = () => {
             <Text style={styles.inputLabel}>Warranty End Date</Text>
             <TextInput
               style={styles.input}
-              placeholder="MM/DD/YYYY"
+              placeholder="MM/DD/YY"
               value={warrantyEndDate}
-              onChangeText={setWarrantyEndDate}
+              onChangeText={handleWarrantyEndDateChange}
               autoComplete="off"
               autoCorrect={false}
               keyboardType="numeric"
+              maxLength={8}
             />
           </View>
 
