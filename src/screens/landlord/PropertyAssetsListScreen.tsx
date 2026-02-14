@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, StackActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -804,15 +804,18 @@ const PropertyAssetsListScreen = () => {
     const storageKey = `add_asset_params_${areaId}`;
     await AsyncStorage.setItem(storageKey, JSON.stringify(storageParams));
 
-    // Use push() instead of navigate() because AddAsset is registered in both
-    // the LandlordRootStack (onboarding) and LandlordHomeStack/LandlordPropertiesStack
-    // (tab navigators). On web, navigate() can fail to resolve the correct target
-    // when duplicate screen names exist across nested navigators.
-    (navigation as { push: typeof navigation.navigate }).push('AddAsset', {
-      draftId: effectiveDraftId,
-      areaId,
-      areaName,
-      propertyId: routePropertyId,
+    // Dispatch with explicit target to resolve duplicate screen name ambiguity.
+    // AddAsset exists in LandlordRootStack (onboarding), LandlordHomeStack, and
+    // LandlordPropertiesStack. Without target, React Navigation can't resolve which
+    // navigator should handle the action on web. See: github.com/react-navigation/react-navigation/issues/10958
+    navigation.dispatch({
+      ...StackActions.push('AddAsset', {
+        draftId: effectiveDraftId,
+        areaId,
+        areaName,
+        propertyId: routePropertyId,
+      }),
+      target: navigation.getState().key,
     });
   };
 
