@@ -4,16 +4,20 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { markOnboardingStarted } from '../../hooks/useOnboardingStatus';
+import { PropertyDraftService } from '../../services/storage/PropertyDraftService';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import Button from '../../components/shared/Button';
 import PropertyAddressFormSimplified from '../../components/forms/PropertyAddressFormSimplified';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import log from '../../lib/log';
+import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 
 // Address type for the form
 type Address = {
@@ -27,15 +31,22 @@ type Address = {
 };
 
 type PropertyBasicsNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyBasics'>;
+type PropertyBasicsRouteProp = RouteProp<LandlordStackParamList, 'PropertyBasics'>;
 
 const PropertyBasicsScreen = () => {
   const navigation = useNavigation<PropertyBasicsNavigationProp>();
-  const route = useRoute();
+  const route = useRoute<PropertyBasicsRouteProp>();
   const responsive = useResponsive();
+  const { user } = useUnifiedAuth();
+  const { supabase } = useSupabaseWithAuth();
 
-  // Check if we're in onboarding mode
-  const isOnboarding = (route.params as any)?.isOnboarding || false;
-  
+  // Get params from route (all optional)
+  const routeDraftId = route.params?.draftId;
+  const routePropertyId = route.params?.propertyId; // For editing existing properties
+  const isOnboarding = route.params?.isOnboarding || false;
+  const firstName = route.params?.firstName;
+  const isEditMode = !!routePropertyId;
+
   // Form state
   const [addressData, setAddressData] = useState<Address>({
     propertyName: '',
@@ -50,15 +61,14 @@ const PropertyBasicsScreen = () => {
   // UI state
   const [isValidating, setIsValidating] = useState(false);
 
-  // Draft management (disable auto-save for better performance, we handle it manually)
+  // Draft management - load existing draft if draftId provided
   const {
     draftState,
     updatePropertyData,
-    updateCurrentStep,
-    isLoading: isDraftLoading,
-    lastSaved,
+    createNewDraft,
     saveDraft,
   } = usePropertyDraft({
+    draftId: routeDraftId, // Auto-loads draft if ID provided
     enableAutoSave: false, // Disable auto-save for better typing performance
   });
 
@@ -68,6 +78,40 @@ const PropertyBasicsScreen = () => {
       markOnboardingStarted();
     }
   }, [isOnboarding]);
+
+  // Load existing property data when editing
+  useEffect(() => {
+    const loadExistingProperty = async () => {
+      if (!routePropertyId || !supabase) return;
+
+      try {
+        log.debug('PropertyBasics: Loading existing property', { propertyId: routePropertyId });
+        const { data: property, error } = await supabase
+          .from('properties')
+          .select('name, address_jsonb')
+          .eq('id', routePropertyId)
+          .single();
+
+        if (error) throw error;
+
+        const addr = property.address_jsonb || {};
+        setAddressData({
+          propertyName: property.name || '',
+          addressLine1: addr.line1 || '',
+          addressLine2: addr.line2 || '',
+          city: addr.city || '',
+          state: addr.state || '',
+          postalCode: addr.zipCode || '',
+          country: 'US',
+        });
+        log.debug('PropertyBasics: Loaded existing property data', { name: property.name });
+      } catch (error) {
+        log.error('PropertyBasics: Failed to load property', { error: String(error) });
+      }
+    };
+
+    loadExistingProperty();
+  }, [routePropertyId, supabase]);
 
   // Load existing draft data ONCE on mount only
   useEffect(() => {
@@ -83,10 +127,9 @@ const PropertyBasicsScreen = () => {
         country: 'US'
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draftState?.propertyData]); // Only react to propertyData changes, and only if form is empty
+  }, [draftState?.propertyData, addressData.propertyName]); // Only react to propertyData changes, and only if form is empty
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setIsValidating(true);
 
     // Basic validation - check required address fields
@@ -96,20 +139,82 @@ const PropertyBasicsScreen = () => {
                              addressData.state.trim() &&
                              addressData.postalCode.trim();
 
-    setIsValidating(false);
-
-    if (hasRequiredFields) {
-      // Navigate to Property Attributes screen (type, bedrooms, bathrooms)
-      navigation.navigate('PropertyAttributes', {
-        addressData,
-        isOnboarding,
-        firstName: (route.params as any)?.firstName,
-      });
-    } else {
+    if (!hasRequiredFields) {
+      setIsValidating(false);
       Alert.alert(
         'Please Complete Required Fields',
         'Make sure all required address information is filled out correctly.'
       );
+      return;
+    }
+
+    try {
+      // Build PropertyData from form
+      const propertyDataFromForm = {
+        name: addressData.propertyName.trim(),
+        address: {
+          line1: addressData.addressLine1.trim(),
+          line2: addressData.addressLine2?.trim() || '',
+          city: addressData.city.trim(),
+          state: addressData.state.trim(),
+          zipCode: addressData.postalCode.trim(),
+          country: addressData.country || 'US',
+        },
+      };
+
+      // EDIT MODE: Update existing property directly in database
+      if (isEditMode && routePropertyId && supabase) {
+        log.debug('PropertyBasics: Updating existing property', { propertyId: routePropertyId });
+        const { error: updateError } = await supabase
+          .from('properties')
+          .update({
+            name: propertyDataFromForm.name,
+            address_jsonb: propertyDataFromForm.address,
+          })
+          .eq('id', routePropertyId);
+
+        if (updateError) throw updateError;
+
+        setIsValidating(false);
+        Alert.alert('Success', 'Property updated successfully', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
+
+      // CREATE MODE: Use draft system for new properties
+      let targetDraftId: string;
+
+      if (draftState) {
+        // Update existing draft
+        log.debug('PropertyBasics: Updating existing draft', { draftId: draftState.id });
+        updatePropertyData(propertyDataFromForm);
+        await saveDraft();
+        targetDraftId = draftState.id;
+      } else {
+        // Create new draft and save immediately to storage
+        log.debug('PropertyBasics: Creating new draft');
+        const newDraft = createNewDraft(propertyDataFromForm);
+        targetDraftId = newDraft.id;
+        // Save directly to storage (can't use saveDraft() since state hasn't updated yet)
+        if (user?.id) {
+          await PropertyDraftService.saveDraft(user.id, newDraft);
+          log.debug('PropertyBasics: Draft saved to storage', { draftId: targetDraftId });
+        }
+      }
+
+      setIsValidating(false);
+
+      // Navigate with only draftId (no object params)
+      navigation.navigate('PropertyAttributes', {
+        draftId: targetDraftId,
+        isOnboarding,
+        firstName,
+      });
+    } catch (error) {
+      setIsValidating(false);
+      log.error('PropertyBasics: Failed to save property', { error: String(error) });
+      Alert.alert('Error', 'Failed to save property data. Please try again.');
     }
   };
 
@@ -294,9 +399,13 @@ const PropertyBasicsScreen = () => {
     },
   });
 
+  const buttonTitle = isValidating
+    ? (isEditMode ? 'Saving...' : 'Validating...')
+    : (isEditMode ? 'Save Changes' : 'Continue');
+
   const bottomActions = (
     <Button
-      title={isValidating ? 'Validating...' : 'Continue'}
+      title={buttonTitle}
       onPress={handleContinue}
       type="primary"
       size="lg"
@@ -308,8 +417,8 @@ const PropertyBasicsScreen = () => {
 
   return (
     <ScreenContainer
-      title="Property Address"
-      subtitle="Where is this property located?"
+      title={isEditMode ? 'Edit Property' : 'Property Address'}
+      subtitle={isEditMode ? 'Update property details' : 'Where is this property located?'}
       showBackButton
       onBackPress={() => navigation.goBack()}
       userRole="landlord"

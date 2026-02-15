@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-globals */
-
 /**
  * Centralized Logging with Data Sanitization
  *
@@ -185,7 +183,7 @@ function sanitizeArgs(args: unknown[]): unknown[] {
 /**
  * Send logs to external service (Sentry, LogRocket, etc.)
  */
-function sendToLoggingService(level: 'info' | 'warn' | 'error', args: unknown[]) {
+function sendToLoggingService(_level: 'info' | 'warn' | 'error', _args: unknown[]) {
   // TODO: Integrate with Sentry or other logging service
   // Example:
   // if (typeof Sentry !== 'undefined') {
@@ -193,7 +191,20 @@ function sendToLoggingService(level: 'info' | 'warn' | 'error', args: unknown[])
   // }
 }
 
+// Check if running in development mode
+const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+
 export const log = {
+  /**
+   * Debug logs - only shown in development mode
+   * Use for verbose logging that helps during development but shouldn't appear in production
+   */
+  debug: (...args: unknown[]) => {
+    if (isDev) {
+      const sanitized = sanitizeArgs(args);
+      console.log(...sanitized);
+    }
+  },
   info: (...args: unknown[]) => {
     const sanitized = sanitizeArgs(args);
     console.log(...sanitized);

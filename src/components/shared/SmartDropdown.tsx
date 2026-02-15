@@ -16,6 +16,8 @@ interface SmartDropdownProps {
   value?: string;
   onSelect: (value: string) => void;
   disabled?: boolean;
+  testID?: string;
+  optionTestIDPrefix?: string;
 }
 
 export const SmartDropdown: React.FC<SmartDropdownProps> = ({
@@ -24,11 +26,16 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
   options,
   value,
   onSelect,
-  disabled = false
+  disabled = false,
+  testID,
+  optionTestIDPrefix,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   const selectedOption = options.find(option => option.value === value);
+
+  const sanitizeTestIdToken = (raw: string) =>
+    raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
   const handleSelect = (optionValue: string) => {
     onSelect(optionValue);
@@ -38,8 +45,9 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
-      
+
       <TouchableOpacity
+        testID={testID}
         style={[
           styles.dropdown,
           disabled && styles.dropdownDisabled,
@@ -52,10 +60,10 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
           {selectedOption ? (
             <View style={styles.selectedOption}>
               {selectedOption.icon && (
-                <Ionicons 
-                  name={selectedOption.icon as any} 
-                  size={20} 
-                  color="#2C3E50" 
+                <Ionicons
+                  name={selectedOption.icon as keyof typeof Ionicons.glyphMap}
+                  size={20}
+                  color="#2C3E50"
                   style={styles.optionIcon}
                 />
               )}
@@ -65,11 +73,11 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
             <Text style={styles.placeholder}>{placeholder}</Text>
           )}
         </View>
-        
-        <Ionicons 
-          name={isVisible ? "chevron-up" : "chevron-down"} 
-          size={20} 
-          color={disabled ? "#95A5A6" : "#7F8C8D"} 
+
+        <Ionicons
+          name={isVisible ? 'chevron-up' : 'chevron-down'}
+          size={20}
+          color={disabled ? '#95A5A6' : '#7F8C8D'}
         />
       </TouchableOpacity>
 
@@ -79,7 +87,7 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
         animationType="fade"
         onRequestClose={() => setIsVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
           onPress={() => setIsVisible(false)}
@@ -87,18 +95,19 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{label}</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => setIsVisible(false)}
                 style={styles.closeButton}
               >
                 <Ionicons name="close" size={24} color="#7F8C8D" />
               </TouchableOpacity>
             </View>
-            
+
             <ScrollView style={styles.optionsList}>
               {options.map((option) => (
                 <TouchableOpacity
                   key={option.value}
+                  testID={optionTestIDPrefix ? `${optionTestIDPrefix}-${sanitizeTestIdToken(option.value)}` : undefined}
                   style={[
                     styles.option,
                     value === option.value && styles.selectedOptionItem
@@ -107,10 +116,10 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
                 >
                   <View style={styles.optionContent}>
                     {option.icon && (
-                      <Ionicons 
-                        name={option.icon as any} 
-                        size={24} 
-                        color={value === option.value ? "#3498DB" : "#7F8C8D"} 
+                      <Ionicons
+                        name={option.icon as keyof typeof Ionicons.glyphMap}
+                        size={24}
+                        color={value === option.value ? '#3498DB' : '#7F8C8D'}
                         style={styles.optionIcon}
                       />
                     )}
@@ -128,7 +137,7 @@ export const SmartDropdown: React.FC<SmartDropdownProps> = ({
                       )}
                     </View>
                   </View>
-                  
+
                   {value === option.value && (
                     <Ionicons name="checkmark" size={20} color="#3498DB" />
                   )}
@@ -161,10 +170,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    
-    
-    
-    
     elevation: 2,
   },
   dropdownDisabled: {

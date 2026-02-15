@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,25 @@ import {
   TextInput,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { LandlordStackParamList } from '../../navigation/MainStack';
+import { Database } from '../../services/supabase/types';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useApiErrorHandling } from '../../hooks/useErrorHandling';
 import { formatRelativeTime } from '../../utils/helpers';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { log } from '../../lib/log';
+
+type ConversationFilter = 'all' | 'unread' | 'urgent';
+type MessageWithRelations = Database['public']['Tables']['messages']['Row'] & {
+  sender?: { name?: string | null; email?: string | null } | null;
+  recipient?: { name?: string | null; email?: string | null } | null;
+};
 
 interface Conversation {
   id: string;
@@ -31,17 +40,17 @@ interface Conversation {
 }
 
 const LandlordCommunicationScreen = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<LandlordStackParamList>>();
   const apiClient = useApiClient();
-  const { user } = useAppAuth();
-  const { refreshUnreadCount } = useUnreadMessages();
+  const { user } = useUnifiedAuth();
+  const { refreshNotificationCounts } = useAppState();
   const { handleApiError } = useApiErrorHandling();
 
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'unread' | 'urgent'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<ConversationFilter>('all');
 
   // Mark messages as read when screen is focused
   useFocusEffect(
@@ -50,14 +59,14 @@ const LandlordCommunicationScreen = () => {
         if (apiClient) {
           try {
             await apiClient.markMessagesAsRead();
-            await refreshUnreadCount();
+            await refreshNotificationCounts();
           } catch (error) {
             log.error('Error marking messages as read', { error: String(error) });
           }
         }
       };
       markAsRead();
-    }, [apiClient, refreshUnreadCount])
+    }, [apiClient, refreshNotificationCounts])
   );
 
   // Reload conversations when screen gets focus (like tenant screen)
@@ -78,7 +87,7 @@ const LandlordCommunicationScreen = () => {
       }
 
       // Load messages from API
-      const messages = await apiClient.getMessages();
+      const messages = (await apiClient.getMessages()) as MessageWithRelations[];
       log.info('Landlord loaded messages', { count: messages.length });
 
       // Group messages by the other party (tenant)
@@ -87,7 +96,7 @@ const LandlordCommunicationScreen = () => {
         tenantName: string;
         tenantEmail: string;
         property: string;
-        messages: any[];
+        messages: MessageWithRelations[];
       }>();
 
       for (const msg of messages) {
@@ -95,9 +104,9 @@ const LandlordCommunicationScreen = () => {
         const tenantId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
 
         if (!conversationMap.has(tenantId)) {
-          // Get tenant info from the message's sender/recipient data
-          const sender = msg.sender as any;
-          const recipient = msg.recipient as any;
+          // Get tenant info from the message's sender/recipient data (if expanded)
+          const sender = msg.sender;
+          const recipient = msg.recipient;
           const tenantInfo = msg.sender_id === user.id ? recipient : sender;
 
           conversationMap.set(tenantId, {
@@ -117,7 +126,7 @@ const LandlordCommunicationScreen = () => {
       for (const [tenantId, data] of conversationMap.entries()) {
         // Sort messages by time to get latest
         data.messages.sort((a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
 
         const latestMsg = data.messages[0];
@@ -131,7 +140,7 @@ const LandlordCommunicationScreen = () => {
           tenantEmail: data.tenantEmail,
           property: data.property,
           lastMessage: latestMsg?.content || '',
-          lastMessageTime: latestMsg ? formatRelativeTime(new Date(latestMsg.created_at)) : '',
+          lastMessageTime: latestMsg ? formatRelativeTime(new Date(latestMsg.created_at || 0)) : '',
           unreadCount,
           priority: unreadCount > 0 ? 'high' : 'low',
         });
@@ -182,11 +191,11 @@ const LandlordCommunicationScreen = () => {
   };
 
   const handleConversationPress = (conversation: Conversation) => {
-    navigation.navigate('LandlordChat' as never, {
+    navigation.navigate('LandlordChat', {
       tenantId: conversation.id,
       tenantName: conversation.tenantName,
       tenantEmail: conversation.tenantEmail,
-    } as never);
+    });
   };
 
   const handleNewMessage = () => {
@@ -222,6 +231,7 @@ const LandlordCommunicationScreen = () => {
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={20} color="#7F8C8D" />
             <TextInput
+              testID="landlord-messages-search"
               style={styles.searchInput}
               placeholder="Search tenants or properties..."
               value={searchQuery}
@@ -250,7 +260,7 @@ const LandlordCommunicationScreen = () => {
                   styles.filterButton,
                   selectedFilter === filter.key && styles.filterButtonActive,
                 ]}
-                onPress={() => setSelectedFilter(filter.key as any)}
+                onPress={() => setSelectedFilter(filter.key as ConversationFilter)}
               >
                 <Text
                   style={[
@@ -281,6 +291,7 @@ const LandlordCommunicationScreen = () => {
             filteredConversations.map((conversation) => (
               <TouchableOpacity
                 key={conversation.id}
+                testID={'landlord-conversation-card-' + conversation.id}
                 style={styles.conversationCard}
                 onPress={() => handleConversationPress(conversation)}
                 activeOpacity={0.7}

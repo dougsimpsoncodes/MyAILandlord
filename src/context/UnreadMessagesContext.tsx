@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useApiClient } from '../services/api/client';
-import { useAppAuth } from './SupabaseAuthContext';
-import { useProfile } from './ProfileContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 import { supabase } from '../services/supabase/config';
 import log from '../lib/log';
 
@@ -26,8 +25,7 @@ interface UnreadMessagesProviderProps {
 export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const { user } = useAppAuth();
-  const { profile } = useProfile();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
 
   const refreshUnreadCount = useCallback(async () => {
@@ -37,28 +35,21 @@ export const UnreadMessagesProvider: React.FC<UnreadMessagesProviderProps> = ({ 
     }
 
     try {
-      // Use cached profile from ProfileContext instead of API call
-      if (!profile) {
-        log.warn('No profile found for unread count');
-        setUnreadCount(0);
-        return;
-      }
-
       const messages = await apiClient.getMessages();
 
       // Count messages where user is recipient and is_read is false
-      const unread = messages.filter(
-        (msg: any) => msg.recipient_id === profile.id && !msg.is_read
-      ).length;
+      const unread = (messages as Array<{ recipient_id?: string | null; is_read?: boolean | null }>)
+        .filter((msg) => msg.recipient_id === user.id && !msg.is_read)
+        .length;
 
       log.info('Unread count updated', { unread, totalMessages: messages.length });
       setUnreadCount(unread);
-      setProfileId(profile.id);
+      setProfileId(user.id);
     } catch (error) {
       log.error('Error fetching unread message count', { error: String(error) });
       // Don't reset count on error to avoid flickering
     }
-  }, [apiClient, user, profile]);
+  }, [apiClient, user]);
 
   const markAsRead = useCallback(() => {
     setUnreadCount(0);

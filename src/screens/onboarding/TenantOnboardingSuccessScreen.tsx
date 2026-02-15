@@ -68,7 +68,7 @@ export default function TenantOnboardingSuccessScreen() {
       // Refresh onboarding status - this will detect the property link
       // and trigger navigation to MainStack
       await refreshStatus();
-    } catch (err) {
+    } catch {
       // If there's an error, try again
       setLoading(false);
     }

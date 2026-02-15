@@ -19,10 +19,7 @@ const SubmissionSuccessScreen = () => {
   };
 
   const handleViewRequests = () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'MaintenanceStatus' }],
-    });
+    navigation.getParent()?.navigate('TenantRequests' as never);
   };
 
   const formatPriority = (priority: string) => {
@@ -123,6 +120,7 @@ const SubmissionSuccessScreen = () => {
           <Text style={styles.orText}>or</Text>
 
           <TouchableOpacity
+            testID="submission-view-requests"
             style={styles.secondaryButton}
             onPress={handleViewRequests}
           >

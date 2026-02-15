@@ -67,27 +67,10 @@ const ConfirmSubmissionScreen = () => {
           },
         ]
       );
-    } catch (error) {
+    } catch {
       Alert.alert('Submission Error', 'Failed to submit your request. Please try again.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'Emergency':
-        return '#E74C3C';
-      case 'Very urgent':
-        return '#E67E22';
-      case 'Moderate':
-        return '#F39C12';
-      case 'Can wait':
-        return '#27AE60';
-      case 'Low priority':
-        return '#95A5A6';
-      default:
-        return '#3498DB';
     }
   };
 

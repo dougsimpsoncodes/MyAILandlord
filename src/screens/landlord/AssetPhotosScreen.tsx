@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Image,
   Alert,
   ActivityIndicator,
+  type DimensionValue,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,7 +17,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -136,7 +136,7 @@ const AssetPhotosScreen = () => {
           })
         );
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
       setIsUploading(false);
@@ -204,8 +204,8 @@ const AssetPhotosScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('ReviewSubmit', { 
-      propertyData: { ...propertyData, assetPhotos } 
+    navigation.navigate('ReviewSubmit', {
+      draftId: draftState?.id || '',
     });
   };
 
@@ -223,7 +223,7 @@ const AssetPhotosScreen = () => {
 
   // Dynamic styles that use responsive values
   const dynamicStyles = {
-    photoCardWidth: responsive.select({
+    photoCardWidth: responsive.select<DimensionValue>({
       mobile: '48%',
       tablet: '31%',
       default: '48%'
@@ -471,7 +471,7 @@ const AssetPhotosScreen = () => {
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('ReviewSubmit', { propertyData })}
+            onPress={() => navigation.navigate('ReviewSubmit', { draftId: draftState?.id || '' })}
           >
             <Text style={styles.continueButtonText}>Continue to Review</Text>
           </TouchableOpacity>
@@ -675,7 +675,7 @@ const AssetPhotosScreen = () => {
                 
                 if (photo) {
                   return (
-                    <View key={index} style={[styles.photoCard, styles.photoCardFilled, { width: dynamicStyles.photoCardWidth } as any]}>
+                    <View key={index} style={[styles.photoCard, styles.photoCardFilled, { width: dynamicStyles.photoCardWidth }]}>
                       <Image source={{ uri: photo }} style={styles.photoImage} />
                       <View style={styles.photoOverlay}>
                         <TouchableOpacity
@@ -691,7 +691,7 @@ const AssetPhotosScreen = () => {
                   return (
                     <TouchableOpacity
                       key={index}
-                      style={[styles.photoCard, { width: dynamicStyles.photoCardWidth } as any]}
+                      style={[styles.photoCard, { width: dynamicStyles.photoCardWidth }]}
                       onPress={() => {
                         Alert.alert(
                           'Add Photo',
@@ -712,7 +712,7 @@ const AssetPhotosScreen = () => {
                     </TouchableOpacity>
                   );
                 } else {
-                  return <View key={index} style={[styles.photoCard, { width: dynamicStyles.photoCardWidth } as any]} />;
+                  return <View key={index} style={[styles.photoCard, { width: dynamicStyles.photoCardWidth }]} />;
                 }
               })}
             </View>

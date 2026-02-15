@@ -12,9 +12,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
-import { useResponsive } from '../../hooks/useResponsive';
+import { formatDateInputMMDDYY, isValidMMDDYY } from '../../utils/dateInput';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -46,7 +46,6 @@ const AssetDetailsScreen = () => {
   const navigation = useNavigation<AssetDetailsNavigationProp>();
   const route = useRoute();
   const { propertyData } = route.params as { propertyData: PropertyData };
-  const responsive = useResponsive();
   
   // State
   const [currentAssetIndex, setCurrentAssetIndex] = useState(0);
@@ -58,7 +57,7 @@ const AssetDetailsScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isDraftLoading,
+    isLoading: isDraftLoading,
     saveDraft,
   } = usePropertyDraft();
 
@@ -132,6 +131,14 @@ const AssetDetailsScreen = () => {
     if (currentAsset.purchasePrice && isNaN(parseFloat(currentAsset.purchasePrice))) {
       newErrors.purchasePrice = 'Please enter a valid price';
     }
+
+    if (currentAsset.purchaseDate && !isValidMMDDYY(currentAsset.purchaseDate)) {
+      newErrors.purchaseDate = 'Use MM/DD/YY format';
+    }
+
+    if (currentAsset.warrantyExpiry && !isValidMMDDYY(currentAsset.warrantyExpiry)) {
+      newErrors.warrantyExpiry = 'Use MM/DD/YY format';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -187,18 +194,11 @@ const AssetDetailsScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetPhotos', { 
-      propertyData: { ...propertyData, assetDetails } 
+    navigation.navigate('AssetPhotos', {
+      draftId: draftState?.id || '',
     });
   };
 
-  const getProgressPercentage = () => {
-    const completedAssets = assetDetails.filter(asset => asset.name.trim()).length;
-    const totalAssets = assetDetails.length || 1;
-    const baseProgress = 500; // Previous steps complete
-    const detailProgress = Math.round((completedAssets / totalAssets) * 100);
-    return Math.round(((baseProgress + detailProgress) / 8) * 100);
-  };
 
   const getRoomName = (roomId: string) => {
     return propertyData.rooms?.find(r => r.id === roomId)?.name || 'Unknown Room';
@@ -385,7 +385,7 @@ const AssetDetailsScreen = () => {
           </ResponsiveBody>
           <TouchableOpacity
             style={styles.continueButton}
-            onPress={() => navigation.navigate('AssetPhotos', { propertyData })}
+            onPress={() => navigation.navigate('AssetPhotos', { draftId: draftState?.id || '' })}
           >
             <Text style={styles.continueButtonText}>Continue to Photos</Text>
           </TouchableOpacity>
@@ -435,7 +435,7 @@ const AssetDetailsScreen = () => {
         </>
       }
     >
-      <ResponsiveContainer maxWidth="lg" padding={false}>
+      <ResponsiveContainer maxWidth="large" padding={false}>
           {/* Asset Header */}
           <View style={styles.assetHeader}>
             <Text style={styles.assetName}>{currentAsset.name}</Text>
@@ -527,12 +527,15 @@ const AssetDetailsScreen = () => {
               <View style={styles.inputHalf}>
                 <Text style={styles.label}>Purchase Date</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.purchaseDate && styles.inputError]}
                   value={currentAsset.purchaseDate}
-                  onChangeText={(text) => updateAssetField('purchaseDate', text)}
-                  placeholder="MM/DD/YYYY"
+                  onChangeText={(text) => updateAssetField('purchaseDate', formatDateInputMMDDYY(text))}
+                  placeholder="MM/DD/YY"
                   placeholderTextColor="#6C757D"
+                  keyboardType="numeric"
+                  maxLength={8}
                 />
+                {errors.purchaseDate && <Text style={styles.errorText}>{errors.purchaseDate}</Text>}
               </View>
               <View style={styles.inputHalf}>
                 <Text style={styles.label}>Purchase Price</Text>
@@ -551,12 +554,15 @@ const AssetDetailsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Warranty Expiry</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.warrantyExpiry && styles.inputError]}
                 value={currentAsset.warrantyExpiry}
-                onChangeText={(text) => updateAssetField('warrantyExpiry', text)}
-                placeholder="MM/DD/YYYY"
+                onChangeText={(text) => updateAssetField('warrantyExpiry', formatDateInputMMDDYY(text))}
+                placeholder="MM/DD/YY"
                 placeholderTextColor="#6C757D"
+                keyboardType="numeric"
+                maxLength={8}
               />
+              {errors.warrantyExpiry && <Text style={styles.errorText}>{errors.warrantyExpiry}</Text>}
             </View>
           </View>
 

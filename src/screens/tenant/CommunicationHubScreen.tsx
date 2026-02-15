@@ -13,8 +13,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
@@ -40,9 +40,9 @@ interface Announcement {
 
 const CommunicationHubScreen = () => {
   const navigation = useNavigation<CommunicationHubNavigationProp>();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
-  const { refreshUnreadCount } = useUnreadMessages();
+  const { refreshNotificationCounts } = useAppState();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [activeTab, setActiveTab] = useState<'messages' | 'announcements'>('messages');
@@ -61,14 +61,14 @@ const CommunicationHubScreen = () => {
         if (apiClient) {
           try {
             await apiClient.markMessagesAsRead();
-            await refreshUnreadCount();
+            await refreshNotificationCounts();
           } catch (error) {
             log.error('Error marking messages as read', { error: String(error) });
           }
         }
       };
       markAsRead();
-    }, [apiClient, refreshUnreadCount])
+    }, [apiClient, refreshNotificationCounts])
   );
 
   // Load messages and property info on mount
@@ -79,7 +79,7 @@ const CommunicationHubScreen = () => {
       // First get the tenant's linked property to find the landlord
       const tenantProperties = await apiClient.getTenantProperties();
       if (tenantProperties.length > 0) {
-        const property = tenantProperties[0].properties as any;
+        const property = tenantProperties[0].properties as { id: string; landlord_id?: string } | null;
         if (property) {
           setPropertyId(property.id);
           // Get landlord ID from property
@@ -95,12 +95,12 @@ const CommunicationHubScreen = () => {
       log.info('Loaded messages from database', { count: dbMessages.length });
 
       // Map database messages to local format
-      const mappedMessages: Message[] = dbMessages.map((msg: any) => ({
+      const mappedMessages: Message[] = (dbMessages as Array<{ id: string; content: string; sender_id: string | null; created_at: string | null; is_read?: boolean | null }>).map((msg) => ({
         id: msg.id,
         text: msg.content,
         sender: msg.sender_id === user?.id ? 'tenant' : 'landlord',
-        timestamp: new Date(msg.created_at),
-        read: msg.is_read || false,
+        timestamp: new Date(msg.created_at ?? Date.now()),
+        read: msg.is_read ?? false,
       }));
 
       // Sort by timestamp
@@ -236,6 +236,7 @@ const CommunicationHubScreen = () => {
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
+            testID="tenant-messages-tab-messages"
             style={[styles.tab, activeTab === 'messages' && styles.activeTab]}
             onPress={() => setActiveTab('messages')}
           >
@@ -250,6 +251,7 @@ const CommunicationHubScreen = () => {
           </TouchableOpacity>
           
           <TouchableOpacity
+            testID="tenant-messages-tab-announcements"
             style={[styles.tab, activeTab === 'announcements' && styles.activeTab]}
             onPress={() => setActiveTab('announcements')}
           >
@@ -313,6 +315,7 @@ const CommunicationHubScreen = () => {
 
             <View style={styles.inputContainer}>
               <TextInput
+                testID="tenant-message-input"
                 style={styles.messageInput}
                 placeholder={landlordId ? "Type a message..." : "Link to a property first..."}
                 value={messageText}
@@ -322,6 +325,7 @@ const CommunicationHubScreen = () => {
                 editable={!!landlordId && !isSending}
               />
               <TouchableOpacity
+                testID="tenant-message-send"
                 style={[styles.sendButton, (!messageText.trim() || isSending || !landlordId) && styles.sendButtonDisabled]}
                 onPress={sendMessage}
                 disabled={!messageText.trim() || isSending || !landlordId}

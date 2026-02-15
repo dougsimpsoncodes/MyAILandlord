@@ -9,8 +9,8 @@ interface SubmitButtonProps {
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
   size?: 'small' | 'medium' | 'large';
-  leftIcon?: string;
-  rightIcon?: string;
+  leftIcon?: keyof typeof Ionicons.glyphMap;
+  rightIcon?: keyof typeof Ionicons.glyphMap;
   fullWidth?: boolean;
 }
 
@@ -127,7 +127,7 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
           <>
             {leftIcon && (
               <Ionicons 
-                name={leftIcon as any} 
+                name={leftIcon} 
                 size={getIconSize()} 
                 color={getIconColor()}
                 style={styles.leftIcon}
@@ -136,7 +136,7 @@ const SubmitButton: React.FC<SubmitButtonProps> = ({
             <Text style={getTextStyle()}>{title}</Text>
             {rightIcon && (
               <Ionicons 
-                name={rightIcon as any} 
+                name={rightIcon} 
                 size={getIconSize()} 
                 color={getIconColor()}
                 style={styles.rightIcon}

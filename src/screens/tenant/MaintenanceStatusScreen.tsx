@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,26 +8,17 @@ import { useApiClient } from '../../services/api/client';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import Button from '../../components/shared/Button';
+import { log } from '../../lib/log';
 
 type MaintenanceStatusScreenNavigationProp = NativeStackNavigationProp<TenantStackParamList, 'MaintenanceStatus'>;
 
 interface MaintenanceRequest {
   id: string;
   title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   createdAt: Date;
   location: string;
-  description: string;
-}
-
-interface MaintenanceRequestResponse {
-  id: string;
-  title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  created_at: string;
-  area: string;
   description: string;
 }
 
@@ -39,44 +30,61 @@ const MaintenanceStatusScreen = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'pending' | 'in_progress' | 'completed'>('pending');
 
-  useEffect(() => {
-    loadRequests();
-  }, []);
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     try {
       if (!apiClient) {
-        console.error('API client not available');
+        log.error('API client not available');
         return;
       }
       const maintenanceRequests = await apiClient.getMaintenanceRequests();
       // Transform the response data to match our interface
-      const transformedRequests = maintenanceRequests.map((request: any) => ({
+      const transformedRequests: MaintenanceRequest[] = (maintenanceRequests as Array<{ id: string; title: string | null; status: MaintenanceRequest['status'] | null; priority: MaintenanceRequest['priority'] | null; created_at: string | null; area: string | null; description: string | null }>).map((request) => ({
         id: request.id,
-        title: request.title,
-        status: request.status,
-        priority: request.priority,
-        createdAt: new Date(request.created_at),
+        title: request.title ?? 'Maintenance Request',
+        status: (request.status ?? 'pending') as MaintenanceRequest['status'],
+        priority: (request.priority ?? 'medium') as MaintenanceRequest['priority'],
+        createdAt: new Date(request.created_at ?? Date.now()),
         location: request.area || 'Not specified',
-        description: request.description
+        description: request.description ?? ''
       }));
       setRequests(transformedRequests);
     } catch (error) {
-      console.error('Error loading maintenance hub:', error);
+      log.error('Error loading maintenance hub', { error: String(error) });
       setRequests([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [apiClient]);
+
+  // Load whenever the screen gains focus.
+  useFocusEffect(
+    useCallback(() => {
+      loadRequests();
+    }, [loadRequests])
+  );
+
+  // Also load once the API client is ready to avoid initial race conditions.
+  useEffect(() => {
+    if (apiClient) {
+      loadRequests();
+    }
+  }, [apiClient, loadRequests]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
     loadRequests();
   };
 
+  const handleFilterPress = (nextFilter: 'pending' | 'in_progress' | 'completed') => {
+    setSelectedFilter(nextFilter);
+    // Keep list fresh when users switch tabs after a status change.
+    loadRequests();
+  };
+
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
+      submitted: '#F39C12',
       pending: '#F39C12',
       in_progress: '#3498DB',
       completed: '#2ECC71',
@@ -87,22 +95,13 @@ const MaintenanceStatusScreen = () => {
 
   const getStatusText = (status: string) => {
     const texts: { [key: string]: string } = {
+      submitted: 'New',
       pending: 'Pending',
       in_progress: 'In Progress',
       completed: 'Completed',
       cancelled: 'Cancelled'
     };
     return texts[status] || status;
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    const icons: { [key: string]: { name: string; color: string } } = {
-      low: { name: 'arrow-down', color: '#27AE60' },
-      medium: { name: 'remove', color: '#F39C12' },
-      high: { name: 'arrow-up', color: '#E67E22' },
-      emergency: { name: 'alert', color: '#E74C3C' }
-    };
-    return icons[priority] || icons.medium;
   };
 
   const formatDate = (date: Date) => {
@@ -118,7 +117,7 @@ const MaintenanceStatusScreen = () => {
   };
 
   // Count requests by status
-  const pendingCount = requests.filter(req => req.status === 'pending').length;
+  const pendingCount = requests.filter(req => req.status === 'submitted' || req.status === 'pending').length;
   const inProgressCount = requests.filter(req => req.status === 'in_progress').length;
   const completedCount = requests.filter(req => ['completed', 'cancelled'].includes(req.status)).length;
 
@@ -126,6 +125,9 @@ const MaintenanceStatusScreen = () => {
   const filteredRequests = requests.filter(req => {
     if (selectedFilter === 'completed') {
       return ['completed', 'cancelled'].includes(req.status);
+    }
+    if (selectedFilter === 'pending') {
+      return req.status === 'submitted' || req.status === 'pending';
     }
     return req.status === selectedFilter;
   });
@@ -164,8 +166,16 @@ const MaintenanceStatusScreen = () => {
       onRefresh={handleRefresh}
       bottomContent={
         <Button
+          testID="tenant-report-new-issue"
           title="Report New Issue"
-          onPress={() => navigation.navigate('ReportIssue')}
+          onPress={() => {
+            const parentNav = navigation.getParent();
+            if (parentNav) {
+              (parentNav as any).navigate('TenantHome', { screen: 'ReportIssue' });
+              return;
+            }
+            navigation.navigate('ReportIssue');
+          }}
           type="success"
           fullWidth
           icon={<Ionicons name="construct" size={20} color="#fff" />}
@@ -175,8 +185,9 @@ const MaintenanceStatusScreen = () => {
         {/* Filter Tabs */}
         <View style={styles.filterContainer}>
           <TouchableOpacity
+            testID="tenant-requests-filter-new"
             style={[styles.filterButton, selectedFilter === 'pending' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('pending')}
+            onPress={() => handleFilterPress('pending')}
           >
             <Text style={[styles.filterText, selectedFilter === 'pending' && styles.filterTextActive]}>
               New
@@ -191,8 +202,9 @@ const MaintenanceStatusScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="tenant-requests-filter-in-progress"
             style={[styles.filterButton, selectedFilter === 'in_progress' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('in_progress')}
+            onPress={() => handleFilterPress('in_progress')}
           >
             <Text style={[styles.filterText, selectedFilter === 'in_progress' && styles.filterTextActive]}>
               In Progress
@@ -207,8 +219,9 @@ const MaintenanceStatusScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
+            testID="tenant-requests-filter-completed"
             style={[styles.filterButton, selectedFilter === 'completed' && styles.filterButtonActive]}
-            onPress={() => setSelectedFilter('completed')}
+            onPress={() => handleFilterPress('completed')}
           >
             <Text style={[styles.filterText, selectedFilter === 'completed' && styles.filterTextActive]}>
               Completed
@@ -235,8 +248,9 @@ const MaintenanceStatusScreen = () => {
             <Text style={styles.emptyStateSubtitle}>{emptyState.subtitle}</Text>
           </View>
         ) : (
-          filteredRequests.map((request) => (
+          filteredRequests.map((request, index) => (
             <TouchableOpacity
+              testID={'tenant-request-card-' + index}
               key={request.id}
               style={[
                 styles.requestCard,

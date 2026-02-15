@@ -63,3 +63,13 @@ build
 
 # test artifacts
 coverage/
+test-results/
+.claude/hooks/learning-log.txt
+
+# playwright artifacts
+artifacts/playwright/
+playwright-report/
+.playwright-mcp/
+
+# temp files
+.tmp/

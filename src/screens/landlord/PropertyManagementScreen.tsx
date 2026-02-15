@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,20 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
 import { usePropertyDrafts } from '../../hooks/usePropertyDrafts';
 import { PropertySetupState } from '../../types/property';
-import { formatAddressString } from '../../utils/addressValidation';
-import { DataClearer } from '../../utils/dataClearer';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
 import { Property as DbProperty } from '../../types/api';
+import { supabase } from '../../lib/supabaseClient';
 import { formatAddress } from '../../utils/helpers';
 import ScreenContainer from '../../components/shared/ScreenContainer';
-import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { PropertyImage } from '../../components/shared/PropertyImage';
+import { log } from '../../lib/log';
 
 
 type PropertyManagementNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyManagement'>;
@@ -34,8 +33,127 @@ interface Property {
   image: string;
   tenants: number;
   activeRequests: number;
-  property_code?: string;
+  property_code?: string | null;
 }
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface DraftListItemProps {
+  draft: PropertySetupState;
+  isDeleteMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: (draftId: string) => void;
+  onOpenDraft: (draft: PropertySetupState) => void;
+  getStatusColor: (status: string) => string;
+  formatLastModified: (date: Date) => string;
+}
+
+const DraftListItem = React.memo(( {
+  draft,
+  isDeleteMode,
+  isSelected,
+  onToggleSelect,
+  onOpenDraft,
+  getStatusColor,
+  formatLastModified,
+}: DraftListItemProps) => (
+  <TouchableOpacity
+    style={[
+      styles.draftItem,
+      isDeleteMode && isSelected && styles.selectedDraftItem
+    ]}
+    onPress={() => (isDeleteMode ? onToggleSelect(draft.id) : onOpenDraft(draft))}
+    activeOpacity={0.7}
+  >
+    <View style={styles.draftItemContent}>
+      <View style={styles.draftItemLeft}>
+        <Text style={styles.draftItemName} numberOfLines={1}>
+          {draft.propertyData.name || 'Untitled'}
+        </Text>
+        <View style={styles.draftItemMeta}>
+          <View style={[styles.draftDot, { backgroundColor: getStatusColor(draft.status) }]} />
+          <Text style={styles.draftItemStatus}>{draft.completionPercentage}%</Text>
+          <Text style={styles.draftItemTime}>{formatLastModified(new Date(draft.lastModified))}</Text>
+        </View>
+      </View>
+      {isDeleteMode ? (
+        <View style={styles.draftSelectionIndicator}>
+          <Ionicons
+            name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+            size={18}
+            color={isSelected ? '#E74C3C' : '#BDC3C7'}
+          />
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={16} color="#BDC3C7" />
+      )}
+    </View>
+  </TouchableOpacity>
+));
+
+interface PropertyCardProps {
+  property: Property;
+  isDeleteMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: (propertyId: string) => void;
+  onOpenProperty: (property: Property) => void;
+}
+
+const PropertyCard = React.memo(({
+  property,
+  isDeleteMode,
+  isSelected,
+  onToggleSelect,
+  onOpenProperty,
+}: PropertyCardProps) => (
+  <TouchableOpacity
+    style={[
+      styles.propertyCard,
+      isDeleteMode && isSelected && styles.selectedCard
+    ]}
+    onPress={() => (isDeleteMode ? onToggleSelect(property.id) : onOpenProperty(property))}
+    activeOpacity={0.7}
+  >
+    <View style={styles.propertyImageContainer}>
+      <PropertyImage
+        address={property.address}
+        width={320}
+        height={200}
+        borderRadius={12}
+      />
+    </View>
+
+    <View style={styles.propertyInfoBar}>
+      <View style={styles.propertyInfoContent}>
+        <Text style={styles.propertyName}>{property.name}</Text>
+        <Text style={styles.propertyAddress} numberOfLines={1}>
+          {formatAddress(property.address)}
+        </Text>
+        <View style={styles.propertyStats}>
+          <View style={styles.statItem}>
+            <Ionicons name="people-outline" size={12} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.statText}>{property.tenants} Tenants</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="construct-outline" size={12} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.statText}>{property.activeRequests} Requests</Text>
+          </View>
+        </View>
+      </View>
+      {isDeleteMode ? (
+        <View style={styles.selectionIndicator}>
+          <Ionicons
+            name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+            size={24}
+            color={isSelected ? '#fff' : 'rgba(255,255,255,0.5)'}
+          />
+        </View>
+      ) : (
+        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+      )}
+    </View>
+  </TouchableOpacity>
+));
 
 const PropertyManagementScreen = () => {
   const navigation = useNavigation<PropertyManagementNavigationProp>();
@@ -48,42 +166,87 @@ const PropertyManagementScreen = () => {
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set());
   const [selectedDrafts, setSelectedDrafts] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showClearDataDialog, setShowClearDataDialog] = useState(false);
-  const [isClearingData, setIsClearingData] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const api = useApiClient();
+  const cacheRef = React.useRef<{ timestamp: number; properties: Property[] } | null>(null);
 
-  // Load properties on screen mount and when screen is focused
-  useEffect(() => {
-    loadProperties();
-  }, []);
+  // Load properties whenever screen gains focus (handles returning from edits)
+  useFocusEffect(
+    useCallback(() => {
+      loadProperties();
+    }, [api])
+  );
 
-  const loadProperties = async () => {
+  const loadProperties = async (options?: { force?: boolean }) => {
+    const force = options?.force ?? false;
+
     try {
-      if (!api) return;
+      if (!api) {
+        setLoadError('Unable to load properties right now.');
+        return;
+      }
+
+      const cached = cacheRef.current;
+      if (!force && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+        setProperties(cached.properties);
+        setLoadError(null);
+        setIsLoadingProperties(false);
+        return;
+      }
+
       setIsLoadingProperties(true);
       const dbProperties = await api.getUserProperties({ limit: pageSize, offset: 0 });
 
+      // Get tenant counts for all properties
+      const propertyIds = dbProperties.map((p: DbProperty) => p.id);
+      let tenantCounts: Record<string, number> = {};
+
+      if (propertyIds.length > 0) {
+        const { data: tenantLinks, error: tenantError } = await supabase
+          .from('tenant_property_links')
+          .select('property_id')
+          .in('property_id', propertyIds)
+          .eq('is_active', true);
+
+        if (!tenantError && tenantLinks) {
+          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: { property_id: string }) => {
+            acc[link.property_id] = (acc[link.property_id] || 0) + 1;
+            return acc;
+          }, {});
+        }
+      }
+
       // Map database properties to screen interface
-      const mappedProperties = dbProperties.map((prop: DbProperty) => ({
-        id: prop.id,
-        name: prop.name || 'Unnamed Property',
-        address: typeof prop.address === 'string'
-          ? prop.address
-          : prop.address
-            ? formatAddressString(prop.address)
-            : 'No Address',
-        type: prop.property_type || 'Unknown',
-        image: '', // TODO: Add property image support
-        tenants: 0, // TODO: Add tenant count
-        property_code: prop.property_code,
-        activeRequests: 0, // TODO: Add maintenance request count
-      }));
-      
+      const mappedProperties = dbProperties.map((prop: DbProperty) => {
+        // Format address from address_jsonb (preferred) or fall back to legacy address
+        let formattedAddress = 'No Address';
+        if (prop.address_jsonb) {
+          const addr = prop.address_jsonb;
+          formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim() || 'No Address';
+        } else if (prop.address) {
+          formattedAddress = prop.address;
+        }
+
+        return {
+          id: prop.id,
+          name: prop.name || 'Unnamed Property',
+          address: formattedAddress,
+          type: prop.property_type || 'Unknown',
+          image: '',
+          tenants: tenantCounts[prop.id] || 0,
+          property_code: prop.property_code,
+          activeRequests: 0, // TODO: Add maintenance request count
+        };
+      });
+
       setProperties(mappedProperties);
       setPage(1);
       setHasMore(dbProperties.length === pageSize);
+      setLoadError(null);
+      cacheRef.current = { timestamp: Date.now(), properties: mappedProperties };
     } catch (error) {
-      console.error('Error loading properties:', error);
+      setLoadError('Failed to load properties. Pull to retry.');
+      log.error('Error loading properties', { error: String(error) });
     } finally {
       setIsLoadingProperties(false);
     }
@@ -95,25 +258,52 @@ const PropertyManagementScreen = () => {
     try {
       const offset = page * pageSize;
       const more = await api.getUserProperties({ limit: pageSize, offset });
-      const mapped = more.map((prop: DbProperty) => ({
-        id: prop.id,
-        name: prop.name || 'Unnamed Property',
-        address: typeof prop.address === 'string'
-          ? prop.address
-          : prop.address
-            ? formatAddressString(prop.address)
-            : 'No Address',
-        type: prop.property_type || 'Unknown',
-        image: '',
-        tenants: 0,
-        property_code: prop.property_code,
-        activeRequests: 0,
-      }));
+
+      // Get tenant counts for loaded properties
+      const propertyIds = more.map((p: DbProperty) => p.id);
+      let tenantCounts: Record<string, number> = {};
+
+      if (propertyIds.length > 0) {
+        const { data: tenantLinks, error: tenantError } = await supabase
+          .from('tenant_property_links')
+          .select('property_id')
+          .in('property_id', propertyIds)
+          .eq('is_active', true);
+
+        if (!tenantError && tenantLinks) {
+          tenantCounts = tenantLinks.reduce((acc: Record<string, number>, link: { property_id: string }) => {
+            acc[link.property_id] = (acc[link.property_id] || 0) + 1;
+            return acc;
+          }, {});
+        }
+      }
+
+      const mapped = more.map((prop: DbProperty) => {
+        // Format address from address_jsonb (preferred) or fall back to legacy address
+        let formattedAddress = 'No Address';
+        if (prop.address_jsonb) {
+          const addr = prop.address_jsonb;
+          formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim() || 'No Address';
+        } else if (prop.address) {
+          formattedAddress = prop.address;
+        }
+
+        return {
+          id: prop.id,
+          name: prop.name || 'Unnamed Property',
+          address: formattedAddress,
+          type: prop.property_type || 'Unknown',
+          image: '',
+          tenants: tenantCounts[prop.id] || 0,
+          property_code: prop.property_code,
+          activeRequests: 0,
+        };
+      });
       setProperties(prev => [...prev, ...mapped]);
       setPage(prev => prev + 1);
       setHasMore(more.length === pageSize);
     } catch (e) {
-      console.error('Error loading more properties:', e);
+log.error('Error loading more properties', { error: String(e) });
     } finally {
       setIsLoadingMore(false);
     }
@@ -122,8 +312,6 @@ const PropertyManagementScreen = () => {
   // Draft management
   const {
     drafts,
-    isLoading: isDraftsLoading,
-    error: draftsError,
     refreshDrafts,
     deleteDraft,
   } = usePropertyDrafts();
@@ -139,86 +327,59 @@ const PropertyManagementScreen = () => {
   };
 
   const handlePropertyPress = (property: Property) => {
-    navigation.navigate('PropertyDetails', { property });
+    navigation.navigate('PropertyDetails', { propertyId: property.id });
   };
 
-  const handleInviteTenant = async (property: Property) => {
-    // Simply navigate with property ID - no need for property code anymore
-    navigation.navigate('InviteTenant', {
-      propertyId: property.id,
-      propertyName: property.name,
-      propertyCode: property.property_code || '',
+
+  const handleToggleSelect = useCallback((propertyId: string) => {
+    setSelectedProperties((prev) => {
+      const next = new Set(prev);
+      if (next.has(propertyId)) {
+        next.delete(propertyId);
+      } else {
+        next.add(propertyId);
+      }
+      return next;
     });
-  };
+  }, []);
 
-  const handleToggleSelect = (propertyId: string) => {
-    const newSelected = new Set(selectedProperties);
-    if (newSelected.has(propertyId)) {
-      newSelected.delete(propertyId);
-    } else {
-      newSelected.add(propertyId);
-    }
-    setSelectedProperties(newSelected);
-  };
-
-  const handleToggleDraftSelect = (draftId: string) => {
-    const newSelected = new Set(selectedDrafts);
-    if (newSelected.has(draftId)) {
-      newSelected.delete(draftId);
-    } else {
-      newSelected.add(draftId);
-    }
-    setSelectedDrafts(newSelected);
-  };
+  const handleToggleDraftSelect = useCallback((draftId: string) => {
+    setSelectedDrafts((prev) => {
+      const next = new Set(prev);
+      if (next.has(draftId)) {
+        next.delete(draftId);
+      } else {
+        next.add(draftId);
+      }
+      return next;
+    });
+  }, []);
 
 
   const handleDraftPress = (draft: PropertySetupState) => {
     // Navigate to the appropriate screen based on current step
+    // All screens load data from draft via draftId
     if (draft.currentStep === 0 || draft.currentStep === 1) {
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      navigation.navigate('PropertyBasics', { draftId: draft.id });
     } else if (draft.currentStep === 2) {
-      navigation.navigate('PropertyAreas', { 
-        propertyData: draft.propertyData, 
-        draftId: draft.id 
-      });
+      navigation.navigate('PropertyAreas', { draftId: draft.id });
     } else {
-      // For steps 3+, go to AddProperty for now
-      navigation.navigate('AddProperty', { draftId: draft.id });
+      // For steps 3+, go to PropertyAssets
+      navigation.navigate('PropertyAssets', { draftId: draft.id });
     }
   };
 
-  const handleClearAllAppData = () => {
-    setShowClearDataDialog(true);
-  };
-
-  const confirmClearAllData = async () => {
-    setIsClearingData(true);
-    try {
-      const stats = await DataClearer.getStorageStats();
-
-      await DataClearer.clearAllData();
-      await refreshDrafts(); // Refresh the drafts list
-
-      setShowClearDataDialog(false);
-      Alert.alert('Success', 'All app data cleared successfully.');
-    } catch (error) {
-      console.error('Failed to clear app data:', error);
-      setShowClearDataDialog(false);
-      Alert.alert('Error', 'Failed to clear app data. Please try again.');
-    } finally {
-      setIsClearingData(false);
-    }
-  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
       await Promise.all([
         refreshDrafts(),
-        loadProperties()
+        loadProperties({ force: true })
       ]);
     } catch (error) {
-      // Silently fail refresh
+      setLoadError('Failed to refresh properties.');
+      log.error('Refresh failed', { error: String(error) });
     } finally {
       setRefreshing(false);
     }
@@ -249,23 +410,6 @@ const PropertyManagementScreen = () => {
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'draft': return 'Draft';
-      case 'in_progress': return 'In Progress';
-      case 'completed': return 'Completed';
-      default: return 'Draft';
-    }
-  };
-
-  const getPropertyIcon = (type: string) => {
-    switch (type) {
-      case 'apartment': return 'business';
-      case 'condo': return 'business';
-      case 'townhouse': return 'home';
-      default: return 'home';
-    }
-  };
 
   // Header right with delete button
   const headerRight = (properties.length > 0 || drafts.length > 0) ? (
@@ -316,6 +460,11 @@ const PropertyManagementScreen = () => {
       )}
 
       <View style={styles.content}>
+        {isLoadingProperties && properties.length === 0 && (
+          <View style={styles.emptyCard} testID="properties-loading">
+            <Text style={styles.emptyCardTitle}>Loading properties...</Text>
+          </View>
+        )}
         {/* Drafts Section - Compact */}
         {drafts.length > 0 && (
           <View style={styles.draftsContainer}>
@@ -337,39 +486,16 @@ const PropertyManagementScreen = () => {
             {!draftsCollapsed && (
               <View style={styles.draftsList}>
                 {drafts.map((draft) => (
-                  <TouchableOpacity
+                  <DraftListItem
                     key={draft.id}
-                    style={[
-                      styles.draftItem,
-                      isDeleteMode && selectedDrafts.has(draft.id) && styles.selectedDraftItem
-                    ]}
-                    onPress={() => isDeleteMode ? handleToggleDraftSelect(draft.id) : handleDraftPress(draft)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.draftItemContent}>
-                      <View style={styles.draftItemLeft}>
-                        <Text style={styles.draftItemName} numberOfLines={1}>
-                          {draft.propertyData.name || 'Untitled'}
-                        </Text>
-                        <View style={styles.draftItemMeta}>
-                          <View style={[styles.draftDot, { backgroundColor: getStatusColor(draft.status) }]} />
-                          <Text style={styles.draftItemStatus}>{draft.completionPercentage}%</Text>
-                          <Text style={styles.draftItemTime}>{formatLastModified(new Date(draft.lastModified))}</Text>
-                        </View>
-                      </View>
-                      {isDeleteMode ? (
-                        <View style={styles.draftSelectionIndicator}>
-                          <Ionicons
-                            name={selectedDrafts.has(draft.id) ? "checkmark-circle" : "ellipse-outline"}
-                            size={18}
-                            color={selectedDrafts.has(draft.id) ? "#E74C3C" : "#BDC3C7"}
-                          />
-                        </View>
-                      ) : (
-                        <Ionicons name="chevron-forward" size={16} color="#BDC3C7" />
-                      )}
-                    </View>
-                  </TouchableOpacity>
+                    draft={draft}
+                    isDeleteMode={isDeleteMode}
+                    isSelected={selectedDrafts.has(draft.id)}
+                    onToggleSelect={handleToggleDraftSelect}
+                    onOpenDraft={handleDraftPress}
+                    getStatusColor={getStatusColor}
+                    formatLastModified={formatLastModified}
+                  />
                 ))}
               </View>
             )}
@@ -379,62 +505,35 @@ const PropertyManagementScreen = () => {
         {/* Properties List - Option A Banner Style */}
         <View style={styles.propertiesList}>
           {properties.map((property) => (
-            <TouchableOpacity
+            <PropertyCard
               key={property.id}
-              style={[
-                styles.propertyCard,
-                isDeleteMode && selectedProperties.has(property.id) && styles.selectedCard
-              ]}
-              onPress={() => isDeleteMode ? handleToggleSelect(property.id) : handlePropertyPress(property)}
-              activeOpacity={0.7}
-            >
-              {/* Property Image */}
-              <View style={styles.propertyImageContainer}>
-                <PropertyImage
-                  address={property.address}
-                  width={320}
-                  height={200}
-                  borderRadius={12}
-                />
-              </View>
-
-              {/* Property Info Bar */}
-              <View style={styles.propertyInfoBar}>
-                <View style={styles.propertyInfoContent}>
-                  <Text style={styles.propertyName}>{property.name}</Text>
-                  <Text style={styles.propertyAddress} numberOfLines={1}>
-                    {formatAddress(property.address)}
-                  </Text>
-                  <View style={styles.propertyStats}>
-                    <View style={styles.statItem}>
-                      <Ionicons name="people-outline" size={12} color="rgba(255,255,255,0.8)" />
-                      <Text style={styles.statText}>{property.tenants} Tenants</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Ionicons name="construct-outline" size={12} color="rgba(255,255,255,0.8)" />
-                      <Text style={styles.statText}>{property.activeRequests} Requests</Text>
-                    </View>
-                  </View>
-                </View>
-                {isDeleteMode ? (
-                  <View style={styles.selectionIndicator}>
-                    <Ionicons
-                      name={selectedProperties.has(property.id) ? "checkmark-circle" : "ellipse-outline"}
-                      size={24}
-                      color={selectedProperties.has(property.id) ? '#fff' : 'rgba(255,255,255,0.5)'}
-                    />
-                  </View>
-                ) : (
-                  <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
-                )}
-              </View>
-            </TouchableOpacity>
+              property={property}
+              isDeleteMode={isDeleteMode}
+              isSelected={selectedProperties.has(property.id)}
+              onToggleSelect={handleToggleSelect}
+              onOpenProperty={handlePropertyPress}
+            />
           ))}
         </View>
 
 
-        {/* Empty State */}
+        {/* Empty/Error State */}
         {properties.length === 0 && drafts.length === 0 && (
+          loadError ? (
+            <View style={styles.emptyCard}>
+              <Ionicons name="alert-circle-outline" size={48} color="#E67E22" />
+              <Text style={styles.emptyCardTitle}>Unable to load properties</Text>
+              <Text style={styles.emptyCardSubtitle}>{loadError}</Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={() => loadProperties({ force: true })}
+                activeOpacity={0.7}
+                testID="retry-properties-load"
+              >
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
           <View style={styles.emptyCard}>
             <Ionicons name="home-outline" size={48} color="#BDC3C7" />
             <Text style={styles.emptyCardTitle}>No Properties Yet</Text>
@@ -442,6 +541,7 @@ const PropertyManagementScreen = () => {
               Add your first property to get started
             </Text>
           </View>
+          )
         )}
 
         {/* Add Property Button at bottom */}
@@ -532,11 +632,11 @@ const PropertyManagementScreen = () => {
                     setSelectedProperties(new Set());
                     setSelectedDrafts(new Set());
                     setIsDeleteMode(false);
-                    await loadProperties();
+                    await loadProperties({ force: true });
 
                     Alert.alert('Success', `${totalCount} item(s) deleted successfully.`);
                   } catch (error) {
-                    console.error('Delete failed:', error);
+                    log.error('Delete failed', { error: String(error) });
                     Alert.alert('Error', 'Failed to delete items. Please try again.');
                   }
                 }}
@@ -548,17 +648,6 @@ const PropertyManagementScreen = () => {
         </View>
       )}
 
-      <ConfirmDialog
-        visible={showClearDataDialog}
-        title="Clear All App Data"
-        message="This will remove ALL data from the app including drafts, cache, and settings. This action cannot be undone."
-        confirmText="Clear Everything"
-        cancelText="Cancel"
-        confirmStyle="destructive"
-        onConfirm={confirmClearAllData}
-        onCancel={() => setShowClearDataDialog(false)}
-        isLoading={isClearingData}
-      />
     </ScreenContainer>
   );
 };
@@ -653,10 +742,7 @@ const styles = StyleSheet.create({
     backgroundColor: DesignSystem.colors.background,
     borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
     elevation: 3,
   },
   selectedCard: {
@@ -724,6 +810,17 @@ const styles = StyleSheet.create({
   emptyCardSubtitle: {
     fontSize: 13,
     color: DesignSystem.colors.textSecondary,
+  },
+  retryButton: {
+    marginTop: 12,
+    backgroundColor: DesignSystem.colors.primary,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 
   // Add Property Button

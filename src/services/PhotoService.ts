@@ -3,7 +3,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system';
 import { Alert, Platform } from 'react-native';
 import { log } from '../lib/log';
-import { 
+import {
   Photo, 
   CameraOptions, 
   ImagePickerOptions, 
@@ -11,6 +11,9 @@ import {
   PhotoCompressionOptions,
   PHOTO_CONFIG 
 } from '../types/photo';
+
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 export class PhotoService {
   /**
@@ -35,7 +38,7 @@ export class PhotoService {
       
       return true;
     } catch (error) {
-      log.error('Error requesting permissions:', error as any);
+      log.error('Error requesting permissions', { error: getErrorMessage(error) });
       return false;
     }
   }
@@ -91,7 +94,7 @@ export class PhotoService {
 
       return photo;
     } catch (error) {
-      log.error('Error capturing photo:', error as any);
+      log.error('Error capturing photo', { error: getErrorMessage(error) });
       Alert.alert('Error', 'Failed to capture photo. Please try again.');
       return null;
     }
@@ -150,7 +153,7 @@ export class PhotoService {
       log.info('📸 PhotoService: Returning', photos.length, 'processed photos');
       return photos;
     } catch (error) {
-      log.error('Error selecting from gallery:', error as any);
+      log.error('Error selecting from gallery', { error: getErrorMessage(error) });
       Alert.alert('Error', 'Failed to select photos. Please try again.');
       return [];
     }
@@ -182,11 +185,11 @@ export class PhotoService {
         uri: manipulatorResult.uri,
         width: manipulatorResult.width,
         height: manipulatorResult.height,
-        fileSize: fileInfo.size || photo.fileSize,
+        fileSize: fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : photo.fileSize,
         compressed: true,
       };
     } catch (error) {
-      log.error('Error compressing photo:', error as any);
+      log.error('Error compressing photo', { error: getErrorMessage(error) });
       return photo; // Return original if compression fails
     }
   }
@@ -199,7 +202,7 @@ export class PhotoService {
       await FileSystem.deleteAsync(photoUri, { idempotent: true });
       return true;
     } catch (error) {
-      log.error('Error deleting photo:', error as any);
+      log.error('Error deleting photo', { error: getErrorMessage(error) });
       return false;
     }
   }
@@ -217,7 +220,7 @@ export class PhotoService {
     }
 
     // Check format
-    if (!PHOTO_CONFIG.SUPPORTED_FORMATS.includes(photo.mimeType)) {
+    if (!PHOTO_CONFIG.SUPPORTED_FORMATS.includes(photo.mimeType as 'image/jpeg' | 'image/png')) {
       errors.push(`Unsupported format: ${photo.mimeType}. Use JPEG or PNG.`);
     }
 
@@ -268,7 +271,7 @@ export class PhotoService {
       );
       return result.uri;
     } catch (error) {
-      log.error('Error generating thumbnail:', error as any);
+      log.error('Error generating thumbnail', { error: getErrorMessage(error) });
       return photo.uri; // Return original if thumbnail generation fails
     }
   }
@@ -284,7 +287,7 @@ export class PhotoService {
       uri: asset.uri,
       width: asset.width || 0,
       height: asset.height || 0,
-      fileSize: fileInfo.size || 0,
+      fileSize: fileInfo.exists && typeof fileInfo.size === 'number' ? fileInfo.size : 0,
       mimeType: asset.mimeType || 'image/jpeg',
       timestamp: new Date(),
       compressed: false,

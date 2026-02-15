@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Image,
   Alert,
   FlatList,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,12 +17,13 @@ import Button from '../../components/shared/Button';
 import Card from '../../components/shared/Card';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useApiClient } from '../../services/api/client';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { propertyAreasService } from '../../services/supabase/propertyAreasService';
 import log from '../../lib/log';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
+import { clearOnboardingInProgress } from '../../hooks/useOnboardingStatus';
 
 type PropertyReviewNavigationProp = NativeStackNavigationProp<LandlordStackParamList>;
 type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview'>;
@@ -31,11 +31,19 @@ type PropertyReviewRouteProp = RouteProp<LandlordStackParamList, 'PropertyReview
 const PropertyReviewScreen = () => {
   const navigation = useNavigation<PropertyReviewNavigationProp>();
   const route = useRoute<PropertyReviewRouteProp>();
-  const { propertyData, areas, draftId } = route.params;
   const api = useApiClient();
-  const { supabase } = useSupabaseWithAuth();
+  const { user, refreshUser } = useUnifiedAuth();
+  const { supabase, isLoaded } = useSupabaseWithAuth();
 
-  // Initialize draft management
+  // Get route params - only draftId and propertyId (no object params)
+  const { draftId, propertyId } = route.params;
+
+  // State for existing property data (when no draft)
+  const [existingPropertyData, setExistingPropertyData] = useState<PropertyData | null>(null);
+  const [existingAreas, setExistingAreas] = useState<PropertyArea[]>([]);
+  const [isLoadingExisting, setIsLoadingExisting] = useState(false);
+
+  // Initialize draft management - this loads the draft including propertyData and areas
   const {
     draftState,
     isLoading: isDraftLoading,
@@ -46,11 +54,73 @@ const PropertyReviewScreen = () => {
     saveDraft,
     deleteDraft,
     clearError,
-  } = usePropertyDraft({ 
+  } = usePropertyDraft({
     draftId,
     enableAutoSave: true,
-    autoSaveDelay: 2000 
+    autoSaveDelay: 2000
   });
+
+  // Load existing property data when there's propertyId but no draft
+  // Uses useFocusEffect to refresh data when returning from edit screens
+  useFocusEffect(
+    useCallback(() => {
+      const loadExistingProperty = async () => {
+        const hasDraftPropertyData = Boolean(draftState?.propertyData);
+        const shouldLoadExistingProperty =
+          Boolean(propertyId) && (!draftId || (!hasDraftPropertyData && !isDraftLoading));
+
+        // Wait for auth to be ready before making queries
+        if (!isLoaded || !shouldLoadExistingProperty) return;
+
+        const targetPropertyId = propertyId as string;
+
+        setIsLoadingExisting(true);
+        try {
+          // Load property details
+          const { data: property, error: propError } = await supabase
+            .from('properties')
+            .select('*')
+            .eq('id', targetPropertyId)
+            .single();
+
+          if (propError) throw propError;
+
+          // Map to PropertyData format using address_jsonb
+          const addr = property.address_jsonb || {};
+          const mappedPropertyData: PropertyData = {
+            name: property.nickname || property.name || '',
+            address: {
+              line1: addr.line1 || '',
+              line2: addr.line2 || '',
+              city: addr.city || '',
+              state: addr.state || '',
+              zipCode: addr.zipCode || '',
+            },
+            type: (property.property_type as PropertyData['type']) || '',
+            unit: property.unit_number || '',
+            bedrooms: property.bedrooms || 0,
+            bathrooms: property.bathrooms || 0,
+            photos: [],
+          };
+          setExistingPropertyData(mappedPropertyData);
+
+          // Load areas with assets
+          const areasWithAssets = await propertyAreasService.getAreasWithAssets(targetPropertyId, supabase);
+          setExistingAreas(areasWithAssets || []);
+        } catch (error) {
+          log.error('PropertyReview: Error loading existing property', { error, propertyId: targetPropertyId });
+        } finally {
+          setIsLoadingExisting(false);
+        }
+      };
+
+      loadExistingProperty();
+    }, [propertyId, draftId, draftState?.propertyData, isDraftLoading, supabase, isLoaded])
+  );
+
+  // Property data and areas - prefer draft state, fall back to existing property data
+  const propertyData = draftState?.propertyData || existingPropertyData;
+  const areas = draftState?.areas?.length ? draftState.areas : existingAreas;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
@@ -71,48 +141,153 @@ const PropertyReviewScreen = () => {
     }
   }, [draftError, clearError]);
 
+  const getValidPhotoUris = (photos?: string[]) =>
+    (photos || []).filter((photo) => typeof photo === 'string' && photo.trim() !== '');
+
   const totalAssets = areas.reduce((total, area) => total + (area.assets || []).length, 0);
-  const areasWithAssets = areas.filter(area => (area.assets || []).length > 0);
+  const totalRoomPhotos = areas.reduce((total, area) => total + getValidPhotoUris(area.photos).length, 0);
+  const totalAssetPhotos = areas.reduce(
+    (total, area) => total + (area.assets || []).reduce((sum, asset) => sum + getValidPhotoUris(asset.photos).length, 0),
+    0
+  );
 
   const handleEdit = (section: 'property' | 'areas' | 'assets') => {
     switch (section) {
       case 'property':
-        navigation.navigate('AddProperty', { draftId });
+        navigation.navigate('PropertyBasics', { draftId });
         break;
       case 'areas':
-        navigation.navigate('PropertyAreas', { propertyData, draftId });
+        navigation.navigate('PropertyAreas', { draftId, propertyId });
         break;
       case 'assets':
-        navigation.navigate('PropertyAssets', { propertyData, areas, draftId });
+        navigation.navigate('PropertyAssets', { draftId, propertyId });
         break;
     }
   };
 
-  const handleSubmit = async () => {
-    
-    if (isSubmitting || isDraftLoading) {
+  const handleEditRoom = () => {
+    navigation.navigate('PropertyAssets', { draftId, propertyId });
+  };
+
+  const ensureOnboardingCompleted = async () => {
+    if (!user?.id || user.onboarding_completed) {
       return;
     }
 
-    
+    log.info('PropertyReview: Marking onboarding as completed for landlord');
+    const { error: profileUpdateError } = await supabase
+      .from('profiles')
+      .update({
+        role: 'landlord',
+        onboarding_completed: true,
+      })
+      .eq('id', user.id);
+
+    if (profileUpdateError) {
+      log.error('PropertyReview: Failed to mark onboarding completed', { error: profileUpdateError });
+      throw new Error(profileUpdateError.message || 'Failed to complete onboarding');
+    }
+
+    await refreshUser();
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting || isDraftLoading || !propertyData) {
+      return;
+    }
+
     try {
       setIsSubmitting(true);
-      
+
       // Ensure API is ready
       if (!api) throw new Error('Authentication required');
-      
+
       if (draftState) await saveDraft();
 
-      const propertyPayload = {
-        name: propertyData.name,
-        address_jsonb: propertyData.address,
-        property_type: propertyData.type,
-        unit: propertyData.unit || '',
-        bedrooms: propertyData.bedrooms || 0,
-        bathrooms: propertyData.bathrooms || 0
-      };
-      
-      const newProperty = await api.createProperty(propertyPayload);
+      const draftPropertyId = draftState?.propertyData?.propertyId;
+      const existingPropertyId = propertyId || draftPropertyId;
+
+      // Check if this is first-time onboarding (use atomic RPC)
+      const isFirstProperty = !user?.onboarding_completed && !existingPropertyId && (areas?.length || 0) === 0 && totalAssets === 0;
+
+      if (isFirstProperty) {
+        log.info('PropertyReview: First-time onboarding detected - using atomic RPC');
+
+        // Prepare area names for atomic RPC
+        const areaNames = areas?.map(area => area.name) || [];
+
+        // Call atomic onboarding RPC
+        const { data: rpcData, error: rpcError } = await supabase.rpc('signup_and_onboard_landlord', {
+          p_property_name: propertyData.name,
+          p_address_jsonb: propertyData.address,
+          p_property_type: propertyData.type || null,
+          p_bedrooms: propertyData.bedrooms || null,
+          p_bathrooms: propertyData.bathrooms || null,
+          p_areas: areaNames.length > 0 ? areaNames : null
+        });
+
+        if (rpcError) {
+          log.error('PropertyReview: Atomic RPC error', { error: rpcError });
+          throw new Error(rpcError.message || 'Failed to complete onboarding');
+        }
+
+        // RPC returns TABLE, so data is an array
+        const result = rpcData && rpcData.length > 0 ? rpcData[0] : null;
+
+        if (!result || !result.success) {
+          throw new Error(result?.error_message || 'Onboarding failed');
+        }
+
+        log.info('PropertyReview: Atomic onboarding successful', {
+          propertyId: result.property_id,
+          profileId: result.profile_id
+        });
+
+        // Refresh user to get updated onboarding_completed flag
+        await refreshUser();
+
+        // Set property ID for success navigation
+        const currentPropertyId = result.property_id;
+
+        // Show success and navigate
+        setSubmissionSuccess(true);
+        setIsSubmitting(false);
+
+        // Clean up draft
+        if (draftState) {
+          await deleteDraft();
+        }
+
+        // Navigate to PropertyDetails
+        setTimeout(() => {
+          navigation.navigate('PropertyDetails', {
+            propertyId: currentPropertyId,
+          });
+        }, 2000);
+
+        return; // Exit early - atomic RPC handled everything
+      }
+
+      // Continue with existing flow for non-onboarding property creation
+      let currentPropertyId = existingPropertyId;
+
+      // Only create property if it doesn't already exist
+      if (!currentPropertyId) {
+        log.info('PropertyReview: Creating new property in database');
+        const propertyPayload = {
+          name: propertyData.name,
+          address_jsonb: propertyData.address,
+          property_type: propertyData.type,
+          unit: propertyData.unit || '',
+          bedrooms: propertyData.bedrooms || 0,
+          bathrooms: propertyData.bathrooms || 0
+        };
+
+        const newProperty = await api.createProperty(propertyPayload);
+        currentPropertyId = newProperty.id;
+      } else {
+        log.info('PropertyReview: Property already exists (onboarding flow), skipping creation', { propertyId: currentPropertyId });
+      }
 
       // Upload area photos to storage before saving areas to database
       let areasWithUploadedPhotos = areas;
@@ -127,7 +302,7 @@ const PropertyReviewScreen = () => {
               if (hasLocalPhotos) {
                 try {
                   const uploadedPhotos = await uploadPropertyPhotos(
-                    newProperty.id,
+                    currentPropertyId,
                     area.id,
                     area.photos.map(uri => ({ uri }))
                   );
@@ -140,8 +315,7 @@ const PropertyReviewScreen = () => {
                   };
                 } catch (error) {
                   log.error(`Failed to upload photos for area ${area.name}:`, { error: String(error) });
-                  // Continue without photos if upload fails
-                  return { ...area, photos: [], photoPaths: [] };
+                  throw new Error('Failed to upload photos for ' + area.name + '. Please retry submission.');
                 }
               }
             }
@@ -150,56 +324,77 @@ const PropertyReviewScreen = () => {
         );
       }
 
-      // Save areas and assets to database
-      if (areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
+      // Save areas and assets to database.
+      // Two cases require saving:
+      //   1. Brand-new property (!existingPropertyId) — first time persisting everything.
+      //   2. Property exists BUT areas came from draft state — onboarding retry or
+      //      partial-failure recovery. Draft is source of truth; sync it to DB.
+      // Skip only when areas came from the DB itself (existing-property edit flow
+      // where AddAssetScreen already wrote directly to property_assets).
+      const areasFromDraft = Boolean(draftState?.areas?.length);
+      const shouldSaveAreas =
+        areasWithUploadedPhotos &&
+        areasWithUploadedPhotos.length > 0 &&
+        (!existingPropertyId || areasFromDraft);
+
+      if (shouldSaveAreas) {
         try {
           log.info('Saving property areas and assets to database', {
-            propertyId: newProperty.id,
+            propertyId: currentPropertyId,
             areaCount: areasWithUploadedPhotos.length,
-            totalAssets: areasWithUploadedPhotos.reduce((sum, area) => sum + (area.assets?.length || 0), 0)
+            totalAssets: areasWithUploadedPhotos.reduce((sum, area) => sum + (area.assets?.length || 0), 0),
+            reason: !existingPropertyId ? 'new-property' : 'draft-sync',
+            draftId: draftId || null,
+            draftPropertyId: draftState?.propertyData?.propertyId || null,
           });
 
-          await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
+          await propertyAreasService.saveAreasAndAssets(currentPropertyId, areasWithUploadedPhotos, supabase);
 
           log.info('Successfully saved areas and assets to database');
         } catch (areasError) {
           log.error('Error creating areas and assets:', { error: String(areasError) });
           // Continue anyway - property is created, areas can be added later
         }
+      } else if (areasWithUploadedPhotos && areasWithUploadedPhotos.length > 0) {
+        log.debug('PropertyReview: Skipping area/asset save — data already in DB (existing property edit)', {
+          propertyId: currentPropertyId,
+          areaCount: areasWithUploadedPhotos.length,
+        });
       }
-      
-      
+
+      // If onboarding has already created the property before review, make sure we still
+      // complete profile onboarding state in a single place.
+      await ensureOnboardingCompleted();
+
       // Show success state
       setSubmissionSuccess(true);
       setIsSubmitting(false);
-      
+
       // Clean up draft
       try {
         if (draftState) {
           await deleteDraft();
         }
       } catch (error) {
-        console.error('🏠 Error cleaning up draft:', error);
+        log.error('PropertyReview: Error cleaning up draft', { error: String(error) });
       }
-      
+
+      // Clear onboarding in-progress flag (property creation complete!)
+      try {
+        await clearOnboardingInProgress();
+        log.info('✅ Onboarding complete - property created successfully');
+      } catch (error) {
+        log.error('Error clearing onboarding flag:', error);
+      }
+
       // Navigate to PropertyDetails after 2 seconds to allow user to invite tenant
       setTimeout(() => {
-        // Format address as string for PropertyDetails
-        const addressString = `${propertyData.address.line1}${propertyData.address.line2 ? ', ' + propertyData.address.line2 : ''}, ${propertyData.address.city}, ${propertyData.address.state} ${propertyData.address.zipCode}`;
-
         navigation.navigate('PropertyDetails', {
-          property: {
-            id: newProperty.id,
-            name: propertyData.name,
-            address: addressString,
-            type: propertyData.type,
-            tenants: 0,
-            activeRequests: 0,
-          }
+          propertyId: currentPropertyId,
         });
       }, 2000);
     } catch (error) {
-      console.error('🏠 PropertyReviewScreen: Submit error:', error);
+      log.error('PropertyReview: Submit error', { error: String(error) });
       setIsSubmitting(false);
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -240,27 +435,43 @@ const PropertyReviewScreen = () => {
     }
   };
 
-  const renderAssetItem = ({ item }: { item: InventoryItem }) => (
-    <View style={styles.assetItem}>
-      <View style={styles.assetInfo}>
-        <Text style={styles.assetName}>{item.name}</Text>
-        <Text style={styles.assetDetails}>
-          {item.brand && item.model ? `${item.brand} ${item.model}` : item.category}
-        </Text>
-        <View style={[styles.conditionBadge, { backgroundColor: getConditionColor(item.condition) }]}>
-          <Text style={styles.conditionText}>
-            {item.condition.charAt(0).toUpperCase() + item.condition.slice(1).replace('_', ' ')}
-          </Text>
+  const renderAssetItem = ({ item }: { item: InventoryItem }) => {
+    const assetPhotos = getValidPhotoUris(item.photos);
+    const primaryAssetPhoto = assetPhotos[0];
+
+    return (
+      <View style={styles.assetItem}>
+        <View style={styles.assetRowLeft}>
+          {primaryAssetPhoto ? (
+            <Image source={{ uri: primaryAssetPhoto }} style={styles.assetPhotoThumb} />
+          ) : (
+            <View style={styles.assetPhotoPlaceholder}>
+              <Ionicons name="image-outline" size={16} color="#AAB2BD" />
+            </View>
+          )}
+          <View style={styles.assetInfo}>
+            <Text style={styles.assetName}>{item.name}</Text>
+            <Text style={styles.assetDetails}>
+              {item.brand && item.model ? `${item.brand} ${item.model}` : item.category}
+            </Text>
+            <View style={[styles.conditionBadge, { backgroundColor: getConditionColor(item.condition) }]}>
+              <Text style={styles.conditionText}>
+                {item.condition.charAt(0).toUpperCase() + item.condition.slice(1).replace('_', ' ')}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.assetMeta}>
+          <View style={styles.photoCount}>
+            <Ionicons name="camera" size={14} color="#7F8C8D" />
+            <Text style={styles.photoCountText}>
+              {assetPhotos.length} {assetPhotos.length === 1 ? 'photo' : 'photos'}
+            </Text>
+          </View>
         </View>
       </View>
-      <View style={styles.assetMeta}>
-        <View style={styles.photoCount}>
-          <Ionicons name="camera" size={14} color="#7F8C8D" />
-          <Text style={styles.photoCountText}>{item.photos.length}</Text>
-        </View>
-      </View>
-    </View>
-  );
+    );
+  };
 
   // Save status indicator for header (no button)
   const headerRight = (isSaving || lastSaved) ? (
@@ -287,10 +498,51 @@ const PropertyReviewScreen = () => {
       type="primary"
       size="lg"
       fullWidth
-      disabled={isSubmitting || isDraftLoading}
+      disabled={isSubmitting || isDraftLoading || !propertyData}
       loading={isSubmitting}
     />
   );
+
+  // Show loading state while draft or existing property is loading
+  if (isDraftLoading || isLoadingExisting) {
+    return (
+      <ScreenContainer
+        title="Review & Submit"
+        subtitle="Step 4 of 4"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 }}>
+          <Text style={{ fontSize: 16, color: '#7F8C8D' }}>Loading property data...</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!propertyData) {
+    return (
+      <ScreenContainer
+        title="Review & Submit"
+        subtitle="Step 4 of 4"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable
+      >
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40, gap: 16 }}>
+          <Text style={{ fontSize: 16, color: '#7F8C8D' }}>Unable to load property data.</Text>
+          <Button
+            title="Retry"
+            onPress={() => navigation.replace('PropertyReview', { draftId, propertyId })}
+            type="secondary"
+            size="sm"
+          />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer
@@ -368,20 +620,20 @@ const PropertyReviewScreen = () => {
           </View>
 
           <Card style={styles.summaryCard}>
-            <View style={styles.summaryRowCompact}>
-              <View style={styles.summaryItem}>
+            <View style={styles.summaryGrid}>
+              <View style={styles.summaryGridItem}>
                 <Text style={styles.summaryValueLarge}>{areas.length}</Text>
                 <Text style={styles.summaryLabelSmall}>Rooms</Text>
               </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryValueLarge}>
-                  {areas.reduce((total, area) => total + (area.photos?.length || 0), 0)}
-                </Text>
-                <Text style={styles.summaryLabelSmall}>Photos</Text>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryValueLarge}>{totalRoomPhotos}</Text>
+                <Text style={styles.summaryLabelSmall}>Room Photos</Text>
               </View>
-              <View style={styles.summaryDivider} />
-              <View style={styles.summaryItem}>
+              <View style={styles.summaryGridItem}>
+                <Text style={styles.summaryValueLarge}>{totalAssetPhotos}</Text>
+                <Text style={styles.summaryLabelSmall}>Asset Photos</Text>
+              </View>
+              <View style={styles.summaryGridItem}>
                 <Text style={styles.summaryValueLarge}>{totalAssets}</Text>
                 <Text style={styles.summaryLabelSmall}>Equipment</Text>
               </View>
@@ -389,30 +641,71 @@ const PropertyReviewScreen = () => {
           </Card>
 
           {areas.map((area) => {
-            const photoCount = area.photos?.length || 0;
-            const equipmentCount = (area.assets || []).length;
+            const roomPhotos = getValidPhotoUris(area.photos);
+            const roomPhotoCount = roomPhotos.length;
+            const equipment = area.assets || [];
+            const equipmentCount = equipment.length;
+            const assetPhotoCount = equipment.reduce((total, asset) => total + getValidPhotoUris(asset.photos).length, 0);
+            const roomPhotoLabel = roomPhotoCount === 1 ? 'room photo' : 'room photos';
+            const assetPhotoLabel = assetPhotoCount === 1 ? 'asset photo' : 'asset photos';
+
             return (
               <Card key={area.id} style={styles.areaCard}>
                 <View style={styles.areaHeader}>
-                  <View>
+                  <View style={styles.areaHeaderLeft}>
                     <Text style={styles.areaName}>{area.name}</Text>
                     <Text style={styles.areaType}>{area.type}</Text>
                   </View>
-                  <Text style={styles.areaStatsText}>
-                    {photoCount} {photoCount === 1 ? 'photo' : 'photos'} · {equipmentCount} equipment
-                  </Text>
+                  <View style={styles.areaHeaderRight}>
+                    <Text style={styles.areaStatsText}>
+                      {roomPhotoCount} {roomPhotoLabel} · {assetPhotoCount} {assetPhotoLabel} · {equipmentCount} equipment
+                    </Text>
+                    <Button
+                      title="Edit Room"
+                      onPress={handleEditRoom}
+                      type="secondary"
+                      size="sm"
+                    />
+                  </View>
                 </View>
-              
-              {area.assets && area.assets.length > 0 && (
-                <FlatList
-                  data={area.assets}
-                  renderItem={renderAssetItem}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
-                  ItemSeparatorComponent={() => <View style={styles.assetSeparator} />}
-                />
-              )}
-            </Card>
+
+                <View style={styles.inlineSection}>
+                  <Text style={styles.inlineSectionLabel}>Room Photos</Text>
+                  {roomPhotoCount > 0 ? (
+                    <View style={styles.photoGridCompact}>
+                      {roomPhotos.slice(0, 4).map((photo, index) => (
+                        <Image
+                          key={`${area.id}-room-photo-${index}`}
+                          source={{ uri: photo }}
+                          style={styles.compactPhotoThumb}
+                        />
+                      ))}
+                      {roomPhotoCount > 4 && (
+                        <View style={styles.morePhotosCompact}>
+                          <Text style={styles.morePhotosCompactText}>+{roomPhotoCount - 4}</Text>
+                        </View>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyInlineText}>No room photos</Text>
+                  )}
+                </View>
+
+                <View style={styles.inlineSection}>
+                  <Text style={styles.inlineSectionLabel}>Assets & Inventory</Text>
+                  {equipmentCount > 0 ? (
+                    <FlatList
+                      data={equipment}
+                      renderItem={renderAssetItem}
+                      keyExtractor={(item) => item.id}
+                      scrollEnabled={false}
+                      ItemSeparatorComponent={() => <View style={styles.assetSeparator} />}
+                    />
+                  ) : (
+                    <Text style={styles.emptyInlineText}>No assets documented yet</Text>
+                  )}
+                </View>
+              </Card>
             );
           })}
         </View>
@@ -533,15 +826,15 @@ const styles = StyleSheet.create({
   summaryCard: {
     marginBottom: DesignSystem.spacing.md,
   },
-  summaryRowCompact: {
+  summaryGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 8,
+    flexWrap: 'wrap',
+    rowGap: 8,
   },
-  summaryItem: {
+  summaryGridItem: {
+    width: '50%',
     alignItems: 'center',
-    flex: 1,
+    paddingVertical: 6,
   },
   summaryValueLarge: {
     fontSize: 24,
@@ -553,10 +846,45 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginTop: 2,
   },
-  summaryDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: '#E9ECEF',
+  inlineSection: {
+    marginTop: 8,
+  },
+  inlineSectionLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  photoGridCompact: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  compactPhotoThumb: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#EEF2F5',
+  },
+  morePhotosCompact: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#F8F9FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  morePhotosCompactText: {
+    fontSize: 11,
+    color: '#7F8C8D',
+    fontWeight: '600',
+  },
+  emptyInlineText: {
+    fontSize: 12,
+    color: '#95A5A6',
+    fontStyle: 'italic',
   },
   areaCard: {
     // Card styles handled by Card component
@@ -567,6 +895,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  areaHeaderLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  areaHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 8,
   },
   areaName: {
     fontSize: 16,
@@ -582,12 +918,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7F8C8D',
     fontWeight: '500',
+    textAlign: 'right',
   },
   assetItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingVertical: 8,
+  },
+  assetRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  assetPhotoThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: '#EEF2F5',
+  },
+  assetPhotoPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 6,
+    backgroundColor: '#EEF2F5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   assetInfo: {
     flex: 1,

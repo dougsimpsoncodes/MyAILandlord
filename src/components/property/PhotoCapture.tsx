@@ -6,13 +6,13 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Platform,
   ViewStyle,
   StyleProp,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Photo, CameraOptions, ImagePickerOptions } from '../../types/photo';
 import { PhotoService } from '../../services/PhotoService';
+import { log } from '../../lib/log';
 
 interface PhotoCaptureProps {
   onPhotoTaken: (photo: Photo) => void;
@@ -56,7 +56,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
         onPhotoTaken(photo);
       }
     } catch (error) {
-      console.error('Camera capture error:', error);
+      log.error('Camera capture error', { error: String(error) });
       Alert.alert('Error', 'Failed to capture photo. Please try again.');
     } finally {
       setIsCapturing(false);
@@ -83,7 +83,7 @@ export const PhotoCapture: React.FC<PhotoCaptureProps> = ({
         onPhotosSelected(photosToAdd);
       }
     } catch (error) {
-      console.error('Gallery selection error:', error);
+      log.error('Gallery selection error', { error: String(error) });
       Alert.alert('Error', 'Failed to select photos. Please try again.');
     } finally {
       setIsSelecting(false);

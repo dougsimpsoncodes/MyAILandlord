@@ -14,15 +14,15 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { Photo, PHOTO_CONFIG } from '../../types/photo';
 import { PhotoService } from '../../services/PhotoService';
-import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import { usePhotoCapture } from '../../hooks/usePhotoCapture';
 import PhotoCapture from '../../components/property/PhotoCapture';
 import PhotoGrid from '../../components/property/PhotoGrid';
 import PhotoPreviewModal from '../../components/property/PhotoPreviewModal';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import { log } from '../../lib/log';
 
 type PropertyPhotosNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'PropertyPhotos'>;
 
@@ -34,7 +34,6 @@ const PropertyPhotosScreen = () => {
   const navigation = useNavigation<PropertyPhotosNavigationProp>();
   const route = useRoute();
   const { propertyData } = route.params as RouteParams;
-  const responsive = useResponsive();
   
   // Photo preview state
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -46,8 +45,6 @@ const PropertyPhotosScreen = () => {
     draftState,
     updatePropertyData,
     updateCurrentStep,
-    isLoading: isDraftLoading,
-    lastSaved,
     saveDraft,
   } = usePropertyDraft();
 
@@ -75,14 +72,11 @@ const PropertyPhotosScreen = () => {
     photos,
     isCapturing,
     isSelecting,
-    error,
     addPhoto,
     addPhotos,
     deletePhoto,
     replacePhoto,
     reorderPhotos,
-    capturePhoto,
-    selectFromGallery,
     canAddMore,
     validatePhotos,
   } = usePhotoCapture({
@@ -139,8 +133,10 @@ const PropertyPhotosScreen = () => {
                   replacePhoto(selectedPhotoIndex, photo);
                   setShowPreviewModal(false);
                 }
-              } catch (error) {
-                console.error('Photo capture error:', error);
+              } catch (error: unknown) {
+                log.error('PropertyPhotos: photo capture failed', {
+                  error: error instanceof Error ? error.message : String(error),
+                });
                 Alert.alert('Error', 'Failed to capture photo. Please try again.');
               }
             },
@@ -159,8 +155,10 @@ const PropertyPhotosScreen = () => {
                   replacePhoto(selectedPhotoIndex, photos[0]);
                   setShowPreviewModal(false);
                 }
-              } catch (error) {
-                console.error('Gallery selection error:', error);
+              } catch (error: unknown) {
+                log.error('PropertyPhotos: gallery selection failed', {
+                  error: error instanceof Error ? error.message : String(error),
+                });
                 Alert.alert('Error', 'Failed to select photo. Please try again.');
               }
             },
@@ -204,14 +202,16 @@ const PropertyPhotosScreen = () => {
     try {
       await updatePropertyData(updatedPropertyData);
       await saveDraft();
-    } catch (error) {
-      console.error('Error saving photos:', error);
+    } catch (error: unknown) {
+      log.error('PropertyPhotos: failed saving photos draft', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Continue anyway - navigation can work without draft save
     }
 
-    // Navigate regardless of draft save success
+    // Navigate regardless of draft save success (use draftId from draft system)
     navigation.navigate('PropertyAreas', {
-      propertyData: updatedPropertyData
+      draftId: draftState?.id || '',
     });
   };
 
@@ -229,14 +229,16 @@ const PropertyPhotosScreen = () => {
             try {
               await updatePropertyData(updatedPropertyData);
               await saveDraft();
-            } catch (error) {
-              console.error('Error saving draft:', error);
+            } catch (error: unknown) {
+              log.error('PropertyPhotos: failed saving skip draft', {
+                error: error instanceof Error ? error.message : String(error),
+              });
               // Continue anyway - navigation can work without draft save
             }
 
-            // Navigate regardless of draft save success
+            // Navigate regardless of draft save success (use draftId from draft system)
             navigation.navigate('PropertyAreas', {
-              propertyData: updatedPropertyData
+              draftId: draftState?.id || '',
             });
           },
         },
@@ -244,17 +246,6 @@ const PropertyPhotosScreen = () => {
     );
   };
 
-  const getProgressPercentage = () => {
-    const baseProgress = 12.5; // 1/8 steps complete (PropertyBasics)
-    const photosProgress = Math.min(photos.length * 2.5, 12.5); // Up to 12.5% for 5 photos
-    return Math.round(baseProgress + photosProgress);
-  };
-
-  const getTimeEstimate = () => {
-    if (photos.length >= 3) return 'Almost done! 1 minute remaining';
-    if (photos.length >= 1) return '2-3 minutes remaining';
-    return '3-4 minutes remaining';
-  };
 
   const styles = StyleSheet.create({
     tipBox: {

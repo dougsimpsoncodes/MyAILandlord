@@ -11,6 +11,8 @@ type PickedAsset = {
   mimeType?: string;
 };
 
+type StorageBucketName = Parameters<typeof storageService.uploadFile>[0]['bucket'];
+
 type UploadedPhoto = {
   path: string;
   url: string;
@@ -44,7 +46,10 @@ export async function uploadPropertyPhotos(
   bucket = 'property-images'
 ): Promise<UploadedPhoto[]> {
   const out: UploadedPhoto[] = [];
-  
+  const failures: string[] = [];
+
+  const storageBucket = bucket as StorageBucketName;
+
   for (const a of assets) {
     let work = a.uri;
     let w = a.width;
@@ -65,25 +70,42 @@ export async function uploadPropertyPhotos(
     }
     
     const blob = await toBlob(work);
-    const name = fileNameFor(propertyId, areaId, a.fileName, mime);
+    // On native, we always convert to JPEG, so use .jpg extension regardless of original filename
+    const name = Platform.OS !== 'web'
+      ? fileNameFor(propertyId, areaId, undefined, 'image/jpeg')
+      : fileNameFor(propertyId, areaId, a.fileName, mime);
     try {
       // Try primary name
-      await storageService.uploadFile({ bucket: bucket as any, path: name, file: blob, contentType: mime || 'image/jpeg' });
-      const signed = await storageService.getDisplayUrl(bucket as any, name);
+      await storageService.uploadFile({ bucket: storageBucket, path: name, file: blob, contentType: mime || 'image/jpeg' });
+      const signed = await storageService.getDisplayUrl(storageBucket, name);
       out.push({ path: name, url: signed || '', width: w, height: h, size: blob.size });
-    } catch (e) {
+    } catch (e1) {
+      log.warn('PhotoUploadService: Primary upload failed, retrying', { error: String(e1), path: name });
       // If exists, retry with alt name
       const alt = fileNameFor(propertyId, areaId, undefined, mime);
       try {
-        await storageService.uploadFile({ bucket: bucket as any, path: alt, file: blob, contentType: mime || 'image/jpeg' });
-        const signed = await storageService.getDisplayUrl(bucket as any, alt);
+        await storageService.uploadFile({ bucket: storageBucket, path: alt, file: blob, contentType: mime || 'image/jpeg' });
+        const signed = await storageService.getDisplayUrl(storageBucket, alt);
         out.push({ path: alt, url: signed || '', width: w, height: h, size: blob.size });
       } catch (e2) {
         log.error('PhotoUploadService: Failed to upload file', { error: String(e2) });
+        failures.push(String(e2));
         continue;
       }
     }
   }
-  
+
+  if (out.length === 0 && assets.length > 0) {
+    const detail = failures.length > 0 ? failures[0] : 'unknown error';
+    throw new Error(`Photo upload failed for all selected files. Last error: ${detail}`);
+  }
+
+  if (failures.length > 0) {
+    log.warn('PhotoUploadService: Some files failed to upload', {
+      failedCount: failures.length,
+      successCount: out.length,
+    });
+  }
+
   return out;
 }

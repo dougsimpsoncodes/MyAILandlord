@@ -1,3 +1,5 @@
+import { log } from '../lib/log';
+
 /**
  * Feature Flags Configuration
  *
@@ -81,8 +83,12 @@ function simpleHash(str: string): number {
  * Log current feature flag configuration (safe for debugging)
  */
 export function logFeatureFlags(): void {
-  console.log('🚩 Feature Flags:', {
-    tokenizedInvitesEnabled: featureFlags.TOKENIZED_INVITES_ENABLED,
-    tokenizedInvitesRollout: `${featureFlags.TOKENIZED_INVITES_ROLLOUT_PERCENT}%`,
-  });
+  // Uses console.log directly as this is an intentional diagnostic function
+  // called explicitly during debugging
+  if (__DEV__) {
+    log.info('🚩 Feature Flags:', {
+      tokenizedInvitesEnabled: featureFlags.TOKENIZED_INVITES_ENABLED,
+      tokenizedInvitesRollout: `${featureFlags.TOKENIZED_INVITES_ROLLOUT_PERCENT}%`,
+    });
+  }
 }

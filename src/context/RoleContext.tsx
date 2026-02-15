@@ -1,7 +1,15 @@
+/**
+ * @deprecated This context is deprecated. Use UnifiedAuthContext instead.
+ * The role is now managed by UnifiedAuthContext which provides:
+ * - user.role: Current role value
+ * - updateRole(role): Update the role
+ *
+ * Migration: Replace `useRole()` with `useUnifiedAuth()` and use `user.role` and `updateRole`.
+ */
 import React, { createContext, useState, useEffect, ReactNode, useContext } from 'react';
 import { log } from '../lib/log';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAppAuth } from './SupabaseAuthContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 
 type UserRole = 'tenant' | 'landlord' | null;
 
@@ -29,7 +37,7 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children }) => {
   const [userRole, setUserRoleState] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
 
   useEffect(() => {
     if (user && user.id) {

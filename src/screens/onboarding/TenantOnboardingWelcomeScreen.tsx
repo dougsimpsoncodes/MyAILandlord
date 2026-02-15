@@ -13,8 +13,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { log } from '../../lib/log';
 
 type TenantOnboardingStackParamList = {
@@ -57,8 +55,6 @@ export default function TenantOnboardingWelcomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<WelcomeRouteProp>();
   const { firstName } = route.params;
-  const { user } = useAppAuth();
-  const { supabase } = useSupabaseWithAuth();
 
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -70,61 +66,13 @@ export default function TenantOnboardingWelcomeScreen() {
       const pendingInvite = await PendingInviteService.getPendingInvite();
 
       if (pendingInvite && pendingInvite.type === 'token') {
-        log.info('[TenantOnboardingWelcome] Pending invite detected, validating and auto-accepting');
+        // Redirect to PropertyInviteAccept - the canonical invite handler
+        // This centralizes all invite acceptance logic in one place
+        log.info('[TenantOnboardingWelcome] Pending invite detected, redirecting to PropertyInviteAccept');
 
-        // If metadata is missing, validate token first to get property details
-        let propertyId = pendingInvite.metadata?.propertyId;
-        let propertyName = pendingInvite.metadata?.propertyName;
-
-        if (!propertyId || !propertyName) {
-          log.info('[TenantOnboardingWelcome] Metadata missing, validating token');
-          const { data: validateData, error: validateError } = await supabase.rpc('validate_invite', {
-            p_token: pendingInvite.value
-          });
-
-          if (validateError || !validateData || !Array.isArray(validateData) || !validateData[0]?.valid) {
-            log.error('[TenantOnboardingWelcome] Token validation failed:', validateError);
-            Alert.alert('Error', 'Invalid invite link. Please contact your landlord.');
-            await PendingInviteService.clearPendingInvite();
-            setIsProcessing(false);
-            return;
-          }
-
-          propertyId = validateData[0].property_id;
-          propertyName = validateData[0].property_name;
-          log.info('[TenantOnboardingWelcome] Token validated:', { propertyId, propertyName });
-        }
-
-        // Auto-accept the invite
-        const { data, error } = await supabase.rpc('accept_invite', {
-          p_token: pendingInvite.value
-        });
-
-        if (error) {
-          log.error('[TenantOnboardingWelcome] Failed to auto-accept invite:', error);
-          Alert.alert('Error', 'Failed to connect to property. Please try again.');
-          setIsProcessing(false);
-          return;
-        }
-
-        if (!data || !Array.isArray(data) || data.length === 0 || !data[0].success) {
-          log.error('[TenantOnboardingWelcome] Auto-accept failed:', data);
-          Alert.alert('Error', 'Failed to connect to property. Please try again.');
-          setIsProcessing(false);
-          return;
-        }
-
-        log.info('[TenantOnboardingWelcome] Auto-accept successful, navigating to roommate invite');
-
-        // Clear pending invite
-        await PendingInviteService.clearPendingInvite();
-
-        // Navigate to roommate invite screen (convergence point)
-        navigation.navigate('TenantInviteRoommate', {
-          firstName,
-          propertyId: propertyId || '',
-          propertyName: propertyName || 'your property',
-          inviteCode: pendingInvite.value
+        // Navigate to the canonical invite handler (in AuthStack)
+        (navigation as unknown as { navigate: (routeName: string, params?: object) => void }).navigate('PropertyInviteAccept', {
+          token: pendingInvite.value,
         });
       } else {
         // No pending invite: require invite link
@@ -136,7 +84,7 @@ export default function TenantOnboardingWelcomeScreen() {
         );
       }
     } catch (error) {
-      log.error('[TenantOnboardingWelcome] Error processing pending invite:', error as Error);
+      log.error('[TenantOnboardingWelcome] Error checking pending invite:', error as Error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsProcessing(false);
@@ -158,7 +106,6 @@ export default function TenantOnboardingWelcomeScreen() {
 
           {/* Hero Section */}
           <View style={styles.heroSection}>
-            <Text style={styles.heroIcon}>👋</Text>
             <Text style={styles.title}>Welcome, {firstName}!</Text>
             <Text style={styles.subtitle}>
               Here's what you can do with MyAI Landlord
@@ -246,10 +193,6 @@ const styles = StyleSheet.create({
   heroSection: {
     alignItems: 'center',
     marginBottom: spacing.xl,
-  },
-  heroIcon: {
-    fontSize: 60,
-    marginBottom: spacing.md,
   },
   title: {
     fontSize: 26,

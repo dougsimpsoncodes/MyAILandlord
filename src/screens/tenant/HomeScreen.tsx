@@ -4,8 +4,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TenantStackParamList } from '../../navigation/MainStack';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { DesignSystem } from '../../theme/DesignSystem';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import Button from '../../components/shared/Button';
 import { PendingInviteService } from '../../services/storage/PendingInviteService';
@@ -25,6 +24,34 @@ interface MaintenanceRequest {
   status: 'pending' | 'in_progress' | 'completed';
 }
 
+interface TenantPropertyLinkRow {
+  unit_number?: string | null;
+  properties?: {
+    id: string;
+    name: string;
+    address?: string | null;
+    address_jsonb?: {
+      line1?: string;
+      line2?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    } | null;
+    wifi_network?: string | null;
+    wifi_password?: string | null;
+    emergency_contact?: string | null;
+    emergency_phone?: string | null;
+  } | null;
+}
+
+interface MaintenanceRequestRow {
+  id: string;
+  title?: string | null;
+  area?: string | null;
+  created_at: string;
+  status?: string | null;
+}
+
 interface LinkedProperty {
   id: string;
   name: string;
@@ -38,7 +65,7 @@ interface LinkedProperty {
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { user } = useAppAuth();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
   const pendingInviteChecked = useRef(false);
 
@@ -63,8 +90,10 @@ const HomeScreen = () => {
           log.info('🎟️ Redirecting to PropertyInviteAcceptScreen for token:', pendingInvite.value);
 
           // Navigate to PropertyInviteAcceptScreen with token
-          // @ts-ignore - PropertyInviteAccept is in tenant stack but types might not be perfect
-          navigation.navigate('PropertyInviteAccept', { token: pendingInvite.value });
+          navigation.navigate('PropertyInviteAccept', {
+            token: pendingInvite.value,
+            propertyId: pendingInvite.metadata?.propertyId,
+          });
         } else {
           // LEGACY: Direct property linking (deprecated but supported)
           log.info('🔗 Processing legacy invite for property:', pendingInvite.value);
@@ -87,7 +116,7 @@ const HomeScreen = () => {
               await PendingInviteService.clearPendingInvite();
               loadData();
             } else {
-              log.error('Failed to auto-link tenant to property:', linkError as any);
+              log.error('Failed to auto-link tenant to property', { error: String(linkError) });
               // Still clear the invite to prevent infinite loops
               await PendingInviteService.clearPendingInvite();
             }
@@ -107,25 +136,22 @@ const HomeScreen = () => {
 
     try {
       // Load tenant's linked properties
-      const tenantProperties = await apiClient.getTenantProperties();
+      const tenantProperties = await apiClient.getTenantProperties() as TenantPropertyLinkRow[];
       log.info('Loaded tenant properties', { count: tenantProperties.length });
 
       if (tenantProperties.length > 0) {
-        // Use the first active property (most apps link tenant to one property)
+        // MVP rule enforces one active property link; keep first as defensive fallback.
         const firstLink = tenantProperties[0];
-        log.info('DEBUG: firstLink data', { firstLink });
-        const property = firstLink.properties as any;
-        log.info('DEBUG: property object', { property, hasProperty: !!property });
+        const property = firstLink.properties;
 
         if (property) {
-          log.info('DEBUG: Setting linked property', { propertyId: property.id, propertyName: property.name });
-
-          // Format address from address_jsonb if plain address is empty
-          let formattedAddress = property.address || '';
-          if (!formattedAddress && property.address_jsonb) {
+          // Format address from address_jsonb (preferred) or fall back to legacy address
+          let formattedAddress = '';
+          if (property.address_jsonb) {
             const addr = property.address_jsonb;
-            const parts = [addr.line1, addr.city, addr.state, addr.zipCode].filter(Boolean);
-            formattedAddress = parts.join(', ');
+            formattedAddress = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim();
+          } else if (property.address) {
+            formattedAddress = property.address;
           }
 
           setLinkedProperty({
@@ -138,26 +164,24 @@ const HomeScreen = () => {
             emergencyContact: property.emergency_contact || undefined,
             emergencyPhone: property.emergency_phone || undefined,
           });
-        } else {
-          log.error('DEBUG: property object is null/undefined!');
         }
       } else {
         setLinkedProperty(null);
       }
 
       // Load maintenance requests for this tenant
-      const maintenanceRequests = await apiClient.getMaintenanceRequests();
+      const maintenanceRequests = await apiClient.getMaintenanceRequests() as MaintenanceRequestRow[];
       log.info('Loaded maintenance requests', { count: maintenanceRequests.length });
 
       // Map to our local interface format, filtering out completed requests
       const mappedRequests: MaintenanceRequest[] = maintenanceRequests
-        .filter((req: any) => req.status !== 'completed')
-        .map((req: any) => ({
+        .filter((req) => req.status !== 'completed')
+        .map((req) => ({
           id: req.id,
           title: req.title || 'Maintenance Request',
           location: req.area || 'Unknown',
           submittedAt: new Date(req.created_at).toLocaleDateString(),
-          status: req.status as 'pending' | 'in_progress' | 'completed',
+          status: req.status === 'in_progress' ? 'in_progress' : 'pending',
         }));
 
       setRequests(mappedRequests);
@@ -173,6 +197,17 @@ const HomeScreen = () => {
       loadData();
     }, [loadData])
   );
+
+  // Fix race condition: trigger loadData when apiClient becomes available
+  // useFocusEffect only runs on focus, but apiClient might be null initially
+  useEffect(() => {
+    if (apiClient) {
+      log.info('[HomeScreen] apiClient now available, loading data');
+      loadData();
+    } else {
+      log.info('[HomeScreen] apiClient is null, waiting...');
+    }
+  }, [apiClient, loadData]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -281,7 +316,7 @@ const HomeScreen = () => {
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Your Requests</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MaintenanceStatus')}>
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('TenantRequests' as never)}>
               <Text style={styles.sectionLink}>View All</Text>
             </TouchableOpacity>
           </View>

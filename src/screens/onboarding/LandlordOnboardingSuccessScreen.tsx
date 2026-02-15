@@ -68,7 +68,7 @@ export default function LandlordOnboardingSuccessScreen() {
       // Refresh onboarding status - this will detect the new property
       // and trigger navigation to MainStack
       await refreshStatus();
-    } catch (err) {
+    } catch {
       // If there's an error, try again
       setLoading(false);
     }

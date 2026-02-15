@@ -8,7 +8,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
-import { usePendingRequests } from '../../context/PendingRequestsContext';
+import { useAppState } from '../../context/AppStateContext';
 
 type CaseDetailScreenRouteProp = RouteProp<LandlordStackParamList, 'CaseDetail'>;
 type CaseDetailScreenNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'CaseDetail'>;
@@ -37,7 +37,7 @@ const CaseDetailScreen = () => {
   const route = useRoute<CaseDetailScreenRouteProp>();
   const navigation = useNavigation<CaseDetailScreenNavigationProp>();
   const api = useApiClient();
-  const { refreshPendingCount } = usePendingRequests();
+  const { refreshNotificationCounts } = useAppState();
   const { caseId } = route.params;
 
   const [caseData, setCaseData] = useState<DetailedCase | null>(null);
@@ -80,9 +80,9 @@ const CaseDetailScreen = () => {
           area: request.area,
           asset: request.asset,
           issueType: request.issue_type,
-          priority: request.priority,
-          status: request.status,
-          createdAt: request.created_at,
+          priority: (request.priority || 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+          status: (request.status || 'pending') as 'submitted' | 'pending' | 'in_progress' | 'completed' | 'cancelled',
+          createdAt: request.created_at ?? new Date().toISOString(),
           images: request.images || [],
         };
 
@@ -98,7 +98,7 @@ const CaseDetailScreen = () => {
             mapped.status = 'pending';
             setCaseData({ ...mapped });
             // Refresh the badge count
-            refreshPendingCount();
+            refreshNotificationCounts();
           } catch (updateErr) {
             log.error('Failed to mark request as viewed', { error: String(updateErr) });
           }
@@ -285,7 +285,7 @@ const CaseDetailScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleMessageTenant}>
+          <TouchableOpacity testID="case-detail-message-tenant" style={styles.quickActionButton} onPress={handleMessageTenant}>
             <Ionicons name="chatbubble" size={24} color="#9B59B6" />
             <Text style={styles.quickActionText}>Message Tenant</Text>
           </TouchableOpacity>
@@ -293,7 +293,7 @@ const CaseDetailScreen = () => {
             <Ionicons name="mail" size={24} color="#3498DB" />
             <Text style={styles.quickActionText}>Email Tenant</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleMarkResolved}>
+          <TouchableOpacity testID="case-detail-mark-resolved" style={styles.quickActionButton} onPress={handleMarkResolved}>
             <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
             <Text style={styles.quickActionText}>Mark Resolved</Text>
           </TouchableOpacity>
@@ -458,10 +458,10 @@ const CaseDetailScreen = () => {
               styles.tab,
               selectedTab === tab.key && styles.tabActive,
             ]}
-            onPress={() => setSelectedTab(tab.key as any)}
+            onPress={() => setSelectedTab(tab.key as 'overview' | 'details' | 'media')}
           >
             <Ionicons
-              name={tab.icon as any}
+              name={tab.icon as React.ComponentProps<typeof Ionicons>['name']}
               size={20}
               color={selectedTab === tab.key ? '#34495E' : '#95A5A6'}
             />
@@ -492,6 +492,8 @@ const CaseDetailScreen = () => {
         onConfirm={confirmMarkResolved}
         onCancel={() => setShowResolveDialog(false)}
         isLoading={isResolving}
+        confirmTestID="case-detail-confirm-resolved"
+        cancelTestID="case-detail-cancel-resolved"
       />
     </ScreenContainer>
   );

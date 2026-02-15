@@ -8,18 +8,19 @@ import {
   TextInput,
   Platform,
   Modal,
-  KeyboardAvoidingView,
   ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
 import { supabase } from '../lib/supabaseClient';
 import { Ionicons } from '@expo/vector-icons';
 import { DesignSystem } from '../theme/DesignSystem';
 
-type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Auth'>;
+type AuthScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'AuthForm'>;
+type AuthScreenRouteProp = RouteProp<AuthStackParamList, 'AuthForm'>;
 
 const OAUTH_ENABLED = process.env.EXPO_PUBLIC_OAUTH_ENABLED === 'true';
 const AUTO_LOGIN_AFTER_SIGNUP = process.env.EXPO_PUBLIC_SIGNUP_AUTOLOGIN === '1';
@@ -28,13 +29,19 @@ type AuthMode = 'login' | 'signup';
 
 const AuthScreen = () => {
   const navigation = useNavigation<AuthScreenNavigationProp>();
-  const [mode, setMode] = useState<AuthMode>('login');
+  const route = useRoute<AuthScreenRouteProp>();
+
+  // Get initial mode from route params, default to 'login'
+  const initialMode = route.params?.initialMode || 'login';
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [loading, setLoading] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failedLoginAttempts, setFailedLoginAttempts] = useState(0);
+  const [loginLockedUntil, setLoginLockedUntil] = useState<number | null>(null);
 
   const clearForm = () => {
     setEmailAddress('');
@@ -48,6 +55,13 @@ const AuthScreen = () => {
   };
 
   const handleLogin = async () => {
+    const now = Date.now();
+    if (loginLockedUntil && now < loginLockedUntil) {
+      const waitSeconds = Math.max(1, Math.ceil((loginLockedUntil - now) / 1000));
+      setError(`Too many login attempts. Try again in ${waitSeconds}s.`);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -58,13 +72,31 @@ const AuthScreen = () => {
       });
 
       if (loginError) {
-        setError(loginError.message);
+        const nextAttempts = failedLoginAttempts + 1;
+        setFailedLoginAttempts(nextAttempts);
+
+        if (nextAttempts >= 3) {
+          const backoffSeconds = Math.min(60, 5 * Math.pow(2, nextAttempts - 3));
+          setLoginLockedUntil(Date.now() + backoffSeconds * 1000);
+          setError(`Too many login attempts. Try again in ${backoffSeconds}s.`);
+        } else {
+          setError('Invalid email or password.');
+        }
         return;
       }
-      // Session is automatically set by Supabase
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in. Please try again.';
-      setError(errorMessage);
+
+      setFailedLoginAttempts(0);
+      setLoginLockedUntil(null);
+
+      // Session is set by Supabase - navigate to Bootstrap which will route to Main
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Bootstrap' as never }],
+        })
+      );
+    } catch {
+      setError('Failed to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -94,13 +126,20 @@ const AuthScreen = () => {
 
       // Check if user is already confirmed (auto sign-in)
       if (data.session) {
+        // Navigate to Bootstrap which will route to Main based on role
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Bootstrap' as never }],
+          })
+        );
         return;
       }
 
       // Optional fallback for environments where Supabase doesn't return session
       // even when email confirmation is disabled (e.g., E2E). When enabled via
       // EXPO_PUBLIC_SIGNUP_AUTOLOGIN=1, attempt password sign-in immediately.
-      if (AUTO_LOGIN_AFTER_SIGNUP) {
+      if (AUTO_LOGIN_AFTER_SIGNUP && __DEV__) {
         const delays = [150, 300, 600, 1000];
         for (const delay of delays) {
           const { error: pwError } = await supabase.auth.signInWithPassword({
@@ -205,10 +244,11 @@ const AuthScreen = () => {
         </View>
       </Modal>
 
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -382,7 +422,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
   },

@@ -20,6 +20,8 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
+  confirmTestID?: string;
+  cancelTestID?: string;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -32,6 +34,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
   isLoading = false,
+  confirmTestID,
+  cancelTestID,
 }) => {
   // Single button mode when cancelText is not provided
   const isSingleButton = cancelText === undefined || cancelText === null;
@@ -72,6 +76,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <View style={[styles.buttonContainer, isSingleButton && styles.singleButtonContainer]}>
             {!isSingleButton && (
               <TouchableOpacity
+                testID={cancelTestID}
                 style={[styles.button, styles.cancelButton]}
                 onPress={onCancel}
                 disabled={isLoading}
@@ -81,6 +86,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             )}
 
             <TouchableOpacity
+              testID={confirmTestID}
               style={[
                 styles.button,
                 styles.confirmButton,
@@ -118,10 +124,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)',
     elevation: 8,
   },
   iconContainer: {

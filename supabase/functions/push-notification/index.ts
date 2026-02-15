@@ -24,16 +24,32 @@ interface ExpoPushMessage {
   priority?: 'default' | 'normal' | 'high';
 }
 
+const maskToken = (token: string) => `${token.slice(0, 8)}...${token.slice(-6)}`;
+
 serve(async (req: Request) => {
   try {
-    // Verify the request is from Supabase (webhook)
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    if (!serviceRoleKey) {
+      return new Response('Server misconfiguration', { status: 500 });
+    }
+
+    // Verify webhook authorization (accept exact key or Bearer key)
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const expectedHeader = `Bearer ${serviceRoleKey}`;
+    const isAuthorized = !!authHeader && (
+      authHeader.trim() === expectedHeader ||
+      authHeader.trim() === serviceRoleKey
+    );
+    if (!isAuthorized) {
       return new Response('Unauthorized', { status: 401 });
     }
 
     const payload: WebhookPayload = await req.json();
-    console.log('📬 Received webhook:', JSON.stringify(payload, null, 2));
+    console.log('📬 Webhook received', {
+      type: payload.type,
+      table: payload.table,
+      recordId: payload.record?.id,
+    });
 
     // Only process INSERT events
     if (payload.type !== 'INSERT') {
@@ -42,8 +58,7 @@ serve(async (req: Request) => {
 
     // Initialize Supabase client with service role
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     let recipientId: string | null = null;
     let title: string;
@@ -78,7 +93,7 @@ serve(async (req: Request) => {
     }
 
     if (!recipientId) {
-      console.log('No recipient ID found');
+      console.log('No recipient ID found for push event');
       return new Response('OK - No recipient', { status: 200 });
     }
 
@@ -90,12 +105,12 @@ serve(async (req: Request) => {
       .eq('is_active', true);
 
     if (tokensError) {
-      console.error('Error fetching tokens:', tokensError);
+      console.error('Error fetching tokens:', tokensError.message);
       return new Response('Error fetching tokens', { status: 500 });
     }
 
     if (!tokens || tokens.length === 0) {
-      console.log('No active push tokens for user:', recipientId);
+      console.log('No active push tokens for user');
       return new Response('OK - No tokens', { status: 200 });
     }
 
@@ -123,7 +138,10 @@ serve(async (req: Request) => {
     });
 
     const result = await response.json();
-    console.log('📬 Expo push response:', JSON.stringify(result, null, 2));
+    console.log('📬 Expo push response status', {
+      ok: response.ok,
+      count: Array.isArray(result?.data) ? result.data.length : 0,
+    });
 
     // Handle invalid tokens (remove them from database)
     if (result.data) {
@@ -139,7 +157,7 @@ serve(async (req: Request) => {
               .from('device_tokens')
               .update({ is_active: false })
               .eq('push_token', tokens[i].push_token);
-            console.log('🗑️ Deactivated invalid token:', tokens[i].push_token.substring(0, 20));
+            console.log('🗑️ Deactivated invalid token', maskToken(tokens[i].push_token));
           }
         }
       }
@@ -149,9 +167,10 @@ serve(async (req: Request) => {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
-  } catch (error) {
-    console.error('Error in push-notification function:', error);
-    return new Response(JSON.stringify({ error: String(error) }), {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error in push-notification function:', message);
+    return new Response(JSON.stringify({ error: 'Push notification processing failed' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     });

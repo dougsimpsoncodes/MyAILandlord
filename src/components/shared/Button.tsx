@@ -70,19 +70,19 @@ export default function Button({
     sm: {
       paddingVertical: DesignSystem.spacing.sm,
       paddingHorizontal: DesignSystem.spacing.md,
-      fontSize: DesignSystem.typography.fontSize.sm,
+      fontSize: DesignSystem.typography.fontSize.subheadline,
       minHeight: 36
     },
     md: {
       paddingVertical: DesignSystem.spacing.md,
       paddingHorizontal: DesignSystem.spacing.lg,
-      fontSize: DesignSystem.typography.fontSize.md,
+      fontSize: DesignSystem.typography.fontSize.callout,
       minHeight: 44
     },
     lg: {
       paddingVertical: DesignSystem.spacing.lg,
       paddingHorizontal: DesignSystem.spacing.xl,
-      fontSize: DesignSystem.typography.fontSize.lg,
+      fontSize: DesignSystem.typography.fontSize.title3,
       minHeight: 50
     }
   };

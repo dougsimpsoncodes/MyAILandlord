@@ -11,11 +11,12 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { useUnreadMessages } from '../../context/UnreadMessagesContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { useAppState } from '../../context/AppStateContext';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useApiClient } from '../../services/api/client';
 import { log } from '../../lib/log';
+import { Database } from '../../services/supabase/types';
 
 type LandlordChatRouteParams = {
   LandlordChat: {
@@ -24,6 +25,8 @@ type LandlordChatRouteParams = {
     tenantEmail?: string;
   };
 };
+
+type DbMessage = Database['public']['Tables']['messages']['Row'];
 
 interface Message {
   id: string;
@@ -36,10 +39,10 @@ interface Message {
 const LandlordChatScreen = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProp<LandlordChatRouteParams, 'LandlordChat'>>();
-  const { tenantId, tenantName, tenantEmail } = route.params;
-  const { user } = useAppAuth();
+  const { tenantId, tenantName } = route.params;
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
-  const { refreshUnreadCount } = useUnreadMessages();
+  const { refreshNotificationCounts } = useAppState();
   const scrollViewRef = useRef<ScrollView>(null);
 
   const [messageText, setMessageText] = useState('');
@@ -60,21 +63,21 @@ const LandlordChatScreen = () => {
     if (!apiClient || !user) return;
 
     try {
-      const dbMessages = await apiClient.getMessages();
+      const dbMessages = (await apiClient.getMessages()) as unknown as DbMessage[];
 
       // Filter messages for this specific conversation
-      const conversationMessages = dbMessages.filter((msg: any) =>
+      const conversationMessages = dbMessages.filter((msg: DbMessage) =>
         (msg.sender_id === tenantId && msg.recipient_id === user.id) ||
         (msg.sender_id === user.id && msg.recipient_id === tenantId)
       );
 
       // Map database messages to local format
-      const mappedMessages: Message[] = conversationMessages.map((msg: any) => ({
+      const mappedMessages: Message[] = conversationMessages.map((msg: DbMessage) => ({
         id: msg.id,
         text: msg.content,
         sender: msg.sender_id === user.id ? 'landlord' : 'tenant',
-        timestamp: new Date(msg.created_at),
-        read: msg.is_read || false,
+        timestamp: new Date(msg.created_at || Date.now()),
+        read: msg.is_read ?? false,
       }));
 
       // Deduplicate by ID (in case of race conditions)
@@ -111,14 +114,14 @@ const LandlordChatScreen = () => {
         if (apiClient) {
           try {
             await apiClient.markMessagesAsRead();
-            await refreshUnreadCount();
+            await refreshNotificationCounts();
           } catch (error) {
             log.error('Error marking messages as read', { error: String(error) });
           }
         }
       };
       markAsRead();
-    }, [apiClient, refreshUnreadCount])
+    }, [apiClient, refreshNotificationCounts])
   );
 
   const formatTimestamp = (date: Date) => {
@@ -244,6 +247,7 @@ const LandlordChatScreen = () => {
       {/* Message Input */}
       <View style={styles.inputContainer}>
         <TextInput
+          testID="landlord-message-input"
           style={styles.messageInput}
           placeholder="Type a message..."
           value={messageText}
@@ -253,6 +257,7 @@ const LandlordChatScreen = () => {
           editable={!isSending}
         />
         <TouchableOpacity
+          testID="landlord-message-send"
           style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
           onPress={sendMessage}
           disabled={!messageText.trim() || isSending}

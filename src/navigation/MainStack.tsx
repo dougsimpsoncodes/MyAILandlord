@@ -2,11 +2,11 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform, View, Text, StyleSheet } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 import { haptics } from '../lib/haptics';
-import { useUnreadMessages } from '../context/UnreadMessagesContext';
-import { usePendingRequests } from '../context/PendingRequestsContext';
+import { useAppState } from '../context/AppStateContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 // Tenant Screens
 import HomeScreen from '../screens/tenant/HomeScreen';
@@ -21,7 +21,6 @@ import PropertyInfoScreen from '../screens/tenant/PropertyInfoScreen';
 import PropertyCodeEntryScreen from '../screens/tenant/PropertyCodeEntryScreen';
 import PropertyWelcomeScreen from '../screens/tenant/PropertyWelcomeScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
-import InviteAcceptScreen from '../screens/tenant/InviteAcceptScreen';
 
 // Landlord Screens
 import LandlordHomeScreen from '../screens/landlord/LandlordHomeScreen';
@@ -30,7 +29,6 @@ import CaseDetailScreen from '../screens/landlord/CaseDetailScreen';
 import LandlordCommunicationScreen from '../screens/landlord/LandlordCommunicationScreen';
 import PropertyManagementScreen from '../screens/landlord/PropertyManagementScreen';
 import PropertyDetailsScreen from '../screens/landlord/PropertyDetailsScreen';
-import AddPropertyScreen from '../screens/landlord/AddPropertyScreen';
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
 import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScreen';
 import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
@@ -49,7 +47,6 @@ import LandlordChatScreen from '../screens/landlord/LandlordChatScreen';
 
 // Landlord Onboarding Screens
 import {
-  LandlordOnboardingWelcomeScreen,
   LandlordPropertyIntroScreen,
   LandlordTenantInviteScreen,
   LandlordOnboardingSuccessScreen,
@@ -63,7 +60,7 @@ import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
 import ContactSupportScreen from '../screens/shared/ContactSupportScreen';
 
-import { PropertyAreasParams, PropertyAssetsParams, PropertyReviewParams, AssetTemplate, PropertyData, InventoryItem } from '../types/property';
+import { InventoryItem } from '../types/property';
 
 // ============ TYPE DEFINITIONS ============
 
@@ -118,20 +115,11 @@ export type TenantStackParamList = {
   } | undefined;
   PropertyCodeEntry: undefined;
   PropertyInviteAccept: { t?: string; token?: string; propertyId?: string; property?: string };
-  UnitSelection: {
-    propertyCode: string;
-    propertyName: string;
-    propertyAddress: string;
-  };
   PropertyWelcome: {
     propertyName: string;
     propertyAddress: string;
     wifiNetwork?: string;
     wifiPassword?: string;
-  };
-  PropertySearch: undefined;
-  InviteAccept: {
-    propertyCode: string;
   };
 };
 
@@ -150,28 +138,31 @@ export type LandlordStackParamList = {
   CaseDetail: { caseId: string };
   Communications: undefined;
   PropertyManagement: undefined;
-  PropertyDetails: { property: { id: string; name: string; address: string; type: string; tenants: number; activeRequests: number; } };
+  PropertyDetails: { propertyId: string };
   AddProperty: { draftId?: string } | undefined;
-  PropertyBasics: { draftId?: string } | undefined;
-  PropertyAttributes: { addressData: any; isOnboarding?: boolean; firstName?: string };
-  PropertyPhotos: { propertyData: PropertyData };
-  RoomSelection: { propertyData: PropertyData };
-  RoomPhotography: { propertyData: PropertyData };
-  AssetScanning: { propertyData: PropertyData };
-  AssetDetails: { propertyData: PropertyData };
-  AssetPhotos: { propertyData: PropertyData };
-  ReviewSubmit: { propertyData: PropertyData };
-  PropertyAreas: PropertyAreasParams & { draftId?: string };
-  PropertyAssets: PropertyAssetsParams & { draftId?: string; newAsset?: InventoryItem };
-  PropertyReview: PropertyReviewParams;
+  // New flow screens - use draftId only (no object params)
+  PropertyBasics: { draftId?: string; propertyId?: string; isOnboarding?: boolean; firstName?: string } | undefined;
+  PropertyAttributes: { draftId: string; isOnboarding?: boolean; firstName?: string };
+  PropertyAreas: { draftId?: string; propertyId?: string; isOnboarding?: boolean; firstName?: string };
+  // draftId is required for new properties, propertyId for existing properties (at least one required)
+  PropertyAssets: { draftId?: string; propertyId?: string; newAsset?: InventoryItem };
+  // draftId for new properties (onboarding), propertyId for existing properties (at least one required)
+  PropertyReview: { draftId?: string; propertyId?: string };
   AddAsset: {
+    draftId?: string;  // Optional for existing properties
     areaId: string;
     areaName: string;
-    template: AssetTemplate | null;
-    propertyData: PropertyData;
-    draftId?: string;
     propertyId?: string;
+    templateId?: string; // Pass template ID instead of object (look up from templates list)
   };
+  // Legacy flow screens (may be deprecated - kept for backward compat)
+  PropertyPhotos: { draftId: string };
+  RoomSelection: { draftId: string };
+  RoomPhotography: { draftId: string };
+  AssetScanning: { draftId: string };
+  AssetDetails: { draftId: string };
+  AssetPhotos: { draftId: string };
+  ReviewSubmit: { draftId: string };
   InviteTenant: {
     propertyId: string;
     propertyName: string;
@@ -207,22 +198,49 @@ const tabBarStyles = {
 
 const LandlordTab = createBottomTabNavigator<LandlordTabParamList>();
 
+// ============ SHARED SCREEN GROUPS ============
+// These functions return screen definitions used across multiple stacks.
+// Define once, use everywhere - prevents duplication bugs.
+
+/**
+ * Property flow screens shared between Home tab, Properties tab, and Onboarding.
+ * Includes: PropertyBasics, PropertyAreas, PropertyAssets, PropertyReview, AddAsset, InviteTenant, PropertyDetails
+ */
+const LandlordPropertyFlowScreens = (Stack: ReturnType<typeof createNativeStackNavigator>) => (
+  <>
+    <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+    <Stack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
+    <Stack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
+    <Stack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
+    <Stack.Screen name="PropertyReview" component={PropertyReviewScreen} />
+    <Stack.Screen name="AddAsset" component={AddAssetScreen} />
+    <Stack.Screen name="InviteTenant" component={InviteTenantScreen} />
+  </>
+);
+
+/**
+ * Case/chat screens shared between Home tab, Requests tab, and Messages tab.
+ */
+const LandlordCaseScreens = (Stack: ReturnType<typeof createNativeStackNavigator>) => (
+  <>
+    <Stack.Screen name="CaseDetail" component={CaseDetailScreen} />
+    <Stack.Screen name="LandlordChat" component={LandlordChatScreen} />
+  </>
+);
+
+// ============ TAB STACK NAVIGATORS ============
+
 // Stack navigator for Home tab
 const LandlordHomeStack = createNativeStackNavigator();
 const LandlordHomeStackNavigator = () => (
   <LandlordHomeStack.Navigator screenOptions={{ headerShown: false }}>
+    {/* Tab-specific main screen */}
     <LandlordHomeStack.Screen name="LandlordHomeMain" component={LandlordHomeScreen} />
     <LandlordHomeStack.Screen name="Dashboard" component={DashboardScreen} />
-    <LandlordHomeStack.Screen name="CaseDetail" component={CaseDetailScreen} />
-    <LandlordHomeStack.Screen name="LandlordChat" component={LandlordChatScreen} />
-    <LandlordHomeStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
     <LandlordHomeStack.Screen name="PropertyManagement" component={PropertyManagementScreen} />
-    <LandlordHomeStack.Screen name="AddProperty" component={AddPropertyScreen} />
-    <LandlordHomeStack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
-    <LandlordHomeStack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
-    <LandlordHomeStack.Screen name="PropertyReview" component={PropertyReviewScreen} />
-    <LandlordHomeStack.Screen name="AddAsset" component={AddAssetScreen} />
-    <LandlordHomeStack.Screen name="InviteTenant" component={InviteTenantScreen} />
+    {/* Shared screens */}
+    {LandlordPropertyFlowScreens(LandlordHomeStack)}
+    {LandlordCaseScreens(LandlordHomeStack)}
   </LandlordHomeStack.Navigator>
 );
 
@@ -230,10 +248,13 @@ const LandlordHomeStackNavigator = () => (
 const LandlordPropertiesStack = createNativeStackNavigator();
 const LandlordPropertiesStackNavigator = () => (
   <LandlordPropertiesStack.Navigator screenOptions={{ headerShown: false }}>
+    {/* Tab-specific main screen */}
     <LandlordPropertiesStack.Screen name="PropertyManagementMain" component={PropertyManagementScreen} />
-    <LandlordPropertiesStack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
-    <LandlordPropertiesStack.Screen name="AddProperty" component={AddPropertyScreen} />
-    <LandlordPropertiesStack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
+    {/* Legacy route name - maps to PropertyBasics for backwards compatibility */}
+    <LandlordPropertiesStack.Screen name="AddProperty" component={PropertyBasicsScreen} />
+    {/* Shared screens */}
+    {LandlordPropertyFlowScreens(LandlordPropertiesStack)}
+    {/* Properties-specific screens (extended property setup flow) */}
     <LandlordPropertiesStack.Screen name="PropertyAttributes" component={PropertyAttributesScreen} />
     <LandlordPropertiesStack.Screen name="PropertyPhotos" component={PropertyPhotosScreen} />
     <LandlordPropertiesStack.Screen name="RoomSelection" component={RoomSelectionScreen} />
@@ -242,11 +263,6 @@ const LandlordPropertiesStackNavigator = () => (
     <LandlordPropertiesStack.Screen name="AssetDetails" component={AssetDetailsScreen} />
     <LandlordPropertiesStack.Screen name="AssetPhotos" component={AssetPhotosScreen} />
     <LandlordPropertiesStack.Screen name="ReviewSubmit" component={ReviewSubmitScreen} />
-    <LandlordPropertiesStack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
-    <LandlordPropertiesStack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
-    <LandlordPropertiesStack.Screen name="PropertyReview" component={PropertyReviewScreen} />
-    <LandlordPropertiesStack.Screen name="AddAsset" component={AddAssetScreen} />
-    <LandlordPropertiesStack.Screen name="InviteTenant" component={InviteTenantScreen} />
   </LandlordPropertiesStack.Navigator>
 );
 
@@ -255,7 +271,8 @@ const LandlordMessagesStack = createNativeStackNavigator();
 const LandlordMessagesStackNavigator = () => (
   <LandlordMessagesStack.Navigator screenOptions={{ headerShown: false }}>
     <LandlordMessagesStack.Screen name="LandlordMessagesMain" component={LandlordCommunicationScreen} />
-    <LandlordMessagesStack.Screen name="LandlordChat" component={LandlordChatScreen} />
+    {/* Shared case/chat screens */}
+    {LandlordCaseScreens(LandlordMessagesStack)}
   </LandlordMessagesStack.Navigator>
 );
 
@@ -264,8 +281,8 @@ const LandlordRequestsStack = createNativeStackNavigator();
 const LandlordRequestsStackNavigator = () => (
   <LandlordRequestsStack.Navigator screenOptions={{ headerShown: false }}>
     <LandlordRequestsStack.Screen name="LandlordRequestsMain" component={DashboardScreen} />
-    <LandlordRequestsStack.Screen name="CaseDetail" component={CaseDetailScreen} />
-    <LandlordRequestsStack.Screen name="LandlordChat" component={LandlordChatScreen} />
+    {/* Shared case/chat screens */}
+    {LandlordCaseScreens(LandlordRequestsStack)}
   </LandlordRequestsStack.Navigator>
 );
 
@@ -288,12 +305,11 @@ const LandlordProfileStackNavigator = () => (
 
 // Landlord Tabs (the main app once onboarding is complete)
 const LandlordTabsNavigator = () => {
-  const { unreadCount } = useUnreadMessages();
-  const { newCount, pendingCount } = usePendingRequests();
+  const { unreadMessagesCount, newRequestsCount, pendingRequestsCount } = useAppState();
 
   // Badge logic: red for new requests, orange for pending (if no new)
-  const requestBadgeCount = newCount > 0 ? newCount : (pendingCount > 0 ? pendingCount : undefined);
-  const requestBadgeColor = newCount > 0 ? '#E74C3C' : '#F39C12';
+  const requestBadgeCount = newRequestsCount > 0 ? newRequestsCount : (pendingRequestsCount > 0 ? pendingRequestsCount : undefined);
+  const requestBadgeColor = newRequestsCount > 0 ? '#E74C3C' : '#F39C12';
 
   return (
     <LandlordTab.Navigator
@@ -315,8 +331,8 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
-          // Expose testID for E2E login success check
-          tabBarTestID: 'nav-dashboard',
+          // Expose accessibilityLabel for E2E testing
+          tabBarAccessibilityLabel: 'nav-dashboard',
         }}
       />
       <LandlordTab.Screen
@@ -346,8 +362,8 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="business" size={size} color={color} />
           ),
-          // Expose testID for navigating to properties
-          tabBarTestID: 'nav-properties',
+          // Expose accessibilityLabel for E2E testing
+          tabBarAccessibilityLabel: 'nav-properties',
         }}
       />
       <LandlordTab.Screen
@@ -358,7 +374,7 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined,
           tabBarBadgeStyle: {
             backgroundColor: '#E74C3C',
             fontSize: 11,
@@ -377,7 +393,7 @@ const LandlordTabsNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
-          tabBarTestID: 'nav-user-menu',
+          tabBarAccessibilityLabel: 'nav-user-menu',
         }}
       />
     </LandlordTab.Navigator>
@@ -430,6 +446,10 @@ const LandlordNavigator: React.FC<LandlordNavigatorProps> = ({ needsOnboarding, 
         component={PropertyAssetsListScreen}
       />
       <LandlordRootStack.Screen
+        name="PropertyReview"
+        component={PropertyReviewScreen}
+      />
+      <LandlordRootStack.Screen
         name="AddAsset"
         component={AddAssetScreen}
       />
@@ -462,7 +482,6 @@ const TenantHomeStackNavigator = () => (
     <TenantHomeStack.Screen name="PropertyCodeEntry" component={PropertyCodeEntryScreen} />
     <TenantHomeStack.Screen name="PropertyInviteAccept" component={PropertyInviteAcceptScreen} />
     <TenantHomeStack.Screen name="PropertyWelcome" component={PropertyWelcomeScreen} />
-    <TenantHomeStack.Screen name="InviteAccept" component={InviteAcceptScreen} />
     <TenantHomeStack.Screen name="PropertyInfo" component={PropertyInfoScreen} />
     <TenantHomeStack.Screen name="CommunicationHub" component={CommunicationHubScreen} />
   </TenantHomeStack.Navigator>
@@ -502,14 +521,9 @@ const TenantProfileStackNavigator = () => (
   </TenantProfileStack.Navigator>
 );
 
-interface TenantNavigatorProps {
-  pendingInvitePropertyId?: string | null;
-}
+const TenantNavigator: React.FC = () => {
+  const { unreadMessagesCount } = useAppState();
 
-const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInvitePropertyId }) => {
-  const { unreadCount } = useUnreadMessages();
-
-  // For pending invites, we'll handle the initial navigation in the Home stack
   return (
     <TenantTab.Navigator
       screenOptions={{
@@ -551,7 +565,7 @@ const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInviteProperty
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="chatbubbles" size={size} color={color} />
           ),
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined,
           tabBarBadgeStyle: {
             backgroundColor: '#E74C3C',
             fontSize: 11,
@@ -580,14 +594,12 @@ const TenantNavigator: React.FC<TenantNavigatorProps> = ({ pendingInviteProperty
 
 interface MainStackProps {
   userRole: 'tenant' | 'landlord';
-  pendingInvitePropertyId?: string | null;
   needsOnboarding?: boolean;
   userFirstName?: string | null;
 }
 
-const MainStack: React.FC<MainStackProps> = ({
+const MainStackComponent: React.FC<MainStackProps> = ({
   userRole,
-  pendingInvitePropertyId,
   needsOnboarding,
   userFirstName
 }) => {
@@ -595,9 +607,43 @@ const MainStack: React.FC<MainStackProps> = ({
   usePushNotifications();
 
   return userRole === 'tenant' ? (
-    <TenantNavigator pendingInvitePropertyId={pendingInvitePropertyId} />
+    <TenantNavigator />
   ) : (
     <LandlordNavigator needsOnboarding={needsOnboarding} userFirstName={userFirstName} />
+  );
+};
+
+// Wrapper to extract route.params and pass to MainStackComponent
+interface MainStackRouteParams {
+  userRole: 'tenant' | 'landlord';
+  needsOnboarding?: boolean;
+  userFirstName?: string | null;
+}
+
+const MainStack = ({ route }: { route: { params?: MainStackRouteParams } }) => {
+  const { user } = useUnifiedAuth();
+
+  // Deep-link paths can mount Main without explicit route params.
+  // Do not default to tenant while auth/profile role is still hydrating.
+  const resolvedRole = route.params?.userRole ?? user?.role ?? null;
+
+  if (!resolvedRole) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#3498DB" />
+      </View>
+    );
+  }
+
+  const needsOnboarding = route.params?.needsOnboarding ?? (user ? !user.onboarding_completed : undefined);
+  const userFirstName = route.params?.userFirstName ?? user?.name?.split(' ')[0] ?? null;
+
+  return (
+    <MainStackComponent
+      userRole={resolvedRole}
+      needsOnboarding={needsOnboarding}
+      userFirstName={userFirstName}
+    />
   );
 };
 

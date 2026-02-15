@@ -116,8 +116,9 @@ export const IMAGE_VALIDATION_CONFIG: ImageValidationOptions = {
 // Validate image file
 export const validateImageFile = async (
   uri: string,
-  options: ImageValidationOptions = IMAGE_VALIDATION_CONFIG
+  _options: ImageValidationOptions = IMAGE_VALIDATION_CONFIG
 ): Promise<ImageValidationResult> => {
+  void _options;
   try {
     // Check if URI is valid
     if (!uri || typeof uri !== 'string') {
@@ -152,7 +153,7 @@ export const validateImageFile = async (
       isValid: true,
       sanitizedUri: uri,
     };
-  } catch (error) {
+  } catch {
     return {
       isValid: false,
       error: 'Failed to validate image',

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   Image,
 } from 'react-native';
@@ -15,7 +14,6 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -133,13 +131,13 @@ const ReviewSubmitScreen = () => {
         navigation.navigate('PropertyBasics');
         break;
       case 'photos':
-        navigation.navigate('PropertyPhotos', { propertyData });
+        navigation.navigate('PropertyPhotos', { draftId: draftState?.id || '' });
         break;
       case 'rooms':
-        navigation.navigate('RoomSelection', { propertyData });
+        navigation.navigate('RoomSelection', { draftId: draftState?.id || '' });
         break;
       case 'assets':
-        navigation.navigate('AssetScanning', { propertyData });
+        navigation.navigate('AssetScanning', { draftId: draftState?.id || '' });
         break;
     }
   };
@@ -186,7 +184,7 @@ const ReviewSubmitScreen = () => {
           },
         ]
       );
-    } catch (error) {
+    } catch {
       Alert.alert(
         'Submission Failed',
         'There was an error submitting your property. Please try again.',
@@ -404,7 +402,7 @@ const ReviewSubmitScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
+      paddingBottom: 16,
     },
     saveStatus: {
       flexDirection: 'row',
@@ -669,7 +667,7 @@ const ReviewSubmitScreen = () => {
                     return (
                       <View key={room.id} style={styles.listItem}>
                         <Ionicons 
-                          name={room.icon as any} 
+                          name={(room.icon || 'home-outline') as React.ComponentProps<typeof Ionicons>['name']} 
                           size={20} 
                           color="#6C757D" 
                           style={styles.listItemIcon}

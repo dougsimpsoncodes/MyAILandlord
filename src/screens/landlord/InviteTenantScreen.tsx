@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Clipboard, Platform, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Clipboard, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LandlordStackParamList } from '../../navigation/MainStack';
@@ -9,6 +9,8 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { supabase } from '../../services/supabase/client';
 import log from '../../lib/log';
+import { buildInviteUrl } from '../../utils/inviteUrl';
+import { validateEmail } from '../../utils/helpers';
 
 type InviteTenantNavigationProp = NativeStackNavigationProp<LandlordStackParamList, 'InviteTenant'>;
 
@@ -18,6 +20,8 @@ interface RouteParams {
 }
 
 type DeliveryMode = 'email' | 'code' | null;
+
+const redactToken = (token: string) => token ? `${token.slice(0, 4)}...${token.slice(-4)}` : '';
 
 const InviteTenantScreen = () => {
   const navigation = useNavigation<InviteTenantNavigationProp>();
@@ -48,59 +52,65 @@ const InviteTenantScreen = () => {
     });
   };
 
-  const buildInviteUrl = (token: string): string => {
-    const isDevelopment = __DEV__;
-
-    if (Platform.OS === 'web') {
-      return isDevelopment
-        ? `http://localhost:8081/invite?t=${token}`
-        : `https://myailandlord.app/invite?t=${token}`;
-    } else {
-      return isDevelopment
-        ? `exp://192.168.0.14:8081/--/invite?t=${token}`
-        : `https://myailandlord.app/invite?t=${token}`;
-    }
-  };
-
   const handleGenerateCode = async () => {
     setIsGenerating(true);
     try {
       log.info('[InviteTenant] Generating code invite for property:', propertyId);
 
-      // Check session before RPC call
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      log.info('[InviteTenant] Current session:', {
-        hasSession: !!sessionData?.session,
-        userId: sessionData?.session?.user?.id,
-        sessionError: sessionError?.message,
-      });
-
-      const { data, error } = await supabase.rpc('create_invite', {
-        p_property_id: propertyId,
-        p_delivery_method: 'code',
-        p_intended_email: null
-      });
-
-      if (error) {
-        log.error('[InviteTenant] Error generating invite:', error);
-        showNotification('Error', 'Failed to generate invite code. Please try again.', 'destructive');
+      // Direct REST call to bypass supabase.rpc() hanging on web
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showNotification('Error', 'Not authenticated. Please sign in again.', 'destructive');
         return;
       }
 
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+      const rpcResponse = await Promise.race([
+        fetch(`${supabaseUrl}/rest/v1/rpc/create_invite`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseAnon || '',
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({
+            p_property_id: propertyId,
+            p_delivery_method: 'code',
+            p_intended_email: null,
+          }),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout after 15 seconds')), 15000)
+        ),
+      ]);
+
+      if (!rpcResponse.ok) {
+        const errBody = await rpcResponse.json().catch(() => ({}));
+        log.error('[InviteTenant] RPC error:', errBody);
+        const detail = errBody.message || errBody.error || `HTTP ${rpcResponse.status}`;
+        showNotification('Error', `Failed to generate invite: ${detail}`, 'destructive');
+        return;
+      }
+
+      const data = await rpcResponse.json();
+
       if (!data || !Array.isArray(data) || data.length === 0 || !data[0].token) {
         log.error('[InviteTenant] No token returned from RPC, data:', data);
-        showNotification('Error', 'Failed to generate invite code. Please try again.', 'destructive');
+        showNotification('Error', 'Failed to generate invite code. No token returned.', 'destructive');
         return;
       }
 
       const token = data[0].token;
-      const url = buildInviteUrl(token);
+      const url = buildInviteUrl(token, propertyId);
 
       setInviteToken(token);
       setInviteUrl(url);
       setMode('code');
 
-      log.info('[InviteTenant] Code invite created:', { token, url });
+      log.info('[InviteTenant] Code invite created', { token: redactToken(token) });
     } catch (err) {
       log.error('[InviteTenant] Exception generating code invite:', err);
       showNotification('Error', 'An unexpected error occurred. Please try again.', 'destructive');
@@ -110,7 +120,9 @@ const InviteTenantScreen = () => {
   };
 
   const handleSendEmail = async () => {
-    if (!email || !email.includes('@')) {
+    const normalizedEmail = email.trim();
+
+    if (!validateEmail(normalizedEmail)) {
       showNotification('Invalid Email', 'Please enter a valid email address.', 'destructive');
       return;
     }
@@ -119,58 +131,127 @@ const InviteTenantScreen = () => {
     try {
       log.info('[InviteTenant] Generating email invite for property:', propertyId);
 
-      // Step 1: Create invite token
-      const { data, error } = await supabase.rpc('create_invite', {
-        p_property_id: propertyId,
-        p_delivery_method: 'email',
-        p_intended_email: email
-      });
-
-      if (error) {
-        log.error('[InviteTenant] Error generating invite:', error);
-        showNotification('Error', 'Failed to generate invite. Please try again.', 'destructive');
+      // Step 1: Create invite token via direct REST call
+      // (supabase.rpc() can hang on web — bypass JS client entirely)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        showNotification('Error', 'Not authenticated. Please sign in again.', 'destructive');
         return;
       }
 
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+      const rpcResponse = await Promise.race([
+        fetch(`${supabaseUrl}/rest/v1/rpc/create_invite`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseAnon || '',
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({
+            p_property_id: propertyId,
+            p_delivery_method: 'email',
+            p_intended_email: normalizedEmail,
+          }),
+        }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout after 15 seconds')), 15000)
+        ),
+      ]);
+
+      if (!rpcResponse.ok) {
+        const errBody = await rpcResponse.json().catch(() => ({}));
+        log.error('[InviteTenant] RPC error:', errBody);
+        const detail = errBody.message || errBody.error || `HTTP ${rpcResponse.status}`;
+        showNotification('Error', `Failed to generate invite: ${detail}`, 'destructive');
+        return;
+      }
+
+      const data = await rpcResponse.json();
+
       if (!data || !Array.isArray(data) || data.length === 0 || !data[0].token) {
         log.error('[InviteTenant] No token returned from RPC, data:', data);
-        showNotification('Error', 'Failed to generate invite. Please try again.', 'destructive');
+        showNotification('Error', 'Failed to generate invite. No token returned.', 'destructive');
         return;
       }
 
       const token = data[0].token;
-      const url = buildInviteUrl(token);
+      const url = buildInviteUrl(token, propertyId);
 
-      log.info('[InviteTenant] Email invite token created:', { token, url });
+      log.info('[InviteTenant] Email invite token created', { token: redactToken(token) });
 
-      // Step 2: Send email via Edge Function
+      // Step 2: Send email via Edge Function (direct fetch — supabase.functions.invoke fails on web)
       const { data: userData } = await supabase.auth.getUser();
       const landlordName = userData?.user?.user_metadata?.name || 'Your Landlord';
 
-      const edgeResponse = await supabase.functions.invoke('send-invite-email', {
-        body: {
-          recipientEmail: email,
-          propertyName: propertyName,
-          inviteUrl: url,
-          landlordName: landlordName,
-        },
-      });
+      let emailResponse: Response;
+      const emailController = new AbortController();
+      let emailTimeoutId: ReturnType<typeof setTimeout> | null = null;
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          emailTimeoutId = setTimeout(() => {
+            emailController.abort();
+            reject(new Error('Email service timeout after 10 seconds'));
+          }, 10000);
+        });
 
-      if (edgeResponse.error) {
-        log.error('[InviteTenant] Error sending email:', edgeResponse.error);
+        emailResponse = await Promise.race([
+          fetch(`${supabaseUrl}/functions/v1/send-invite-email`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseAnon || '',
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              recipientEmail: normalizedEmail,
+              propertyName: propertyName,
+              inviteUrl: url,
+              inviteToken: token,
+              landlordName: landlordName,
+            }),
+            signal: emailController.signal,
+          }),
+          timeoutPromise,
+        ]);
+      } catch (emailErr) {
+        const errorMessage = emailErr instanceof Error ? emailErr.message : String(emailErr);
+        log.warn('[InviteTenant] Email service request failed:', errorMessage);
+        showNotification(
+          'Email Service Unavailable',
+          'Email could not be sent. Here\'s the invite link to share manually.',
+          'info'
+        );
+        setInviteToken(token);
+        setInviteUrl(url);
+        setMode('code');
+        return;
+      } finally {
+        if (emailTimeoutId) {
+          clearTimeout(emailTimeoutId);
+        }
+      }
+
+      const emailResult = await emailResponse.json().catch(() => ({}));
+
+      if (!emailResponse.ok || emailResult.error) {
+        const errorDetail = emailResult.details || emailResult.error || `HTTP ${emailResponse.status}`;
+        log.error('[InviteTenant] Error sending email:', errorDetail);
         showNotification(
           'Email Failed',
-          'Invite was created but email failed to send. You can copy the link and send it manually.',
+          `Invite created but email failed: ${errorDetail}. You can copy the link and send it manually.`,
           'destructive'
         );
-        // Still show the invite URL for manual sharing
         setInviteToken(token);
         setInviteUrl(url);
         setMode('code');
         return;
       }
 
-      log.info('[InviteTenant] Email sent successfully to:', email);
+      log.info('[InviteTenant] Email sent successfully', { email: normalizedEmail });
 
       setInviteToken(token);
       setInviteUrl(url);
@@ -179,7 +260,7 @@ const InviteTenantScreen = () => {
 
       showNotification(
         'Email Sent!',
-        `Invitation email sent to ${email}`,
+        `Invitation email sent to ${normalizedEmail}`,
         'default'
       );
     } catch (err) {

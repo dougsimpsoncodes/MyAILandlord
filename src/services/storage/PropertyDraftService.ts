@@ -393,7 +393,7 @@ export class PropertyDraftService {
     
     try {
       const draftsListJson = await AsyncStorage.getItem(draftsListKey);
-      let draftIds: string[] = draftsListJson ? JSON.parse(draftsListJson) : [];
+      const draftIds: string[] = draftsListJson ? JSON.parse(draftsListJson) : [];
 
       // Add the new draft ID if it's not already in the list
       if (!draftIds.includes(draftId)) {

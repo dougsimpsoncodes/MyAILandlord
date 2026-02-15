@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useApiClient } from '../services/api/client';
-import { useAppAuth } from './SupabaseAuthContext';
-import { useProfile } from './ProfileContext';
+import { useUnifiedAuth } from './UnifiedAuthContext';
 import { supabase } from '../services/supabase/config';
 import log from '../lib/log';
 
@@ -27,8 +26,7 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
   const [newCount, setNewCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [landlordId, setLandlordId] = useState<string | null>(null);
-  const { user } = useAppAuth();
-  const { profile } = useProfile();
+  const { user } = useUnifiedAuth();
   const apiClient = useApiClient();
 
   const refreshPendingCount = useCallback(async () => {
@@ -39,27 +37,23 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
     }
 
     try {
-      // Use cached profile from ProfileContext instead of API call
-      if (!profile || profile.role !== 'landlord') {
+      // Use user from UnifiedAuthContext (migrated from ProfileContext)
+      if (user.role !== 'landlord') {
         setNewCount(0);
         setPendingCount(0);
         return;
       }
 
-      setLandlordId(profile.id);
+      setLandlordId(user.id);
 
       // Get maintenance requests for landlord's properties
       const requests = await apiClient.getMaintenanceRequests();
 
       // Count new requests (submitted - never reviewed)
-      const newRequests = requests.filter(
-        (req: any) => req.status === 'submitted'
-      ).length;
+      const newRequests = requests.filter((req) => req.status === 'submitted').length;
 
       // Count pending requests (seen but not resolved)
-      const pendingRequests = requests.filter(
-        (req: any) => req.status === 'pending'
-      ).length;
+      const pendingRequests = requests.filter((req) => req.status === 'pending').length;
 
       log.info('🔧 Request counts updated', { new: newRequests, pending: pendingRequests, total: requests.length });
       setNewCount(newRequests);
@@ -67,7 +61,7 @@ export const PendingRequestsProvider: React.FC<PendingRequestsProviderProps> = (
     } catch (error) {
       log.error('Error fetching pending requests count', { error: String(error) });
     }
-  }, [apiClient, user, profile]);
+  }, [apiClient, user]);
 
   // Fetch pending count on mount and when user changes
   useEffect(() => {

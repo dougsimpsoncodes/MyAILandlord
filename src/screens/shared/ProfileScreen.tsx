@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,12 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { RoleContext } from '../../context/RoleContext';
+import { useNavigation, useFocusEffect, NavigationProp } from "@react-navigation/native";
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
 import { DesignSystem } from '../../theme/DesignSystem';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
+import { log } from '../../lib/log';
 
 interface ProfileScreenProps {
   route?: {
@@ -32,12 +32,18 @@ interface MenuItem {
 }
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
-  const navigation = useNavigation<any>();
-  const { user, signOut } = useAppAuth();
-  const { userRole, clearRole } = useContext(RoleContext);
-  const role = route?.params?.userRole || userRole;
+  const navigation = useNavigation<NavigationProp<Record<string, object | undefined>>>();
+  const { user, signOut, refreshUser } = useUnifiedAuth();
+  const role = route?.params?.userRole || user?.role;
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Refresh user data when screen comes into focus (e.g., after editing profile)
+  useFocusEffect(
+    useCallback(() => {
+      refreshUser();
+    }, [refreshUser])
+  );
 
   const isLandlord = role === 'landlord';
   const accentColor = isLandlord ? '#3498DB' : '#2ECC71';
@@ -49,10 +55,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
   const confirmSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await clearRole();
       await signOut();
+      // Navigate to Auth screen after successful sign out
+      // Use getRootState to access root navigator
+      const rootNav = navigation.getParent();
+      if (rootNav) {
+        rootNav.reset({
+          index: 0,
+          routes: [{ name: 'Auth' }],
+        });
+      }
     } catch (error) {
-      console.error('Error signing out:', error);
+      log.error('Error signing out', { error: String(error) });
       setShowSignOutDialog(false);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     } finally {
@@ -173,9 +187,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route }) => {
           {supportMenuItems.map(renderMenuItem)}
         </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} testID="nav-logout">
-          <Text style={styles.logoutButtonText}>Log Out</Text>
+        {/* Sign Out Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut} testID="nav-sign-out">
+          <Text style={styles.logoutButtonText}>Sign Out</Text>
         </TouchableOpacity>
 
         {/* App Version */}

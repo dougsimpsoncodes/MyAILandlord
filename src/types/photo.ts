@@ -11,7 +11,7 @@ export interface Photo {
 }
 
 export interface CameraOptions {
-  mediaTypes: 'photo';
+  mediaTypes: import('expo-image-picker').MediaTypeOptions;
   allowsEditing: boolean;
   aspect: [number, number];
   quality: number;
@@ -19,11 +19,12 @@ export interface CameraOptions {
 }
 
 export interface ImagePickerOptions {
-  mediaTypes: 'photo';
+  mediaTypes: import('expo-image-picker').MediaTypeOptions;
   allowsMultipleSelection: boolean;
   quality: number;
   aspect: [number, number];
   allowsEditing: boolean;
+  presentationStyle?: import('expo-image-picker').UIImagePickerPresentationStyle;
 }
 
 export interface PhotoValidationResult {

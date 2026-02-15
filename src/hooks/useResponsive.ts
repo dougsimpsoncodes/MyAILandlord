@@ -300,7 +300,7 @@ export const useResponsive = (): ResponsiveValues => {
 };
 
 // Type-safe style helper
-export const responsiveStyles = <T extends Record<string, any>>(
+export const responsiveStyles = <T extends Record<string, unknown>>(
   createStyles: (responsive: ResponsiveValues) => T
 ) => {
   return (responsive: ResponsiveValues) => createStyles(responsive);

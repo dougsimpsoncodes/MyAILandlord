@@ -1,16 +1,15 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppAuth } from '../../context/SupabaseAuthContext';
-import { RoleContext } from '../../context/RoleContext';
+import { useUnifiedAuth } from '../../context/UnifiedAuthContext';
+import { log } from '../../lib/log';
 
 interface UserProfileProps {
   userRole: 'tenant' | 'landlord';
 }
 
 export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
-  const { user, signOut } = useAppAuth();
-  const { clearRole } = useContext(RoleContext);
+  const { user, signOut } = useUnifiedAuth();
 
   const handleSignOut = async () => {
     // On web, Alert.alert with buttons doesn't work the same way
@@ -22,10 +21,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
     if (!confirmSignOut) return;
 
     try {
-      await clearRole();
       await signOut();
     } catch (error) {
-      console.error('[UserProfile] Error signing out:', error);
+      log.error('[UserProfile] Error signing out', { error: String(error) });
       Alert.alert('Error', 'Failed to sign out. Please try again.');
     }
   };
@@ -42,12 +40,9 @@ export const UserProfile: React.FC<UserProfileProps> = ({ userRole }) => {
         {
           text: 'Switch Role',
           onPress: async () => {
-            try {
-              await clearRole();
-            } catch (error) {
-              console.error('Error switching role:', error);
-              Alert.alert('Error', 'Failed to switch role. Please try again.');
-            }
+            // Role switching would require profile update via API
+            // This feature may need to be redesigned with new context system
+            Alert.alert('Info', 'Role switching requires account reconfiguration. Please contact support.');
           },
         },
       ]

@@ -1,6 +1,6 @@
 // Enhanced address validation following industry best practices
 import { PropertyAddress } from '../types/property';
-import { ADDRESS_VALIDATION_RULES, US_STATES, ADDRESS_PATTERNS } from './addressConstants';
+import { ADDRESS_VALIDATION_RULES, ADDRESS_PATTERNS } from './addressConstants';
 
 export interface AddressValidationResult {
   isValid: boolean;

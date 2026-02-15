@@ -36,7 +36,7 @@ describe('validateProfileData', () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Invalid email address');
+    expect(result.errors).toContain('Please enter a valid email address.');
   });
 
   test('rejects empty required fields', () => {
@@ -282,7 +282,7 @@ describe('validateFileUpload', () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain('too large');
+    expect(result.errors[0]).toContain('File size must be less than');
   });
 
   test('rejects invalid file type', () => {
@@ -298,31 +298,35 @@ describe('validateFileUpload', () => {
 });
 
 describe('Sanitization Functions', () => {
-  test('sanitizeProfileData removes dangerous characters', () => {
+  test('sanitizeProfileData encodes dangerous characters', () => {
     const result = sanitizeProfileData({
       name: '<script>alert("xss")</script>John',
       email: 'test@example.com',
     });
 
+    // sanitizeString HTML-encodes rather than removes tags
+    expect(result.name).toContain('&lt;script&gt;');
     expect(result.name).not.toContain('<script>');
-    expect(result.name).not.toContain('</script>');
   });
 
-  test('sanitizeMaintenanceRequestData removes dangerous characters', () => {
+  test('sanitizeMaintenanceRequestData encodes dangerous characters', () => {
     const result = sanitizeMaintenanceRequestData({
       title: '<img src=x onerror=alert(1)>',
       description: 'Normal description',
     });
 
+    // sanitizeString HTML-encodes rather than removes tags
+    expect(result.title).toContain('&lt;img');
     expect(result.title).not.toContain('<img');
-    expect(result.title).not.toContain('onerror');
   });
 
-  test('sanitizeMessageData removes dangerous characters', () => {
+  test('sanitizeMessageData encodes dangerous characters', () => {
     const result = sanitizeMessageData({
       content: 'Hello <script>alert("xss")</script>',
     });
 
+    // sanitizeString HTML-encodes rather than removes tags
+    expect(result.content).toContain('&lt;script&gt;');
     expect(result.content).not.toContain('<script>');
   });
 });

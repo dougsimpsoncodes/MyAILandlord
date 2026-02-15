@@ -6,7 +6,7 @@ import AuthCallbackScreen from '../screens/AuthCallbackScreen';
 import PropertyInviteAcceptScreen from '../screens/tenant/PropertyInviteAcceptScreen';
 import { log } from '../lib/log';
 
-// New onboarding screens
+// New onboarding screens (all screens used in auth/onboarding flow)
 import {
   OnboardingWelcomeScreen,
   OnboardingNameScreen,
@@ -25,26 +25,55 @@ import {
 import PropertyBasicsScreen from '../screens/landlord/PropertyBasicsScreen';
 import PropertyAttributesScreen from '../screens/landlord/PropertyAttributesScreen';
 import PropertyAreasScreen from '../screens/landlord/PropertyAreasScreen';
+import PropertyAssetsListScreen from '../screens/landlord/PropertyAssetsListScreen';
+import PropertyReviewScreen from '../screens/landlord/PropertyReviewScreen';
+import PropertyDetailsScreen from '../screens/landlord/PropertyDetailsScreen';
+import InviteTenantScreen from '../screens/landlord/InviteTenantScreen';
+import { PropertyData, PropertyArea, InventoryItem } from '../types/property';
 
 export type AuthStackParamList = {
   // Legacy screen for backwards compatibility
   Welcome: undefined;
   // New onboarding flow
   OnboardingWelcome: undefined;
-  OnboardingName: undefined;
-  OnboardingAccount: { firstName: string };
+  OnboardingName: { fromInvite?: boolean };
+  OnboardingAccount: { firstName: string; fromInvite?: boolean };
   OnboardingRole: { firstName: string; userId: string };
   // Landlord onboarding path
   LandlordOnboardingWelcome: { firstName: string; role: 'landlord' };
   LandlordPropertyIntro: { firstName: string };
   PropertyBasics: { firstName?: string; isOnboarding?: boolean };
-  PropertyAttributes: { addressData: any; isOnboarding?: boolean; firstName?: string };
+  PropertyAttributes: { addressData: PropertyData; isOnboarding?: boolean; firstName?: string };
   PropertyAreas: {
-    propertyData: any; // PropertyData type
+    propertyData: PropertyData;
     draftId?: string;
     propertyId?: string;
-    existingAreas?: any[]; // PropertyArea[] type
+    existingAreas?: PropertyArea[];
     isOnboarding?: boolean;
+    firstName?: string;
+  };
+  PropertyAssets: {
+    propertyData: PropertyData;
+    areas: PropertyArea[];
+    propertyId?: string;
+    draftId?: string;
+    isOnboarding?: boolean;
+    firstName?: string;
+    newAsset?: InventoryItem;
+  };
+  PropertyReview: {
+    propertyData: PropertyData;
+    areas: PropertyArea[];
+    draftId?: string;
+    propertyId?: string;
+    isOnboarding?: boolean;
+    firstName?: string;
+  };
+  PropertyDetails: { propertyId: string };
+  InviteTenant: {
+    propertyId: string;
+    propertyName: string;
+    propertyCode?: string;
   };
   LandlordTenantInvite: { firstName: string; propertyId: string; propertyName: string };
   LandlordOnboardingSuccess: { firstName: string };
@@ -53,7 +82,7 @@ export type AuthStackParamList = {
   TenantInviteRoommate: { firstName: string; propertyId: string; propertyName: string; inviteCode: string };
   TenantOnboardingSuccess: { firstName: string };
   // Existing auth screens
-  Auth: { mode?: 'login' | 'signup' };
+  AuthForm: { initialMode?: 'login' | 'signup'; forceRole?: 'tenant' | 'landlord' };
   // Keep legacy routes for backwards compatibility
   Login: undefined;
   SignUp: undefined;
@@ -131,6 +160,10 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       <Stack.Screen name="PropertyBasics" component={PropertyBasicsScreen} />
       <Stack.Screen name="PropertyAttributes" component={PropertyAttributesScreen} />
       <Stack.Screen name="PropertyAreas" component={PropertyAreasScreen} />
+      <Stack.Screen name="PropertyAssets" component={PropertyAssetsListScreen} />
+      <Stack.Screen name="PropertyReview" component={PropertyReviewScreen} />
+      <Stack.Screen name="PropertyDetails" component={PropertyDetailsScreen} />
+      <Stack.Screen name="InviteTenant" component={InviteTenantScreen} />
       <Stack.Screen name="LandlordTenantInvite" component={LandlordTenantInviteScreen} />
       <Stack.Screen name="LandlordOnboardingSuccess" component={LandlordOnboardingSuccessScreen} />
 
@@ -140,7 +173,7 @@ const AuthStack: React.FC<AuthStackProps> = ({ initialInvite = false, continuati
       <Stack.Screen name="TenantOnboardingSuccess" component={TenantOnboardingSuccessScreen} />
 
       {/* Existing auth screens */}
-      <Stack.Screen name="Auth" component={AuthScreen} />
+      <Stack.Screen name="AuthForm" component={AuthScreen} />
       {/* Legacy screens redirect to unified Auth screen */}
       <Stack.Screen name="Login" component={AuthScreen} />
       <Stack.Screen name="SignUp" component={AuthScreen} />

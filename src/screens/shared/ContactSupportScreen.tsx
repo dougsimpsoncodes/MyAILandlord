@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Linking,
@@ -79,7 +78,7 @@ const ContactSupportScreen = () => {
         'default',
         () => navigation.goBack()
       );
-    } catch (error) {
+    } catch {
       showNotification('Error', 'Failed to send message. Please try again.', 'destructive');
     } finally {
       setIsSending(false);

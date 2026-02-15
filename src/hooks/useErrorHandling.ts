@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { getErrorMessage, isNetworkError } from '../utils/helpers';
 import { ERROR_MESSAGES } from '../utils/constants';
+import { log } from '../lib/log';
 
 export interface ErrorState {
   hasError: boolean;
@@ -52,7 +53,9 @@ export const useErrorHandling = () => {
     
     let errorCode: string | undefined;
     if (error instanceof Error && 'code' in error) {
-      errorCode = (error as any).code;
+      errorCode = typeof (error as { code?: unknown }).code === 'string'
+        ? (error as { code: string }).code
+        : undefined;
     }
 
     // Update error state
@@ -65,12 +68,12 @@ export const useErrorHandling = () => {
 
     // Log error if enabled
     if (logError) {
-      console.error(`Error in ${context}:`, error);
-      
+      log.error('Error in context', { context, error });
+
       // In production, send to crash reporting service
       if (!__DEV__) {
         // TODO: Send to crash reporting service
-        console.error('Production error:', {
+        log.error('Production error', {
           context,
           error: errorMessage,
           stack: error instanceof Error ? error.stack : undefined,

@@ -4,25 +4,19 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-// Import barcode scanner conditionally to handle Expo Go limitations
-let BarCodeScanner: typeof import('expo-barcode-scanner').BarCodeScanner | null = null;
-try {
-  BarCodeScanner = require('expo-barcode-scanner').BarCodeScanner;
-} catch (error) {
-}
+import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as ImagePicker from 'expo-image-picker';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData, DetectedAsset } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -30,7 +24,14 @@ type AssetScanningNavigationProp = NativeStackNavigationProp<LandlordStackParamL
 
 // Using DetectedAsset from shared types
 
-const assetCategories = [
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const assetCategories: Array<{
+  id: string;
+  name: string;
+  icon: IoniconName;
+  color: string;
+}> = [
   { id: 'appliances', name: 'Appliances', icon: 'restaurant-outline', color: '#28A745' },
   { id: 'hvac', name: 'HVAC', icon: 'thermometer-outline', color: '#17A2B8' },
   { id: 'plumbing', name: 'Plumbing', icon: 'water-outline', color: '#007BFF' },
@@ -52,7 +53,6 @@ const AssetScanningScreen = () => {
   const [scannerActive, setScannerActive] = useState(false);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   
   // Draft management
   const {
@@ -98,36 +98,32 @@ const AssetScanningScreen = () => {
     return () => clearTimeout(timer);
   }, [detectedAssets]);
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = ({ data }: { type: string; data: string }) => {
     setIsScanning(true);
     setScannerActive(false);
-    
-    // Simulate AI processing
-    setTimeout(() => {
-      // Mock asset detection based on barcode
-      const mockAsset: DetectedAsset = {
-        id: `asset-${Date.now()}`,
-        name: 'Detected Appliance',
-        category: 'appliances',
-        brand: 'Samsung',
-        model: 'Model-' + data.slice(-4),
-        roomId: propertyData.rooms?.[0]?.id || 'unknown',
-        confidence: 0.85,
-        scannedData: data,
-      };
-      
-      setDetectedAssets(prev => [...prev, mockAsset]);
-      setIsScanning(false);
-      
-      Alert.alert(
-        'Asset Detected!',
-        `Found: ${mockAsset.brand} ${mockAsset.model}\nConfidence: ${(((mockAsset.confidence ?? 0) * 100).toFixed(0))}%`,
-        [
-          { text: 'Add Another', onPress: () => setScannerActive(true) },
-          { text: 'Continue', onPress: () => {} },
-        ]
-      );
-    }, 2000);
+
+    // Create asset entry with scanned barcode data
+    // Real implementation would call an API to lookup product info
+    const scannedAsset: DetectedAsset = {
+      id: `asset-${Date.now()}`,
+      name: 'Scanned Appliance',
+      category: 'appliances',
+      scannedData: data,
+      roomId: propertyData.rooms?.[0]?.id || 'unknown',
+      confidence: 1.0, // Manual scan is 100% accurate for barcode
+    };
+
+    setDetectedAssets(prev => [...prev, scannedAsset]);
+    setIsScanning(false);
+
+    Alert.alert(
+      'Barcode Scanned',
+      `Barcode data captured. You can add details in the next step.`,
+      [
+        { text: 'Add Another', onPress: () => setScannerActive(true) },
+        { text: 'Continue', onPress: () => {} },
+      ]
+    );
   };
 
   const scanWithCamera = async () => {
@@ -152,33 +148,66 @@ const AssetScanningScreen = () => {
         aspect: [4, 3],
         quality: 1.0,
       });
-      
-      if (!result.canceled) {
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
         setIsScanning(true);
-        
-        // Simulate AI analysis of the photo
-        setTimeout(() => {
-          const mockAsset: DetectedAsset = {
-            id: `asset-${Date.now()}`,
-            name: 'Refrigerator',
-            category: 'appliances',
-            brand: 'LG',
-            model: 'Photo-Detected',
-            roomId: propertyData.rooms?.find(r => r.name.toLowerCase().includes('kitchen'))?.id || 'unknown',
-            confidence: 0.72,
-          };
-          
-          setDetectedAssets(prev => [...prev, mockAsset]);
+
+        // Import label extraction service dynamically
+        const { extractAssetDataFromImage } = await import('../../services/ai/labelExtraction');
+
+        try {
+          const extractionResult = await extractAssetDataFromImage(result.assets[0].uri);
+
+          if (extractionResult.success && extractionResult.data) {
+            const extractedData = extractionResult.data;
+            const photoAsset: DetectedAsset = {
+              id: `asset-${Date.now()}`,
+              name: extractedData.model || 'Detected Appliance',
+              category: 'appliances',
+              brand: extractedData.brand,
+              model: extractedData.model,
+              roomId: propertyData.rooms?.find(r => r.name.toLowerCase().includes('kitchen'))?.id || 'unknown',
+              confidence: extractedData.confidence || 0.8,
+            };
+
+            setDetectedAssets(prev => [...prev, photoAsset]);
+            setIsScanning(false);
+
+            const details = [
+              extractedData.brand,
+              extractedData.model,
+              extractedData.serialNumber ? `S/N: ${extractedData.serialNumber}` : null,
+            ].filter(Boolean).join(' • ');
+
+            Alert.alert(
+              'Asset Detected!',
+              details || 'Asset information extracted. You can add more details in the next step.'
+            );
+          } else {
+            // Extraction failed - add as unidentified asset for manual entry
+            const unidentifiedAsset: DetectedAsset = {
+              id: `asset-${Date.now()}`,
+              name: 'Unidentified Appliance',
+              category: 'appliances',
+              roomId: propertyData.rooms?.[0]?.id || 'unknown',
+              confidence: 0,
+            };
+
+            setDetectedAssets(prev => [...prev, unidentifiedAsset]);
+            setIsScanning(false);
+
+            Alert.alert(
+              'Photo Captured',
+              extractionResult.error || 'Could not extract details automatically. Please add information manually.'
+            );
+          }
+        } catch {
           setIsScanning(false);
-          
-          Alert.alert(
-            'Asset Detected from Photo!',
-            `Found: ${mockAsset.brand} ${mockAsset.name}\nConfidence: ${(((mockAsset.confidence ?? 0) * 100).toFixed(0))}%`
-          );
-        }, 2500);
+          Alert.alert('Error', 'Failed to analyze photo. Please try again or add the asset manually.');
+        }
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to analyze photo. Please try again.');
+    } catch {
+      Alert.alert('Error', 'Failed to select photo. Please try again.');
       setIsScanning(false);
     }
   };
@@ -243,8 +272,8 @@ const AssetScanningScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetDetails', { 
-      propertyData: { ...propertyData, detectedAssets } 
+    navigation.navigate('AssetDetails', {
+      draftId: draftState?.id || '',
     });
   };
 
@@ -460,7 +489,7 @@ const AssetScanningScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
+      paddingBottom: 16,
     },
     saveStatus: {
       flexDirection: 'row',
@@ -657,7 +686,7 @@ const AssetScanningScreen = () => {
                   onPress={() => addManualAsset(category.id)}
                 >
                   <Ionicons 
-                    name={category.icon as any} 
+                    name={category.icon} 
                     size={24} 
                     color={category.color} 
                     style={styles.categoryIcon}
@@ -680,7 +709,7 @@ const AssetScanningScreen = () => {
                   return (
                     <View key={asset.id} style={styles.assetCard}>
                       <Ionicons 
-                        name={category?.icon as any || 'cube-outline'} 
+                        name={category?.icon || 'cube-outline'} 
                         size={32} 
                         color={category?.color || '#6C757D'} 
                         style={styles.assetIcon}

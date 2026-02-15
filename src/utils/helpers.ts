@@ -57,6 +57,7 @@ export const sanitizeString = (input: string): string => {
     // Remove null bytes (can bypass filters)
     .replace(/\0/g, '')
     // Remove control characters (except newlines and tabs for text areas)
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Remove Unicode direction override characters (text spoofing)
     .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')
@@ -66,22 +67,6 @@ export const sanitizeString = (input: string): string => {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#x27;');
-};
-
-// Sanitize for display (decode safe characters back for UI)
-export const sanitizeForDisplay = (input: string): string => {
-  if (!input) return '';
-
-  return input
-    .trim()
-    // Remove null bytes
-    .replace(/\0/g, '')
-    // Remove control characters (except newlines and tabs)
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-    // Remove Unicode direction override characters
-    .replace(/[\u202A-\u202E\u2066-\u2069]/g, '')
-    // Remove HTML tags entirely for display
-    .replace(/<[^>]*>/g, '');
 };
 
 // URL sanitization - prevent javascript: and data: protocol attacks
@@ -139,13 +124,6 @@ export const sanitizePath = (path: string): string => {
 };
 
 // Formatting helpers
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
-
 export const formatDate = (date: string | Date): string => {
   const dateObj = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('en-US', {
@@ -216,21 +194,6 @@ export const debounce = <T extends (...args: unknown[]) => unknown>(
   };
 };
 
-export const throttle = <T extends (...args: unknown[]) => unknown>(
-  func: T,
-  delay: number
-): (...args: Parameters<T>) => void => {
-  let lastCall = 0;
-
-  return (...args: Parameters<T>) => {
-    const now = Date.now();
-    if (now - lastCall >= delay) {
-      lastCall = now;
-      func(...args);
-    }
-  };
-};
-
 // Error handling helpers
 export const getErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -266,41 +229,7 @@ export const isValidRole = (value: string): value is UserRole => {
   return APP_CONSTANTS.USER_ROLES.includes(value as UserRole);
 };
 
-// Safe parsing helpers
-export const safeParseInt = (value: string | number, defaultValue: number = 0): number => {
-  if (typeof value === 'number') return value;
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? defaultValue : parsed;
-};
-
-export const safeParseFloat = (value: string | number, defaultValue: number = 0): number => {
-  if (typeof value === 'number') return value;
-  const parsed = parseFloat(value);
-  return isNaN(parsed) ? defaultValue : parsed;
-};
-
 // Async helpers
 export const delay = (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
-};
-
-export const withRetry = async <T>(
-  fn: () => Promise<T>,
-  maxRetries: number = 3,
-  delayMs: number = 1000
-): Promise<T> => {
-  let lastError: Error;
-  
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (i < maxRetries) {
-        await delay(delayMs * Math.pow(2, i)); // Exponential backoff
-      }
-    }
-  }
-  
-  throw lastError!;
 };

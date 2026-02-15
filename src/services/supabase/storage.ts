@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase as singletonClient } from '../../lib/supabaseClient';
 import log from '../../lib/log';
 import { decode } from 'base64-arraybuffer';
 
-// Storage client must be set by authenticated context
+// Explicitly-set client takes priority; singleton is fallback
 let storageClient: SupabaseClient | null = null;
 
 export function setStorageSupabaseClient(client: SupabaseClient) {
@@ -10,10 +11,7 @@ export function setStorageSupabaseClient(client: SupabaseClient) {
 }
 
 function requireClient(): SupabaseClient {
-  if (!storageClient) {
-    throw new Error('Storage client not set. Call setStorageSupabaseClient first.');
-  }
-  return storageClient;
+  return storageClient || singletonClient;
 }
 
 export type StorageBucket = 'maintenance-images' | 'voice-notes' | 'property-images' | 'documents';

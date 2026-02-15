@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
   ViewStyle,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { DesignSystem } from '../../theme/DesignSystem';
 
@@ -59,7 +59,6 @@ const ScreenContainer: React.FC<ScreenContainerProps> = ({
   contentStyle,
   userRole = 'landlord',
 }) => {
-  const insets = useSafeAreaInsets();
 
   // Theme colors based on user role
   const themeColor = userRole === 'tenant' ? '#2ECC71' : '#3498DB';
@@ -263,12 +262,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 50, // Space for back button and right content
   },
   title: {
-    fontSize: DesignSystem.typography.fontSize.xl,
+    fontSize: DesignSystem.typography.fontSize.title2,
     fontWeight: DesignSystem.typography.fontWeight.bold,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: DesignSystem.typography.fontSize.sm,
+    fontSize: DesignSystem.typography.fontSize.subheadline,
     marginTop: 2,
     textAlign: 'center',
   },

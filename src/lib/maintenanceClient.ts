@@ -26,7 +26,28 @@ export type MaintenanceRequest = {
   properties?: {
     name?: string
     address?: string
+    address_jsonb?: {
+      line1?: string
+      line2?: string
+      city?: string
+      state?: string
+      zipCode?: string
+    }
   }
+}
+
+/**
+ * Format address from address_jsonb (preferred) or fall back to legacy address field
+ */
+function formatPropertyAddress(properties?: MaintenanceRequest['properties']): string {
+  if (!properties) return ''
+
+  if (properties.address_jsonb) {
+    const addr = properties.address_jsonb
+    return `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim()
+  }
+
+  return properties.address || ''
 }
 
 /**
@@ -98,13 +119,22 @@ export async function getMaintenanceRequests(
     const offset = opts.offset ?? 0;
     // Fetch maintenance requests using REST API
     const requests = await restGet('maintenance_requests', {
-      select: '*,profiles!tenant_id(name,email),properties(name,address)',
+      select: '*,profiles!tenant_id(name,email),properties(name,address,address_jsonb)',
       order: 'created_at.desc',
       limit: String(limit),
       offset: String(offset)
     }, tokenProvider)
-    
-    return Array.isArray(requests) ? requests : []
+
+    // Normalize address from address_jsonb for each request
+    const normalized = Array.isArray(requests) ? requests.map((req: MaintenanceRequest) => ({
+      ...req,
+      properties: req.properties ? {
+        ...req.properties,
+        address: formatPropertyAddress(req.properties)
+      } : undefined
+    })) : []
+
+    return normalized
   } catch (error) {
     log.error('Failed to fetch maintenance requests', { error: String(error) })
     return []
@@ -115,12 +145,17 @@ export async function getMaintenanceRequestById(id: string, tokenProvider?: Toke
   try {
     const requests = await restGet('maintenance_requests', {
       id: `eq.${id}`,
-      select: '*,profiles!tenant_id(name,email),properties(name,address)'
+      select: '*,profiles!tenant_id(name,email),properties(name,address,address_jsonb)'
     }, tokenProvider)
 
     if (!Array.isArray(requests) || requests.length === 0) return null
 
     const request = requests[0]
+
+    // Normalize address from address_jsonb
+    if (request.properties) {
+      request.properties.address = formatPropertyAddress(request.properties)
+    }
 
     // Resolve image paths to fresh signed URLs
     if (request.images && request.images.length > 0) {

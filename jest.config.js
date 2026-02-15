@@ -17,6 +17,6 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   setupFilesAfterEnv: ['@testing-library/jest-native/extend-expect'],
   transformIgnorePatterns: [
-    'node_modules/(?!(jest-)?react-native|@react-native|react-clone-referenced-element|@react-navigation|@expo|expo-.*|@expo/vector-icons)'
+    'node_modules/(?!(jest-)?react-native|@react-native|react-clone-referenced-element|@react-navigation|@expo|expo|expo-.*|@expo/vector-icons)'
   ],
 };

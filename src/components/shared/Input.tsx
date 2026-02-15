@@ -22,7 +22,7 @@ export default function Input({
     <View style={[{ marginBottom: DesignSystem.spacing.lg }, containerStyle]}>
       {label && (
         <Text style={{
-          fontSize: DesignSystem.typography.fontSize.md,
+          fontSize: DesignSystem.typography.fontSize.callout,
           fontWeight: DesignSystem.typography.fontWeight.semibold,
           color: DesignSystem.colors.text,
           marginBottom: DesignSystem.spacing.sm
@@ -41,7 +41,7 @@ export default function Input({
             paddingVertical: DesignSystem.spacing.md,
             paddingHorizontal: DesignSystem.spacing.lg,
             backgroundColor: DesignSystem.colors.background,
-            fontSize: DesignSystem.typography.fontSize.md,
+            fontSize: DesignSystem.typography.fontSize.callout,
             color: DesignSystem.colors.text,
             minHeight: 50,
             ...DesignSystem.elevation.sm
@@ -52,7 +52,7 @@ export default function Input({
       />
       {error && (
         <Text style={{
-          fontSize: DesignSystem.typography.fontSize.sm,
+          fontSize: DesignSystem.typography.fontSize.subheadline,
           color: DesignSystem.colors.danger,
           marginTop: DesignSystem.spacing.xs
         }}>

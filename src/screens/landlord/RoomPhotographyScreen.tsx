@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Image,
   Alert,
   ActivityIndicator,
@@ -17,7 +16,7 @@ import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
+import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 
@@ -133,7 +132,7 @@ const RoomPhotographyScreen = () => {
           )
         );
       }
-    } catch (error) {
+    } catch {
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     } finally {
       setIsUploading(false);
@@ -223,8 +222,8 @@ const RoomPhotographyScreen = () => {
     });
     await saveDraft();
     
-    navigation.navigate('AssetScanning', { 
-      propertyData: { ...propertyData, roomPhotos } 
+    navigation.navigate('AssetScanning', {
+      draftId: draftState?.id || '',
     });
   };
 
@@ -410,7 +409,7 @@ const RoomPhotographyScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
+      paddingBottom: 16,
     },
     saveStatus: {
       flexDirection: 'row',
@@ -551,7 +550,7 @@ const RoomPhotographyScreen = () => {
           {/* Current Room Header */}
           <View style={styles.roomHeader}>
             <Ionicons 
-              name={currentRoom.icon as any} 
+              name={(currentRoom.icon || 'home-outline') as React.ComponentProps<typeof Ionicons>['name']} 
               size={48} 
               color="#28A745" 
               style={styles.roomIcon}
@@ -649,10 +648,10 @@ const RoomPhotographyScreen = () => {
                     styles.conditionOption,
                     currentRoomPhoto?.condition === option.value && styles.conditionOptionSelected
                   ]}
-                  onPress={() => setCondition(option.value as any)}
+                  onPress={() => setCondition(option.value as 'excellent' | 'good' | 'fair' | 'poor')}
                 >
                   <Ionicons 
-                    name={option.icon as any} 
+                    name={option.icon as React.ComponentProps<typeof Ionicons>['name']} 
                     size={24} 
                     color={currentRoomPhoto?.condition === option.value ? option.color : '#6C757D'} 
                     style={styles.conditionIcon}

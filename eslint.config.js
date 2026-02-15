@@ -48,7 +48,12 @@ export default [
     settings: { react: { version: 'detect' } },
   },
   {
-    files: ['src/lib/log.ts', '**/*.test.ts', '**/*.test.tsx', 'e2e/**/*'],
-    rules: { 'no-console': 'off' },
+    files: ['src/lib/log.ts', 'src/__tests__/**/*', '**/*.test.ts', '**/*.test.tsx', 'e2e/**/*'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
   },
 ];

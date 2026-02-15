@@ -25,7 +25,7 @@ const LoginScreen = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+      const { error: loginError } = await supabase.auth.signInWithPassword({
         email: emailAddress,
         password,
       });
@@ -50,7 +50,7 @@ const LoginScreen = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: provider,
       });
 

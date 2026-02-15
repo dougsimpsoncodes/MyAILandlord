@@ -1,7 +1,0 @@
-Use this JSON PRD to build the complete front-end UI for an app called “My AI Landlord” using React Native with Expo (TypeScript). Use the existing folder structure. Build all screens, components, and navigation logic based on the spec. Implement tenant and landlord flows separately. Use placeholder data. Backend will be connected later.
-
-## Project Learnings & Changelog
-
-<!-- GEMINI_LEARNINGS_START -->
-<!-- Do not edit this section manually. It is managed by the /update-docs command. -->
-<!-- GEMINI_LEARNINGS_END -->

@@ -4,18 +4,15 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
-  Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LandlordStackParamList } from '../../navigation/MainStack';
-import { PropertyData } from '../../types/property';
+import { PropertyData, Room as PropertyRoom } from '../../types/property';
 import { useResponsive } from '../../hooks/useResponsive';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
-import { ResponsiveText, ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import ConfirmDialog from '../../components/shared/ConfirmDialog';
@@ -80,17 +77,17 @@ const PropertyRoomSelectionScreen = () => {
   // Load existing room selection from draft
   useEffect(() => {
     if (draftState?.propertyData?.rooms) {
-      const savedRooms = draftState.propertyData.rooms as any[];
+      const savedRooms = draftState.propertyData.rooms as PropertyRoom[];
       // Merge saved rooms with defaults; ensure icon exists
       const mergedRooms: SelectionRoom[] = rooms.map(room => {
-        const saved = savedRooms.find((r: any) => r.id === room.id);
+        const saved = savedRooms.find((r) => r.id === room.id);
         return saved ? { ...room, selected: true } : room;
       });
 
       // Add any custom rooms from saved draft, normalizing shape
       const customRooms: SelectionRoom[] = savedRooms
-        .filter((r: any) => !defaultRooms.find(dr => dr.id === r.id))
-        .map((r: any) => ({
+        .filter((r) => !defaultRooms.find(dr => dr.id === r.id))
+        .map((r) => ({
           id: r.id,
           name: r.name,
           icon: r.icon || 'home-outline',
@@ -192,7 +189,7 @@ const PropertyRoomSelectionScreen = () => {
     await saveDraft();
 
     navigation.navigate('RoomPhotography', {
-      propertyData: { ...propertyData, rooms: selectedRooms }
+      draftId: draftState?.id || '',
     });
   };
 
@@ -375,7 +372,7 @@ const PropertyRoomSelectionScreen = () => {
       borderTopColor: '#E9ECEF',
       paddingHorizontal: responsive.spacing.screenPadding[responsive.screenSize],
       paddingVertical: 16,
-      paddingBottom: Math.max(16, (responsive as any).spacing?.safeAreaBottom || 0),
+      paddingBottom: 16,
     },
     saveStatus: {
       flexDirection: 'row',
@@ -484,7 +481,7 @@ const PropertyRoomSelectionScreen = () => {
                 onPress={() => toggleRoom(room.id)}
               >
                 <Ionicons 
-                  name={room.icon as any} 
+                  name={(room.icon || 'home-outline') as React.ComponentProps<typeof Ionicons>['name']} 
                   size={32} 
                   color={room.selected ? '#28A745' : '#6C757D'} 
                   style={styles.roomIcon}

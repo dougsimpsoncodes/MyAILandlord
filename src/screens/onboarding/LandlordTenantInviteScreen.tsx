@@ -14,9 +14,9 @@ import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-naviga
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, spacing, typography } from '../../theme/DesignSystem';
 
-import { useAppAuth } from '../../context/SupabaseAuthContext';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
 import { log } from '../../lib/log';
+import { buildInviteUrl } from '../../utils/inviteUrl';
 
 type LandlordOnboardingStackParamList = {
   LandlordOnboardingWelcome: { firstName: string };
@@ -34,7 +34,6 @@ export default function LandlordTenantInviteScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<InviteRouteProp>();
   const { firstName, propertyId, propertyName } = route.params;
-  const { user } = useAppAuth();
   const { supabase } = useSupabaseWithAuth();
 
   const [inviteUrl, setInviteUrl] = useState<string>('');
@@ -44,18 +43,11 @@ export default function LandlordTenantInviteScreen() {
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Log diagnostics for E2E debugging (DEV only)
-    if (__DEV__) {
-      console.log('[INVITES] 🔍 Screen mounted with:', {
-        userId: user?.id,
-        propertyId,
-        propertyName,
-        firstName,
-        userExists: !!user,
-        platform: Platform.OS,
-      });
-    }
-
+    log.debug('[INVITES] Screen mounted', {
+      propertyId,
+      propertyName,
+      platform: Platform.OS,
+    });
     generateInviteUrl();
   }, []);
 
@@ -64,50 +56,77 @@ export default function LandlordTenantInviteScreen() {
 
     try {
       const isWeb = Platform.OS === 'web';
+      log.debug('[INVITES] Generating invite', { propertyId, platform: isWeb ? 'web' : 'native' });
 
-      // DIAGNOSTIC LOGGING (DEV only)
-      if (__DEV__) {
-        console.log('[INVITES] 🎟️ Generating simple invite for property:', {
-          userId: user?.id,
-          propertyId,
-          platform: isWeb ? 'web' : 'native',
-        });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated. Please sign in again.');
       }
 
-      // Generate invite using create_invite RPC (simple invites system)
-      log.info('🎟️ Generating invite for property:', propertyId);
-      const { data, error } = await supabase.rpc('create_invite', {
-        p_property_id: propertyId,
-        p_delivery_method: 'code',
-        p_intended_email: null
-      });
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnon) {
+        throw new Error('Supabase is not configured. Missing URL or anon key.');
+      }
 
-      if (error || !data || !Array.isArray(data) || !data[0]?.token) {
-        const msg = error?.message || 'No token returned';
-        console.error('[INVITES] ❌ RPC error (create_invite):', error);
-        log.error('RPC error generating invite:', error || new Error(msg));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      let response: Response;
+      try {
+        response = await fetch(`${supabaseUrl}/rest/v1/rpc/create_invite`, {
+          method: 'POST',
+          headers: {
+            apikey: supabaseAnon,
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            p_property_id: propertyId,
+            p_delivery_method: 'code',
+            p_intended_email: null,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !Array.isArray(data) || !data[0]?.token) {
+        const msg =
+          typeof data?.message === 'string'
+            ? data.message
+            : typeof data?.error === 'string'
+              ? data.error
+              : !response.ok
+                ? `HTTP ${response.status}`
+                : 'No token returned';
+        log.error('[INVITES] RPC error', new Error(msg));
         setGenerationError(msg);
         Alert.alert('Error', 'Failed to generate invite link. Please try again.');
         return;
       }
 
       const token = data[0].token;
-      if (__DEV__) console.log('[INVITES] ✅ Token generated:', { token_preview: token.substring(0, 4) + '...' });
+      log.debug('[INVITES] Token generated');
 
-      // Build URL with token parameter
-      const origin = isWeb && typeof window !== 'undefined'
-        ? window.location.origin
-        : 'https://myailandlord.app';
-      const url = (isWeb ? origin : 'myailandlord://') + `/invite?t=${token}`;
+      const url = buildInviteUrl(token, propertyId);
 
       setInviteUrl(url);
       setGenerationError(null);
-      if (__DEV__) console.log('[INVITES] ✅ Invite URL set (simple):', url);
+      log.debug('[INVITES] Invite URL set');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate invite link';
-      console.error('[INVITES] ❌ Error generating invite URL:', error);
-      log.error('Error generating invite URL:', error as Error);
-      setGenerationError(errorMessage);
+      const message =
+        error instanceof Error && error.name === 'AbortError'
+          ? 'Request timeout after 15 seconds'
+          : error instanceof Error
+            ? error.message
+            : 'Failed to generate invite link';
+      log.error('[INVITES] Error generating invite URL', error as Error);
+      setGenerationError(message);
       Alert.alert('Error', 'Failed to generate invite link. Please try again.');
     } finally {
       setIsGenerating(false);
@@ -133,7 +152,7 @@ export default function LandlordTenantInviteScreen() {
       await Share.share({
         message: `You're invited to connect to ${propertyName} using the MyAI Landlord app!\n\nClick this link to get started:\n${inviteUrl}`,
       });
-    } catch (err) {
+    } catch {
       // Share canceled or failed
     }
   };

@@ -11,57 +11,39 @@ DROP POLICY IF EXISTS "properties_landlord" ON properties;
 DROP POLICY IF EXISTS "properties_tenant" ON properties;
 DROP POLICY IF EXISTS "maintenance_isolation" ON maintenance_requests;
 
--- Profiles: self-access only based on Clerk user id in JWT sub
+-- Profiles: users can only access their own profile
 CREATE POLICY "profiles_isolation" ON profiles
-  FOR ALL USING (
-    auth.jwt() IS NOT NULL AND
-    auth.jwt() ->> 'sub' IS NOT NULL AND
-    auth.jwt() ->> 'sub' = clerk_user_id
-  );
+  FOR ALL USING (auth.uid() = id);
 
--- Properties: landlords see owned
+-- Properties: landlords see/manage owned properties
+-- Prefer properties.user_id (new schema), fallback to landlord_id (legacy schema).
 CREATE POLICY "properties_landlord" ON properties
   FOR ALL TO authenticated
-  USING (
-    auth.jwt() IS NOT NULL AND auth.jwt() ->> 'sub' IS NOT NULL AND
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.clerk_user_id = auth.jwt() ->> 'sub'
-      AND profiles.id = properties.landlord_id
-      AND profiles.role = 'landlord'
-    )
-  );
+  USING (auth.uid() = COALESCE(user_id, landlord_id));
 
 -- Properties: tenants can select linked properties
 CREATE POLICY "properties_tenant" ON properties
   FOR SELECT TO authenticated
   USING (
-    auth.jwt() IS NOT NULL AND auth.jwt() ->> 'sub' IS NOT NULL AND
     EXISTS (
-      SELECT 1 FROM tenant_property_links tpl
+      SELECT 1
+      FROM tenant_property_links tpl
       JOIN profiles p ON p.id = tpl.tenant_id
-      WHERE p.clerk_user_id = auth.jwt() ->> 'sub'
+      WHERE p.id = auth.uid()
       AND tpl.property_id = properties.id
       AND tpl.is_active = true
     )
   );
 
--- Maintenance: tenants see own, landlords see their properties' requests
+-- Maintenance: tenants see own requests, landlords see requests for their properties
 CREATE POLICY "maintenance_isolation" ON maintenance_requests
   FOR ALL TO authenticated
   USING (
-    auth.jwt() IS NOT NULL AND auth.jwt() ->> 'sub' IS NOT NULL AND (
-      EXISTS (
-        SELECT 1 FROM profiles
-        WHERE profiles.clerk_user_id = auth.jwt() ->> 'sub'
-        AND profiles.id = maintenance_requests.tenant_id
-      )
-      OR
-      EXISTS (
-        SELECT 1 FROM properties p
-        JOIN profiles prof ON prof.id = p.landlord_id
-        WHERE prof.clerk_user_id = auth.jwt() ->> 'sub'
-        AND p.id = maintenance_requests.property_id
-      )
+    maintenance_requests.tenant_id = auth.uid()
+    OR EXISTS (
+      SELECT 1
+      FROM properties p
+      WHERE p.id = maintenance_requests.property_id
+      AND auth.uid() = COALESCE(p.user_id, p.landlord_id)
     )
   );

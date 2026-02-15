@@ -1,36 +1,105 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { getClientIp, getCorsHeaders, isOriginAllowed, isRateLimited } from '../_shared/cors.ts';
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const INVITE_TOKEN_REGEX = /^[A-Za-z0-9]{12}$/;
+const ALLOWED_WEB_HOSTS = new Set(['myailandlord.app', 'www.myailandlord.app', 'localhost', '127.0.0.1']);
 
 interface InviteEmailRequest {
   recipientEmail: string;
   recipientName?: string;
   propertyName: string;
   inviteUrl: string;
+  inviteToken?: string;
   landlordName?: string;
 }
 
+function validateInviteUrl(inviteUrl: string): { token?: string; error?: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(inviteUrl);
+  } catch {
+    return { error: 'Invalid invite URL format' };
+  }
+
+  const protocol = parsed.protocol.toLowerCase();
+  const path = parsed.pathname;
+
+  if (protocol === 'myailandlord:') {
+    if (path !== '/invite') {
+      return { error: 'Invite URL must use /invite path' };
+    }
+  } else if (protocol === 'http:' || protocol === 'https:') {
+    if (!ALLOWED_WEB_HOSTS.has(parsed.hostname.toLowerCase())) {
+      return { error: 'Invite URL host is not allowed' };
+    }
+    if (path !== '/invite') {
+      return { error: 'Invite URL must use /invite path' };
+    }
+  } else {
+    return { error: 'Invite URL protocol is not allowed' };
+  }
+
+  const token = parsed.searchParams.get('t') || parsed.searchParams.get('token');
+  if (!token) {
+    return { error: 'Invite URL is missing token' };
+  }
+
+  if (!INVITE_TOKEN_REGEX.test(token)) {
+    return { error: 'Invite token format is invalid' };
+  }
+
+  return { token };
+}
+
 serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    if (!isOriginAllowed(origin)) {
+      return new Response(
+        JSON.stringify({ error: 'Origin not allowed' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const clientIp = getClientIp(req);
+    if (isRateLimited(clientIp)) {
+      return new Response(
+        JSON.stringify({ error: 'Too Many Requests' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Parse request body
-    const { recipientEmail, recipientName, propertyName, inviteUrl, landlordName }: InviteEmailRequest = await req.json();
+    const parsed = await req.json().catch(() => null);
+    if (!parsed || typeof parsed !== 'object') {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const {
+      recipientEmail,
+      recipientName,
+      propertyName,
+      inviteUrl,
+      inviteToken,
+      landlordName,
+    }: InviteEmailRequest = parsed as InviteEmailRequest;
 
     // Validate required fields
     if (!recipientEmail || !propertyName || !inviteUrl) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: recipientEmail, propertyName, inviteUrl' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -39,15 +108,39 @@ serve(async (req) => {
     if (!emailRegex.test(recipientEmail)) {
       return new Response(
         JSON.stringify({ error: 'Invalid email address' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    const inviteValidation = validateInviteUrl(inviteUrl);
+    if (!inviteValidation.token) {
+      return new Response(
+        JSON.stringify({ error: inviteValidation.error || 'Invalid invite URL' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (inviteToken) {
+      if (!INVITE_TOKEN_REGEX.test(inviteToken)) {
+        return new Response(
+          JSON.stringify({ error: 'Invite token format is invalid' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (inviteToken !== inviteValidation.token) {
+        return new Response(
+          JSON.stringify({ error: 'Invite token does not match invite URL' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (!RESEND_API_KEY) {
       console.error('RESEND_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'Email service not configured' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -162,14 +255,11 @@ If you didn't expect this invitation, you can safely ignore this email.
       return new Response(
         JSON.stringify({
           error: 'Failed to send email',
-          details: response.status === 403 ? 'Resend API key may be invalid' : 'Email service error'
+          details: `Resend ${response.status}: ${errorText}`,
         }),
         {
           status: 500,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
@@ -179,30 +269,23 @@ If you didn't expect this invitation, you can safely ignore this email.
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Invitation email sent successfully'
+        message: 'Invitation email sent successfully',
       }),
       {
         status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-
   } catch (error) {
     console.error('Error in send-invite-email function:', error);
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       }),
       {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   }

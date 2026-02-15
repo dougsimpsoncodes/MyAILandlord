@@ -1,10 +1,32 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type',
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://myailandlord.app',
+  'https://www.myailandlord.app',
+  'http://localhost:8081',
+  'http://localhost:19006',
+]
+
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean)
+
+const resolvedAllowedOrigins = allowedOrigins.length > 0 ? allowedOrigins : DEFAULT_ALLOWED_ORIGINS
+
+const getCorsHeaders = (req: Request) => {
+  const requestOrigin = req.headers.get('origin')
+  const allowOrigin = requestOrigin && resolvedAllowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : resolvedAllowedOrigins[0]
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type',
+    'Vary': 'Origin',
+  }
 }
 
 // Rate limiter: 20 requests per minute per user (label scanning is heavier)
@@ -32,6 +54,8 @@ interface RequestBody {
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req)
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
