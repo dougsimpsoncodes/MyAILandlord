@@ -236,6 +236,7 @@ const CommunicationHubScreen = () => {
 
         <View style={styles.tabContainer}>
           <TouchableOpacity
+            testID="tenant-messages-tab-messages"
             style={[styles.tab, activeTab === 'messages' && styles.activeTab]}
             onPress={() => setActiveTab('messages')}
           >
@@ -250,6 +251,7 @@ const CommunicationHubScreen = () => {
           </TouchableOpacity>
           
           <TouchableOpacity
+            testID="tenant-messages-tab-announcements"
             style={[styles.tab, activeTab === 'announcements' && styles.activeTab]}
             onPress={() => setActiveTab('announcements')}
           >
@@ -313,6 +315,7 @@ const CommunicationHubScreen = () => {
 
             <View style={styles.inputContainer}>
               <TextInput
+                testID="tenant-message-input"
                 style={styles.messageInput}
                 placeholder={landlordId ? "Type a message..." : "Link to a property first..."}
                 value={messageText}
@@ -322,6 +325,7 @@ const CommunicationHubScreen = () => {
                 editable={!!landlordId && !isSending}
               />
               <TouchableOpacity
+                testID="tenant-message-send"
                 style={[styles.sendButton, (!messageText.trim() || isSending || !landlordId) && styles.sendButtonDisabled]}
                 onPress={sendMessage}
                 disabled={!messageText.trim() || isSending || !landlordId}

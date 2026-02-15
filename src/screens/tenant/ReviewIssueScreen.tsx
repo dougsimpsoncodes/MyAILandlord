@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApiClient } from '../../services/api/client';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import Button from '../../components/shared/Button';
 import { log } from '../../lib/log';
 // import { ASSET_TEMPLATES } from '../../data/nulls'; // TODO: Fix import
 
@@ -294,6 +295,7 @@ const ReviewIssueScreen = () => {
   // Header right with Submit button
   const headerRight = (
     <TouchableOpacity
+      testID="review-issue-submit"
       style={[styles.headerSubmitButton, isSubmitting && styles.headerSubmitButtonDisabled]}
       onPress={handleSubmit}
       disabled={isSubmitting}
@@ -312,6 +314,16 @@ const ReviewIssueScreen = () => {
       onBackPress={() => navigation.goBack()}
       headerRight={headerRight}
       userRole="tenant"
+      bottomContent={
+        <Button
+          testID="review-issue-submit-bottom"
+          title={isSubmitting ? 'Submitting...' : 'Submit Request'}
+          onPress={handleSubmit}
+          type="success"
+          fullWidth
+          disabled={isSubmitting}
+        />
+      }
     >
 
         {/* Request Summary */}
@@ -458,6 +470,7 @@ const ReviewIssueScreen = () => {
                   {['morning', 'afternoon', 'evening'].map((period) => (
                     <TouchableOpacity
                       key={period}
+                      testID={'review-slot-' + dayIndex + '-' + period}
                       style={[
                         styles.periodButton,
                         slot.periods[period as keyof typeof slot.periods] && styles.periodButtonSelected
@@ -493,6 +506,7 @@ const ReviewIssueScreen = () => {
             <Text style={styles.commentTitle}>Comments (optional)</Text>
           </View>
           <TextInput
+            testID="review-vendor-comment"
             style={styles.commentInput}
             placeholder="Any special instructions, access details, or other information..."
             placeholderTextColor="#95A5A6"

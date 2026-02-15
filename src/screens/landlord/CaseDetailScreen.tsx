@@ -285,7 +285,7 @@ const CaseDetailScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleMessageTenant}>
+          <TouchableOpacity testID="case-detail-message-tenant" style={styles.quickActionButton} onPress={handleMessageTenant}>
             <Ionicons name="chatbubble" size={24} color="#9B59B6" />
             <Text style={styles.quickActionText}>Message Tenant</Text>
           </TouchableOpacity>
@@ -293,7 +293,7 @@ const CaseDetailScreen = () => {
             <Ionicons name="mail" size={24} color="#3498DB" />
             <Text style={styles.quickActionText}>Email Tenant</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton} onPress={handleMarkResolved}>
+          <TouchableOpacity testID="case-detail-mark-resolved" style={styles.quickActionButton} onPress={handleMarkResolved}>
             <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
             <Text style={styles.quickActionText}>Mark Resolved</Text>
           </TouchableOpacity>
@@ -492,6 +492,8 @@ const CaseDetailScreen = () => {
         onConfirm={confirmMarkResolved}
         onCancel={() => setShowResolveDialog(false)}
         isLoading={isResolving}
+        confirmTestID="case-detail-confirm-resolved"
+        cancelTestID="case-detail-cancel-resolved"
       />
     </ScreenContainer>
   );

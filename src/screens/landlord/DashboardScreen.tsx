@@ -47,10 +47,12 @@ interface CaseRequestCardProps {
   statusText: string;
   statusColor: string;
   onPress: (caseId: string) => void;
+  testID?: string;
 }
 
-const CaseRequestCard = React.memo(({ caseItem, statusText, statusColor, onPress }: CaseRequestCardProps) => (
+const CaseRequestCard = React.memo(({ caseItem, statusText, statusColor, onPress, testID }: CaseRequestCardProps) => (
   <TouchableOpacity
+    testID={testID}
     style={[
       styles.requestCard,
       caseItem.status === 'completed' && styles.resolvedCard
@@ -107,7 +109,8 @@ const DashboardScreen = () => {
   // Refresh cases whenever screen gains focus (handles returning from case updates)
   useFocusEffect(
     useCallback(() => {
-      loadCases();
+      // Force refresh on focus so newly submitted tenant requests are not hidden by local cache.
+      loadCases({ force: true });
     }, [apiClient])
   );
 
@@ -288,6 +291,7 @@ const DashboardScreen = () => {
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
+          testID="landlord-requests-filter-new"
           style={[styles.filterButton, selectedFilter === 'new' && styles.filterButtonActive]}
           onPress={() => setSelectedFilter('new')}
         >
@@ -304,6 +308,7 @@ const DashboardScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
+          testID="landlord-requests-filter-pending"
           style={[styles.filterButton, selectedFilter === 'in_progress' && styles.filterButtonActive]}
           onPress={() => setSelectedFilter('in_progress')}
         >
@@ -320,6 +325,7 @@ const DashboardScreen = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
+          testID="landlord-requests-filter-complete"
           style={[styles.filterButton, selectedFilter === 'completed' && styles.filterButtonActive]}
           onPress={() => setSelectedFilter('completed')}
         >
@@ -355,8 +361,9 @@ const DashboardScreen = () => {
         </View>
       ) : (
         /* Request Cards - Simple clickable design */
-        filteredCases.map((caseItem) => (
+        filteredCases.map((caseItem, index) => (
           <CaseRequestCard
+            testID={'landlord-case-card-' + index}
             key={caseItem.id}
             caseItem={caseItem}
             statusText={getStatusText(caseItem.status)}

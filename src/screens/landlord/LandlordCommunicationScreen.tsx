@@ -231,6 +231,7 @@ const LandlordCommunicationScreen = () => {
           <View style={styles.searchInputContainer}>
             <Ionicons name="search" size={20} color="#7F8C8D" />
             <TextInput
+              testID="landlord-messages-search"
               style={styles.searchInput}
               placeholder="Search tenants or properties..."
               value={searchQuery}
@@ -290,6 +291,7 @@ const LandlordCommunicationScreen = () => {
             filteredConversations.map((conversation) => (
               <TouchableOpacity
                 key={conversation.id}
+                testID={'landlord-conversation-card-' + conversation.id}
                 style={styles.conversationCard}
                 onPress={() => handleConversationPress(conversation)}
                 activeOpacity={0.7}

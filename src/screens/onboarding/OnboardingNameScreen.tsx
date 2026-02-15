@@ -98,6 +98,7 @@ export default function OnboardingNameScreen() {
             <TextInput
               style={[styles.input, showError && styles.inputError]}
               placeholder="Your first name"
+              testID="onboarding-name-input"
               placeholderTextColor={colors.text.tertiary}
               value={firstName}
               onChangeText={(text) => {
@@ -131,6 +132,7 @@ export default function OnboardingNameScreen() {
               style={[styles.primaryButton, !isValid && styles.primaryButtonDisabled]}
               onPress={handleContinue}
               disabled={!isValid}
+              testID="onboarding-name-continue"
             >
               <Text style={styles.primaryButtonText}>Continue</Text>
             </TouchableOpacity>

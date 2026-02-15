@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { SmartDropdown } from '../../components/shared/SmartDropdown';
 import { AREA_TEMPLATES } from '../../data/areaTemplates';
 import { getAssetsByRoom } from '../../data/assetTemplates';
 import ScreenContainer from '../../components/shared/ScreenContainer';
+import Button from '../../components/shared/Button';
 import { formatAddress } from '../../utils/helpers';
 import { log } from '../../lib/log';
 
@@ -91,12 +92,7 @@ const ReportIssueScreen = () => {
   const [otherIssueDescription, setOtherIssueDescription] = useState<string>('');
   
 
-  // Load tenant properties on component mount
-  useEffect(() => {
-    loadTenantProperties();
-  }, []);
-
-  const loadTenantProperties = async () => {
+  const loadTenantProperties = useCallback(async () => {
     if (!apiClient) {
       return;
     }
@@ -112,7 +108,15 @@ const ReportIssueScreen = () => {
     } catch {
       Alert.alert('Error', 'Failed to load your properties. Please try again.');
     }
-  };
+  }, [apiClient]);
+
+  // Load tenant properties once API client is ready.
+  useEffect(() => {
+    if (!apiClient) {
+      return;
+    }
+    loadTenantProperties();
+  }, [apiClient, loadTenantProperties]);
 
   // Get dropdown options based on selections
   const areaOptions = AREA_TEMPLATES.map(area => ({
@@ -388,6 +392,7 @@ const ReportIssueScreen = () => {
   // Header right with forward navigation
   const headerRight = (
     <TouchableOpacity
+      testID="report-issue-next"
       style={[styles.headerNextButton, !isFormValid() && styles.headerNextButtonDisabled]}
       onPress={handleSubmit}
       disabled={!isFormValid()}
@@ -405,6 +410,17 @@ const ReportIssueScreen = () => {
       headerRight={headerRight}
       userRole="tenant"
       keyboardAware
+      bottomContent={
+        <Button
+          testID="report-issue-next-bottom"
+          title="Continue"
+          onPress={handleSubmit}
+          type="success"
+          fullWidth
+          disabled={!isFormValid()}
+          icon={<Ionicons name="arrow-forward" size={20} color="#fff" />}
+        />
+      }
     >
 
         {/* Property Selection */}
@@ -419,6 +435,8 @@ const ReportIssueScreen = () => {
             <SmartDropdown
               label=""
               placeholder="Choose which property has the issue"
+              testID="report-property-dropdown"
+              optionTestIDPrefix="report-property-option"
               options={tenantProperties.map(prop => ({
                 value: prop.properties?.id || prop.id,
                 label: ((prop.properties?.name ?? prop.name ?? "Property") + (prop.unit_number ? " - Unit " + prop.unit_number : "")),
@@ -458,6 +476,8 @@ const ReportIssueScreen = () => {
           <SmartDropdown
             label=""
             placeholder="Select area (e.g., Kitchen, Bathroom)"
+            testID="report-area-dropdown"
+            optionTestIDPrefix="report-area-option"
             options={areaOptions}
             value={selectedArea}
             onSelect={handleAreaChange}
@@ -474,6 +494,8 @@ const ReportIssueScreen = () => {
           <SmartDropdown
             label=""
             placeholder="Select the specific item"
+            testID="report-asset-dropdown"
+            optionTestIDPrefix="report-asset-option"
             options={assetOptions}
             value={selectedAsset}
             onSelect={handleAssetChange}
@@ -491,6 +513,8 @@ const ReportIssueScreen = () => {
           <SmartDropdown
             label=""
             placeholder="Select the specific issue"
+            testID="report-issue-type-dropdown"
+            optionTestIDPrefix="report-issue-type-option"
             options={issueTypeOptions}
             value={selectedIssueType}
             onSelect={handleIssueTypeChange}
@@ -523,6 +547,8 @@ const ReportIssueScreen = () => {
           <SmartDropdown
             label=""
             placeholder="Select priority level"
+            testID="report-priority-dropdown"
+            optionTestIDPrefix="report-priority-option"
             options={priorityOptions}
             value={selectedPriority}
             onSelect={setPriority}
@@ -539,6 +565,8 @@ const ReportIssueScreen = () => {
           <SmartDropdown
             label=""
             placeholder="Select duration"
+            testID="report-duration-dropdown"
+            optionTestIDPrefix="report-duration-option"
             options={durationOptions}
             value={selectedDuration}
             onSelect={setSelectedDuration}
@@ -555,6 +583,8 @@ const ReportIssueScreen = () => {
           <SmartDropdown
             label=""
             placeholder="Select timing pattern"
+            testID="report-timing-dropdown"
+            optionTestIDPrefix="report-timing-option"
             options={timingOptions}
             value={selectedTiming}
             onSelect={setSelectedTiming}
@@ -570,6 +600,7 @@ const ReportIssueScreen = () => {
           </View>
           <View style={styles.inputContainer}>
             <TextInput
+              testID="report-additional-details"
               style={styles.textInput}
               placeholder="Any additional context, symptoms, or details that might help... (optional)"
               placeholderTextColor="#95A5A6"

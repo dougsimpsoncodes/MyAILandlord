@@ -247,6 +247,7 @@ const LandlordChatScreen = () => {
       {/* Message Input */}
       <View style={styles.inputContainer}>
         <TextInput
+          testID="landlord-message-input"
           style={styles.messageInput}
           placeholder="Type a message..."
           value={messageText}
@@ -256,6 +257,7 @@ const LandlordChatScreen = () => {
           editable={!isSending}
         />
         <TouchableOpacity
+          testID="landlord-message-send"
           style={[styles.sendButton, (!messageText.trim() || isSending) && styles.sendButtonDisabled]}
           onPress={sendMessage}
           disabled={!messageText.trim() || isSending}

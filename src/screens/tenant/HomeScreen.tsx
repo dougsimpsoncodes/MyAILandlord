@@ -90,7 +90,10 @@ const HomeScreen = () => {
           log.info('🎟️ Redirecting to PropertyInviteAcceptScreen for token:', pendingInvite.value);
 
           // Navigate to PropertyInviteAcceptScreen with token
-          navigation.navigate('PropertyInviteAccept', { token: pendingInvite.value });
+          navigation.navigate('PropertyInviteAccept', {
+            token: pendingInvite.value,
+            propertyId: pendingInvite.metadata?.propertyId,
+          });
         } else {
           // LEGACY: Direct property linking (deprecated but supported)
           log.info('🔗 Processing legacy invite for property:', pendingInvite.value);
@@ -137,7 +140,7 @@ const HomeScreen = () => {
       log.info('Loaded tenant properties', { count: tenantProperties.length });
 
       if (tenantProperties.length > 0) {
-        // Use the first active property (most apps link tenant to one property)
+        // MVP rule enforces one active property link; keep first as defensive fallback.
         const firstLink = tenantProperties[0];
         const property = firstLink.properties;
 

@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LandlordStackParamList } from '../../navigation/MainStack';
 import { PropertyData } from '../../types/property';
+import { formatDateInputMMDDYY, isValidMMDDYY } from '../../utils/dateInput';
 import ResponsiveContainer from '../../components/shared/ResponsiveContainer';
 import { ResponsiveTitle, ResponsiveBody } from '../../components/shared/ResponsiveText';
 import { usePropertyDraft } from '../../hooks/usePropertyDraft';
@@ -129,6 +130,14 @@ const AssetDetailsScreen = () => {
     
     if (currentAsset.purchasePrice && isNaN(parseFloat(currentAsset.purchasePrice))) {
       newErrors.purchasePrice = 'Please enter a valid price';
+    }
+
+    if (currentAsset.purchaseDate && !isValidMMDDYY(currentAsset.purchaseDate)) {
+      newErrors.purchaseDate = 'Use MM/DD/YY format';
+    }
+
+    if (currentAsset.warrantyExpiry && !isValidMMDDYY(currentAsset.warrantyExpiry)) {
+      newErrors.warrantyExpiry = 'Use MM/DD/YY format';
     }
     
     setErrors(newErrors);
@@ -518,12 +527,15 @@ const AssetDetailsScreen = () => {
               <View style={styles.inputHalf}>
                 <Text style={styles.label}>Purchase Date</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, errors.purchaseDate && styles.inputError]}
                   value={currentAsset.purchaseDate}
-                  onChangeText={(text) => updateAssetField('purchaseDate', text)}
-                  placeholder="MM/DD/YYYY"
+                  onChangeText={(text) => updateAssetField('purchaseDate', formatDateInputMMDDYY(text))}
+                  placeholder="MM/DD/YY"
                   placeholderTextColor="#6C757D"
+                  keyboardType="numeric"
+                  maxLength={8}
                 />
+                {errors.purchaseDate && <Text style={styles.errorText}>{errors.purchaseDate}</Text>}
               </View>
               <View style={styles.inputHalf}>
                 <Text style={styles.label}>Purchase Price</Text>
@@ -542,12 +554,15 @@ const AssetDetailsScreen = () => {
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Warranty Expiry</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.warrantyExpiry && styles.inputError]}
                 value={currentAsset.warrantyExpiry}
-                onChangeText={(text) => updateAssetField('warrantyExpiry', text)}
-                placeholder="MM/DD/YYYY"
+                onChangeText={(text) => updateAssetField('warrantyExpiry', formatDateInputMMDDYY(text))}
+                placeholder="MM/DD/YY"
                 placeholderTextColor="#6C757D"
+                keyboardType="numeric"
+                maxLength={8}
               />
+              {errors.warrantyExpiry && <Text style={styles.errorText}>{errors.warrantyExpiry}</Text>}
             </View>
           </View>
 

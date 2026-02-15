@@ -120,6 +120,7 @@ const SubmissionSuccessScreen = () => {
           <Text style={styles.orText}>or</Text>
 
           <TouchableOpacity
+            testID="submission-view-requests"
             style={styles.secondaryButton}
             onPress={handleViewRequests}
           >
