@@ -243,43 +243,66 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
       throw new Error('No user to update');
     }
 
-    // Optimistic update to local state immediately
-    if (data.name) {
-      setUser(prev => prev ? { ...prev, name: data.name! } : null);
+    const trimmedName = data.name !== undefined ? data.name.trim() : undefined;
+    const trimmedPhone = data.phone !== undefined ? data.phone.trim() : undefined;
+
+    if (data.name !== undefined && !trimmedName) {
+      throw new Error('Name is required');
     }
 
-    // Fire update to Supabase with retry logic (don't await - response can hang on web)
-    // Auth state listener will update state when server confirms
-    const attemptUpdate = async (retryCount = 0): Promise<void> => {
+    // Optimistic update to local state immediately
+    if (trimmedName) {
+      setUser(prev => prev ? { ...prev, name: trimmedName } : null);
+    }
+
+    // Persist to public.profiles because app reads profile name from this table.
+    if (trimmedName !== undefined) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          name: trimmedName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        log.error('UnifiedAuth: Failed to update public profile row:', profileError);
+        await refreshUser();
+        throw profileError;
+      }
+    }
+
+    // Keep auth metadata in sync, but do not block UX on metadata failures.
+    const attemptUpdateAuthMetadata = async (retryCount = 0): Promise<void> => {
       try {
         const { error } = await supabase.auth.updateUser({
           data: {
-            name: data.name,
-            full_name: data.name,
-            phone: data.phone,
+            name: trimmedName,
+            full_name: trimmedName,
+            phone: trimmedPhone,
           },
         });
 
         if (error) {
           throw error;
         }
-        log.debug('UnifiedAuth: Profile updated confirmed', { name: data.name });
+        log.debug('UnifiedAuth: Auth metadata profile update confirmed', { name: trimmedName });
       } catch (err) {
         if (retryCount < 2) {
-          log.warn('UnifiedAuth: Profile update failed, retrying...', { attempt: retryCount + 1 });
+          log.warn('UnifiedAuth: Auth metadata update failed, retrying...', { attempt: retryCount + 1 });
           await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-          return attemptUpdate(retryCount + 1);
+          return attemptUpdateAuthMetadata(retryCount + 1);
         }
-        log.error('UnifiedAuth: Profile update failed after retries:', err);
+        log.error('UnifiedAuth: Auth metadata update failed after retries:', err);
       }
     };
 
-    attemptUpdate().catch(err => {
-      log.error('UnifiedAuth: Profile update error:', err);
+    attemptUpdateAuthMetadata().catch(err => {
+      log.error('UnifiedAuth: Auth metadata update error:', err);
     });
 
-    log.debug('UnifiedAuth: Profile update initiated', { name: data.name });
-  }, [user]);
+    log.debug('UnifiedAuth: Profile update completed', { name: trimmedName });
+  }, [user, refreshUser]);
 
   /**
    * Backwards-compatible: Refresh profile (alias for refreshUser)

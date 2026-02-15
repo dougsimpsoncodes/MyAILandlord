@@ -210,12 +210,31 @@ export const propertyAreasService = {
 
       // Group assets by area_id
       const assetsByArea = new Map<string, InventoryItem[]>();
-      (assetsData || []).forEach((dbAsset: DbPropertyAsset) => {
+      for (const dbAsset of (assetsData || []) as DbPropertyAsset[]) {
         const asset = dbAssetToAppAsset(dbAsset);
+
+        // Asset photos can be stored as paths in DB; regenerate signed URLs for display.
+        if (asset.photos && asset.photos.length > 0) {
+          const directUrls = asset.photos.filter(photo => photo && photo.startsWith('http'));
+          const pathPhotos = asset.photos.filter(photo => photo && !photo.startsWith('http'));
+          if (pathPhotos.length > 0) {
+            try {
+              const regeneratedUrls = await regeneratePhotoUrls(pathPhotos);
+              asset.photos = [...directUrls, ...regeneratedUrls];
+            } catch (photoError) {
+              log.warn('Failed to regenerate asset photo URLs', {
+                assetId: asset.id,
+                error: String(photoError),
+              });
+              asset.photos = directUrls;
+            }
+          }
+        }
+
         const existing = assetsByArea.get(dbAsset.area_id) || [];
         existing.push(asset);
         assetsByArea.set(dbAsset.area_id, existing);
-      });
+      }
 
       // Convert areas with their assets
       const areas = areasData.map((dbArea: DbPropertyArea) =>
@@ -361,24 +380,33 @@ export const propertyAreasService = {
   /**
    * Update an area
    */
-  async updateArea(areaId: string, updates: Partial<PropertyArea>): Promise<void> {
+  async updateArea(areaId: string, updates: Partial<PropertyArea>, client?: SupabaseClient): Promise<void> {
     try {
+      const supabase = client || defaultSupabase;
       const dbUpdates: Partial<DbPropertyArea> = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.type !== undefined) dbUpdates.area_type = updates.type;
       if (updates.icon !== undefined) dbUpdates.icon_name = updates.icon;
-      if (updates.photos !== undefined) dbUpdates.photos = updates.photos;
+      if (updates.photoPaths !== undefined) {
+        dbUpdates.photos = updates.photoPaths;
+      } else if (updates.photos !== undefined) {
+        dbUpdates.photos = updates.photos;
+      }
       if (updates.inventoryComplete !== undefined) dbUpdates.inventory_complete = updates.inventoryComplete;
       if (updates.condition !== undefined) dbUpdates.condition = updates.condition;
 
-      const { error } = await defaultSupabase
+      const { data, error } = await supabase
         .from('property_areas')
         .update(dbUpdates)
-        .eq('id', areaId);
+        .eq('id', areaId)
+        .select('id');
 
       if (error) {
         log.error('Failed to update area', { areaId, error: error.message });
         throw error;
+      }
+      if (!data || data.length === 0) {
+        throw new Error(`Area not found for update: ${areaId}`);
       }
     } catch (error) {
       log.error('Error in updateArea', { error: String(error) });

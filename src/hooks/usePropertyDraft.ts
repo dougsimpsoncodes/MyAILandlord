@@ -49,6 +49,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const draftStateRef = useRef<PropertySetupState | null>(null);
 
   // Refs for auto-save debouncing
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -68,7 +69,8 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
    * Trigger auto-save after delay
    */
   const scheduleAutoSave = useCallback(() => {
-    if (!enableAutoSave || !user?.id || !draftState) {
+    const currentDraft = draftStateRef.current;
+    if (!enableAutoSave || !user?.id || !currentDraft) {
       return;
     }
 
@@ -76,10 +78,11 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
     pendingChanges.current = true;
 
     autoSaveTimeout.current = setTimeout(async () => {
-      if (pendingChanges.current && draftState) {
+      const draftToSave = draftStateRef.current;
+      if (pendingChanges.current && draftToSave) {
         try {
           setIsSaving(true);
-          await PropertyDraftService.saveDraft(user.id, draftState);
+          await PropertyDraftService.saveDraft(user.id, draftToSave);
           setLastSaved(new Date());
           pendingChanges.current = false;
           setError(null);
@@ -91,25 +94,27 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
         }
       }
     }, autoSaveDelay);
-  }, [enableAutoSave, user?.id, draftState, autoSaveDelay, clearAutoSaveTimeout]);
+  }, [enableAutoSave, user?.id, autoSaveDelay, clearAutoSaveTimeout]);
 
   /**
    * Manually save the current draft
    */
   const saveDraft = useCallback(async (): Promise<void> => {
-    if (!user?.id || !draftState) {
+    const draftToSave = draftStateRef.current;
+
+    if (!user?.id || !draftToSave) {
       throw new Error('No user or draft state to save');
     }
 
     try {
       setIsSaving(true);
       setError(null);
-      
-      await PropertyDraftService.saveDraft(user.id, draftState);
+
+      await PropertyDraftService.saveDraft(user.id, draftToSave);
       setLastSaved(new Date());
       pendingChanges.current = false;
       clearAutoSaveTimeout();
-      
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to save draft';
       setError(errorMessage);
@@ -117,7 +122,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
     } finally {
       setIsSaving(false);
     }
-  }, [user?.id, draftState, clearAutoSaveTimeout]);
+  }, [user?.id, clearAutoSaveTimeout]);
 
   /**
    * Load an existing draft
@@ -135,6 +140,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
       const draft = await PropertyDraftService.loadDraft(user.id, targetDraftId);
       
       if (draft) {
+        draftStateRef.current = draft;
         setDraftState(draft);
         setLastSaved(draft.lastModified);
         pendingChanges.current = false;
@@ -157,91 +163,100 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
    * Delete the current draft
    */
   const deleteDraft = useCallback(async (): Promise<void> => {
-    if (!user?.id || !draftState) {
+    const currentDraft = draftStateRef.current;
+
+    if (!user?.id || !currentDraft) {
       throw new Error('No user or draft to delete');
     }
 
     try {
       setError(null);
-      await PropertyDraftService.deleteDraft(user.id, draftState.id);
+      await PropertyDraftService.deleteDraft(user.id, currentDraft.id);
+      draftStateRef.current = null;
       setDraftState(null);
       setLastSaved(null);
       pendingChanges.current = false;
       clearAutoSaveTimeout();
-      
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete draft';
       setError(errorMessage);
       throw err;
     }
-  }, [user?.id, draftState, clearAutoSaveTimeout]);
+  }, [user?.id, clearAutoSaveTimeout]);
 
   /**
    * Update property data and trigger auto-save
    */
   const updatePropertyData = useCallback((data: Partial<PropertyData>) => {
-    setDraftState(prev => {
-      if (!prev) return null;
-      
-      const updated = {
-        ...prev,
-        propertyData: { ...prev.propertyData, ...data },
-        lastModified: new Date(),
-      };
-      
-      return updated;
-    });
+    const currentDraft = draftStateRef.current;
+    if (!currentDraft) return;
+
+    const updated = {
+      ...currentDraft,
+      propertyData: { ...currentDraft.propertyData, ...data },
+      lastModified: new Date(),
+    };
+
+    draftStateRef.current = updated;
+    setDraftState(updated);
   }, []);
 
   /**
    * Update areas and trigger auto-save
    */
   const updateAreas = useCallback((areas: PropertyArea[]) => {
-    setDraftState(prev => {
-      if (!prev) return null;
-      
-      return {
-        ...prev,
-        areas,
-        lastModified: new Date(),
-      };
-    });
+    const currentDraft = draftStateRef.current;
+    if (!currentDraft) return;
+
+    const updated = {
+      ...currentDraft,
+      areas,
+      lastModified: new Date(),
+    };
+
+    draftStateRef.current = updated;
+    setDraftState(updated);
   }, []);
 
   /**
    * Update assets and trigger auto-save
    */
   const updateAssets = useCallback((assets: InventoryItem[]) => {
-    setDraftState(prev => {
-      if (!prev) return null;
-      
-      return {
-        ...prev,
-        assets,
-        lastModified: new Date(),
-      };
-    });
+    const currentDraft = draftStateRef.current;
+    if (!currentDraft) return;
+
+    const updated = {
+      ...currentDraft,
+      assets,
+      lastModified: new Date(),
+    };
+
+    draftStateRef.current = updated;
+    setDraftState(updated);
   }, []);
 
   /**
    * Update current step and trigger auto-save
    */
   const updateCurrentStep = useCallback((step: number) => {
-    setDraftState(prev => {
-      if (!prev) return null;
-      
-      // Recalculate completion percentage
-      const totalSteps = 5;
-      const completionPercentage = Math.round((step / totalSteps) * 100);
-      
-      return {
-        ...prev,
-        currentStep: step,
-        completionPercentage,
-        status: completionPercentage >= 100 ? 'completed' : step > 0 ? 'in_progress' : 'draft',
-        lastModified: new Date(),
-      };
-    });
+    const currentDraft = draftStateRef.current;
+    if (!currentDraft) return;
+
+    // Recalculate completion percentage
+    const totalSteps = 5;
+    const completionPercentage = Math.round((step / totalSteps) * 100);
+
+    const updated = {
+      ...currentDraft,
+      currentStep: step,
+      completionPercentage,
+      status: (completionPercentage >= 100 ? 'completed' : step > 0 ? 'in_progress' : 'draft') as PropertySetupState['status'],
+      lastModified: new Date(),
+    };
+
+    draftStateRef.current = updated;
+    setDraftState(updated);
   }, []);
 
   /**
@@ -255,6 +270,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
       0
     );
 
+    draftStateRef.current = newDraft;
     setDraftState(newDraft);
     setLastSaved(null);
     pendingChanges.current = true;
@@ -267,6 +283,7 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
    * Reset the current draft state
    */
   const resetDraft = useCallback(() => {
+    draftStateRef.current = null;
     setDraftState(null);
     setLastSaved(null);
     setError(null);
@@ -280,6 +297,11 @@ export function usePropertyDraft(options: UsePropertyDraftOptions = {}): UseProp
   const clearError = useCallback(() => {
     setError(null);
   }, []);
+
+  // Keep ref synchronized for any state changes that come from loads or external updates.
+  useEffect(() => {
+    draftStateRef.current = draftState;
+  }, [draftState]);
 
   // Auto-save effect when draft state changes
   useEffect(() => {

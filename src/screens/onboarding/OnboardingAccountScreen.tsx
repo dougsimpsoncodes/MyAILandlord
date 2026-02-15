@@ -107,39 +107,131 @@ export default function OnboardingAccountScreen() {
     setError(null);
 
     try {
-      // Create the account with Supabase
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      // supabase.auth.signUp can hang indefinitely on web (known issue).
+      // Race against a timeout so the UI never gets stuck.
+      const signUpMetadata: Record<string, unknown> = {
+        first_name: firstName,
+        name: firstName,
+      };
+      if (fromInvite) {
+        // Critical for invite flow: prevent role defaulting to landlord in profile sync.
+        signUpMetadata.role = 'tenant';
+      }
+
+      const signUpPromise = supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
         options: {
-          data: {
-            first_name: firstName,
-          },
+          data: signUpMetadata,
         },
       });
 
-      if (signUpError) {
-        setError(signUpError.message);
-        setLoading(false);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('SIGNUP_TIMEOUT')), 10000)
+      );
+
+      let userId: string | undefined;
+      let signUpReturnedSession = false;
+
+      try {
+        const { data, error: signUpError } = await Promise.race([signUpPromise, timeoutPromise]);
+
+        if (signUpError) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
+        userId = data.user?.id;
+        signUpReturnedSession = !!data.session?.user;
+      } catch (raceErr) {
+        if (raceErr instanceof Error && raceErr.message === 'SIGNUP_TIMEOUT') {
+          // The server-side signup likely succeeded but the client promise hung.
+          // Check if the auth listener already picked up the session.
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession?.user) {
+            log.info('Signup timed out but session exists — proceeding', { userId: currentSession.user.id });
+            userId = currentSession.user.id;
+          } else {
+            setError('Account creation is taking longer than expected. Check your email or try again.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          throw raceErr;
+        }
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      if (userId) {
+        log.info('Account created', { userId, email: normalizedEmail });
+      }
+
+      if (fromInvite) {
+        // Ensure we have an authenticated session, then re-enter the root routing flow.
+        // This guarantees pending invite processing continues instead of leaving user here.
+        const { data: { session: activeSession } } = await supabase.auth.getSession();
+
+        let ensuredSession = activeSession;
+
+        if (!ensuredSession?.user) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: normalizedEmail,
+            password,
+          });
+
+          if (signInError || !signInData.session?.user) {
+            const signInMessage = signInError?.message?.toLowerCase() || '';
+            if (signInMessage.includes('invalid login credentials')) {
+              setError('This email already has an account with a different password. Use a fresh email for invite sign-up, or sign in with the existing account.');
+            } else if (!signUpReturnedSession) {
+              setError('We could not complete sign-in for this invite. If this email is already registered, use that account password or try a new email.');
+            } else {
+              setError('Account created, but sign-in is pending. Verify email (if required) and sign in again to accept your invite.');
+            }
+            return;
+          }
+
+          ensuredSession = signInData.session;
+        }
+
+        // Best-effort role correction for invite-created users before bootstrap routing.
+        // Prevents accidental landlord routing if profile sync raced earlier.
+        try {
+          if (ensuredSession?.user?.id) {
+            await supabase
+              .from('profiles')
+              .upsert({
+                id: ensuredSession.user.id,
+                email: normalizedEmail,
+                name: firstName,
+                role: 'tenant',
+                onboarding_completed: false,
+              }, { onConflict: 'id' });
+          }
+        } catch (profileErr) {
+          log.warn('Invite signup: failed to enforce tenant profile before bootstrap', { error: String(profileErr) });
+        }
+
+        const parentNav = navigation.getParent();
+        if (parentNav) {
+          parentNav.reset({
+            index: 0,
+            routes: [{ name: 'Bootstrap' as never }],
+          });
+        } else {
+          navigation.replace('PropertyInviteAccept');
+        }
         return;
       }
 
-      if (data.user) {
-        if (fromInvite) {
-          // User came from tenant invite - skip role selection (they're obviously tenants)
-          // Don't navigate anywhere - let RootNavigator bootstrap handle it
-          // RootNavigator detects pending invite + signed in user → PropertyInviteAccept
-          // This avoids race conditions with auth state changes
-          return;
-        } else {
-          // Normal flow - navigate to role selection
-          navigation.navigate('OnboardingRole', {
-            firstName,
-            userId: data.user.id
-          });
-        }
+      if (!userId) {
+        setError('Unable to create account. Please try again with a different email.');
+        return;
       }
-    } catch {
+
+      navigation.navigate('OnboardingRole', { firstName, userId });
+    } catch (err) {
+      log.error('Onboarding account creation failed', { error: String(err) });
       setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -187,6 +279,7 @@ export default function OnboardingAccountScreen() {
                     email.length > 0 && !isEmailValid && styles.inputError,
                   ]}
                   placeholder="you@example.com"
+                  testID="onboarding-email-input"
                   placeholderTextColor={colors.text.tertiary}
                   value={email}
                   onChangeText={setEmail}
@@ -210,6 +303,7 @@ export default function OnboardingAccountScreen() {
                       password.length > 0 && !isPasswordValid && styles.inputError,
                     ]}
                     placeholder="At least 8 characters"
+                    testID="onboarding-password-input"
                     placeholderTextColor={colors.text.tertiary}
                     value={password}
                     onChangeText={setPassword}
@@ -263,6 +357,7 @@ export default function OnboardingAccountScreen() {
                       confirmPassword.length > 0 && !doPasswordsMatch && styles.inputError,
                     ]}
                     placeholder="Re-enter your password"
+                    testID="onboarding-confirm-password-input"
                     placeholderTextColor={colors.text.tertiary}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -345,6 +440,7 @@ export default function OnboardingAccountScreen() {
                 style={[styles.primaryButton, (!isValid || loading) && styles.primaryButtonDisabled]}
                 onPress={handleCreateAccount}
                 disabled={!isValid || loading}
+                testID="onboarding-account-create"
               >
                 {loading ? (
                   <ActivityIndicator color={colors.text.inverse} />

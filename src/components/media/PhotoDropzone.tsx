@@ -1,5 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
-import { Platform, View, TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { Platform, View, TouchableOpacity, Text, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadPropertyPhotos } from '../../services/PhotoUploadService';
@@ -112,8 +112,11 @@ export default function PhotoDropzone({
   const [uploadCount, setUploadCount] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // Create hidden file input for web
-  if (Platform.OS === 'web' && !inputRef.current) {
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
     const el = document.createElement('input');
     el.type = 'file';
     el.accept = 'image/*';
@@ -121,10 +124,27 @@ export default function PhotoDropzone({
     el.style.display = 'none';
     document.body.appendChild(el);
     inputRef.current = el;
-  }
 
-  const processAndUpload = async (assets: UploadAsset[]) => {
-    if (!assets.length) return;
+    return () => {
+      if (inputRef.current) {
+        document.body.removeChild(inputRef.current);
+        inputRef.current = null;
+      }
+    };
+  }, []);
+
+  const processAndUpload = useCallback(async (incomingAssets: UploadAsset[]) => {
+    if (!incomingAssets.length) return;
+
+    let assets = [...incomingAssets];
+    const objectUrlsToRevoke = new Set<string>();
+    const trackObjectUrl = (uri?: string) => {
+      if (Platform.OS === 'web' && uri && uri.startsWith('blob:')) {
+        objectUrlsToRevoke.add(uri);
+      }
+    };
+
+    assets.forEach(asset => trackObjectUrl(asset.uri));
 
     setIsUploading(true);
     setUploadCount(assets.length);
@@ -137,6 +157,7 @@ export default function PhotoDropzone({
             assets.map(async (a) => {
               if (!a.file) return a;
               const { uri, mimeType, fileName } = await compressImageWeb(a.file);
+              trackObjectUrl(uri);
               return { ...a, uri, mimeType, fileName };
             })
           );
@@ -147,23 +168,58 @@ export default function PhotoDropzone({
       }
 
       const uploaded = await uploadPropertyPhotos(propertyId, areaId, assets);
+
+      if (uploaded.length === 0) {
+        throw new Error('No photos were uploaded successfully.');
+      }
+
       onUploaded(uploaded.map(u => ({ path: u.path, url: u.url })));
+
+      if (uploaded.length < assets.length) {
+        Alert.alert(
+          'Upload Incomplete',
+          'Uploaded ' + uploaded.length + ' of ' + assets.length + ' photos. Please retry failed uploads.'
+        );
+      }
+    } catch (error) {
+      log.error('PhotoDropzone: Upload failed', { error: String(error) });
+      if (Platform.OS === 'web') {
+        window.alert('Upload failed: ' + (error instanceof Error ? error.message : 'Please check your connection and try again.'));
+      } else {
+        Alert.alert('Upload Failed', 'We could not upload your photos. Please check your connection and try again.');
+      }
     } finally {
       setIsUploading(false);
       setUploadCount(0);
+      if (Platform.OS === 'web') {
+        for (const objectUrl of objectUrlsToRevoke) {
+          try {
+            URL.revokeObjectURL(objectUrl);
+          } catch {
+            // noop
+          }
+        }
+      }
     }
-  };
+  }, [propertyId, areaId, onUploaded]);
 
   const handleBrowse = async () => {
     // Notify parent that picker is opening (prevents race conditions with focus refetch)
     onPickerOpen?.();
 
     try {
+      if (Platform.OS === 'web' && !inputRef.current) {
+        throw new Error('File picker is not ready yet.');
+      }
+
       const assets = Platform.OS === 'web'
         ? await pickWeb(inputRef.current as HTMLInputElement)
         : await pickNative();
 
       await processAndUpload(assets);
+    } catch (error) {
+      log.error('PhotoDropzone: Failed to open file picker', { error: String(error) });
+      Alert.alert('Picker Error', 'Could not open the photo picker. Please try again.');
     } finally {
       // Notify parent that picker flow is complete
       onPickerClose?.();
@@ -203,7 +259,7 @@ export default function PhotoDropzone({
     }));
 
     await processAndUpload(assets);
-  }, [propertyId, areaId, onUploaded]);
+  }, [processAndUpload]);
 
   const isDisabled = disabled || isUploading;
   const isWeb = Platform.OS === 'web';

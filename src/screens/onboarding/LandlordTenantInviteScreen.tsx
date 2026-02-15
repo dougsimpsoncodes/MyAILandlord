@@ -57,15 +57,54 @@ export default function LandlordTenantInviteScreen() {
     try {
       const isWeb = Platform.OS === 'web';
       log.debug('[INVITES] Generating invite', { propertyId, platform: isWeb ? 'web' : 'native' });
-      const { data, error } = await supabase.rpc('create_invite', {
-        p_property_id: propertyId,
-        p_delivery_method: 'code',
-        p_intended_email: null
-      });
 
-      if (error || !data || !Array.isArray(data) || !data[0]?.token) {
-        const msg = error?.message || 'No token returned';
-        log.error('[INVITES] RPC error', error || new Error(msg));
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated. Please sign in again.');
+      }
+
+      const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+      const supabaseAnon = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnon) {
+        throw new Error('Supabase is not configured. Missing URL or anon key.');
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      let response: Response;
+      try {
+        response = await fetch(`${supabaseUrl}/rest/v1/rpc/create_invite`, {
+          method: 'POST',
+          headers: {
+            apikey: supabaseAnon,
+            Authorization: `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({
+            p_property_id: propertyId,
+            p_delivery_method: 'code',
+            p_intended_email: null,
+          }),
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !Array.isArray(data) || !data[0]?.token) {
+        const msg =
+          typeof data?.message === 'string'
+            ? data.message
+            : typeof data?.error === 'string'
+              ? data.error
+              : !response.ok
+                ? `HTTP ${response.status}`
+                : 'No token returned';
+        log.error('[INVITES] RPC error', new Error(msg));
         setGenerationError(msg);
         Alert.alert('Error', 'Failed to generate invite link. Please try again.');
         return;
@@ -74,15 +113,20 @@ export default function LandlordTenantInviteScreen() {
       const token = data[0].token;
       log.debug('[INVITES] Token generated');
 
-      const url = buildInviteUrl(token);
+      const url = buildInviteUrl(token, propertyId);
 
       setInviteUrl(url);
       setGenerationError(null);
       log.debug('[INVITES] Invite URL set');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to generate invite link';
+      const message =
+        error instanceof Error && error.name === 'AbortError'
+          ? 'Request timeout after 15 seconds'
+          : error instanceof Error
+            ? error.message
+            : 'Failed to generate invite link';
       log.error('[INVITES] Error generating invite URL', error as Error);
-      setGenerationError(errorMessage);
+      setGenerationError(message);
       Alert.alert('Error', 'Failed to generate invite link. Please try again.');
     } finally {
       setIsGenerating(false);

@@ -195,28 +195,10 @@ export function useApiClient(): UseApiClientReturn | null {
       throw new Error(`Failed to create property: ${error.message}`);
     }
 
-    // Fallback: if property_code missing, call RPC and patch
+    // Property creation should return promptly in onboarding flows.
+    // If property_code is missing, rely on DB trigger/backfill instead of blocking fallback work.
     if (data && !data.property_code) {
-      try {
-        const { data: codeData, error: codeError } = await supabaseClient.rpc('generate_property_code');
-        if (codeError) throw codeError;
-        if (codeData) {
-          const { data: updated, error: patchError } = await supabaseClient
-            .from('properties')
-            .update({
-              property_code: codeData,
-              code_expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-              allow_tenant_signup: true,
-            })
-            .eq('id', data.id)
-            .select()
-            .single();
-          if (patchError) throw patchError;
-          return updated;
-        }
-      } catch (fallbackError) {
-        log.warn('Property code generation fallback failed', { error: getErrorMessage(fallbackError) });
-      }
+      log.warn('createProperty: property created without property_code', { propertyId: data.id });
     }
 
     return data;
@@ -720,7 +702,8 @@ export function useApiClient(): UseApiClientReturn | null {
           )
         `)
         .eq('tenant_id', profile.id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .order('created_at', { ascending: false, nullsFirst: false });
 
       if (error) {
         throw new Error(`Failed to get tenant properties: ${error.message}`);

@@ -2,10 +2,11 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 import { haptics } from '../lib/haptics';
 import { useAppState } from '../context/AppStateContext';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useUnifiedAuth } from '../context/UnifiedAuthContext';
 
 // Tenant Screens
 import HomeScreen from '../screens/tenant/HomeScreen';
@@ -620,11 +621,26 @@ interface MainStackRouteParams {
 }
 
 const MainStack = ({ route }: { route: { params?: MainStackRouteParams } }) => {
-  const { userRole, needsOnboarding, userFirstName } = route.params || { userRole: 'tenant' as const };
+  const { user } = useUnifiedAuth();
+
+  // Deep-link paths can mount Main without explicit route params.
+  // Do not default to tenant while auth/profile role is still hydrating.
+  const resolvedRole = route.params?.userRole ?? user?.role ?? null;
+
+  if (!resolvedRole) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#3498DB" />
+      </View>
+    );
+  }
+
+  const needsOnboarding = route.params?.needsOnboarding ?? (user ? !user.onboarding_completed : undefined);
+  const userFirstName = route.params?.userFirstName ?? user?.name?.split(' ')[0] ?? null;
 
   return (
     <MainStackComponent
-      userRole={userRole}
+      userRole={resolvedRole}
       needsOnboarding={needsOnboarding}
       userFirstName={userFirstName}
     />

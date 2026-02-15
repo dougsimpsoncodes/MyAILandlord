@@ -8,6 +8,7 @@ import {
   Modal,
   SafeAreaView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import ScreenContainer from '../../components/shared/ScreenContainer';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -90,6 +91,35 @@ const PropertyAreasScreen = () => {
   const [customRoomName, setCustomRoomName] = useState('');
   const [showRoomTypeDropdown, setShowRoomTypeDropdown] = useState(false);
 
+  const [iconFontReady, setIconFontReady] = useState(Platform.OS !== 'web');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (Platform.OS !== 'web') {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    Ionicons.loadFont()
+      .then(() => {
+        if (isMounted) {
+          setIconFontReady(true);
+        }
+      })
+      .catch((error) => {
+        log.warn('Ionicons font preload failed on web', { error: String(error) });
+        if (isMounted) {
+          setIconFontReady(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Room counts for +/- counter UI
   const [roomCounts, setRoomCounts] = useState<Record<string, number>>({
     kitchen: 1,
@@ -103,6 +133,29 @@ const PropertyAreasScreen = () => {
   const currentPropertyData = draftState?.propertyData || propertyData;
   const [propertyPhotos, setPropertyPhotos] = useState<string[]>(currentPropertyData?.photos || []);
   const isInitialized = useRef(false);
+
+  const showUserAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.alert(title + '\n\n' + message);
+      return;
+    }
+    Alert.alert(title, message);
+  };
+
+  const withTimeout = async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error(label + ' timed out after ' + ms + 'ms')), ms);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
 
   // Sync with draft state when it changes
   useEffect(() => {
@@ -240,146 +293,66 @@ const PropertyAreasScreen = () => {
     try {
       setIsSubmitting(true);
 
-      // With counter system, all generated areas are included (no selection)
       const areasToSave = areas;
-
       if (areasToSave.length === 0) {
-        Alert.alert('No Areas', 'Please add at least one area to continue.');
+        showUserAlert('No Areas', 'Please add at least one area to continue.');
         return;
       }
 
       if (!draftState) {
-        Alert.alert('Error', 'Draft not loaded. Please go back and try again.');
+        showUserAlert('Error', 'Draft not loaded. Please go back and try again.');
         return;
       }
 
-      // Update draft with photos before saving
       if (propertyPhotos.length > 0) {
         updatePropertyData({ photos: propertyPhotos });
       }
 
-      // Save areas to draft
       updateAreas(areasToSave);
 
-      // Save current progress before navigating
       try {
-        await saveDraft();
+        await withTimeout(saveDraft(), 10000, 'Saving draft before continue');
       } catch (error) {
         log.warn('Failed to save draft before navigation', { error: String(error) });
-        // Continue anyway - user can manually save later
+        showUserAlert(
+          'Save Error',
+          'We could not save your progress. Please retry before continuing.'
+        );
+        return;
       }
 
-      // Save current draft ID for page refresh persistence (step 2)
-      if (user?.id && draftState?.id) {
+      if (user?.id && draftState.id) {
         await PropertyDraftService.setCurrentDraftId(user.id, draftState.id, 2);
       }
 
-      // Navigate based on context
       if (isOnboarding) {
-        // In onboarding mode, create property and save areas to database
-        try {
-          // Ensure API is ready
-          if (!api) {
-            throw new Error('Authentication required');
-          }
+        // Defer property creation to Review & Submit to keep this step responsive on web.
+        const currentPropertyDataWithId = draftState.propertyData as PropertyData & { propertyId?: string };
+        const existingPropertyId = propertyId || currentPropertyDataWithId.propertyId;
 
-          const currentPropertyData = draftState.propertyData;
-
-          // Check if property was already created (e.g., user clicked back and Continue again)
-                    const currentPropertyDataWithId = currentPropertyData as PropertyData & { propertyId?: string };
-          const existingPropertyId = propertyId || currentPropertyDataWithId.propertyId;
-          if (existingPropertyId) {
-            // Property already exists - navigate to PropertyAssets without creating again
-            log.info('Property already exists, skipping creation', { existingPropertyId });
-            navigation.navigate('PropertyAssets', {
-              draftId: draftState.id,
-              propertyId: existingPropertyId,
-            });
-            return;
-          }
-
-          // Create the property first
-          const propertyPayload = {
-            name: currentPropertyData.name,
-            address_jsonb: currentPropertyData.address,
-            property_type: currentPropertyData.type,
-            unit: currentPropertyData.unit || '',
-            bedrooms: currentPropertyData.bedrooms || 0,
-            bathrooms: currentPropertyData.bathrooms || 0
-          };
-
-          const newProperty = await api.createProperty(propertyPayload);
-
-          // Upload area photos to storage before saving areas to database
-          let areasWithUploadedPhotos = areasToSave;
-          if (areasToSave.length > 0) {
-            areasWithUploadedPhotos = await Promise.all(
-              areasToSave.map(async (area) => {
-                // If area has photos (local URIs), upload them to storage
-                if (area.photos && area.photos.length > 0) {
-                  try {
-                    const uploadedPhotos = await uploadPropertyPhotos(
-                      newProperty.id,
-                      area.id,
-                      area.photos.map(uri => ({ uri }))
-                    );
-
-                    // Replace local URIs with storage paths
-                    return {
-                      ...area,
-                      photos: uploadedPhotos.map(p => p.url), // Use signed URLs
-                      photoPaths: uploadedPhotos.map(p => p.path), // Store paths for later regeneration
-                    };
-                  } catch (error) {
-                    log.error('Failed to upload area photos', { areaName: area.name, error: String(error) });
-                    // Continue without photos if upload fails
-                    return { ...area, photos: [], photoPaths: [] };
-                  }
-                }
-                return area;
-              })
-            );
-          }
-
-          // Save areas and assets to the new property
-          if (areasWithUploadedPhotos.length > 0) {
-            const { propertyAreasService } = await import('../../services/supabase/propertyAreasService');
-            await propertyAreasService.saveAreasAndAssets(newProperty.id, areasWithUploadedPhotos, supabase);
-          }
-
-          // Update draft with the new propertyId so subsequent screens can access it
-          updatePropertyData({ propertyId: newProperty.id });
-          await saveDraft();
-
-          // Navigate to PropertyAssets with draft-only params
+        if (existingPropertyId) {
           navigation.navigate('PropertyAssets', {
             draftId: draftState.id,
-            propertyId: newProperty.id,
+            propertyId: existingPropertyId,
           });
-        } catch (error) {
-          log.error('Error in onboarding save', { error: String(error) });
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-          Alert.alert('Error', `Failed to save property: ${errorMessage}`);
-          return;
+        } else {
+          navigation.navigate('PropertyAssets', {
+            draftId: draftState.id,
+          });
         }
-      } else {
-        // Regular flow - go to PropertyAssets with draft-only params
-        navigation.navigate('PropertyAssets', {
-          draftId: draftState.id,
-          propertyId,
-        });
+        return;
       }
+
+      navigation.navigate('PropertyAssets', {
+        draftId: draftState.id,
+        propertyId,
+      });
     } catch (error) {
       log.error('Error proceeding to next step', { error: String(error) });
-      Alert.alert('Error', 'Failed to proceed. Please try again.');
+      showUserAlert('Error', 'Failed to proceed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-
-  const getSelectedAreasWithPhotos = () => {
-    return areas.filter(area => selectedAreas.includes(area.id) && area.photos.length > 0).length;
   };
 
   // Save status indicator for header (no button)
@@ -408,6 +381,7 @@ const PropertyAreasScreen = () => {
       size="lg"
       fullWidth
       disabled={areas.length === 0 || isSubmitting || isDraftLoading}
+      loading={isSubmitting}
     />
   );
 
@@ -425,6 +399,25 @@ const PropertyAreasScreen = () => {
           <ActivityIndicator size="large" color="#3498DB" />
           <Text style={styles.loadStateTitle}>Loading draft...</Text>
           <Text style={styles.loadStateSubtitle}>Preparing your property setup.</Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!iconFontReady) {
+    return (
+      <ScreenContainer
+        title="Select Rooms"
+        subtitle="Step 2 of 4"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+        scrollable={false}
+      >
+        <View style={styles.loadStateCard}>
+          <ActivityIndicator size="large" color="#3498DB" />
+          <Text style={styles.loadStateTitle}>Loading icons...</Text>
+          <Text style={styles.loadStateSubtitle}>Preparing this step for web rendering.</Text>
         </View>
       </ScreenContainer>
     );
@@ -681,11 +674,11 @@ const PropertyAreasScreen = () => {
         </View>
 
 
-        {/* Photo Summary */}
+        {/* Step Guidance */}
         <View style={styles.photoSummary}>
-          <Ionicons name="information-circle" size={20} color="#3498DB" />
+          <Ionicons name="arrow-forward-circle" size={20} color="#3498DB" />
           <Text style={styles.photoSummaryText}>
-            Photos added: {getSelectedAreasWithPhotos()} of {selectedAreas.length} selected areas
+            Next step: add photos and assets for each room.
           </Text>
         </View>
 

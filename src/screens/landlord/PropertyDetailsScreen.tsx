@@ -1,10 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +16,7 @@ import ScreenContainer from '../../components/shared/ScreenContainer';
 import { PropertyImage } from '../../components/shared/PropertyImage';
 import { DesignSystem } from '../../theme/DesignSystem';
 import { useSupabaseWithAuth } from '../../hooks/useSupabaseWithAuth';
+import { useApiClient } from '../../services/api/client';
 import log from '../../lib/log';
 import { formatAddress } from '../../utils/helpers';
 
@@ -28,63 +30,244 @@ interface PropertyInfo {
   type: string;
 }
 
+interface DbPropertyRow {
+  id: string;
+  name: string;
+  address?: string | null;
+  address_jsonb?: {
+    line1?: string;
+    line2?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  } | null;
+  property_type?: string | null;
+}
+
+interface DbAreaPhotoRow {
+  id: string;
+  photos?: string[] | null;
+}
+
+interface DbAssetPhotoRow {
+  id: string;
+  photos?: string[] | null;
+}
+
+interface PropertyMediaSummary {
+  roomCount: number;
+  assetCount: number;
+  roomPhotoCount: number;
+  assetPhotoCount: number;
+}
+
+interface PropertyQueryResult {
+  data: DbPropertyRow | null;
+  error: { message?: string } | null;
+}
+
+const withTimeout = async <T,>(promiseLike: PromiseLike<T>, timeoutMs: number, timeoutMessage: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([Promise.resolve(promiseLike), timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
+
+const mapPropertyRow = (row: DbPropertyRow): PropertyInfo => {
+  const addr = row.address_jsonb || {};
+  const lineOne = `${addr.line1 || ''}${addr.line2 ? `, ${addr.line2}` : ''}`.trim();
+  const cityState = [addr.city, addr.state].filter(Boolean).join(', ');
+  const cityStateZip = [cityState, addr.zipCode || ''].filter(Boolean).join(' ').trim();
+  const formattedAddress = [lineOne, cityStateZip].filter(Boolean).join(', ').trim();
+
+  return {
+    id: row.id,
+    name: row.name,
+    address: formattedAddress || row.address || '',
+    type: row.property_type || 'house',
+  };
+};
+
+const countValidPhotos = (photos?: string[] | null): number =>
+  (photos || []).filter((photo) => typeof photo === 'string' && photo.trim() !== '').length;
+
 const PropertyDetailsScreen = () => {
   const navigation = useNavigation<PropertyDetailsNavigationProp>();
   const route = useRoute<PropertyDetailsRouteProp>();
-  const { propertyId } = route.params;
+  const routePropertyId = route.params?.propertyId;
+  const webQueryPropertyId =
+    Platform.OS === 'web' && typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('propertyId') ||
+        new URLSearchParams(window.location.search).get('property') ||
+        undefined
+      : undefined;
+  const propertyId = routePropertyId || webQueryPropertyId || '';
   const { supabase, isLoaded } = useSupabaseWithAuth();
+  const api = useApiClient();
 
   // State for property data loaded from database
   const [property, setProperty] = useState<PropertyInfo | null>(null);
+  const [mediaSummary, setMediaSummary] = useState<PropertyMediaSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const activeLoadIdRef = useRef(0);
 
-  // Load property and areas from database when screen comes into focus
+  // Load property with retries while keeping loading/error states stable between attempts.
   const loadPropertyData = useCallback(async () => {
-    // Wait for auth to be ready before making queries
-    if (!isLoaded) {
-      log.debug('Auth not ready, skipping property load');
+    const loadId = ++activeLoadIdRef.current;
+    const isActiveLoad = () => activeLoadIdRef.current === loadId;
+
+    if (!propertyId) {
+      if (isActiveLoad()) {
+        setIsLoading(false);
+        setProperty(null);
+        setMediaSummary(null);
+        setLoadError('Missing property ID. Return to Properties and open the property again.');
+      }
+      log.error('PropertyDetails missing propertyId', {
+        routePropertyId,
+        webQueryPropertyId,
+      });
       return;
     }
 
-    try {
+    if (!isLoaded) {
+      if (isActiveLoad()) {
+        setIsLoading(true);
+      }
+      log.debug('Auth not ready, waiting to load property', { propertyId });
+      return;
+    }
+
+    if (isActiveLoad()) {
       setIsLoading(true);
       setLoadError(null);
-      log.debug('Loading property from database', { propertyId });
+      setMediaSummary(null);
+    }
 
-      // Fetch property details
-      const { data: propertyData, error: propertyError } = await supabase
-        .from('properties')
-        .select('id, name, address_jsonb, property_type')
-        .eq('id', propertyId)
-        .single();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        log.debug('Loading property from database', { propertyId, attempt });
 
-      if (propertyError) throw propertyError;
+        const primaryResponsePromise = supabase
+          .from('properties')
+          .select('id, name, address, address_jsonb, property_type')
+          .eq('id', propertyId)
+          .maybeSingle()
+          .then((response) => response as PropertyQueryResult);
 
-      // Format address from JSONB
-      const addr = propertyData.address_jsonb || {};
-      const addressString = `${addr.line1 || ''}${addr.line2 ? ', ' + addr.line2 : ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zipCode || ''}`.trim();
+        const primaryResponse = await withTimeout(
+          primaryResponsePromise,
+          10000,
+          'Property query timed out'
+        );
 
-      setProperty({
-        id: propertyData.id,
-        name: propertyData.name,
-        address: addressString,
-        type: propertyData.property_type || 'house',
-      });
+        let resolvedProperty: DbPropertyRow | null = primaryResponse.data;
 
-    } catch (error) {
-      log.error('Failed to load property', { error: String(error) });
+        if (primaryResponse.error || !resolvedProperty) {
+          const primaryErrorMessage = primaryResponse.error?.message || 'Property not returned by direct query';
+          log.warn('Primary property query failed; trying fallback list lookup', {
+            propertyId,
+            attempt,
+            error: primaryErrorMessage,
+          });
+
+          if (!api) {
+            throw primaryResponse.error || new Error(primaryErrorMessage);
+          }
+
+          const accessibleProperties = await withTimeout(
+            api.getUserProperties({ limit: 200 }) as Promise<DbPropertyRow[]>,
+            10000,
+            'Property fallback lookup timed out'
+          );
+
+          resolvedProperty = accessibleProperties.find((item) => item.id === propertyId) || null;
+
+          if (!resolvedProperty) {
+            throw primaryResponse.error || new Error('Property not found in accessible property list');
+          }
+        }
+
+        let nextMediaSummary: PropertyMediaSummary | null = null;
+        try {
+          const [areasResult, assetsResult] = await Promise.all([
+            supabase
+              .from('property_areas')
+              .select('id, photos')
+              .eq('property_id', resolvedProperty.id)
+              .returns<DbAreaPhotoRow[]>(),
+            supabase
+              .from('property_assets')
+              .select('id, photos')
+              .eq('property_id', resolvedProperty.id)
+              .returns<DbAssetPhotoRow[]>(),
+          ]);
+
+          if (areasResult.error) throw areasResult.error;
+          if (assetsResult.error) throw assetsResult.error;
+
+          const areaRows = areasResult.data || [];
+          const assetRows = assetsResult.data || [];
+
+          nextMediaSummary = {
+            roomCount: areaRows.length,
+            assetCount: assetRows.length,
+            roomPhotoCount: areaRows.reduce((total, row) => total + countValidPhotos(row.photos), 0),
+            assetPhotoCount: assetRows.reduce((total, row) => total + countValidPhotos(row.photos), 0),
+          };
+        } catch (summaryError) {
+          log.warn('PropertyDetails: Unable to load media summary', {
+            propertyId: resolvedProperty.id,
+            error: String(summaryError),
+          });
+        }
+
+        if (!isActiveLoad()) {
+          return;
+        }
+
+        setProperty(mapPropertyRow(resolvedProperty));
+        setMediaSummary(nextMediaSummary);
+        setLoadError(null);
+        setIsLoading(false);
+        return;
+      } catch (error) {
+        log.error('Failed to load property', { error: String(error), attempt, propertyId });
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
+    }
+
+    if (isActiveLoad()) {
       setLoadError('Failed to load property details. Please try again.');
-    } finally {
+      setProperty(null);
+      setMediaSummary(null);
       setIsLoading(false);
     }
-  }, [propertyId, supabase, isLoaded]);
+  }, [propertyId, supabase, isLoaded, api, routePropertyId, webQueryPropertyId]);
 
   // Reload data whenever screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadPropertyData();
-    }, [loadPropertyData])
+      if (isLoaded) {
+        void loadPropertyData();
+      }
+      return () => {
+        // Invalidate any in-flight response when the screen blurs/unmounts.
+        activeLoadIdRef.current += 1;
+      };
+    }, [loadPropertyData, isLoaded])
   );
 
   const handleEditProperty = () => {
@@ -117,6 +300,10 @@ const PropertyDetailsScreen = () => {
     navigation.getParent()?.navigate('LandlordRequests');
   };
 
+  const roomsInventorySubtitle = mediaSummary
+    ? mediaSummary.roomCount + ' rooms · ' + mediaSummary.roomPhotoCount + ' room photos · ' + mediaSummary.assetPhotoCount + ' asset photos'
+    : 'View rooms and inventory items';
+
   if (isLoading) {
     return (
       <ScreenContainer
@@ -133,7 +320,7 @@ const PropertyDetailsScreen = () => {
     );
   }
 
-  if (!property) {
+  if (!property && loadError) {
     return (
       <ScreenContainer
         title="Property Details"
@@ -144,9 +331,25 @@ const PropertyDetailsScreen = () => {
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Unable to load property</Text>
           <Text style={styles.errorText}>{loadError || 'Please try again.'}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={loadPropertyData}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => loadPropertyData()}>
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!property) {
+    return (
+      <ScreenContainer
+        title="Property Details"
+        showBackButton
+        onBackPress={() => navigation.goBack()}
+        userRole="landlord"
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={DesignSystem.colors.primary} />
+          <Text style={styles.loadingText}>Loading property...</Text>
         </View>
       </ScreenContainer>
     );
@@ -176,10 +379,35 @@ const PropertyDetailsScreen = () => {
           <Text style={styles.propertyAddress}>{formatAddress(property.address)}</Text>
         </View>
 
+        {mediaSummary && (
+          <View style={styles.section}>
+            <Card style={styles.mediaSummaryCard}>
+              <View style={styles.mediaSummaryGrid}>
+                <View style={styles.mediaSummaryItem}>
+                  <Text style={styles.mediaSummaryValue}>{mediaSummary.roomCount}</Text>
+                  <Text style={styles.mediaSummaryLabel}>Rooms</Text>
+                </View>
+                <View style={styles.mediaSummaryItem}>
+                  <Text style={styles.mediaSummaryValue}>{mediaSummary.roomPhotoCount}</Text>
+                  <Text style={styles.mediaSummaryLabel}>Room Photos</Text>
+                </View>
+                <View style={styles.mediaSummaryItem}>
+                  <Text style={styles.mediaSummaryValue}>{mediaSummary.assetPhotoCount}</Text>
+                  <Text style={styles.mediaSummaryLabel}>Asset Photos</Text>
+                </View>
+                <View style={styles.mediaSummaryItem}>
+                  <Text style={styles.mediaSummaryValue}>{mediaSummary.assetCount}</Text>
+                  <Text style={styles.mediaSummaryLabel}>Assets</Text>
+                </View>
+              </View>
+            </Card>
+          </View>
+        )}
+
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          
+
           <Card style={styles.actionCard}>
             <TouchableOpacity
               style={styles.actionButton}
@@ -191,7 +419,7 @@ const PropertyDetailsScreen = () => {
               </View>
               <View style={styles.actionContent}>
                 <Text style={styles.actionTitle}>Rooms & Inventory</Text>
-                <Text style={styles.actionSubtitle}>View rooms and inventory items</Text>
+                <Text style={styles.actionSubtitle}>{roomsInventorySubtitle}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#BDC3C7" />
             </TouchableOpacity>
@@ -216,7 +444,7 @@ const PropertyDetailsScreen = () => {
           </Card>
 
           <Card style={styles.actionCard}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.actionButton}
               onPress={handleMaintenanceRequests}
               activeOpacity={0.7}
@@ -305,6 +533,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: DesignSystem.colors.text,
     marginBottom: 12,
+  },
+  mediaSummaryCard: {
+    marginBottom: 4,
+  },
+  mediaSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    rowGap: 8,
+  },
+  mediaSummaryItem: {
+    width: '50%',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  mediaSummaryValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: DesignSystem.colors.text,
+  },
+  mediaSummaryLabel: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginTop: 2,
   },
   actionCard: {
     marginBottom: 12,
