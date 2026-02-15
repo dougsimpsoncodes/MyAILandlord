@@ -78,7 +78,8 @@
     "scheme": "myailandlord",
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-barcode-scanner"
     ],
     "extra": {
       "eas": {
